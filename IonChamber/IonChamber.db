@@ -1,0 +1,79 @@
+# This database contains fields used to calculate ion chamber currents
+
+grecord(stringin,"$(P)$(Q):Amp") {
+	field(DESC, "IonCh SRS570 Amp")
+	field(VAL,  "13IDC:A1")
+}
+
+grecord(stringin,"$(P)$(Q):Desc") {
+	field(DESC, "Description")
+	field(VAL,  "Ion Chamber 1")
+}
+
+grecord(stringin,"$(P)$(Q):Volts") {
+	field(DESC, "IonCh Voltage")
+	field(VAL,  "")
+}
+
+grecord(ao,"$(P)$(Q):Length") {
+	field(DESC,"IonCh Length (cm)")
+        field(PREC,"1")
+	field(VAL,"10")
+}
+
+grecord(ao,"$(P)$(Q):AbsPercent") {
+	field(DESC,"IonCh absorbed")
+        field(PREC,"2")
+	field(VAL,"0")
+}
+
+grecord(mbbi,"$(P)$(Q):Gas") {
+	field(DESC,"IonCh Gas")
+        field(VAL,"1")
+        field(ZRVL,"0")
+        field(ZRST,"Air")
+        field(ONVL,"1")
+        field(ONST,"N2")
+        field(TWVL,"2")
+        field(TWST,"He")
+        field(THVL,"3")
+        field(THST,"Ar")
+        field(FRVL,"4")
+        field(FRST,"Kr")
+}
+
+grecord(stringout,"$(P)$(Q):Current") {
+	field(DESC,"IonCh Current (uA)")
+	field(VAL,"0.")
+}
+
+grecord(stringout,"$(P)$(Q):FluxAbs") {
+	field(DESC,"IonCh Flux Absorbed (Hz)")
+	field(VAL,"0")
+}
+
+grecord(stringout,"$(P)$(Q):FluxOut") {
+	field(DESC,"IonCh Flux Out (Hz)")
+	field(VAL,"0")
+}
+
+grecord(stringin,"$(P)$(Q):EnergyPV") {
+	field(DESC, "PV for Energy Value")
+	field(VAL,  "13IDA:E:E_RBV")
+}
+
+grecord(ao,"$(P)$(Q):Energy") {
+	field(DESC,"x-ray energy (eV)")
+        field(PREC,"1")
+	field(VAL,"0")
+}
+
+grecord(stringin,"$(P)$(Q):TimeStamp") {
+	field(DESC, "last update time")
+	field(VAL,  "")
+}
+
+grecord(mbbiDirect,"$(P)$(Q):tmp") {
+	field(DESC,"test mbbiDirect")
+    	field(VAL,"237")
+}
