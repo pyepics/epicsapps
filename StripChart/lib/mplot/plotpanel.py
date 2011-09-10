@@ -42,6 +42,7 @@ class PlotPanel(wx.Panel):
         self.cursor_mode = 'cursor'
         self.cursor_save = 'cursor'
         self._yfmt = '%.4f'
+        self._y2fmt = '%.4f'
         self._xfmt = '%.4f'
         self.use_dates = False
         self.ylog_scale = False
@@ -162,7 +163,11 @@ class PlotPanel(wx.Panel):
         if markersize is not None:
             cnf.set_trace_markersize(markersize)
 
-        axes.yaxis.set_major_formatter(FuncFormatter(self.yformatter))
+        if axes == self.axes:
+            axes.yaxis.set_major_formatter(FuncFormatter(self.yformatter))
+        else:
+            axes.yaxis.set_major_formatter(FuncFormatter(self.y2formatter))
+
         axes.xaxis.set_major_formatter(FuncFormatter(self.xformatter))
 
         if refresh:
@@ -185,10 +190,13 @@ class PlotPanel(wx.Panel):
         cnf.ntrace = cnf.ntrace + 1
         return _lines
 
-    def set_xylims(self, lims, axes=None,  autoscale=True):
+    def set_xylims(self, lims, axes=None, side=None, autoscale=True):
         """ update xy limits of a plot, as used with .update_line() """
         if axes is None:
             axes = self.axes
+        if side == 'right' and len(self.fig.get_axes()) == 2:
+            axes = self.fig.get_axes()[1]
+
         if autoscale:
             xmin, xmax, ymin, ymax = self.data_range[axes]
         else:
@@ -270,11 +278,8 @@ class PlotPanel(wx.Panel):
         self.canvas.SetCursor(wx.StockCursor(wx.CURSOR_CROSS))
 
         # overwrite ScalarFormatter from ticker.py here:
-        self.axes.yaxis.set_major_formatter(FuncFormatter(self.yformatter))
         self.axes.xaxis.set_major_formatter(FuncFormatter(self.xformatter))
-#         if self.axes2 is not None:
-#             self.axes2.yaxis.set_major_formatter(FuncFormatter(self.yformatter))
-#             self.axes2.xaxis.set_major_formatter(FuncFormatter(self.xformatter))
+        self.axes.yaxis.set_major_formatter(FuncFormatter(self.yformatter))
 
         # This way of adding to sizer allows resizing
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -346,7 +351,7 @@ class PlotPanel(wx.Panel):
         if len(self.fig.get_axes()) > 1:
             ax2 = self.fig.get_axes()[1]
             x2, y2 = ax2.transData.inverted().transform((ex, ey))
-            msg = "X,Y,Y2= %s, %s, %s" % (self._xfmt, self._yfmt, self._yfmt) % (x, y, y2)
+            msg = "X,Y,Y2= %s, %s, %s" % (self._xfmt, self._yfmt, self._y2fmt) % (x, y, y2)
 
         self.write_message(msg,  panel=0)
         if hasattr(self.cursor_callback , '__call__'):
@@ -468,16 +473,22 @@ class PlotPanel(wx.Panel):
         " y-axis formatter "
         return self.__format(y, type='y')
 
+    def y2formatter(self, y, pos):
+        " y-axis formatter "
+        return self.__format(y, type='y2')
+
     def __format(self, x, type='x'):
         """ home built tick formatter to use with FuncFormatter():
         x     value to be formatted
-        type  'x' or 'y' to set which list of ticks to get
+        type  'x' or 'y' or 'y2' to set which list of ticks to get
 
         also sets self._yfmt/self._xfmt for statusbar
         """
         fmt, v = '%1.5g','%1.5g'
         if type == 'y':
             ax = self.axes.yaxis
+        elif type == 'y2' and len(self.fig.get_axes()) > 1:
+            ax =  self.fig.get_axes()[1].yaxis
         else:
             ax = self.axes.xaxis
 
@@ -515,6 +526,8 @@ class PlotPanel(wx.Panel):
             s = s.replace('-0','-')
         if type == 'y':
             self._yfmt = v
+        if type == 'y2':
+            self._y2fmt = v
         if type == 'x':
             self._xfmt = v
         return s

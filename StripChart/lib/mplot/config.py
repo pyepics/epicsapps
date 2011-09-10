@@ -162,7 +162,7 @@ class PlotConfig:
         self.labelfont.set_size(12)
         self.titlefont.set_size(14)
 
-        self.grid_color = '#E8E4E4'
+        self.grid_color = '#E5E5E5'
         # preload some traces
         #                   color  style linewidth marker markersize
         self.ntrace = 0

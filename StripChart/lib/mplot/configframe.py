@@ -336,8 +336,9 @@ class PlotConfigFrame(wx.Frame):
 
     def onShowGrid(self,event):
         self.conf.show_grid = event.IsChecked()
-        for ax in self.axes:
-            ax.grid(event.IsChecked())
+        self.axes[0].grid(event.IsChecked())
+        for ax in self.axes[1:]:
+            ax.grid(False)
         self.canvas.draw()
 
     def onShowLegend(self,event,argu=''):

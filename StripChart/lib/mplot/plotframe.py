@@ -57,7 +57,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         for attr in ('plot', 'oplot', 'update_line',
                      'set_xylims', 'get_xylims', 'clear', 'unzoom',
                      'unzoom_all', 'set_title', 'set_xlabel', 'set_ylabel',
-                     'save_figure', 'configure'):
+                     'set_y2label', 'save_figure', 'configure'):
             setattr(self, attr, getattr(self.plotpanel, attr))
 
     def write_message(self, s, panel=0):
