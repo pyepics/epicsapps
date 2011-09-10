@@ -132,10 +132,8 @@ class LineProperties:
 
 class PlotConfig:
     """ MPlot Configuration for 2D Plots... holder class for most configuration data """
-    def __init__(self):
-        self.axes   = None
-        self.canvas = None
-        self.fig    = None
+    def __init__(self, canvas=None):
+        self.canvas = canvas
         self.zoom_x = 0
         self.zoom_y = 0
         self.zoom_init = (0, 1)
@@ -143,6 +141,7 @@ class PlotConfig:
         self.title  = ' '
         self.xlabel = ' '
         self.ylabel = ' '
+        self.y2label = ' '
         self.styles      = StyleMap.keys()
         self.symbols     = MarkerMap.keys()
         self.legend_locs = ['upper right' , 'upper left', 'upper center',
@@ -163,7 +162,7 @@ class PlotConfig:
         self.labelfont.set_size(12)
         self.titlefont.set_size(14)
 
-        self.grid_color = '#E0E0E0'
+        self.grid_color = '#E8E4E4'
         # preload some traces
         #                   color  style linewidth marker markersize
         self.ntrace = 0
@@ -214,19 +213,22 @@ class PlotConfig:
         except:
             return None
 
-    def relabel(self):
+    def relabel(self, xlabel=None, ylabel=None, y2label=None, title=None):
         " re draw labels (title, x,y labels)"
         n = self.labelfont.get_size()
-        n = self.labelfont.get_size()
-
-        self.axes.set_xlabel(self.xlabel,
-                             fontproperties=self.labelfont)
-        self.axes.set_ylabel(self.ylabel,
-                             fontproperties=self.labelfont)
-        self.axes.set_title(self.title,
-                            fontproperties=self.titlefont)
         rcParams['xtick.labelsize']=  n-1
         rcParams['ytick.labelsize']=  n-1
+        if xlabel is not None:  self.xlabel = xlabel
+        if ylabel is not None:  self.ylabel = ylabel
+        if y2label is not None: self.y2label = y2label
+        if title is not None:   self.title = title
+
+        axes = self.canvas.figure.get_axes()
+        axes[0].set_xlabel(self.xlabel, fontproperties=self.labelfont)
+        axes[0].set_ylabel(self.ylabel, fontproperties=self.labelfont)
+        axes[0].set_title(self.title,   fontproperties=self.titlefont)
+        if len(axes) > 1:
+            axes[1].set_ylabel(self.y2label, fontproperties=self.labelfont)
 
     def refresh_trace(self,trace=None):
         if trace is None: trace = self.ntrace
