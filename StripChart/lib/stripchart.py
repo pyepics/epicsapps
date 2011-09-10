@@ -27,14 +27,21 @@ class EpicsStripChart(wx.Frame):
     def __init__(self, parent=None, pvname=None):
         self.pvs = []
         self.pvdata = {}
+        self.nshown = {}
         if pvname is not None:
             self.pv = epics.PV(pvname)
             self.pv.add_callback(self.onPVChange)
             self.pvdata[pvname] = []
-        self.time0 = time.time()
-        self.nplot = 0
+            self.nshown[pvname] = 0
         self.create_frame(parent)
 
+        self.tdisplay = 120
+        self.needs_plot = False
+        self.t0 = time.time()
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
+        self.timer.Start(30)
+        
     def create_frame(self, parent, size=(700, 450), **kwds):
         self.parent = parent
 
@@ -66,6 +73,7 @@ class EpicsStripChart(wx.Frame):
         self.SetAutoLayout(True)
         self.SetSizer(mainsizer)
         self.Fit()
+
 
     def BuildMenu(self):
         mids = self.menuIDs
@@ -161,27 +169,32 @@ class EpicsStripChart(wx.Frame):
     @epics.wx.DelayedEpicsCallback
     def onPVChange(self, pvname=None, value=None,**kw):
         self.pvdata[pvname].append((time.time(),value))
-        wx.CallAfter(self.UpdatePlot)
-
-    def UpdatePlot(self):
+        self.needs_plot = True
+        
+    def onUpdatePlot(self, event=None):
         tnow = time.time()
+        tmin = -self.tdisplay
+        if not self.needs_plot:
+            print 'Update skipped  no event'
+            
+            return
 
-        self.tmin = -120
+        self.needs_plot = False
         for pvname, data in self.pvdata.items():
-            if  self.nplot == len(data):
+            if self.nshown[pvname] == len(data):
+                print 'Update skipped no new data'
                 return
-            if self.nplot % 100 == 0:
-                print self.nplot, time.time()-self.time0
-            self.nplot = len(data)
+            if len(data) % 100 == 0:
+                print 'Point %i at %.2f sec' % (len(data), time.time()-self.t0)
+            self.nshown[pvname] = len(data)
             tdat = numpy.array([i[0] for i in data]) - tnow
 
-            mask = numpy.where(tdat>self.tmin)
+            mask = numpy.where(tdat>tmin)
             tdat = tdat[mask]
             ydat = numpy.array([i[1] for i in data])[mask]
 
-            tmin = self.tmin
-            if mask[0][0] == 0 and (min(tdat) > self.tmin/2.0):
-                tmin = self.tmin/2.0
+            if mask[0][0] == 0 and (min(tdat) > tmin/2.0):
+                tmin = tmin/2.0
                     
             try:
                 self.plotpanel.set_xylims([tmin, 0, min(ydat),max(ydat)],
