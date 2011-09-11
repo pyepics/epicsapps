@@ -6,19 +6,44 @@ import wx
 
 import epics
 import epics.wx
+from epics.wx.utils import  pack, popup, add_button, SimpleText
+
 from  mplot.plotpanel import PlotPanel
 
 def source1(t):
     t = t % 100
-    return 2.4*numpy.sin(.6*t) + numpy.random.normal(scale=0.7) + (t+5.0)/63.0
+    return 0.4*numpy.sin(.6*t) + numpy.random.normal(scale=0.27) + (t)/23.0
 
 def source2(t):
     t = t % 30
-    return (t/4.) + numpy.random.normal(scale=0.4)
+    return ((t/4.) + numpy.random.normal(scale=0.5))/ 10.0
 
 def source3(t):
     t = t % 50
     return t + numpy.random.normal(scale=10.0)
+
+STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
+LSTY = wx.ALIGN_LEFT|wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
+
+
+class Choice2(wx.Choice):
+    def __init__(self, parent, choices=('No', 'Yes'), defaultyes=True, size=(75, -1)):
+        wx.Choice.__init__(self, parent, -1, size=size)
+        self.choices = choices
+        self.Clear()
+        self.SetItems(self.choices)
+        self.SetSelection({False:0, True:1}[defaultyes])
+
+    def SetChoices(self, choices):
+        self.Clear()
+        self.SetItems(choices)
+        self.choices = choices
+
+    def Select(self, choice):
+        if isinstance(choice, int):
+            self.SetSelection(0)
+        elif choice in self.choices:
+            self.SetSelection(self.choices.index(choice))
 
 class Menu_IDs:
     def __init__(self):
@@ -84,19 +109,52 @@ class StripChart(wx.Frame):
 
     def BuildTopPanel(self):
         panel = self.toppanel = wx.Panel(self)
+        sizer = wx.GridBagSizer(6,4)
 
+        row = 0
+        self.wid_pvnames = []
+        rowsizer = wx.BoxSizer(wx.HORIZONTAL)
+        name = SimpleText(panel, ' PV Name   ',  minsize=(85, -1), style=LSTY)
+        show = SimpleText(panel, ' Show?     ',  minsize=(85, -1), style=LSTY)
+        logs = SimpleText(panel, ' Log Scale?',  minsize=(85, -1), style=LSTY)
+        axes = SimpleText(panel, ' Axes      ',  minsize=(85, -1), style=LSTY)
 
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(name, (row, 0), (1, 1), LSTY, 2)
+        sizer.Add(show, (row, 1), (1, 1), LSTY, 2)
+        sizer.Add(logs, (row, 2), (1, 1), LSTY, 2)
+        sizer.Add(axes, (row, 3), (1, 1), LSTY, 2)
 
-        self.pause_btn = wx.Button(panel, label='Pause', size=(105, 30))
+        for i in range(3):
+            row += 1
+            name = wx.TextCtrl(panel, value='', size=(230, -1))
+            self.wid_pvnames.append(name)
+            cb = wx.CheckBox(panel)
+            cb.SetValue(True)
+            logs = Choice2(panel)
+            axes = Choice2(panel, choices=('Left', 'Right'))
+
+            sizer.Add(name, (row, 0), (1, 1), LSTY, 2)
+            sizer.Add(cb,   (row, 1), (1, 1), LSTY, 2)
+            sizer.Add(logs,   (row, 2), (1, 1), LSTY, 2)
+            sizer.Add(axes,   (row, 3), (1, 1), LSTY, 2)
+
+        row += 1
+        sizer.Add(wx.StaticLine(panel, size=(250, -1),
+                                style=wx.LI_HORIZONTAL),
+                  (row, 0), (1, 5), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
+        row += 1
+        btnsizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.pause_btn  = wx.Button(panel, label='Pause', size=(105, 30))
         self.resume_btn = wx.Button(panel, label='Resume', size=(105, 30))
         self.resume_btn.Disable()
 
         self.pause_btn.Bind(wx.EVT_BUTTON, self.onPause)
         self.resume_btn.Bind(wx.EVT_BUTTON, self.onPause)
 
-        sizer.Add(self.pause_btn, 1, wx.ALIGN_LEFT, wx.ALIGN_CENTER, 2)
-        sizer.Add(self.resume_btn, 1, wx.ALIGN_LEFT, wx.ALIGN_CENTER, 2)
+        btnsizer.Add(self.pause_btn, 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(self.resume_btn, 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+
+        sizer.Add(btnsizer, (row, 0), (1, 4),  wx.ALIGN_CENTER_VERTICAL|wx.ALL, 1)
 
         panel.SetAutoLayout(True)
         panel.SetSizer(sizer)
