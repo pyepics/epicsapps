@@ -90,7 +90,8 @@ class PlotPanel(wx.Panel):
             axes = self.create_right_axes()
         axes.cla()
         self.conf.ntrace  = 0
-        self.data_range[axes] = [min(xdata), max(xdata), min(ydata), max(ydata)]
+        self.data_range[axes] = ( (min(xdata), max(xdata)),
+                                  (min(ydata), max(ydata)) )
         if xlabel is not None:
             self.set_xlabel(xlabel)
         if ylabel is not None:
@@ -135,14 +136,14 @@ class PlotPanel(wx.Panel):
             _lines = axes.errorbar(xdata, ydata, yerr=dy)
 
         if axes not in self.data_range:
-            self.data_range[axes] = [min(xdata), max(xdata),
-                                     min(ydata), max(ydata)]
+            self.data_range[axes] = ((min(xdata), max(xdata)),
+                                     (min(ydata), max(ydata)))
 
         dr = self.data_range[axes]
-        self.data_range[axes]    = [min((dr[0], min(xdata))),
-                                    max((dr[1], max(xdata))),
-                                    min((dr[2], min(ydata))),
-                                    max((dr[3], max(ydata)))]
+        self.data_range[axes]    = ( (min(dr[0][0], min(xdata)),
+                                      max(dr[0][1], max(xdata))),
+                                     (min(dr[1][0], min(ydata)),
+                                      max(dr[1][1], max(ydata))))
 
         cnf  = self.conf
         n    = cnf.ntrace
@@ -192,21 +193,22 @@ class PlotPanel(wx.Panel):
 
     def set_xylims(self, lims, axes=None, side=None, autoscale=True):
         """ update xy limits of a plot, as used with .update_line() """
+
         if axes is None:
             axes = self.axes
         if side == 'right' and len(self.fig.get_axes()) == 2:
             axes = self.fig.get_axes()[1]
 
         if autoscale:
-            xmin, xmax, ymin, ymax = self.data_range[axes]
+            (xmin, xmax), (ymin, ymax) = self.data_range[axes]
         else:
-            xmin, xmax, ymin, ymax = lims
+            (xmin, xmax), (ymin, ymax) = lims
 
         axes.set_xbound(axes.xaxis.get_major_locator().view_limits(xmin, xmax))
         axes.set_ybound(axes.yaxis.get_major_locator().view_limits(ymin, ymax))
         axes.set_xlim((xmin, xmax), emit=True)
         axes.set_ylim((ymin, ymax), emit=True)
-        axes.update_datalim(((xmin, ymin), (xmax, ymax)))
+        # axes.update_datalim(((xmin, ymin), (xmax, ymax)))
 
 
     def clear(self):
@@ -222,32 +224,19 @@ class PlotPanel(wx.Panel):
 
     def unzoom_all(self, event=None):
         """ zoom out full data range """
-        self.zoom_lims = []
+        if len(self.zoom_lims) > 0:
+            self.zoom_lims = [self.zoom_lims[0]]
         self.unzoom(event)
 
     def unzoom(self, event=None):
         """ zoom out 1 level, or to full data range """
-        lims = None
-        autoscale = False
-        msg = ''
-        if len(self.zoom_lims) > 1:
-            self.zoom_lims.pop()
-            lims = self.zoom_lims.pop()
-            msg = 'zoom level %i' % (len(self.zoom_lims))
+        if len(self.zoom_lims) < 1:
+            return
 
-        if lims is None: # auto scale
-            self.zoom_lims = []
-            autoscale = True
+        for ax, lims in self.zoom_lims.pop().items():
+            self.set_xylims(lims=lims, axes=ax, autoscale=False)
 
-        if lims is None:
-            for ax in self.fig.get_axes():
-                self.set_xylims(lims=None, axes=ax, autoscale=True)
-        else:
-            for ax in lims:
-                axlims = lims[ax]
-                self.set_xylims(lims=lims[ax], axes=ax, autoscale=False)
-
-        self.write_message(msg)
+        self.write_message('zoom level %i' % (len(self.zoom_lims)))
         self.canvas.draw()
 
     def configure(self, event=None):
@@ -330,11 +319,10 @@ class PlotPanel(wx.Panel):
         if side == 'right':
             axes = self.create_right_axes()
         dr = self.data_range[axes]
-        self.data_range[axes] = [min(dr[0], xdata.min()),
-                                 max(dr[1], xdata.max()),
-                                 min(dr[2], ydata.min()),
-                                 max(dr[3], ydata.max())]
-
+        self.data_range[axes] = ( (min(dr[0][0], xdata.min()),
+                                   max(dr[0][1], xdata.max())),
+                                  (min(dr[1][0], ydata.min()),
+                                   max(dr[1][1], ydata.max())) )
         # this defeats zooming, which gets ugly in this fast-mode anyway.
         self.cursor_mode = 'cursor'
         self.canvas.draw()
@@ -388,22 +376,24 @@ class PlotPanel(wx.Panel):
         if ((dx > 4) and (dy > 4) and (t0-self.mouse_uptime)>0.1 and
             self.cursor_mode == 'zoom'):
             self.mouse_uptime = t0
-            msg = 'zoom level %i ' % (len(self.zoom_lims)-1)
+            olims = {}
+            nlims = {}
+            for ax in self.fig.get_axes():
+                olims[ax] = ax.get_xlim(), ax.get_ylim()
+            self.zoom_lims.append(olims)
+            msg = 'zoom level %i ' % (len(self.zoom_lims))
             # for multiple axes, we first collect all the new limits, and only
             # then apply them
-            zlims = {}
             for ax in self.fig.get_axes():
                 x1, y1 = ax.transData.inverted().transform((event.x, event.y))
                 x0, y0 = ax.transData.inverted().transform((ini_x, ini_y))
-
-                lims = (min(x0, x1), max(x0, x1), min(y0, y1), max(y0, y1))
-                zlims[ax] = lims
+                nlims[ax] = ((min(x0, x1), max(x0, x1)),
+                             (min(y0, y1), max(y0, y1)))
 
             # now appply limits:
-            for ax in zlims:
-                self.set_xylims(lims=zlims[ax], axes=ax, autoscale=False)
+            for ax in nlims:
+                self.set_xylims(lims=nlims[ax], axes=ax, autoscale=False)
 
-            self.zoom_lims.append(zlims)
             self.write_message(msg, panel=1)
 
         self.rbbox = None
@@ -501,7 +491,6 @@ class PlotPanel(wx.Panel):
             dtick = abs(ticks[1] - ticks[0])
         except:
             pass
-        # print ' tick ' , type, dtick, ' -> ',
         if   dtick > 99999:
             fmt, v = ('%1.6e', '%1.7g')
         elif dtick > 0.99:
@@ -537,7 +526,6 @@ class PlotPanel(wx.Panel):
         """
         if event is None:
             return
-        # print 'KeyEvent ', event
         key = event.guiEvent.GetKeyCode()
         if (key < wx.WXK_SPACE or  key > 255):
             return
@@ -583,8 +571,6 @@ class PlotPanel(wx.Panel):
             return
 
         ax = event.inaxes
-        # print 'onMotion ', dir(event), ax==self.axes
-
         if self.cursor_mode == 'cursor':
             if ax is not None:
                 self.reportMotion(event=event)

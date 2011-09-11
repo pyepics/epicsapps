@@ -10,11 +10,11 @@ from  mplot.plotpanel import PlotPanel
 
 def source1(t):
     t = t % 100
-    return 2.0*numpy.sin(3.0*t) + numpy.random.normal(scale=0.14) + (t+15.0)/63.0
+    return 2.4*numpy.sin(.6*t) + numpy.random.normal(scale=0.7) + (t+5.0)/63.0
 
 def source2(t):
-    t = t % 200
-    return t/25. + numpy.random.normal(scale=0.4)
+    t = t % 30
+    return (t/4.) + numpy.random.normal(scale=0.4)
 
 def source3(t):
     t = t % 50
@@ -46,7 +46,7 @@ class StripChart(wx.Frame):
         self.create_frame(parent)
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnUpdatePlot, self.timer)
-        self.timer.Start(50)
+        self.timer.Start(150)
 
     def create_frame(self, parent, size=(700, 450), **kwds):
         self.parent = parent
@@ -233,13 +233,11 @@ class StripChart(wx.Frame):
         if mask1[0][0] == 0 and (min(t1dat) > self.tmin/2.0):
             tmin = self.tmin/2.0
 
-        try:
-            self.plotpanel.set_xylims([tmin, 0, min(y1dat), max(y1dat)],
-                                      autoscale=False)
-            self.plotpanel.set_xylims([tmin, 0, min(y2dat), max(y2dat)],
-                                      side='right', autoscale=False)
-        except:
-            pass
+
+        self.plotpanel.set_xylims(((tmin, 0), (min(y1dat), max(y1dat))),
+                                  autoscale=False)
+        self.plotpanel.set_xylims(((tmin, 0), (min(y2dat), max(y2dat))),
+                                  side='right', autoscale=False)
 
         try:
             self.plotpanel.update_line(0, t1dat, y1dat)
