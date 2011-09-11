@@ -3,10 +3,11 @@ import sys
 import time
 import numpy
 import wx
+import wx.lib.colourselect  as csel
 
 import epics
 import epics.wx
-from epics.wx.utils import  pack, popup, add_button, SimpleText
+from epics.wx.utils import  SimpleText, Closure, FloatCtrl
 
 from  mplot.plotpanel import PlotPanel
 
@@ -23,8 +24,8 @@ def source3(t):
     return t + numpy.random.normal(scale=10.0)
 
 STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
-LSTY = wx.ALIGN_LEFT|wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
-
+LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL|wx.ALIGN_CENTER_VERTICAL
+CSTY = wx.ALIGN_CENTER|wx.ALIGN_CENTER_VERTICAL
 
 class Choice2(wx.Choice):
     def __init__(self, parent, choices=('No', 'Yes'), defaultyes=True, size=(75, -1)):
@@ -61,6 +62,8 @@ class Menu_IDs:
         self.SELECT_SMOOTH= wx.NewId()
 
 class StripChart(wx.Frame):
+    default_colors = ((0, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 0), (255, 0, 255), (0, 125, 0))
+
     def __init__(self, parent=None):
 
         self.pvdata = {'source1':[], 'source2':[], 'source3':[]}
@@ -94,12 +97,16 @@ class StripChart(wx.Frame):
 
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         self.BuildMenu()
-        self.BuildTopPanel()
+        self.BuildTopPanels()
 
         self.plotpanel = PlotPanel(self)
         self.plotpanel.BuildPanel()
         self.plotpanel.messenger = self.write_message
-        mainsizer.Add(self.toppanel,  0)
+        mainsizer.Add(self.pvpanel,   0, wx.EXPAND)
+        mainsizer.Add(wx.StaticLine(self, size=(250, -1),
+                                    style=wx.LI_HORIZONTAL),
+                                      0, wx.EXPAND)
+        mainsizer.Add(self.btnpanel,  0, wx.EXPAND)
         mainsizer.Add(self.plotpanel, 1, wx.EXPAND)
 
         self.BindMenuToPanel()
@@ -107,58 +114,110 @@ class StripChart(wx.Frame):
         self.SetSizer(mainsizer)
         self.Fit()
 
-    def BuildTopPanel(self):
-        panel = self.toppanel = wx.Panel(self)
-        sizer = wx.GridBagSizer(6,4)
+    def AddPV_row(self, i=None):
+        if i is None:
+            i = self.npv_rows = self.npv_rows + 1
+        panel = self.pvpanel
+        sizer = self.pvsizer
+        name = wx.TextCtrl(panel, value='', size=(230, -1))
+        show = wx.CheckBox(panel)
+        logs = Choice2(panel)
+        axes = Choice2(panel, choices=('Left', 'Right'))
+        show.SetValue(False)
+        logs.SetSelection(0)
+        axes.SetSelection(0)
+        if i == 2:
+            axes.SetSelection(1)
+        colval = (0, 0, 0)
+        if i < len(self.default_colors):
+            colval = self.default_colors[i]
+        colr = csel.ColourSelect(panel, -1, '', colval)
 
-        row = 0
+        sizer.Add(name,  (i, 0), (1, 1), LSTY, 3)
+        sizer.Add(show,  (i, 1), (1, 1), CSTY, 3)
+        sizer.Add(colr,  (i, 2), (1, 1), CSTY, 3)
+        sizer.Add(logs,  (i, 3), (1, 1), CSTY, 3)
+        sizer.Add(axes,  (i, 4), (1, 1), LSTY, 3)
+        name.Bind(wx.EVT_TEXT_ENTER, Closure(self.onPVname, row=i))
+        show.Bind(wx.EVT_CHECKBOX,   Closure(self.onPVshow, row=i))
+        logs.Bind(wx.EVT_CHOICE,     Closure(self.onPVlogs, row=i))
+        axes.Bind(wx.EVT_CHOICE,     Closure(self.onPVaxes, row=i))
+        colr.Bind(csel.EVT_COLOURSELECT,  Closure(self.onPVcolor, row=i))
+
+    def onPVname(self, event=None, row=None, **kws):
+        print 'onPVname ', row, event
+
+    def onPVcolor(self, event=None, row=None, **kws):
+        print 'onPVcolor ', row, event
+
+    def onPVshow(self, event=None, row=None, **kws):
+        print 'onPVshow ', row, event
+    def onPVlogs(self, event=None, row=None, **kws):
+        print 'onPVlogs ', row, event
+
+    def onPVaxes(self, event=None, row=None, **kws):
+        print 'onPVaxes ', row, event
+
+    def onTimeVal(self, event=None, value=None, **kws):
+        print 'onTimeVal ', kws
+
+    def onTimeChoice(self, event=None, **kws):
+        print 'onTimeChoice ', event
+
+    def BuildTopPanels(self):
+        panel = self.pvpanel = wx.Panel(self, )
+        sizer = self.pvsizer = wx.GridBagSizer(5, 5)
+        panel.SetBackgroundColour(wx.Colour(240,240,230))
+
         self.wid_pvnames = []
-        rowsizer = wx.BoxSizer(wx.HORIZONTAL)
+
         name = SimpleText(panel, ' PV Name   ',  minsize=(85, -1), style=LSTY)
-        show = SimpleText(panel, ' Show?     ',  minsize=(85, -1), style=LSTY)
+        show = SimpleText(panel, ' Show? ',      minsize=(50, -1), style=LSTY)
+        colr = SimpleText(panel, ' Color ',      minsize=(50, -1), style=LSTY)
         logs = SimpleText(panel, ' Log Scale?',  minsize=(85, -1), style=LSTY)
         axes = SimpleText(panel, ' Axes      ',  minsize=(85, -1), style=LSTY)
 
-        sizer.Add(name, (row, 0), (1, 1), LSTY, 2)
-        sizer.Add(show, (row, 1), (1, 1), LSTY, 2)
-        sizer.Add(logs, (row, 2), (1, 1), LSTY, 2)
-        sizer.Add(axes, (row, 3), (1, 1), LSTY, 2)
+        sizer.Add(name, (0, 0), (1, 1), LSTY, 2)
+        sizer.Add(show, (0, 1), (1, 1), LSTY, 2)
+        sizer.Add(colr, (0, 2), (1, 1), LSTY, 2)
+        sizer.Add(logs, (0, 3), (1, 1), LSTY, 2)
+        sizer.Add(axes, (0, 4), (1, 1), LSTY, 2)
 
+        self.npv_rows = 0
         for i in range(3):
-            row += 1
-            name = wx.TextCtrl(panel, value='', size=(230, -1))
-            self.wid_pvnames.append(name)
-            cb = wx.CheckBox(panel)
-            cb.SetValue(True)
-            logs = Choice2(panel)
-            axes = Choice2(panel, choices=('Left', 'Right'))
+            self.AddPV_row()
 
-            sizer.Add(name, (row, 0), (1, 1), LSTY, 2)
-            sizer.Add(cb,   (row, 1), (1, 1), LSTY, 2)
-            sizer.Add(logs,   (row, 2), (1, 1), LSTY, 2)
-            sizer.Add(axes,   (row, 3), (1, 1), LSTY, 2)
+        panel.SetAutoLayout(True)
+        panel.SetSizer(sizer)
+        sizer.Fit(panel)
+        #------
+        panel = self.btnpanel = wx.Panel(self, )
+        panel.SetBackgroundColour(wx.Colour(240,240,230))
 
-        row += 1
-        sizer.Add(wx.StaticLine(panel, size=(250, -1),
-                                style=wx.LI_HORIZONTAL),
-                  (row, 0), (1, 5), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
-        row += 1
         btnsizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.pause_btn  = wx.Button(panel, label='Pause', size=(105, 30))
-        self.resume_btn = wx.Button(panel, label='Resume', size=(105, 30))
+        self.pause_btn  = wx.Button(panel, label='Pause', size=(90, 30))
+        self.resume_btn = wx.Button(panel, label='Resume', size=(90, 30))
         self.resume_btn.Disable()
 
         self.pause_btn.Bind(wx.EVT_BUTTON, self.onPause)
         self.resume_btn.Bind(wx.EVT_BUTTON, self.onPause)
 
-        btnsizer.Add(self.pause_btn, 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
-        btnsizer.Add(self.resume_btn, 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+        time_label = SimpleText(panel, '    Time Range: ',  minsize=(85, -1), style=LSTY)
+        self.time_ctrl  = FloatCtrl(panel, value=20, precision=1, size=(90, -1),
+                                    action=self.onTimeVal)
+        self.time_choice = Choice2(panel, choices=('seconds', 'minutes', 'hours'))
+        self.time_choice.SetSelection(0)
+        self.time_choice.Bind(wx.EVT_CHOICE,   self.onTimeChoice)
 
-        sizer.Add(btnsizer, (row, 0), (1, 4),  wx.ALIGN_CENTER_VERTICAL|wx.ALL, 1)
+        btnsizer.Add(self.pause_btn,   1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(self.resume_btn,  1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(time_label,       1, wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(self.time_ctrl,   1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(self.time_choice, 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
 
         panel.SetAutoLayout(True)
-        panel.SetSizer(sizer)
-        sizer.Fit(panel)
+        panel.SetSizer(btnsizer)
+        btnsizer.Fit(panel)
 
     def onPause(self, event=None):
         if self.paused:
