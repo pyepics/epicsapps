@@ -16,6 +16,7 @@ from matplotlib.backends.backend_wxagg import FigureCanvasWxAgg as FigureCanvas
 from config import PlotConfig
 from configframe import PlotConfigFrame
 from utils import Printer
+from colors import hexcolor
 
 class PlotPanel(wx.Panel):
     """
@@ -675,7 +676,7 @@ class PlotPanel(wx.Panel):
 
     def set_bg(self, color= None):
         if color is None:
-            color = '#FEFFEE'
+            color = hexcolor((250,250,240))
         self.fig.set_facecolor(color)
 
     def save_figure(self, event=None):
