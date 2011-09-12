@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import os
 import sys
 import time
 import numpy
@@ -29,7 +30,10 @@ def source4(t):
     t = t % 50
     return t **3
 
-POLLTIME = 200
+VALID_FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
+
+BGCOL  = (250,250,240)
+POLLTIME = 100
 STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL|wx.ALIGN_CENTER_VERTICAL
 CSTY = wx.ALIGN_CENTER|wx.ALIGN_CENTER_VERTICAL
@@ -56,7 +60,8 @@ class MyChoice(wx.Choice):
 class Menu_IDs:
     def __init__(self):
         self.EXIT   = wx.NewId()
-        self.SAVE   = wx.NewId()
+        self.SAVE_IMG = wx.NewId()
+        self.SAVE_DAT = wx.NewId()
         self.CONFIG = wx.NewId()
         self.UNZOOM = wx.NewId()
         self.HELP   = wx.NewId()
@@ -70,6 +75,31 @@ class Menu_IDs:
 
 class StripChart(wx.Frame):
     default_colors = ((0, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 0), (255, 0, 255), (0, 125, 0))
+
+    help_msg =  """Quick help:
+
+ Left-Click:   to display X,Y coordinates
+ Left-Drag:    to zoom in on plot region
+ Right-Click:  display popup menu with choices:
+                Zoom out 1 level
+                Zoom all the way out
+                --------------------
+                Configure
+                Save Image
+
+Also, these key bindings can be used
+(For Mac OSX, replace 'Ctrl' with 'Apple'):
+
+  Ctrl-S:     save plot image to file
+  Ctrl-C:     copy plot image to clipboard
+  Ctrl-K:     Configure Plot
+  Ctrl-Q:     quit
+
+"""
+
+    about_msg =  """Epics PV Strip Chart  version 0.1
+Matt Newville <newville@cars.uchicago.edu>
+"""
 
     def __init__(self, parent=None):
 
@@ -91,7 +121,7 @@ class StripChart(wx.Frame):
         self.create_frame(parent)
 
         self.timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.OnUpdatePlot, self.timer)
+        self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
         self.timer.Start(POLLTIME)
 
     def create_frame(self, parent, size=(700, 450), **kwds):
@@ -110,18 +140,18 @@ class StripChart(wx.Frame):
         self.build_pvpanel()
         self.build_btnpanel()
         self.build_menus()
-        self.SetBackgroundColour(wx.Colour(245,245,230))
+        self.SetBackgroundColour(wx.Colour(*BGCOL))
 
         mainsizer = wx.BoxSizer(wx.VERTICAL)
 
         p1 = wx.Panel(self)
-        p1.SetBackgroundColour(wx.Colour(245,245,230))
+        p1.SetBackgroundColour(wx.Colour(*BGCOL))
         s1 = wx.BoxSizer(wx.HORIZONTAL)
         n = LabelEntry(p1, '', labeltext=' Add PV: ',
-                       size=200, action = self.onPVname)
+                       size=300, action = self.onPVname)
         x = SimpleText(p1,'   ',  minsize=(75, -1), style=LSTY|wx.EXPAND)
         s1.Add(n.label,  0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
-        s1.Add(n,        1,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
+        s1.Add(n,        0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         s1.Add(x,        1,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         p1.SetAutoLayout(True)
         p1.SetSizer(s1)
@@ -152,7 +182,7 @@ class StripChart(wx.Frame):
 
     def build_pvpanel(self):
         panel = self.pvpanel = wx.Panel(self)
-        panel.SetBackgroundColour(wx.Colour(245,245,230))
+        panel.SetBackgroundColour(wx.Colour(*BGCOL))
         sizer = self.pvsizer = wx.GridBagSizer(5, 5)
 
         name = SimpleText(panel, ' PV:  ',       minsize=(75, -1), style=LSTY|wx.EXPAND)
@@ -173,11 +203,11 @@ class StripChart(wx.Frame):
 
     def build_btnpanel(self):
         panel = self.btnpanel = wx.Panel(self, )
-        panel.SetBackgroundColour(wx.Colour(245,245,230))
+        panel.SetBackgroundColour(wx.Colour(*BGCOL))
 
         btnsizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.pause_btn  = wx.Button(panel, label='Pause', size=(90, 30))
-        self.resume_btn = wx.Button(panel, label='Resume', size=(90, 30))
+        self.pause_btn  = wx.Button(panel, label='Pause',  size=(100, 30))
+        self.resume_btn = wx.Button(panel, label='Resume', size=(100, 30))
         self.resume_btn.Disable()
 
         self.pause_btn.Bind(wx.EVT_BUTTON, self.onPause)
@@ -191,11 +221,11 @@ class StripChart(wx.Frame):
         self.time_ctrl  = FloatCtrl(panel, value=-self.tmin, precision=2, size=(90, -1),
                                     action=self.onTimeVal)
 
-        btnsizer.Add(self.pause_btn,   1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
-        btnsizer.Add(self.resume_btn,  1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(self.pause_btn,   0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(self.resume_btn,  0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
         btnsizer.Add(time_label,       1, wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER, 2)
-        btnsizer.Add(self.time_ctrl,   1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
-        btnsizer.Add(self.time_choice, 1, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(self.time_ctrl,   0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(self.time_choice, 0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
 
         panel.SetAutoLayout(True)
         panel.SetSizer(btnsizer)
@@ -206,8 +236,12 @@ class StripChart(wx.Frame):
         mbar = wx.MenuBar()
 
         mfile = wx.Menu()
-        mfile.Append(mids.SAVE, "&Save\tCtrl+S",   "Save PNG Image of Plot")
-        mfile.Append(mids.CLIPB, "&Copy\tCtrl+C",  "Copy Plot Image to Clipboard")
+        mfile.Append(mids.SAVE_DAT, "&Save Data\tCtrl+S",
+                     "Save PNG Image of Plot")
+        mfile.Append(mids.SAVE_IMG, "Save Plot Image\t",
+                     "Save PNG Image of Plot")
+        mfile.Append(mids.CLIPB, "&Copy Image to Clipboard\tCtrl+C",
+                     "Copy Plot Image to Clipboard")
         mfile.AppendSeparator()
         mfile.Append(mids.PSETUP, 'Page Setup...', 'Printer Setup')
         mfile.Append(mids.PREVIEW, 'Print Preview...', 'Print Preview')
@@ -231,6 +265,7 @@ class StripChart(wx.Frame):
         mbar.Append(mhelp, "&Help")
 
         self.SetMenuBar(mbar)
+        self.Bind(wx.EVT_MENU, self.onSaveData, id=mids.SAVE_DAT)
         self.Bind(wx.EVT_MENU, self.onHelp,     id=mids.HELP)
         self.Bind(wx.EVT_MENU, self.onAbout,    id=mids.ABOUT)
         self.Bind(wx.EVT_MENU, self.onExit,     id=mids.EXIT)
@@ -239,7 +274,7 @@ class StripChart(wx.Frame):
         pp = self.plotpanel
         self.Bind(wx.EVT_MENU, pp.configure,    id=mids.CONFIG)
         self.Bind(wx.EVT_MENU, pp.unzoom_all,   id=mids.UNZOOM)
-        self.Bind(wx.EVT_MENU, pp.save_figure,  id=mids.SAVE)
+        self.Bind(wx.EVT_MENU, pp.save_figure,  id=mids.SAVE_IMG)
         self.Bind(wx.EVT_MENU, pp.Print,        id=mids.PRINT)
         self.Bind(wx.EVT_MENU, pp.PrintSetup,   id=mids.PSETUP)
         self.Bind(wx.EVT_MENU, pp.PrintPreview, id=mids.PREVIEW)
@@ -250,7 +285,7 @@ class StripChart(wx.Frame):
             i = self.npv_rows = self.npv_rows + 1
         panel = self.pvpanel
         sizer = self.pvsizer
-        pvchoice = MyChoice(panel, choices=self.pvlist, size=(140, -1))
+        pvchoice = MyChoice(panel, choices=self.pvlist, size=(200, -1))
         pvchoice.SetSelection(0)
         logs = MyChoice(panel)
         logs.SetSelection(0)
@@ -331,7 +366,8 @@ class StripChart(wx.Frame):
 
     def onTimeVal(self, event=None, value=None, **kws):
         self.tmin = -value
-
+        self.needs_refresh = True
+        
     def onTimeChoice(self, event=None, **kws):
         newval = event.GetString()
         denom, num = 1.0, 1.0
@@ -349,6 +385,7 @@ class StripChart(wx.Frame):
             timeval = self.time_ctrl.GetValue()
             self.time_ctrl.SetValue(timeval * denom/num)
             self.plotpanel.set_xlabel('Elapsed Time (%s)' % self.timelabel)
+        self.needs_refresh = True
 
     def onPause(self, event=None):
         if self.paused:
@@ -363,14 +400,56 @@ class StripChart(wx.Frame):
         """write a message to the Status Bar"""
         self.SetStatusText(s, panel)
 
+    def onSaveData(self, event=None):
+        dlg = wx.FileDialog(self, message='Save Data to File...',
+                            defaultDir = os.getcwd(),
+                            defaultFile='PVStripChart.dat',
+                            style=wx.SAVE|wx.CHANGE_DIR)
+        if dlg.ShowModal() == wx.ID_OK:
+            path = dlg.GetPath()
+            self.SaveDataFiles(path)
+            self.write_message('Saved data to %s' % path)
+        dlg.Destroy()
+
+    def SaveDataFiles(self, path):
+        print 'save data to ', path
+        basename, ext = os.path.splitext(path)
+        if len(ext) < 2:
+            ext = '.dat'
+        if ext.startswith('.'):
+            ext = ext[1:]
+            
+        for pvname, data in self.pvdata.items():
+            tnow = time.time()
+            tmin = data[0][0]
+            fname = []
+            for s in pvname:
+                if s not in VALID_FILECHARS:
+                    s = '_'
+                fname.append(s)
+            fname = os.path.join("%s_%s.%s" % (basename, ''.join(fname), ext))
+            
+            buff =["# Epics PV Strip Chart Data for PV: %s " % pvname]
+            buff.append("# Current Time  = %s " % time.ctime(tnow))
+            buff.append("# Earliest Time = %s " % time.ctime(tmin))
+            buff.append("#------------------------------")
+            buff.append("#  Timestamp         Value          Time-Current_Time(s)")
+            for tx, yval in data: 
+                buff.append("  %.3f %16g     %.3f"  % (tx, yval, tx-tnow))
+
+            fout = open(fname, 'w')
+            fout.write("\n".join(buff))
+            fout.close()
+            #dat = tnow, func(tnow)
+                
     def onAbout(self, event=None):
-        dlg = wx.MessageDialog(self, self.about_msg, "About MPlot",
+        dlg = wx.MessageDialog(self, self.about_msg, "About Epics PV Strip Chart",
                                wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
         dlg.Destroy()
 
     def onHelp(self, event=None):
-        dlg = wx.MessageDialog(self, self.help_msg, "MPlot Quick Reference",
+        dlg = wx.MessageDialog(self, self.help_msg, "Epics PV Strip Chart Help",
                                wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
         dlg.Destroy()
@@ -411,11 +490,11 @@ class StripChart(wx.Frame):
 
         return traces
         
-    def OnUpdatePlot(self, event=None):
+    def onUpdatePlot(self, event=None):
         tnow = time.time()
 
         self.Get_Data(tnow)
-        if self.paused:
+        if self.paused and not self.needs_refresh:
             return
 
         traces = self.get_current_traces()
@@ -455,7 +534,7 @@ class StripChart(wx.Frame):
                 if len(ydat) < 2:
                     update_failed = True
                     continue
-                
+
                 if not self.needs_refresh:
                     try:
                         self.plotpanel.update_line(itrace, tdat, ydat)
@@ -478,6 +557,7 @@ class StripChart(wx.Frame):
                 if itrace < 2:
                     self.plotpanel.set_xylims(((self.tmin, 0), (min(ydat), max(ydat))),
                                               side=side, autoscale=False)
+                self.plotpanel.set_title(time.strftime("%Y-%b-%d %H:%M:%S", time.localtime()))
         self.plotpanel.canvas.draw()
         self.needs_refresh = update_failed
         return
