@@ -132,10 +132,10 @@ Matt Newville <newville@cars.uchicago.edu>
         s1 = wx.BoxSizer(wx.HORIZONTAL)
         n = LabelEntry(p1, '', labeltext=' Add PV: ',
                        size=300, action = self.onPVname)
-        x = SimpleText(p1,'   ',  minsize=(75, -1), style=LSTY|wx.EXPAND)
-        s1.Add(n.label,  0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
-        s1.Add(n,        0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
-        s1.Add(x,        1,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
+        self.pvmsg = SimpleText(p1,'   ',  minsize=(75, -1), style=LSTY|wx.EXPAND)
+        s1.Add(n.label,    0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
+        s1.Add(n,          0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
+        s1.Add(self.pvmsg, 1,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         p1.SetAutoLayout(True)
         p1.SetSizer(s1)
         s1.Fit(p1)
@@ -310,11 +310,23 @@ Matt Newville <newville@cars.uchicago.edu>
     @epics.wx.EpicsFunction
     def addPV(self, name):
         if name is not None and name not in self.pvlist:
-            self.pvdata[name] = []
             pv = epics.PV(str(name), callback=self.onPVChange)
-            self.pvlist.append(name)
             pv.get()
-            self.pvdata[name].append((time.time(), pv.get()))
+            conn = False
+            if pv is not None:
+                if not pv.connected:
+                    pv.wait_for_connection()
+                conn = pv.connected
+
+            msg = 'PV not found: %s' % name
+            if conn:
+                msg = 'PV found: %s' % name                    
+            self.pvmsg.SetLabel(msg)
+            if not conn:
+                return 
+            self.pvlist.append(name)
+            self.pvdata[name] = [(time.time(), pv.get())]
+
             i_new = len(self.pvdata)
             new_shown = False
             for ic, choice in enumerate(self.pvchoices):
@@ -401,7 +413,6 @@ Matt Newville <newville@cars.uchicago.edu>
         dlg.Destroy()
 
     def SaveDataFiles(self, path):
-        print 'save data to ', path
         basename, ext = os.path.splitext(path)
         if len(ext) < 2:
             ext = '.dat'
