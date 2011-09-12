@@ -132,7 +132,7 @@ class LineProperties:
 
 class PlotConfig:
     """ MPlot Configuration for 2D Plots... holder class for most configuration data """
-    def __init__(self, canvas=None):
+    def __init__(self, canvas=None): # trace_color_callback=None):
         self.canvas = canvas
         self.zoom_x = 0
         self.zoom_y = 0
@@ -155,7 +155,7 @@ class PlotConfig:
         self.show_grid   = True
         self.show_legend = False
         self.show_legend_frame = True
-
+        # self.trace_color_callback = trace_color_callback
         f0 =  FontProperties()
         self.labelfont = f0.copy()
         self.titlefont = f0.copy()
@@ -193,7 +193,8 @@ class PlotConfig:
     def _init_trace(self,n,label,color,style,
                   linewidth,marker,markersize):
         """ used for building set of traces"""
-        while n >= len(self.traces): self.traces.append(LineProperties())
+        while n >= len(self.traces):
+            self.traces.append(LineProperties())
         line = self.traces[n]
         if label == None:label = "trace %i" % (n+1)
         line.label = label
@@ -207,7 +208,8 @@ class PlotConfig:
 
     def __mpline(self,trace):
         n = max(0,int(trace))
-        while n >= len(self.traces): self.traces.append(LineProperties())
+        while n >= len(self.traces):
+            self.traces.append(LineProperties())
         try:
             return self.lines[n]
         except:
@@ -235,7 +237,8 @@ class PlotConfig:
         self.traces[trace].update(self.__mpline(trace))
 
     def set_trace_color(self,color,trace=None):
-        if trace is None: trace = self.ntrace
+        if trace is None:
+            trace = self.ntrace
         self.traces[trace].set_color(color,line=self.__mpline(trace))
 
     def set_trace_label(self,label,trace=None):

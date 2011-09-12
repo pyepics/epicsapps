@@ -28,7 +28,8 @@ class PlotPanel(wx.Panel):
     and also provides, a Menu, StatusBar, and Printing support.
     """
     def __init__(self, parent, messenger=None,
-                 size=(6.00, 3.70), dpi=96, **kwds):
+                 size=(5.5, 3.40), dpi=100,
+                 trace_color_callback=None, **kwds):
 
         self.is_macosx = False
         if os.name == 'posix':
@@ -36,6 +37,7 @@ class PlotPanel(wx.Panel):
                 self.is_macosx = True
 
         self.messenger = messenger
+        self.trace_color_callback = trace_color_callback
         if messenger is None:
             self.messenger = self.__def_messenger
 
@@ -45,13 +47,12 @@ class PlotPanel(wx.Panel):
         self._y2fmt = '%.4f'
         self._xfmt = '%.4f'
         self.use_dates = False
-        self.ylog_scale = False
         self.show_config_popup = True
         self.launch_dir  = os.getcwd()
 
         self.mouse_uptime = time.time()
         self.zoom_lims = []           # store x, y coords zoom levels
-        self.zoom_ini  = (-1, -1)  # store init axes, x, y coords for zoom-box
+        self.zoom_ini  = (-1, -1, -1, -1)  # store init axes, x, y coords for zoom-box
         self.rbbox = None
         self.parent = parent
         self.printer = Printer(self)
@@ -63,7 +64,7 @@ class PlotPanel(wx.Panel):
         matplotlib.rc('ytick',  labelsize=11, color='k')
         matplotlib.rc('grid',  linewidth=0.5, linestyle='-')
 
-        self.conf = PlotConfig()
+        self.conf = PlotConfig() # trace_color_callback=self.trace_color_callback)
         self.data_range = {}
         self.win_config = None
         self.cursor_callback = None
@@ -74,7 +75,7 @@ class PlotPanel(wx.Panel):
     def plot(self, xdata, ydata, side='left', label=None, dy=None,
              color=None,  style =None, linewidth=None,
              marker=None,   markersize=None,   drawstyle=None,
-             use_dates=False, ylog_scale=False, grid=None,
+             use_dates=False, ylog_scale=False, grid=None, xylims=None,
              title=None,  xlabel=None, ylabel=None, y2label=None, **kw):
         """
         plot (that is, create a new plot: clear, then oplot)
@@ -102,26 +103,25 @@ class PlotPanel(wx.Panel):
             self.set_title(title)
         if use_dates is not None:
             self.use_dates  = use_dates
-        if ylog_scale is not None:
-            self.ylog_scale = ylog_scale
 
         if grid:
             self.conf.show_grid = grid
 
         return self.oplot(xdata, ydata, side=side, label=label,
-                          color=color, style=style,
+                          color=color, style=style, ylog_scale=ylog_scale,
                           drawstyle=drawstyle,
-                          linewidth=linewidth, dy=dy,
+                          linewidth=linewidth, dy=dy, xylims=None,
                           marker=marker, markersize=markersize,  **kw)
 
     def oplot(self, xdata, ydata, side='left', label=None, color=None,
-              style=None, linewidth=None, marker=None, markersize=None,
-              drawstyle=None, dy=None,
+              style=None, ylog_scale=False,
+              linewidth=None, marker=None, markersize=None,
+              drawstyle=None, dy=None, xylims=None,
               autoscale=True, refresh=True, yaxis='left', **kw):
         """ basic plot method, overplotting any existing plot """
         # set y scale to log/linear
         yscale = 'linear'
-        if self.ylog_scale and min(ydata) > 0:
+        if ylog_scale and min(ydata) > 0:
             yscale = 'log'
 
         axes = self.axes
@@ -175,7 +175,9 @@ class PlotPanel(wx.Panel):
             cnf.refresh_trace(n)
             cnf.relabel()
 
-        if autoscale:
+        if xylims is not None:
+            self.set_xylims(xylims, autoscale=False)
+        elif autoscale:
             axes.autoscale_view()
             self.unzoom_all()
         if self.conf.show_grid and axes == self.axes:
@@ -243,8 +245,8 @@ class PlotPanel(wx.Panel):
         try:
             self.win_config.Raise()
         except:
-            self.win_config = PlotConfigFrame(self.conf)
-
+            self.win_config = PlotConfigFrame(self.conf,
+                                              trace_color_callback=self.trace_color_callback)
 
 
     ####
@@ -325,7 +327,7 @@ class PlotPanel(wx.Panel):
                                    max(dr[1][1], ydata.max())) )
         # this defeats zooming, which gets ugly in this fast-mode anyway.
         self.cursor_mode = 'cursor'
-        self.canvas.draw()
+        #self.canvas.draw()
 
     ####
     ## GUI events
@@ -334,13 +336,21 @@ class PlotPanel(wx.Panel):
         if event is None:
             return
         ex, ey = event.x, event.y
-        x, y = self.axes.transData.inverted().transform((ex, ey))
+        msg = ''
+        try:
+            x, y = self.axes.transData.inverted().transform((ex, ey))
+        except:
+            x, y = event.xdata, event.ydata
+
         msg = ("X,Y= %s, %s" % (self._xfmt, self._yfmt)) % (x, y)
+
         if len(self.fig.get_axes()) > 1:
             ax2 = self.fig.get_axes()[1]
-            x2, y2 = ax2.transData.inverted().transform((ex, ey))
-            msg = "X,Y,Y2= %s, %s, %s" % (self._xfmt, self._yfmt, self._y2fmt) % (x, y, y2)
-
+            try:
+                x2, y2 = ax2.transData.inverted().transform((ex, ey))
+                msg = "X,Y,Y2= %s, %s, %s" % (self._xfmt, self._yfmt, self._y2fmt) % (x, y, y2)
+            except:
+                pass
         self.write_message(msg,  panel=0)
         if hasattr(self.cursor_callback , '__call__'):
             self.cursor_callback(x=event.xdata, y=event.ydata)
@@ -353,7 +363,7 @@ class PlotPanel(wx.Panel):
         if event.inaxes not in self.fig.get_axes():
             return
 
-        self.zoom_ini = (event.x, event.y)
+        self.zoom_ini = (event.x, event.y, event.xdata, event.ydata)
         if event.inaxes is not None:
             self.reportLeftDown(event=event)
 
@@ -365,7 +375,7 @@ class PlotPanel(wx.Panel):
         if event is None:
             return
 
-        ini_x, ini_y = self.zoom_ini
+        ini_x, ini_y, ini_xd, ini_yd = self.zoom_ini
         try:
             dx = abs(ini_x - event.x)
             dy = abs(ini_y - event.y)
@@ -385,11 +395,21 @@ class PlotPanel(wx.Panel):
             # for multiple axes, we first collect all the new limits, and only
             # then apply them
             for ax in self.fig.get_axes():
-                x1, y1 = ax.transData.inverted().transform((event.x, event.y))
-                x0, y0 = ax.transData.inverted().transform((ini_x, ini_y))
+                try:
+                    x1, y1 = ax.transData.inverted().transform((event.x, event.y))
+                except:
+                    x1, y1 =  event.xdata, event.ydata
+                try:
+                    x0, y0 = ax.transData.inverted().transform((ini_x, ini_y))
+                except:
+                    x0, y0 =  ini_xd, ini_yd
+                    print 'could not invert event data (ini)'
+                    print ini_x, ini_y, event.xdata, event.ydata
+
                 nlims[ax] = ((min(x0, x1), max(x0, x1)),
                              (min(y0, y1), max(y0, y1)))
 
+                                        
             # now appply limits:
             for ax in nlims:
                 self.set_xylims(lims=nlims[ax], axes=ax, autoscale=False)
@@ -581,7 +601,7 @@ class PlotPanel(wx.Panel):
             self.cursor_mode == 'cursor'
             return
 
-        ini_x, ini_y = self.zoom_ini
+        ini_x, ini_y, ini_xd, ini_yd = self.zoom_ini
         x0     = min(x, ini_x)
         ymax   = max(y, ini_y)
         width  = abs(x -ini_x)
@@ -589,8 +609,7 @@ class PlotPanel(wx.Panel):
         y0     = self.canvas.figure.bbox.height - ymax
 
         zdc = wx.ClientDC(self.canvas)
-        zdc.Clear()
-        zdc.SetLogicalFunction(wx.INVERT)
+        zdc.SetLogicalFunction(wx.XOR)
         zdc.SetBrush(wx.TRANSPARENT_BRUSH)
         zdc.SetPen(wx.Pen('White', 2, wx.SOLID))
         zdc.ResetBoundingBox()
@@ -603,14 +622,16 @@ class PlotPanel(wx.Panel):
         self.rbbox = (x0, y0, width, height)
         zdc.DrawRectangle(*self.rbbox)
         zdc.EndDrawing()
-        del zdc
+
 
     def reportMotion(self, event=None):
         fmt = "X,Y= %s, %s" % (self._xfmt, self._yfmt)
         y  = event.ydata
         if len(self.fig.get_axes()) > 1:
-            x, y = self.axes.transData.inverted().transform((event.x, event.y))
-
+            try:
+                x, y = self.axes.transData.inverted().transform((event.x, event.y))
+            except:
+                pass
         self.write_message(fmt % (event.xdata, y), panel=1)
 
     def Print(self, event=None, **kw):
@@ -679,7 +700,7 @@ class PlotPanel(wx.Panel):
 
         if dlg.ShowModal() == wx.ID_OK:
             path = dlg.GetPath()
-            self.canvas.print_figure(path, dpi=300)
+            self.canvas.print_figure(path, dpi=600)
             if (path.find(self.launch_dir) ==  0):
                 path = path[len(self.launch_dir)+1:]
             self.write_message('Saved plot to %s' % path)

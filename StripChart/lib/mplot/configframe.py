@@ -28,9 +28,10 @@ def autopack(panel,sizer):
 
 class PlotConfigFrame(wx.Frame):
     """ GUI Configure Frame"""
-    def __init__(self, config):
+    def __init__(self, config, trace_color_callback=None):
         if config is None: config = PlotConfig()
         self.conf   = config
+        self.trace_color_callback = trace_color_callback
         self.canvas = self.conf.canvas
         self.axes = self.canvas.figure.get_axes()
         self.conf.relabel()
@@ -234,7 +235,11 @@ class PlotConfigFrame(wx.Frame):
     def onColor(self,event,argu='grid'):
         color = hexcolor( event.GetValue() )
         if (argu[:6] == 'trace '):
-            self.conf.set_trace_color(color,trace=int(argu[6:]))
+            trace = int(argu[6:])
+            self.conf.set_trace_color(color,trace=trace)
+            if hasattr(self.trace_color_callback, '__call__'):
+                self.trace_color_callback(trace, color)
+            
             self.redraw_legend()
         elif argu == 'grid':
             for ax in self.axes:
@@ -245,7 +250,6 @@ class PlotConfigFrame(wx.Frame):
                 ax.set_axis_bgcolor(color)
 
         self.canvas.draw()
-
 
     def onStyle(self,event,argu='grid'):
         try:
