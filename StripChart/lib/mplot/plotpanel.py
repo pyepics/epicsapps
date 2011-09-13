@@ -404,8 +404,6 @@ class PlotPanel(wx.Panel):
                     x0, y0 = ax.transData.inverted().transform((ini_x, ini_y))
                 except:
                     x0, y0 =  ini_xd, ini_yd
-                    print 'could not invert event data (ini)'
-                    print ini_x, ini_y, event.xdata, event.ydata
 
                 nlims[ax] = ((min(x0, x1), max(x0, x1)),
                              (min(y0, y1), max(y0, y1)))
