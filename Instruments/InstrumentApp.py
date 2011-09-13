@@ -14,7 +14,7 @@ import wx.lib.mixins.inspection
 
 import epics
 from epics.wx import finalize_epics, EpicsFunction
-from epics.wx.utils import  (empty_bitmap, add_button, add_menu, pack, popup, 
+from epics.wx.utils import  (empty_bitmap, add_button, add_menu, pack, popup,
                     Closure, NumericCombo, FileSave, FileOpen, SelectWorkdir)
 
 from configfile import InstrumentConfig
@@ -447,7 +447,7 @@ class InstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
 if __name__ == '__main__':
     conf = None
     dbname = None
-    inspect = False
+    inspect = True
     if inspect:
         app = InstrumentApp(dbname=dbname, conf=conf)
     else:
