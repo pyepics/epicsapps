@@ -187,7 +187,7 @@ class InstrumentPanel(wx.Panel):
         splitter.SetMinimumPaneSize(150)
 
         toprow = wx.Panel(self.leftpanel)
-        
+
         self.inst_title = SimpleText(toprow,  ' %s ' % inst.name,
                                      font=titlefont,
                                      colour=colors.title,
@@ -202,12 +202,12 @@ class InstrumentPanel(wx.Panel):
         topsizer = wx.BoxSizer(wx.HORIZONTAL)
         topsizer.Add(self.inst_title, 0, wx.ALIGN_CENTER|wx.ALIGN_CENTER_VERTICAL, 1)
         topsizer.Add(SimpleText(toprow, 'Save Current Position:',
-                                minsize=(135, -1),
-                                style=wx.ALIGN_RIGHT), 1,
+                                minsize=(180, -1),
+                                style=wx.ALIGN_CENTER), 1,
                      wx.ALIGN_CENTER_VERTICAL|wx.ALL, 1)
 
         topsizer.Add(self.pos_name, 0,
-                     wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 1)
+                     wx.GROW|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 1)
 
         pack(toprow, topsizer)
         self.toprow = toprow
@@ -263,9 +263,10 @@ class InstrumentPanel(wx.Panel):
             self.pv_components.pop(pvname)
             self.redraw_leftpanel()
 
-    def redraw_leftpanel(self, announce=False):
+    @EpicsFunction
+    def redraw_leftpanel(self, force=False):
         """ redraws the left panel """
-        if (time.time() - self.last_draw) < 1.0:
+        if (time.time() - self.last_draw) < 0.5:
             return
 
         self.Freeze()
@@ -273,9 +274,8 @@ class InstrumentPanel(wx.Panel):
         self.leftsizer.Clear()
 
         self.leftsizer.Add(self.toprow, 0, wx.ALIGN_LEFT|wx.TOP, 2)
-        
-        current_comps = [self.toprow]
 
+        current_comps = [self.toprow]
         pvcomps = list(self.pv_components.items())
 
         skip = []
@@ -285,7 +285,10 @@ class InstrumentPanel(wx.Panel):
             grow = 0
             panel = None
             if pvtype == 'motor':
-                panel = MotorPanel(self.leftpanel, pvname, midsize=True)
+                try:
+                    panel = MotorPanel(self.leftpanel, pvname, midsize=True)
+                except PyDeadObjectError:
+                    pass
             elif pv.pvname not in skip:
                 panel = wx.Panel(self.leftpanel)
                 sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -301,17 +304,17 @@ class InstrumentPanel(wx.Panel):
                 else:
                     ctrl = PVFloatCtrl(panel, pv=pv, size=(120, -1))
 
-                current_comps.append(ctrl)        
+                current_comps.append(ctrl)
                 current_comps.append(label)
 
                 sizer.Add(label, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
                 sizer.Add(ctrl,  0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
-                    
+
                 if (pvtype != 'motor' and icomp < len(pvcomps)-1 and
                     pvcomps[icomp+1][1][1] != 'motor'): #  and False):
                     conn, pvtype2, pv2 = pvcomps[icomp+1][1]
                     skip.append(pv2.pvname)
-                 
+
                     l2 = SimpleText(panel, '  %s' % pv2.pvname,
                                     colour=self.colors.pvname,
                                     minsize=(180,-1), style=wx.ALIGN_LEFT)
@@ -321,11 +324,11 @@ class InstrumentPanel(wx.Panel):
                         c2 = PVTextCtrl(panel, pv=pv2, size=(120, -1))
                     else:
                         c2 = PVFloatCtrl(panel, pv=pv2, size=(120, -1))
-                        
+
                     sizer.Add(l2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
                     sizer.Add(c2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
-                    current_comps.append(c2)        
-                    current_comps.append(l2)        
+                    current_comps.append(c2)
+                    current_comps.append(l2)
                 pack(panel, sizer)
 
             if panel is not None:
@@ -349,13 +352,10 @@ class InstrumentPanel(wx.Panel):
         self.Show()
         self.last_draw = time.time()
 
-        if announce:
-            print 'Redraw Left Panel: %i components ' % (len(self.leftpanel.Children))
 
     def add_pv(self, pvname):
         """add a PV to the left panel"""
         self.pv_components[pvname] = (False, None, None)
-
         time.sleep(0.010)
         if not self.etimer.IsRunning():
             self.etimer.Start(self.etimer_poll)
@@ -377,6 +377,7 @@ class InstrumentPanel(wx.Panel):
         """
         if all([comp[0] for comp in self.pv_components.values()]): # "all connected"
             self.etimer.Stop()
+            wx.CallAfter(self.redraw_leftpanel)
 
         for pvname in self.pv_components:
             self.PV_Panel(pvname)
@@ -422,7 +423,7 @@ class InstrumentPanel(wx.Panel):
 
         self.db.set_pvtype(pvname, pvtype)
         self.pv_components[pvname] = (True, pvtype, pv)
-        
+
         wx.CallAfter(self.redraw_leftpanel)
 
     @EpicsFunction
@@ -533,8 +534,8 @@ class InstrumentPanel(wx.Panel):
             if newname is not None:
                 self.db.rename_position(posname, newname, instrument=self.inst)
                 namelist[idx] = newname
-            
-            
+
+
         self.pos_list.Clear()
         for posname in namelist:
             self.pos_list.Append(posname)
