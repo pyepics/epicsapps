@@ -188,14 +188,18 @@ Matt Newville <newville@cars.uchicago.edu>
         name = SimpleText(panel, ' PV:  ',       minsize=(75, -1), style=LSTY|wx.EXPAND)
         colr = SimpleText(panel, ' Color ',      minsize=(50, -1), style=LSTY)
         logs = SimpleText(panel, ' Log Scale?',  minsize=(85, -1), style=LSTY)
+        ymin = SimpleText(panel, ' Y min',       minsize=(85, -1), style=LSTY)
+        ymax = SimpleText(panel, ' Y max',       minsize=(85, -1), style=LSTY)
 
         sizer.Add(name, (0, 0), (1, 1), LSTY|wx.EXPAND, 2)
         sizer.Add(colr, (0, 1), (1, 1), LSTY, 1)
         sizer.Add(logs, (0, 2), (1, 1), LSTY, 1)
+        sizer.Add(ymin, (0, 3), (1, 1), LSTY, 1)
+        sizer.Add(ymax, (0, 4), (1, 1), LSTY, 1)
 
         self.npv_rows = 0
-        for i in range(3):
-            self.AddPV_row(hide_log = i>1)
+        for i in range(4):
+            self.AddPV_row()
 
         panel.SetAutoLayout(True)
         panel.SetSizer(sizer)
@@ -214,7 +218,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.resume_btn.Bind(wx.EVT_BUTTON, self.onPause)
 
         time_label = SimpleText(panel, '    Time Range: ',  minsize=(85, -1), style=LSTY)
-        self.time_choice = MyChoice(panel, choices=('seconds', 'minutes', 'hours'))
+        self.time_choice = MyChoice(panel, choices=('seconds', 'minutes', 'hours'), size=(120, -1))
         self.time_choice.SetStringSelection(self.timelabel)
         self.time_choice.Bind(wx.EVT_CHOICE,   self.onTimeChoice)
 
@@ -280,17 +284,21 @@ Matt Newville <newville@cars.uchicago.edu>
         self.Bind(wx.EVT_MENU, pp.PrintPreview, id=mids.PREVIEW)
         self.Bind(wx.EVT_MENU, pp.canvas.Copy_to_Clipboard,id=mids.CLIPB)
 
-    def AddPV_row(self, i=None, hide_log=False):
-        if i is None:
-            i = self.npv_rows = self.npv_rows + 1
+    def AddPV_row(self):
+        i = self.npv_rows = self.npv_rows + 1
         panel = self.pvpanel
         sizer = self.pvsizer
         pvchoice = MyChoice(panel, choices=self.pvlist, size=(200, -1))
         pvchoice.SetSelection(0)
         logs = MyChoice(panel)
         logs.SetSelection(0)
-        if hide_log:
+        ymin = wx.TextCtrl(panel, -1, '', size=(75, -1))
+        ymax = wx.TextCtrl(panel, -1, '', size=(75, -1))
+        if i > 2:
             logs.Disable()
+            ymin.Disable()
+            ymax.Disable()
+
         colval = (0, 0, 0)
         if i < len(self.default_colors):
             colval = self.default_colors[i]
@@ -300,16 +308,24 @@ Matt Newville <newville@cars.uchicago.edu>
         sizer.Add(pvchoice, (i, 0), (1, 1), LSTY, 3)
         sizer.Add(colr,     (i, 1), (1, 1), CSTY, 3)
         sizer.Add(logs,     (i, 2), (1, 1), CSTY, 3)
+        sizer.Add(ymin,     (i, 3), (1, 1), CSTY, 3)
+        sizer.Add(ymax,     (i, 4), (1, 1), CSTY, 3)
+
         pvchoice.Bind(wx.EVT_CHOICE,     Closure(self.onPVchoice, row=i))
         colr.Bind(csel.EVT_COLOURSELECT, Closure(self.onPVcolor, row=i))
         logs.Bind(wx.EVT_CHOICE,         self.onPVwid)
+        ymin.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
+        ymax.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
+        ymin.Bind(wx.EVT_KILL_FOCUS,     self.onPVwid)
+        ymax.Bind(wx.EVT_KILL_FOCUS,     self.onPVwid)
+
         self.pvchoices.append(pvchoice)
-        self.pvwids.append((logs, colr))
+        self.pvwids.append((logs, colr, ymin, ymax))
 
     def onTraceColor(self, trace, color, **kws):
         irow = self.get_current_traces()[trace][0] - 1
         self.colorsels[irow].SetColour(color)
-        
+
     def onPVshow(self, event=None, row=0, **kws):
         if not event.IsChecked():
             trace = self.plotpanel.conf.get_mpl_line(row)
@@ -349,12 +365,6 @@ Matt Newville <newville@cars.uchicago.edu>
             except:
                 pass
         self.plotpanel.canvas.draw()
-                
-
-        # meaning, do not show
-        #if event.GetString() == self.pvlist[0]:  # meaning, do not show
-#             try:
-#
 
     def onPVcolor(self, event=None, row=None, **kws):
         self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()), trace=row-1)
@@ -363,11 +373,10 @@ Matt Newville <newville@cars.uchicago.edu>
     def onPVwid(self, event=None, row=None, **kws):
         self.needs_refresh = True
 
-
     def onTimeVal(self, event=None, value=None, **kws):
         self.tmin = -value
         self.needs_refresh = True
-        
+
     def onTimeChoice(self, event=None, **kws):
         newval = event.GetString()
         denom, num = 1.0, 1.0
@@ -418,7 +427,7 @@ Matt Newville <newville@cars.uchicago.edu>
             ext = '.dat'
         if ext.startswith('.'):
             ext = ext[1:]
-            
+
         for pvname, data in self.pvdata.items():
             tnow = time.time()
             tmin = data[0][0]
@@ -428,20 +437,20 @@ Matt Newville <newville@cars.uchicago.edu>
                     s = '_'
                 fname.append(s)
             fname = os.path.join("%s_%s.%s" % (basename, ''.join(fname), ext))
-            
+
             buff =["# Epics PV Strip Chart Data for PV: %s " % pvname]
             buff.append("# Current Time  = %s " % time.ctime(tnow))
             buff.append("# Earliest Time = %s " % time.ctime(tmin))
             buff.append("#------------------------------")
             buff.append("#  Timestamp         Value          Time-Current_Time(s)")
-            for tx, yval in data: 
+            for tx, yval in data:
                 buff.append("  %.3f %16g     %.3f"  % (tx, yval, tx-tnow))
 
             fout = open(fname, 'w')
             fout.write("\n".join(buff))
             fout.close()
             #dat = tnow, func(tnow)
-                
+
     def onAbout(self, event=None):
         dlg = wx.MessageDialog(self, self.about_msg, "About Epics PV Strip Chart",
                                wx.OK | wx.ICON_INFORMATION)
@@ -475,6 +484,16 @@ Matt Newville <newville@cars.uchicago.edu>
             if name in self.pvdata:
                 self.pvdata[name].append((tnow, func(tnow)))
 
+    def get_bound(self, val):
+        val = val.strip()
+        if len(val) == 0 or val is None:
+            return None
+        try:
+            val = float(val)
+        except:
+            val = None
+        return val
+
     def get_current_traces(self):
         "return list of current traces"
         traces = []   # to be shown
@@ -484,12 +503,13 @@ Matt Newville <newville@cars.uchicago.edu>
                 if ix > 0:
                     name = self.pvlist[ix]
                     logs  = 1 == self.pvwids[irow][0].GetSelection()
-                    # axes2 = 1 == self.pvwids[irow][1].GetSelection()
                     color = self.pvwids[irow][1].GetColour()
-                    traces.append((irow, name, logs, color))
+                    ymin  = self.get_bound(self.pvwids[irow][2].GetValue())
+                    ymax  = self.get_bound(self.pvwids[irow][3].GetValue())
+                    traces.append((irow, name, logs, color, ymin, ymax))
 
         return traces
-        
+
     def onUpdatePlot(self, event=None):
         tnow = time.time()
 
@@ -498,7 +518,7 @@ Matt Newville <newville@cars.uchicago.edu>
             return
 
         traces = self.get_current_traces()
-        
+
         # set timescale sec/min/hour
         timescale = 1.0
         if self.time_choice.GetSelection() == 1:
@@ -513,7 +533,7 @@ Matt Newville <newville@cars.uchicago.edu>
         update_failed = False
         hasplot = False
         span1 = (1, 0)
-        for irow, pname, uselog, color in traces:
+        for irow, pname, uselog, color, ymin, ymax in traces:
             if pname in self.pvdata:
                 itrace += 1
                 side = 'left'
@@ -524,12 +544,14 @@ Matt Newville <newville@cars.uchicago.edu>
                 mask = numpy.where(tdat > self.tmin)
                 tdat = tdat[mask]
                 ydat = numpy.array([i[1] for i in data])[mask]
+                if ymin is None: ymin = min(ydat)
+                if ymax is None: ymax = max(ydat)
                 if itrace ==  0:
-                    span1 = (max(ydat)-min(ydat), min(ydat))
+                    span1 = (ymax-ymin, ymin)
                 elif itrace > 1:
-                    yr = abs(max(ydat)-min(ydat))
+                    yr = abs(ymax-ymin)
                     if yr > 1.e-9:
-                        ydat = span1[1] + (ydat - min(ydat))*span1[0]/yr
+                        ydat = span1[1] + (ydat - ymin)*span1[0]/yr
 
                 if len(ydat) < 2:
                     update_failed = True
@@ -555,7 +577,7 @@ Matt Newville <newville@cars.uchicago.edu>
                          ylog_scale=uselog, color=color,
                          xlabel=xlabel, label=pname)
                 if itrace < 2:
-                    self.plotpanel.set_xylims(((self.tmin, 0), (min(ydat), max(ydat))),
+                    self.plotpanel.set_xylims(((self.tmin, 0), (ymin, ymax)),
                                               side=side, autoscale=False)
                 self.plotpanel.set_title(time.strftime("%Y-%b-%d %H:%M:%S", time.localtime()))
         self.plotpanel.canvas.draw()
