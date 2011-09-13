@@ -1,8 +1,10 @@
 #!/usr/bin/python
+"""
+Epics Strip Chart application
+"""
 import os
-import sys
 import time
-import numpy
+from numpy import array, where
 import wx
 import wx.lib.colourselect  as csel
 
@@ -15,9 +17,9 @@ from mplot.colors import hexcolor
 from mplot.utils import LabelEntry
 
 
-VALID_FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
+FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
-BGCOL  = (250,250,240)
+BGCOL  = (250, 250, 240)
 
 POLLTIME = 100
 
@@ -25,8 +27,37 @@ STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL|wx.ALIGN_CENTER_VERTICAL
 CSTY = wx.ALIGN_CENTER|wx.ALIGN_CENTER_VERTICAL
 
+
+MENU_EXIT   = wx.NewId()
+MENU_SAVE_IMG = wx.NewId()
+MENU_SAVE_DAT = wx.NewId()
+MENU_CONFIG = wx.NewId()
+MENU_UNZOOM = wx.NewId()
+MENU_HELP   = wx.NewId()
+MENU_ABOUT  = wx.NewId()
+MENU_PRINT  = wx.NewId()
+MENU_PSETUP = wx.NewId()
+MENU_PREVIEW = wx.NewId()
+MENU_CLIPB  = wx.NewId()
+MENU_SELECT_COLOR = wx.NewId()
+MENU_SELECT_SMOOTH = wx.NewId()
+
+
+def get_bound(val):
+    "return float value of input string or None"
+    val = val.strip()
+    if len(val) == 0 or val is None:
+        return None
+    try:
+        val = float(val)
+    except:
+        val = None
+    return val
+
 class MyChoice(wx.Choice):
-    def __init__(self, parent, choices=('No', 'Yes'), defaultyes=True, size=(75, -1)):
+    """Simplified wx Choice"""
+    def __init__(self, parent, choices=('No', 'Yes'),
+                 defaultyes=True, size=(75, -1)):
         wx.Choice.__init__(self, parent, -1, size=size)
         self.choices = choices
         self.Clear()
@@ -44,24 +75,9 @@ class MyChoice(wx.Choice):
         elif choice in self.choices:
             self.SetSelection(self.choices.index(choice))
 
-class Menu_IDs:
-    def __init__(self):
-        self.EXIT   = wx.NewId()
-        self.SAVE_IMG = wx.NewId()
-        self.SAVE_DAT = wx.NewId()
-        self.CONFIG = wx.NewId()
-        self.UNZOOM = wx.NewId()
-        self.HELP   = wx.NewId()
-        self.ABOUT  = wx.NewId()
-        self.PRINT  = wx.NewId()
-        self.PSETUP = wx.NewId()
-        self.PREVIEW= wx.NewId()
-        self.CLIPB  = wx.NewId()
-        self.SELECT_COLOR = wx.NewId()
-        self.SELECT_SMOOTH= wx.NewId()
-
 class StripChart(wx.Frame):
-    default_colors = ((0, 0, 0), (0, 0, 255), (255, 0, 0), (0, 0, 0), (255, 0, 255), (0, 125, 0))
+    default_colors = ((0, 0, 0), (0, 0, 255), (255, 0, 0),
+                      (0, 0, 0), (255, 0, 255), (0, 125, 0))
 
     help_msg =  """Quick help:
 
@@ -131,8 +147,9 @@ Matt Newville <newville@cars.uchicago.edu>
         p1.SetBackgroundColour(wx.Colour(*BGCOL))
         s1 = wx.BoxSizer(wx.HORIZONTAL)
         n = LabelEntry(p1, '', labeltext=' Add PV: ',
-                       size=300, action = self.onPVname)
-        self.pvmsg = SimpleText(p1,'   ',  minsize=(75, -1), style=LSTY|wx.EXPAND)
+                       size=300, action=self.onPVname)
+        self.pvmsg = SimpleText(p1, '   ',  minsize=(75, -1),
+                                style=LSTY|wx.EXPAND)
         s1.Add(n.label,    0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         s1.Add(n,          0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         s1.Add(self.pvmsg, 1,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
@@ -155,20 +172,20 @@ Matt Newville <newville@cars.uchicago.edu>
         self.Fit()
 
     def build_statusbar(self):
-        sbar = self.CreateStatusBar(2,wx.CAPTION|wx.THICK_FRAME)
+        sbar = self.CreateStatusBar(2, wx.CAPTION|wx.THICK_FRAME)
         sfont = sbar.GetFont()
         sfont.SetWeight(wx.BOLD)
         sfont.SetPointSize(10)
         sbar.SetFont(sfont)
-        self.SetStatusWidths([-5,-2])
-        self.SetStatusText('',0)
+        self.SetStatusWidths([-5, -2])
+        self.SetStatusText('', 0)
 
     def build_pvpanel(self):
         panel = self.pvpanel = wx.Panel(self)
         panel.SetBackgroundColour(wx.Colour(*BGCOL))
         sizer = self.pvsizer = wx.GridBagSizer(5, 5)
 
-        name = SimpleText(panel, ' PV:  ',       minsize=(75, -1), style=LSTY|wx.EXPAND)
+        name = SimpleText(panel, ' PV:  ',       minsize=(75, -1), style=LSTY)
         colr = SimpleText(panel, ' Color ',      minsize=(50, -1), style=LSTY)
         logs = SimpleText(panel, ' Log Scale?',  minsize=(85, -1), style=LSTY)
 
@@ -177,8 +194,8 @@ Matt Newville <newville@cars.uchicago.edu>
         sizer.Add(logs, (0, 2), (1, 1), LSTY, 1)
 
         self.npv_rows = 0
-        for i in range(3):
-            self.AddPV_row(hide_log = i>1)
+        for i in range(4):
+            self.AddPV_row()
 
         panel.SetAutoLayout(True)
         panel.SetSizer(sizer)
@@ -196,17 +213,19 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pause_btn.Bind(wx.EVT_BUTTON, self.onPause)
         self.resume_btn.Bind(wx.EVT_BUTTON, self.onPause)
 
-        time_label = SimpleText(panel, '    Time Range: ',  minsize=(85, -1), style=LSTY)
-        self.time_choice = MyChoice(panel, choices=('seconds', 'minutes', 'hours'))
+        time_label = SimpleText(panel, '    Time Range: ',  minsize=(85, -1),
+                                style=LSTY)
+        self.time_choice = MyChoice(panel, size=(120, -1),
+                                    choices=('seconds', 'minutes', 'hours'))
         self.time_choice.SetStringSelection(self.timelabel)
         self.time_choice.Bind(wx.EVT_CHOICE,   self.onTimeChoice)
 
-        self.time_ctrl  = FloatCtrl(panel, value=-self.tmin, precision=2, size=(90, -1),
-                                    action=self.onTimeVal)
+        self.time_ctrl  = FloatCtrl(panel, value=-self.tmin, precision=2,
+                                    size=(90, -1), action=self.onTimeVal)
 
         btnsizer.Add(self.pause_btn,   0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
         btnsizer.Add(self.resume_btn,  0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
-        btnsizer.Add(time_label,       1, wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(time_label,       1, wx.ALIGN_CENTER_HORIZONTAL,    2)
         btnsizer.Add(self.time_ctrl,   0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
         btnsizer.Add(self.time_choice, 0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
 
@@ -215,65 +234,69 @@ Matt Newville <newville@cars.uchicago.edu>
         btnsizer.Fit(panel)
 
     def build_menus(self):
-        mids = self.menuIDs = Menu_IDs()
         mbar = wx.MenuBar()
 
         mfile = wx.Menu()
-        mfile.Append(mids.SAVE_DAT, "&Save Data\tCtrl+S",
+        mfile.Append(MENU_SAVE_DAT, "&Save Data\tCtrl+S",
                      "Save PNG Image of Plot")
-        mfile.Append(mids.SAVE_IMG, "Save Plot Image\t",
+        mfile.Append(MENU_SAVE_IMG, "Save Plot Image\t",
                      "Save PNG Image of Plot")
-        mfile.Append(mids.CLIPB, "&Copy Image to Clipboard\tCtrl+C",
+        mfile.Append(MENU_CLIPB, "&Copy Image to Clipboard\tCtrl+C",
                      "Copy Plot Image to Clipboard")
         mfile.AppendSeparator()
-        mfile.Append(mids.PSETUP, 'Page Setup...', 'Printer Setup')
-        mfile.Append(mids.PREVIEW, 'Print Preview...', 'Print Preview')
-        mfile.Append(mids.PRINT, "&Print\tCtrl+P", "Print Plot")
+        mfile.Append(MENU_PSETUP, 'Page Setup...', 'Printer Setup')
+        mfile.Append(MENU_PREVIEW, 'Print Preview...', 'Print Preview')
+        mfile.Append(MENU_PRINT, "&Print\tCtrl+P", "Print Plot")
         mfile.AppendSeparator()
-        mfile.Append(mids.EXIT, "E&xit\tCtrl+Q", "Exit the 2D Plot Window")
+        mfile.Append(MENU_EXIT, "E&xit\tCtrl+Q", "Exit the 2D Plot Window")
 
         mopt = wx.Menu()
-        mopt.Append(mids.CONFIG, "Configure Plot\tCtrl+K",
+        mopt.Append(MENU_CONFIG, "Configure Plot\tCtrl+K",
                  "Configure Plot styles, colors, labels, etc")
         mopt.AppendSeparator()
-        mopt.Append(mids.UNZOOM, "Zoom Out\tCtrl+Z",
+        mopt.Append(MENU_UNZOOM, "Zoom Out\tCtrl+Z",
                  "Zoom out to full data range")
 
         mhelp = wx.Menu()
-        mhelp.Append(mids.HELP, "Quick Reference",  "Quick Reference for MPlot")
-        mhelp.Append(mids.ABOUT, "About", "About MPlot")
+        mhelp.Append(MENU_HELP, "Quick Reference",  "Quick Reference for MPlot")
+        mhelp.Append(MENU_ABOUT, "About", "About MPlot")
 
         mbar.Append(mfile, "File")
         mbar.Append(mopt, "Options")
         mbar.Append(mhelp, "&Help")
 
         self.SetMenuBar(mbar)
-        self.Bind(wx.EVT_MENU, self.onSaveData, id=mids.SAVE_DAT)
-        self.Bind(wx.EVT_MENU, self.onHelp,     id=mids.HELP)
-        self.Bind(wx.EVT_MENU, self.onAbout,    id=mids.ABOUT)
-        self.Bind(wx.EVT_MENU, self.onExit,     id=mids.EXIT)
-        self.Bind(wx.EVT_CLOSE,self.onExit)
+        self.Bind(wx.EVT_MENU, self.onSaveData, id=MENU_SAVE_DAT)
+        self.Bind(wx.EVT_MENU, self.onHelp,     id=MENU_HELP)
+        self.Bind(wx.EVT_MENU, self.onAbout,    id=MENU_ABOUT)
+        self.Bind(wx.EVT_MENU, self.onExit,     id=MENU_EXIT)
+        self.Bind(wx.EVT_CLOSE, self.onExit)
 
         pp = self.plotpanel
-        self.Bind(wx.EVT_MENU, pp.configure,    id=mids.CONFIG)
-        self.Bind(wx.EVT_MENU, pp.unzoom_all,   id=mids.UNZOOM)
-        self.Bind(wx.EVT_MENU, pp.save_figure,  id=mids.SAVE_IMG)
-        self.Bind(wx.EVT_MENU, pp.Print,        id=mids.PRINT)
-        self.Bind(wx.EVT_MENU, pp.PrintSetup,   id=mids.PSETUP)
-        self.Bind(wx.EVT_MENU, pp.PrintPreview, id=mids.PREVIEW)
-        self.Bind(wx.EVT_MENU, pp.canvas.Copy_to_Clipboard,id=mids.CLIPB)
+        self.Bind(wx.EVT_MENU, pp.configure,    id=MENU_CONFIG)
+        self.Bind(wx.EVT_MENU, pp.unzoom_all,   id=MENU_UNZOOM)
+        self.Bind(wx.EVT_MENU, pp.save_figure,  id=MENU_SAVE_IMG)
+        self.Bind(wx.EVT_MENU, pp.Print,        id=MENU_PRINT)
+        self.Bind(wx.EVT_MENU, pp.PrintSetup,   id=MENU_PSETUP)
+        self.Bind(wx.EVT_MENU, pp.PrintPreview, id=MENU_PREVIEW)
+        self.Bind(wx.EVT_MENU, pp.canvas.Copy_to_Clipboard, id=MENU_CLIPB)
 
-    def AddPV_row(self, i=None, hide_log=False):
-        if i is None:
-            i = self.npv_rows = self.npv_rows + 1
+    def AddPV_row(self):
+        i = self.npv_rows = self.npv_rows + 1
+
         panel = self.pvpanel
         sizer = self.pvsizer
         pvchoice = MyChoice(panel, choices=self.pvlist, size=(200, -1))
         pvchoice.SetSelection(0)
         logs = MyChoice(panel)
         logs.SetSelection(0)
-        if hide_log:
+        ymin = wx.TextCtrl(panel, -1, '', size=(75, -1))
+        ymax = wx.TextCtrl(panel, -1, '', size=(75, -1))
+        if i > 2:
             logs.Disable()
+            ymin.Disable()
+            ymax.Disable()
+
         colval = (0, 0, 0)
         if i < len(self.default_colors):
             colval = self.default_colors[i]
@@ -283,24 +306,32 @@ Matt Newville <newville@cars.uchicago.edu>
         sizer.Add(pvchoice, (i, 0), (1, 1), LSTY, 3)
         sizer.Add(colr,     (i, 1), (1, 1), CSTY, 3)
         sizer.Add(logs,     (i, 2), (1, 1), CSTY, 3)
+        sizer.Add(ymin,     (i, 3), (1, 1), CSTY, 3)
+        sizer.Add(ymax,     (i, 4), (1, 1), CSTY, 3)
+
         pvchoice.Bind(wx.EVT_CHOICE,     Closure(self.onPVchoice, row=i))
         colr.Bind(csel.EVT_COLOURSELECT, Closure(self.onPVcolor, row=i))
         logs.Bind(wx.EVT_CHOICE,         self.onPVwid)
+        ymin.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
+        ymax.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
+        ymin.Bind(wx.EVT_KILL_FOCUS,     self.onPVwid)
+        ymax.Bind(wx.EVT_KILL_FOCUS,     self.onPVwid)
+
         self.pvchoices.append(pvchoice)
-        self.pvwids.append((logs, colr))
+        self.pvwids.append((logs, colr, ymin, ymax))
 
     def onTraceColor(self, trace, color, **kws):
         irow = self.get_current_traces()[trace][0] - 1
         self.colorsels[irow].SetColour(color)
-        
-    def onPVshow(self, event=None, row=0, **kws):
+
+    def onPVshow(self, event=None, row=0):
         if not event.IsChecked():
             trace = self.plotpanel.conf.get_mpl_line(row)
             trace.set_data([], [])
             self.plotpanel.canvas.draw()
         self.needs_refresh = True
 
-    def onPVname(self, event=None, **kws):
+    def onPVname(self, event=None):
         try:
             name = event.GetString()
         except AttributeError:
@@ -320,16 +351,16 @@ Matt Newville <newville@cars.uchicago.edu>
 
             msg = 'PV not found: %s' % name
             if conn:
-                msg = 'PV found: %s' % name                    
+                msg = 'PV found: %s' % name
             self.pvmsg.SetLabel(msg)
             if not conn:
-                return 
+                return
             self.pvlist.append(name)
             self.pvdata[name] = [(time.time(), pv.get())]
 
             i_new = len(self.pvdata)
             new_shown = False
-            for ic, choice in enumerate(self.pvchoices):
+            for choice in self.pvchoices:
                 if choice is None:
                     continue
                 cur = choice.GetSelection()
@@ -343,9 +374,10 @@ Matt Newville <newville@cars.uchicago.edu>
 
     @epics.wx.DelayedEpicsCallback
     def onPVChange(self, pvname=None, value=None, timestamp=None, **kw):
-        if timestamp is None: timestamp = time.time()
-        self.pvdata[pvname].append((timestamp,value))
-        
+        if timestamp is None:
+            timestamp = time.time()
+        self.pvdata[pvname].append((timestamp, value))
+
     def onPVchoice(self, event=None, row=None, **kws):
         self.needs_refresh = True
         for i in range(len(self.pvlist)+1):
@@ -355,20 +387,19 @@ Matt Newville <newville@cars.uchicago.edu>
             except:
                 pass
         self.plotpanel.canvas.draw()
-                
 
     def onPVcolor(self, event=None, row=None, **kws):
-        self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()), trace=row-1)
+        self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
+                                            trace=row-1)
         self.needs_refresh = True
 
     def onPVwid(self, event=None, row=None, **kws):
         self.needs_refresh = True
 
-
     def onTimeVal(self, event=None, value=None, **kws):
         self.tmin = -value
         self.needs_refresh = True
-        
+
     def onTimeChoice(self, event=None, **kws):
         newval = event.GetString()
         denom, num = 1.0, 1.0
@@ -397,7 +428,7 @@ Matt Newville <newville@cars.uchicago.edu>
             self.resume_btn.Enable()
         self.paused = not self.paused
 
-    def write_message(self,s,panel=0):
+    def write_message(self, s, panel=0):
         """write a message to the Status Bar"""
         self.SetStatusText(s, panel)
 
@@ -418,32 +449,33 @@ Matt Newville <newville@cars.uchicago.edu>
             ext = '.dat'
         if ext.startswith('.'):
             ext = ext[1:]
-            
+
         for pvname, data in self.pvdata.items():
             tnow = time.time()
             tmin = data[0][0]
             fname = []
             for s in pvname:
-                if s not in VALID_FILECHARS:
+                if s not in FILECHARS:
                     s = '_'
                 fname.append(s)
             fname = os.path.join("%s_%s.%s" % (basename, ''.join(fname), ext))
-            
-            buff =["# Epics PV Strip Chart Data for PV: %s " % pvname]
+
+            buff = ["# Epics PV Strip Chart Data for PV: %s " % pvname]
             buff.append("# Current Time  = %s " % time.ctime(tnow))
             buff.append("# Earliest Time = %s " % time.ctime(tmin))
             buff.append("#------------------------------")
-            buff.append("#  Timestamp         Value          Time-Current_Time(s)")
-            for tx, yval in data: 
+            buff.append("#  Timestamp         Value       Time-Current_Time(s)")
+            for tx, yval in data:
                 buff.append("  %.3f %16g     %.3f"  % (tx, yval, tx-tnow))
 
             fout = open(fname, 'w')
             fout.write("\n".join(buff))
             fout.close()
             #dat = tnow, func(tnow)
-                
+
     def onAbout(self, event=None):
-        dlg = wx.MessageDialog(self, self.about_msg, "About Epics PV Strip Chart",
+        dlg = wx.MessageDialog(self, self.about_msg,
+                               "About Epics PV Strip Chart",
                                wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
         dlg.Destroy()
@@ -455,7 +487,6 @@ Matt Newville <newville@cars.uchicago.edu>
         dlg.Destroy()
 
     def onExit(self, event=None):
-
         try:
             self.plotpanel.win_config.Close(True)
             self.plotpanel.win_config.Destroy()
@@ -463,13 +494,6 @@ Matt Newville <newville@cars.uchicago.edu>
             pass
 
         self.Destroy()
-
-
-    def Get_Data(self, tnow):
-        # test only -- would replace with getting data from PVs
-        for name, func in self.test_sources.items():
-            if name in self.pvdata:
-                self.pvdata[name].append((tnow, func(tnow)))
 
     def get_current_traces(self):
         "return list of current traces"
@@ -481,19 +505,17 @@ Matt Newville <newville@cars.uchicago.edu>
                     name = self.pvlist[ix]
                     logs  = 1 == self.pvwids[irow][0].GetSelection()
                     color = self.pvwids[irow][1].GetColour()
-                    traces.append((irow, name, logs, color))
-
+                    ymin  = get_bound(self.pvwids[irow][2].GetValue())
+                    ymax  = get_bound(self.pvwids[irow][3].GetValue())
+                    traces.append((irow, name, logs, color, ymin, ymax))
         return traces
-        
-    def onUpdatePlot(self, event=None):
-        tnow = time.time()
 
-        # self.Get_Data(tnow)
+    def onUpdatePlot(self, event=None):
         if self.paused and not self.needs_refresh:
             return
 
-        traces = self.get_current_traces()
-        
+        tnow = time.time()
+
         # set timescale sec/min/hour
         timescale = 1.0
         if self.time_choice.GetSelection() == 1:
@@ -508,44 +530,46 @@ Matt Newville <newville@cars.uchicago.edu>
         update_failed = False
         hasplot = False
         span1 = (1, 0)
-        for irow, pname, uselog, color in traces:
+
+        for irow, pname, uselog, color, ymin, ymax in self.get_current_traces():
             if pname in self.pvdata:
                 itrace += 1
                 side = 'left'
-                if itrace==1:
+                if itrace == 1:
                     side = 'right'
                 data = self.pvdata[pname][:]
                 if len(data)  < 1:
                     update_failed = True
                     continue
-                tdat = timescale * (numpy.array([i[0] for i in data]) - tnow)
-                mask = numpy.where(tdat > self.tmin)
+                tdat = timescale * (array([i[0] for i in data]) - tnow)
+                mask = where(tdat > self.tmin)
 
-                if len(mask[0]) < 2 or ( (abs(min(tdat)) / abs(1 -self.tmin)) > 0.1):
+                if (len(mask[0]) < 2 or
+                    ((abs(min(tdat)) / abs(1 -self.tmin)) > 0.1)):
                     data.append((time.time(), data[0][-1]))
-                    tdat = timescale * (numpy.array([i[0] for i in data]) - tnow)
-                    mask = numpy.where(tdat > self.tmin)
-                    
+                    tdat = timescale*(array([i[0] for i in data]) - tnow)
+                    mask = where(tdat > self.tmin)
 
                 i0 = mask[0][0]
                 if i0 > 1: i0 = i0 -1
                 i1 = mask[0][-1] + 1
-                tdat = timescale * (numpy.array([i[0] for i in data[i0:i1]]) - tnow)
-                ydat = numpy.array([i[1] for i in data[i0:i1]])
+                tdat = timescale*(array([i[0] for i in data[i0:i1]]) - tnow)
+                ydat = array([i[1] for i in data[i0:i1]])
 
                 if len(ydat)  < 2:
                     update_failed = True
                     continue
+                if ymin is None: ymin = min(ydat)
+                if ymax is None: ymax = max(ydat)
 
                 if itrace ==  0:
-                    span1 = (max(ydat)-min(ydat), min(ydat))
-                    if span1*max(ydat) < 1.e-4:
-                        span1 = (1.e-4, min(ydat))
+                    span1 = (ymax-ymin, ymin)
+                    if span1*ymax < 1.e-6:
+                        span1 = (1.e-6, ymin)
                 elif itrace > 1:
-                    yr = abs(max(ydat)-min(ydat))
+                    yr = abs(ymax-ymin)
                     if yr > 1.e-9:
-                        ydat = span1[1] + (ydat - min(ydat))*span1[0]/yr
-
+                        ydat = span1[1] + (ydat - ymin)*span1[0]/yr
 
                 if not self.needs_refresh:
                     try:
@@ -557,7 +581,7 @@ Matt Newville <newville@cars.uchicago.edu>
                     if not hasplot:
                         plot = self.plotpanel.plot
                         hasplot = True
-                    if itrace==1 and not y2labelset:
+                    if itrace == 1 and not y2labelset:
                         self.plotpanel.set_y2label(pname)
                         y2labelset = True
                     elif not ylabelset:
@@ -567,9 +591,10 @@ Matt Newville <newville@cars.uchicago.edu>
                          ylog_scale=uselog, color=color,
                          xlabel=xlabel, label=pname)
                 if itrace < 2:
-                    self.plotpanel.set_xylims(((self.tmin, 0), (min(ydat), max(ydat))),
+                    self.plotpanel.set_xylims(((self.tmin, 0), (ymin, ymax)),
                                               side=side, autoscale=False)
-                self.plotpanel.set_title(time.strftime("%Y-%b-%d %H:%M:%S", time.localtime()))
+                self.plotpanel.set_title(
+                    time.strftime("%Y-%b-%d %H:%M:%S", time.localtime()))
         self.plotpanel.canvas.draw()
         self.needs_refresh = update_failed
         return
@@ -579,4 +604,3 @@ if __name__ == '__main__':
     f = StripChart()
     f.Show(True)
     app.MainLoop()
-
