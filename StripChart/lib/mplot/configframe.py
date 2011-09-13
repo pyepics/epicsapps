@@ -155,7 +155,7 @@ class PlotConfigFrame(wx.Frame):
             i = i+1
 
         self.trace_labels = []
-        for i in range(1 + self.conf.ntrace):
+        for i in range(self.conf.ntrace):
             irow += 1
             argu  = "trace %i" % i
             lin  = self.conf.traces[i]
