@@ -123,10 +123,10 @@ Matt Newville <newville@cars.uchicago.edu>
         self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
         self.timer.Start(POLLTIME)
 
-    def create_frame(self, parent, size=(700, 450), **kwds):
+    def create_frame(self, parent, size=(750, 450), **kwds):
         self.parent = parent
 
-        kwds['style'] = wx.DEFAULT_FRAME_STYLE
+        kwds['style'] = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
         kwds['size']  = size
         wx.Frame.__init__(self, parent, -1, 'Epics PV Strip Chart', **kwds)
 
@@ -183,7 +183,7 @@ Matt Newville <newville@cars.uchicago.edu>
     def build_pvpanel(self):
         panel = self.pvpanel = wx.Panel(self)
         panel.SetBackgroundColour(wx.Colour(*BGCOL))
-        sizer = self.pvsizer = wx.GridBagSizer(5, 5)
+        sizer = self.pvsizer = wx.GridBagSizer(4, 5)
 
         name = SimpleText(panel, ' PV:  ',       minsize=(75, -1), style=LSTY)
         colr = SimpleText(panel, ' Color ',      minsize=(50, -1), style=LSTY)
@@ -314,8 +314,6 @@ Matt Newville <newville@cars.uchicago.edu>
         logs.Bind(wx.EVT_CHOICE,         self.onPVwid)
         ymin.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
         ymax.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
-        ymin.Bind(wx.EVT_KILL_FOCUS,     self.onPVwid)
-        ymax.Bind(wx.EVT_KILL_FOCUS,     self.onPVwid)
 
         self.pvchoices.append(pvchoice)
         self.pvwids.append((logs, colr, ymin, ymax))
@@ -397,8 +395,12 @@ Matt Newville <newville@cars.uchicago.edu>
         self.needs_refresh = True
 
     def onTimeVal(self, event=None, value=None, **kws):
-        self.tmin = -value
-        self.needs_refresh = True
+        new  = -abs(value)
+        if abs(new) < 0.1:
+            new = -0.1
+        if abs(new - self.tmin) > 1.e-3*max(new, self.tmin):
+            self.tmin = new
+            self.needs_refresh = True
 
     def onTimeChoice(self, event=None, **kws):
         newval = event.GetString()
@@ -515,7 +517,6 @@ Matt Newville <newville@cars.uchicago.edu>
             return
 
         tnow = time.time()
-
         # set timescale sec/min/hour
         timescale = 1.0
         if self.time_choice.GetSelection() == 1:
@@ -543,7 +544,7 @@ Matt Newville <newville@cars.uchicago.edu>
                     continue
                 tdat = timescale * (array([i[0] for i in data]) - tnow)
                 mask = where(tdat > self.tmin)
-
+                
                 if (len(mask[0]) < 2 or
                     ((abs(min(tdat)) / abs(1 -self.tmin)) > 0.1)):
                     data.append((time.time(), data[0][-1]))
@@ -551,20 +552,22 @@ Matt Newville <newville@cars.uchicago.edu>
                     mask = where(tdat > self.tmin)
 
                 i0 = mask[0][0]
-                if i0 > 1: i0 = i0 -1
+                if i0 > 0: i0 = i0 -1
                 i1 = mask[0][-1] + 1
                 tdat = timescale*(array([i[0] for i in data[i0:i1]]) - tnow)
                 ydat = array([i[1] for i in data[i0:i1]])
-
                 if len(ydat)  < 2:
                     update_failed = True
                     continue
-                if ymin is None: ymin = min(ydat)
-                if ymax is None: ymax = max(ydat)
+                if ymin is None:
+                    ymin = min(ydat)
+                if ymax is None:
+                    ymax = max(ydat)
 
                 if itrace ==  0:
                     span1 = (ymax-ymin, ymin)
-                    if span1*ymax < 1.e-6:
+                    # print 'itrace 0 ', ymin, ymax
+                    if span1[0]*ymax < 1.e-6:
                         span1 = (1.e-6, ymin)
                 elif itrace > 1:
                     yr = abs(ymax-ymin)
