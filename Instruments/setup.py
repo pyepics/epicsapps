@@ -16,7 +16,7 @@ setup(name = 'epicsapp_instruments',
 
 errmsg = 'WARNING: pyepics_instruments requires Python module "%s"'
 
-for mod in dpes:
+for mod in deps:
     try:
         a = __import__(mod)
     except ImportError:
