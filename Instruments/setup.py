@@ -2,6 +2,7 @@
 
 from distutils.core import setup, setup_keywords
 
+deps = ('wx', 'epics', 'sqlalchemy')
 setup(name = 'epicsapp_instruments',
       version = '0.2',
       author = 'Matthew Newville',
@@ -10,20 +11,14 @@ setup(name = 'epicsapp_instruments',
       description = 'Epics Instruments configuration and management',
       package_dir = {'epicsapps.instruments': 'lib', 'epicsapps': 'base'},
       packages = ['epicsapps', 'epicsapps.instruments'],
-      data_files  = [('bin', ['pyepics_instruments'])])
+      data_files  = [('bin', ['pyepics_instruments.py'])])
 
-try:
-    import wx
-except ImportError:
-    print 'WARNING:  pyepics_instruments requires wxPython'
 
-try:
-    import epics
-except ImportError:
-    print 'WARNING:  pyepics_instruments requires pyepics'
+errmsg ='WARNING: pyepics_instruments requires Python module "%s"'
 
-try:
-    import sqlalchemy
-except ImportError:
-    print 'WARNING:  pyepics_instruments requires sqlachemy'
+for mod in dpes:
+    try:
+        a = __import__(mod)
+    except ImportError:
+        print errmsg % mod
 
