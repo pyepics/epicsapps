@@ -14,7 +14,7 @@ setup(name = 'epicsapp_instruments',
       data_files  = [('bin', ['pyepics_instruments.py'])])
 
 
-errmsg ='WARNING: pyepics_instruments requires Python module "%s"'
+errmsg = 'WARNING: pyepics_instruments requires Python module "%s"'
 
 for mod in dpes:
     try:

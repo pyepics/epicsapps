@@ -5,11 +5,12 @@ Epics Strip Chart application
 import os
 import time
 from numpy import array, where
+
 import wx
 import wx.lib.colourselect  as csel
 
-import epics
-import epics.wx
+from epics import PV
+from epics.wx import EpicsFunction, DelayedEpicsCallback
 from epics.wx.utils import  SimpleText, Closure, FloatCtrl
 
 from mplot.plotpanel import PlotPanel
@@ -336,10 +337,10 @@ Matt Newville <newville@cars.uchicago.edu>
             return
         self.addPV(name)
 
-    @epics.wx.EpicsFunction
+    @EpicsFunction
     def addPV(self, name):
         if name is not None and name not in self.pvlist:
-            pv = epics.PV(str(name), callback=self.onPVChange)
+            pv = PV(str(name), callback=self.onPVChange)
             pv.get()
             conn = False
             if pv is not None:
@@ -370,7 +371,7 @@ Matt Newville <newville@cars.uchicago.edu>
                     new_shown = True
             self.needs_refresh = True
 
-    @epics.wx.DelayedEpicsCallback
+    @DelayedEpicsCallback
     def onPVChange(self, pvname=None, value=None, timestamp=None, **kw):
         if timestamp is None:
             timestamp = time.time()
