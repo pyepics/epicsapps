@@ -1,0 +1,135 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Overview &mdash; Python Epics Applications</title>
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Python Epics Applications" href="index.html" />
+    <link rel="next" title="Downloading and Installation" href="installation.html" />
+    <link rel="prev" title="Python Epics Applications" href="index.html" /> 
+  </head>
+  <body>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="installation.html" title="Downloading and Installation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Python Epics Applications"
+             accesskey="P">previous</a> |</li>
+        <li><a href="index.html">Python Epics Applications</a> &raquo;</li> 
+      </ul>
+    </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="index.html"
+                        title="previous chapter">Python Epics Applications</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="installation.html"
+                        title="next chapter">Downloading and Installation</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/overview.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" size="18" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="overview">
+<h1>Overview<a class="headerlink" href="#overview" title="Permalink to this headline">¶</a></h1>
+<p>An <cite>Epics Instrument</cite> is simply a grouping of low-level parameters (Process
+Variables) as exposed through Epics Channel Access.  At first, this may not
+seem very interesting.  However, Epics Instruments allows you to</p>
+<p>The Epics
+Instruments application allows you to group these components into a logical
+group -- an Instrument.  Once an Instrument has been defined, you can then
+save and restore settings for this Instrument.  Furthermore, these settings
+are automatcally saved in a single, portable file for later use.</p>
+<p>Epics Channel Access gives a simple and robust interface to its lowest
+common unit -- the Process Variable or PV.  The Epics control system also
+provides sophisticated ways to express and manipulate complex devices, both
+physical and virtual.  Creating such devices and defining their behavior is
+generally done by well-trained programmers.  The application here uses a
+much simpler approach that can expose some categories of &quot;Settings&quot; that
+may need to changed en masse, and returned to at a later time.</p>
+<p>As defined here, An Epics Instrument is simply a named collection of Epics
+Process Variables (PVs).  The PVs do not need to be physically related to
+one another nor be associated with a single Epics Record or Device.
+Rather, an Instrument is defined at the level of the Epics Channel Access
+client, allowing a station scientist or engineer to use their own grouping
+of PVs as an abstract &quot;Instrument&quot;.  A simple example would be a pair of
+motors that work together to move some device.</p>
+<p>In addition to a name and a set of PVs, an Instrument has a set of &quot;named
+Positions&quot;.  At any point, the current values of an Instruments PVs can be
+saved as its Position.  And, of course, the named Positions can then be
+restored simply by selecting the Position.</p>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="installation.html" title="Downloading and Installation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="index.html" title="Python Epics Applications"
+             >previous</a> |</li>
+        <li><a href="index.html">Python Epics Applications</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2011, Matthew Newville.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.0.7.
+    </div>
+  </body>
+</html>
