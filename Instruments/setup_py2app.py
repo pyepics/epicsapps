@@ -9,7 +9,7 @@ from setuptools import setup
 
 APP = ['pyepics_instruments.py']
 DATA_FILES = []
-OPTIONS = {'argv_emulation': True, 'includes': 'epics,wx,sqlachemy'}
+OPTIONS = {'argv_emulation': True, 'includes': 'epics,wx,sqlalchemy'}
 
 setup(
     app=APP,
