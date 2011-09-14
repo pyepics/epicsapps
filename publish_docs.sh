@@ -1,11 +1,11 @@
 installdir='/www/apache/htdocs/software/python/pyepicsapps'
 docbuild='doc/_build'
 appname='epicsapps'
-dockit=$appname_docs.tgz
+dockit='epicsapps_docs.tgz'
 
 cd doc 
 echo '# Making docs'
-make all
+## make all
 cd ../
 
 echo '# Building tarball of docs'
@@ -27,6 +27,8 @@ if  [ $? -ne 0 ]  ; then
   exit 
 fi
 
+exit
+
 echo "# Make sure this script is updated!"
 git checkout master publish_docs.sh
 if  [ $? -ne 0 ]  ; then 
@@ -47,7 +49,6 @@ fi
 echo "# Pushing docs to github"
 echo '## git push '
 
-
 echo "# switch back to master branch"
 git checkout master
 
@@ -66,4 +67,4 @@ if  [ $? -ne 0 ]  ; then
   exit 
 fi
 
-tar xvf ../$dockit .
+echo '## tar xvf ../$dockit .'
