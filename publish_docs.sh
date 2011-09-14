@@ -39,7 +39,7 @@ fi
 tar xzf ../$dockit .
 
 echo "# commit changes to gh-pages branch"
-echo '##  git commit -am "changed docs" '
+git commit -am "changed docs"
 
 if  [ $? -ne 0 ]  ; then 
   echo ' failed.'
@@ -47,7 +47,7 @@ if  [ $? -ne 0 ]  ; then
 fi
 
 echo "# Pushing docs to github"
-echo '## git push '
+git push
 
 echo "# switch back to master branch"
 git checkout master
@@ -59,12 +59,11 @@ fi
 
 # install locally
 echo "# Installing docs to CARS web pages"
-echo '## cp ../$dockit  $installdir/../. '
+cp ../$dockit  $installdir/../.
 
 cd $installdir
 if  [ $? -ne 0 ]  ; then 
   echo ' failed.'
   exit 
 fi
-
-echo '## tar xvf ../$dockit .'
+tar xvf ../$dockit .
