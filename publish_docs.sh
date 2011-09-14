@@ -27,7 +27,6 @@ if  [ $? -ne 0 ]  ; then
   exit 
 fi
 
-exit
 
 echo "# Make sure this script is updated!"
 git checkout master publish_docs.sh
