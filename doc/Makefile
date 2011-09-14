@@ -25,12 +25,12 @@ html:
 
 epicsapps.pdf: latex
 	cd $(BUILDDIR)/latex && make all-pdf
-	cp -pr $(BUILDDIR)/latex/epicsapps.pdf ./pyepicsapss.pdf
+	cp -pr $(BUILDDIR)/latex/epicsapps.pdf ./
 
 all: html epicsapps.pdf
 
 install: all
-	cp -pr $(BUILDDIR)/latex/epicsapps.pdf $(INSTALLDIR)/pyepicsapps.pdf
+	cp -pr $(BUILDDIR)/latex/epicsapps.pdf $(INSTALLDIR)/.
 	cp -pr $(BUILDDIR)/html/* $(INSTALLDIR)/.
 
 help:
