@@ -6,7 +6,7 @@ import sys
 if (len(sys.argv) > 1 and sys.argv[1].startswith('-d')):
     from lib import InstrumentFrame
 else:
-    from epicsapps.instrumentsimport InstrumentFrame
+    from epicsapps.instruments import InstrumentFrame
 
 if __name__ == '__main__':
     app = wx.PySimpleApp()
