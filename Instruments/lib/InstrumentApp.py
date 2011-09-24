@@ -121,7 +121,10 @@ class InstrumentFrame(wx.Frame):
         self.SetMinSize((725, 300))
 
         pack(self, sizer)
-        self.SetIcon(wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO))
+        try:
+            self.SetIcon(wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO))
+        except:
+            pass
         self.Refresh()
 
     def create_nbpages(self):
@@ -417,7 +420,7 @@ class InstrumentFrame(wx.Frame):
             if inst.name in display_order:
                 inst.show = 1
                 inst.display_order = display_order.index(inst.name)
-        self.db.clear_hostpid()
+        self.db.set_hostpid(clear=True)
         self.db.commit()
 
         epics.poll()

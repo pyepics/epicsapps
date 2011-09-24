@@ -14,7 +14,7 @@ import json
 import epics
 import time
 import socket
-from threading import Thread
+
 from datetime import datetime
 
 from utils import backup_versions, save_backup, get_pvtypes
@@ -168,7 +168,6 @@ class InstrumentDB(object):
         self.session = None
         self.conn    = None
         self.metadata = None
-        self.update_mod_time = None
         self.pvs = {}
         self.restoring_pvs = []
         if dbname is not None:
@@ -244,12 +243,12 @@ class InstrumentDB(object):
 
     def commit(self):
         "commit session state"
-        self.set_mod_time()
+        self.set_info('modify_date', datetime.isoformat(datetime.now()))
         return self.session.commit()
 
     def close(self):
         "close session"
-        self.clear_hostpid()
+        self.set_hostpid(clear=True)
         self.session.commit()
         self.session.flush()
         self.session.close()
@@ -272,20 +271,17 @@ class InstrumentDB(object):
         table = self.tables['info']
         vals  = self.query(table).filter(Info.key==key).all()
         if len(vals) < 1:
-            # none found -- insert
             table.insert().execute(key=key, value=value)
         else:
             table.update(whereclause="key='%s'" % key).execute(value=value)
 
-    def set_hostpid(self):
+    def set_hostpid(self, clear=False):
         """set hostname and process ID, as on intial set up"""
-        self.set_info('host_name', socket.gethostname())
-        self.set_info('process_id', str(os.getpid()))
-
-    def clear_hostpid(self):
-        """clear the hostname and process ID, as on shutdown"""
-        self.set_info('host_name', '')
-        self.set_info('process_id', 0)
+        name, pid = '', '0'
+        if not clear:
+            name, pid = socket.gethostname(), str(os.getpid())
+        self.set_info('host_name', name)
+        self.set_info('process_id', pid)
 
     def check_hostpid(self):
         """check whether hostname and process ID match current config"""
@@ -294,13 +290,6 @@ class InstrumentDB(object):
         return ((db_host_name == '' and db_process_id == '0') or
                 (db_host_name == socket.gethostname() and
                  db_process_id == str(os.getpid())))
-
-    def set_mod_time(self):
-        """set modify_date in info table"""
-        if self.update_mod_time is None:
-            self.update_mod_time = self.tables['info'].update(
-                whereclause="key='modify_date'")
-        self.update_mod_time.execute(value=datetime.isoformat(datetime.now()))
 
     def __addRow(self, table, argnames, argvals, **kws):
         """add generic row"""
