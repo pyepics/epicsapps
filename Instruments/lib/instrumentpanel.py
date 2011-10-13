@@ -4,8 +4,6 @@ import wx
 from wx._core import PyDeadObjectError
 
 import time
-from threading import Thread
-
 import epics
 from epics.wx import (EpicsFunction, PVText, PVFloatCtrl, PVTextCtrl,
                       PVEnumChoice, MotorPanel)
@@ -191,7 +189,7 @@ class InstrumentPanel(wx.Panel):
         self.inst_title = SimpleText(toprow,  ' %s ' % inst.name,
                                      font=titlefont,
                                      colour=colors.title,
-                                     minsize=(140, -1),
+                                     minsize=(150, -1),
                                      style=wx.ALIGN_LEFT|wx.ALIGN_BOTTOM)
 
 
@@ -248,9 +246,9 @@ class InstrumentPanel(wx.Panel):
         pack(rpanel, rsizer)
 
 
-        splitter.SplitVertically(self.leftpanel, rpanel, -1)
+        splitter.SplitVertically(self.leftpanel, rpanel, -150)
 
-        self.leftpanel.SetMinSize((625, 150))
+        self.leftpanel.SetMinSize((650, 150))
         rpanel.SetMinSize((150, -1))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -286,7 +284,7 @@ class InstrumentPanel(wx.Panel):
             panel = None
             if pvtype == 'motor':
                 try:
-                    panel = MotorPanel(self.leftpanel, pvname, midsize=True)
+                    panel = MotorPanel(self.leftpanel, pvname)
                 except PyDeadObjectError:
                     pass
             elif pv.pvname not in skip:
