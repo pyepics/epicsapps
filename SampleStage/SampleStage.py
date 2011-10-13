@@ -13,7 +13,7 @@ from  cStringIO import StringIO
 from  urllib import urlopen
 
 from epics import Motor
-from epics.wx import finalize_epics,  EpicsFunction, MotorPanel
+from epics.wx import finalize_epics, MotorPanel
 
 from epics.wx.utils import  (empty_bitmap, add_button, add_menu, popup,
                              pack, Closure , NumericCombo, SimpleText, 
@@ -30,7 +30,8 @@ LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
-IMG_W, IMG_H = 280, 210
+# IMG_W, IMG_H = 280, 210
+IMG_W, IMG_H = 352, 240
 CONFIG_DIR  = '//cars5/Data/xas_user/config/SampleStage/'
 WORKDIR_FILE = os.path.join(CONFIG_DIR, 'workdir.txt')
 ICON_FILE = os.path.join(CONFIG_DIR, 'micro.ico')
@@ -115,7 +116,7 @@ class SampleStage(wx.Frame):
         self.SetFont(wx.Font(11, wx.SWISS, wx.NORMAL, wx.BOLD, False))
         self.SetSize((900, 575))
         self.positions = None
-        self.read_config(configfile=configfile, get_dir=False) # True)
+        self.read_config(configfile=configfile, get_dir=True)
         self.SetTitle("XRM Sample Stage")
         wx.EVT_CLOSE(self, self.onClose)
 
@@ -126,11 +127,10 @@ class SampleStage(wx.Frame):
         self.connect_motors()
         self.set_position_list()
 
-    #@EpicsFunction
     def connect_motors(self):
         "connect to epics motors"
         self.motors = {}
-        self.sign = {}
+        self.sign = {None: 1}
         for pvname, val in self.config['stages'].items():
             pvname = pvname.strip()
             label = val['label']
@@ -277,7 +277,7 @@ class SampleStage(wx.Frame):
 
     def make_pospanel(self, parent):
         """panel of position lists, with buttons"""
-        panel = wx.Panel(parent, size=(145, 200))
+        panel = wx.Panel(parent, size=(175, 200))
         btn_goto  = add_button(panel, "Go To",  size=(70, -1), action=self.onGo)
         btn_erase = add_button(panel, "Erase",  size=(70, -1),
                             action=self.onErasePosition)
@@ -303,7 +303,7 @@ class SampleStage(wx.Frame):
         panel = wx.Panel(parent)
 
         wlabel = wx.StaticText(panel, label="Save Position: ")
-        self.pos_name =  wx.TextCtrl(panel, value="", size=(180, 25),
+        self.pos_name =  wx.TextCtrl(panel, value="", size=(250, 25),
                                      style= wx.TE_PROCESS_ENTER)
         self.pos_name.Bind(wx.EVT_TEXT_ENTER, self.onSavePosition)
 
@@ -350,18 +350,18 @@ class SampleStage(wx.Frame):
                                           precision=precision, init=3)
 
         slabel = wx.BoxSizer(wx.HORIZONTAL)
-        slabel.Add(wx.StaticText(panel, label=" %s: " % label),
-                   1,  ALL_EXP|LEFT_BOT)
+        slabel.Add(wx.StaticText(panel, label=" %s: " % label, size=(150,-1)),
+                   1,  wx.EXPAND|LEFT_BOT)
         slabel.Add(self.tweaks[group], 0,  ALL_EXP|LEFT_TOP)
 
         smotor = wx.BoxSizer(wx.VERTICAL)
         smotor.Add(slabel, 0, ALL_EXP)
 
-        for mname in motors:
-            if mname is None: continue
-            self.motorwids[mname] = MotorPanel(panel, label=mname, full=False)
-            self.motorwids[mname].desc.SetLabel(mname)
-            smotor.Add(self.motorwids[mname], 1, ALL_EXP|LEFT_TOP)
+        for mnam in motors:
+            if mnam is None: continue
+            self.motorwids[mnam] = MotorPanel(panel, label=mnam, psize='small')
+            self.motorwids[mnam].desc.SetLabel(mnam)
+            smotor.Add(self.motorwids[mnam], 0, ALL_EXP|LEFT_TOP)
 
         if add_buttons is not None:
             for label, action in add_buttons:
@@ -385,7 +385,6 @@ class SampleStage(wx.Frame):
         "create right hand panel"
         panel = wx.Panel(parent)
         sizer =  wx.BoxSizer(wx.VERTICAL)
-
         fine_panel = self.group_panel(panel, label='Fine Stages',
                                       group='fine', precision=4,
                                       collapseable=True,
@@ -423,19 +422,19 @@ class SampleStage(wx.Frame):
                                           group=group, name=name))
             return btn
         if full:
-            sizer.Add(_btn('nw'),     0, wx.ALL)
-            sizer.Add(_btn('nn'),     0, wx.ALL)
-            sizer.Add(_btn('ne'),     0, wx.ALL)
-            sizer.Add(_btn('ww'),     0, wx.ALL)
-            sizer.Add(_btn('camera'), 0, wx.ALL)
-            sizer.Add(_btn('ee'),     0, wx.ALL)
-            sizer.Add(_btn('sw'),     0, wx.ALL)
-            sizer.Add(_btn('ss'),     0, wx.ALL)
-            sizer.Add(_btn('se'),     0, wx.ALL)
+            sizer.Add(_btn('nw'),     0, wx.ALL|wx.EXPAND)
+            sizer.Add(_btn('nn'),     0, wx.ALL|wx.EXPAND)
+            sizer.Add(_btn('ne'),     0, wx.ALL|wx.EXPAND)
+            sizer.Add(_btn('ww'),     0, wx.ALL|wx.EXPAND)
+            sizer.Add(_btn('camera'), 0, wx.ALL|wx.EXPAND)
+            sizer.Add(_btn('ee'),     0, wx.ALL|wx.EXPAND)
+            sizer.Add(_btn('sw'),     0, wx.ALL|wx.EXPAND)
+            sizer.Add(_btn('ss'),     0, wx.ALL|wx.EXPAND)
+            sizer.Add(_btn('se'),     0, wx.ALL|wx.EXPAND)
         else:
-            sizer.Add(_btn('ww'),     0, wx.ALL, 0)
+            sizer.Add(_btn('ww'),     0, wx.ALL|wx.EXPAND)
             sizer.Add(wx.StaticText(panel, label='', size=(1, 1)))
-            sizer.Add(_btn('ee'),     0, wx.ALL, 0)
+            sizer.Add(_btn('ee'),     0, wx.ALL|wx.EXPAND)
 
         pack(panel, sizer)
         return panel
@@ -653,7 +652,6 @@ class SampleStage(wx.Frame):
             self.motorwids[name['label']].drive.SetValue("%f" % val)
         self.write_message('moved to %s' % posname)
 
-    #@EpicsFunction
     def onMove(self, event, name=None, group=None):
         if name == 'camera':
             return self.save_image()
@@ -664,10 +662,12 @@ class SampleStage(wx.Frame):
 
         x, y = self.motorgroups[group]
 
+        xsign = xsign * self.sign[x]        
         val = float(self.motorwids[x].drive.GetValue())
         self.motorwids[x].drive.SetValue("%f" % (val + xsign*twkval))
         if y is not None:
             val = float(self.motorwids[y].drive.GetValue())
+            ysign = ysign * self.sign[y]
             self.motorwids[y].drive.SetValue("%f" % (val + ysign*twkval))
         try:
             self.motors[x].TWV = twkval
@@ -710,18 +710,20 @@ class SampleStage(wx.Frame):
         self.Refresh()
 
 class StageApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
+    def __init__(self, configfile=None):
+        self.configfile = configfile
+        wx.App.__init__(self)
+
     def OnInit(self):
         self.Init()
-        frame = SampleStage()
+        frame = SampleStage(configfile=self.configfile)
         frame.Show()
         self.SetTopWindow(frame)
         time.sleep(3.5)
         return True
 
 if __name__ == '__main__':
-    app = wx.PySimpleApp()
-    f = SampleStage(configfile='SampleStage.ini')
-    f.Show()
+    app = StageApp()
     app.MainLoop()
 
 

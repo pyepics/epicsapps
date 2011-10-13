@@ -14,8 +14,9 @@ epics.ca.initialize_libca()
 ## this speeds up loading and can avoid unconnected PVs
 configfile = os.path.join(SampleStage.CONFIG_DIR,
                           'SampleStage.ini')
-configfile = 'SampleStage.ini'
+# configfile = 'SampleStage.ini'
 cnf = StageConfig(configfile)
+
 stages = []
 #print 'Connecting'
 for pvname in cnf.config['stages']:
