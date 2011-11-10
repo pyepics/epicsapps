@@ -20,13 +20,20 @@ from datetime import datetime
 from utils import backup_versions, save_backup, get_pvtypes
 from creator import make_newdb
 
+
 from sqlalchemy import MetaData, create_engine, and_
 from sqlalchemy.orm import sessionmaker,  mapper, clear_mappers, relationship
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import  NoResultFound
+from sqlalchemy.pool import SingletonThreadPool
 
 # needed for py2exe?
 import sqlalchemy.dialects.sqlite
+
+# import logging
+# logging.basicConfig(level=logging.INFO, filename='inst_sql.log')
+# logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
+# logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
 
 def isInstrumentDB(dbname):
     """test if a file is a valid Instrument Library file:
@@ -34,23 +41,22 @@ def isInstrumentDB(dbname):
           'info', 'instrument', 'position', 'pv',
        'info' table must have an entries named 'version' and 'create_date'
     """
-    if not os.path.exists(dbname):
-        return False
+    result = False
     try:
-        engine  = create_engine('sqlite:///%s' % dbname)
-        metadata =  MetaData(engine)
-        metadata.reflect()
+        engine = create_engine('sqlite:///%s' % dbname,
+                               poolclass=SingletonThreadPool)
+        meta = MetaData(engine)
+        meta.reflect()
+        if ('info' in meta.tables and
+            'instrument' in meta.tables and
+            'position' in meta.tables and
+            'pv' in meta.tables):
+            keys = [row.key for row in
+                    meta.tables['info'].select().execute().fetchall()]
+            result = 'version' in keys and 'create_date' in keys
     except:
-        return False
-
-    if ('info' in metadata.tables and
-        'instrument' in metadata.tables and
-        'position' in metadata.tables and
-        'pv' in metadata.tables):
-        info = metadata.tables['info'].select().execute().fetchall()
-        keys = [row.key for row in info]
-        return ('version' in keys and 'create_date' in keys)
-    return False
+        pass
+    return result
 
 def json_encode(val):
     "simple wrapper around json.dumps"
@@ -192,7 +198,8 @@ class InstrumentDB(object):
         if backup:
             save_backup(dbname)
         self.dbname = dbname
-        self.engine = create_engine('sqlite:///%s' % self.dbname)
+        self.engine = create_engine('sqlite:///%s' % self.dbname,
+                                    poolclass = SingletonThreadPool)
         self.conn = self.engine.connect()
         self.session = sessionmaker(bind=self.engine)()
 
@@ -563,7 +570,6 @@ arguments
             raise InstrumentDBException(
                 "restore_postion  position '%s' not found" % posname)
 
-        # print 'Do Pre_Commands: ', inst.precommands
         pvvals = {}
         for pvpos in pos.pvs:
             pvvals[pvpos.pv.name] = str(pvpos.value)
