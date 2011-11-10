@@ -10,7 +10,7 @@ from epics.wx import (EpicsFunction, PVText, PVFloatCtrl, PVTextCtrl,
 from epics.wx.utils import  pack, popup, add_button, SimpleText
 from epics.wx.ordereddict import OrderedDict
 
-from utils import ALL_EXP , GUIColors, get_pvtypes
+from utils import ALL_EXP , GUIColors, get_pvtypes, get_pvdesc
 
 class RenameDialog(wx.Dialog):
     """Rename a Position"""
@@ -62,7 +62,6 @@ class RenameDialog(wx.Dialog):
         sizer.Add(panel, 0, 0, 0)
         pack(self, sizer)
 
-
 class MoveToDialog(wx.Dialog):
     """Full Query for Move To for a Position"""
     msg = '''Select Recent Instrument File, create a new one'''
@@ -72,13 +71,17 @@ class MoveToDialog(wx.Dialog):
         self.pvs  = pvs
         if pvdesc is None:
             pvdesc = {}
-
+            
         thispos = db.get_position(posname, inst)
         if thispos is None:
             return
 
         title = "Move Instrument %s to Position '%s'?" % (inst.name, posname)
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title)
+        self.build_dialog(parent, thispos)
+
+    @EpicsFunction
+    def build_dialog(self, parent, thispos):
         panel = wx.Panel(self)
         colors = GUIColors()
 
@@ -92,14 +95,14 @@ class MoveToDialog(wx.Dialog):
 
         labstyle  = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
         rlabstyle = wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
-        tstyle    = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL
+        tstyle    = wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL
         # title row
         i = 0
-        for titleword in ('  PV', 'Current Value',
+        for titleword in ('  PV ', 'Current Value',
                           'Saved Value', 'Move?'):
             txt =SimpleText(panel, titleword,
                             font=titlefont,
-                            minsize=(80, -1),
+                            minsize=(100, -1),
                             colour=colors.title,
                             style=tstyle)
 
@@ -112,14 +115,15 @@ class MoveToDialog(wx.Dialog):
 
         self.checkboxes = {}
         for irow, pvpos in enumerate(thispos.pvs):
-            pvname = desc = pvpos.pv.name
+            pvname = pvpos.pv.name
+            desc = get_pvdesc(pvname)
+            if desc != pvname:
+                desc = "%s (%s)" % (desc, pvname)
+                
             curr_val = self.pvs[pvname].get(as_string=True)
             if curr_val is None:
                 curr_val = 'Unknown'
             save_val = pvpos.value
-
-            if pvname in pvdesc:
-                desc = "%s (%s)" % (pvdesc[pvname], pvname)
 
             label = SimpleText(panel, desc, style=tstyle,
                                colour=colors.pvname)

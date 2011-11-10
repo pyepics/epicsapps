@@ -1,1 +1,1 @@
-from InstrumentApp import InstrumentFrame
+from InstrumentApp import EpicsInstrumentApp

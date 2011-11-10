@@ -12,6 +12,17 @@ FileBrowser = filebrowse.FileBrowseButtonWithHistory
 ALL_EXP  = wx.ALL|wx.EXPAND
 EIN_WILDCARD = 'Epics Instrument Files (*.ein)|*.ein|All files (*.*)|*.*'
        
+def get_pvdesc(pvname):
+    desc = pref = pvname
+    if '.' in pvname:
+        pref = pvname[:pvname.find('.')]
+    t0 = time.time()
+    descpv = epics.PV(pref + '.DESC')
+    if descpv.connect():
+        desc = descpv.get()
+    return desc
+        
+
 def get_pvtypes(pvobj, instrument=None):
     """create tuple of choices for PV Type for database,
     which sets how to display PV entry.

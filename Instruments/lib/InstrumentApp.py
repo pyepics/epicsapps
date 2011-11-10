@@ -169,26 +169,39 @@ class InstrumentFrame(wx.Frame):
         inst_menu = wx.Menu()
         help_menu = wx.Menu()
 
-        add_menu(self, file_menu, "&New File", "Create New Instruments File",
+        add_menu(self, file_menu,
+                 "&New File", "Create New Instruments File",
                  action=self.onNew)
-        add_menu(self, file_menu, "&Open File", "Open Instruments File",
+        add_menu(self, file_menu,
+                 "&Open File", "Open Instruments File",
                  action=self.onOpen)
-        add_menu(self, file_menu, "&Save As", "Save Instruments File",
+        add_menu(self, file_menu,
+                 "&Save As", "Save Instruments File",
                  action=self.onSave)
         file_menu.AppendSeparator()
-        add_menu(self, file_menu, "E&xit", "Terminate the program",
+
+        add_menu(self, file_menu,
+                 "E&xit", "Terminate the program",
                  action=self.onClose)
 
-        add_menu(self, inst_menu, "&Create New Instrument",
+        add_menu(self, inst_menu,
+                 "&Create New Instrument",
                  "Add New Instrument",
                  action=self.onAddInstrument)
 
-        add_menu(self, inst_menu, "&Edit Current Instrument",
+        add_menu(self, inst_menu,
+                 "&Edit Current Instrument",
                  "Edit Current Instrument",
                  action=self.onEditInstrument)
 
+        add_menu(self, inst_menu,
+                 "Enter a Position for the Current Instrument",
+                 "Enter a Position for the Current Instrument",
+                 action=self.onEnterPosition)
+
         inst_menu.AppendSeparator()
-        add_menu(self, inst_menu, "&Remove Current Instrument",
+        add_menu(self, inst_menu,
+                 "&Remove Current Instrument",
                  "Permanently Remove Current Instrument",
                  action=self.onRemoveInstrument)
 
@@ -197,11 +210,13 @@ class InstrumentFrame(wx.Frame):
                  "Change Settings for GUI behavior",
                  action=self.onSettings)
 
-        add_menu(self, opts_menu, "Change &Font", "Select Font",
+        add_menu(self, opts_menu,
+                 "Change &Font", "Select Font",
                  action=self.onSelectFont)
 
-        add_menu(self, help_menu, 'About',
-                 "More information about this program", action=self.onAbout)
+        add_menu(self, help_menu,
+                 'About', "More information about this program",
+                 action=self.onAbout)
 
         mbar.Append(file_menu, "&File")
         mbar.Append(opts_menu, "&Options")
@@ -306,6 +321,13 @@ class InstrumentFrame(wx.Frame):
 
     def onEditInstrument(self, event=None):
         "edit the current instrument"
+        inst = self.nb.GetCurrentPage().inst
+        EditInstrumentFrame(parent=self, db=self.db, inst=inst,
+                            epics_pvs=self.epics_pvs)
+
+
+    def onEnterPosition(self, event=None):
+        "enter a new position for the current instrument"
         inst = self.nb.GetCurrentPage().inst
         EditInstrumentFrame(parent=self, db=self.db, inst=inst,
                             epics_pvs=self.epics_pvs)
@@ -433,9 +455,8 @@ class InstrumentFrame(wx.Frame):
         time.sleep(0.5)
         self.Destroy()
 
-## class InstrumentApp(wx.App):
 
-class InstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
+class EpicsInstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
     def __init__(self, conf=None, dbname=None, **kws):
         self.conf  = conf
         self.dbname  = dbname
@@ -453,7 +474,7 @@ if __name__ == '__main__':
     dbname = None
     inspect = True
     if inspect:
-        app = InstrumentApp(dbname=dbname, conf=conf)
+        app = EpicsInstrumentApp(dbname=dbname, conf=conf)
     else:
         app = wx.PySimpleApp()
         InstrumentFrame(conf=conf, dbname=dbname).Show()
