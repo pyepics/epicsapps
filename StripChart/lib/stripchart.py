@@ -13,16 +13,16 @@ from epics import PV
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 from epics.wx.utils import  SimpleText, Closure, FloatCtrl
 
-from mplot.plotpanel import PlotPanel
-from mplot.colors import hexcolor
-from mplot.utils import LabelEntry
+from wxmplot.plotpanel import PlotPanel
+from wxmplot.colors import hexcolor
+from wxmplot.utils import LabelEntry
 
 
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
 BGCOL  = (250, 250, 240)
 
-POLLTIME = 100
+POLLTIME = 500
 
 STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL|wx.ALIGN_CENTER_VERTICAL
@@ -111,7 +111,8 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvwids = [None]
         self.pvchoices = [None]
         self.colorsels = []
-
+        self.plots_drawn = [False]*10
+        self.needs_refresh = False
         self.needs_refresh = False
         self.paused = False
 
@@ -376,6 +377,7 @@ Matt Newville <newville@cars.uchicago.edu>
         if timestamp is None:
             timestamp = time.time()
         self.pvdata[pvname].append((timestamp, value))
+        self.needs_refresh = True
 
     def onPVchoice(self, event=None, row=None, **kws):
         self.needs_refresh = True
@@ -385,6 +387,8 @@ Matt Newville <newville@cars.uchicago.edu>
                 trace.set_data([], [])
             except:
                 pass
+        if row == 1:
+            self.plotpanel.set_y2label('')
         self.plotpanel.canvas.draw()
 
     def onPVcolor(self, event=None, row=None, **kws):
@@ -525,81 +529,103 @@ Matt Newville <newville@cars.uchicago.edu>
         elif self.time_choice.GetSelection() == 2:
             timescale = 1./3600
 
-
         ylabelset, y2labelset = False, False
         xlabel = 'Elapsed Time (%s)' % self.timelabel
         itrace = -1
         update_failed = False
         hasplot = False
         span1 = (1, 0)
+        did_update = False
+        left_axes = self.plotpanel.axes
+        right_axes = self.plotpanel.get_right_axes()
 
         for irow, pname, uselog, color, ymin, ymax in self.get_current_traces():
-            if pname in self.pvdata:
-                itrace += 1
-                side = 'left'
-                if itrace == 1:
-                    side = 'right'
-                data = self.pvdata[pname][:]
-                if len(data)  < 1:
-                    update_failed = True
-                    continue
-                tdat = timescale * (array([i[0] for i in data]) - tnow)
+            if pname not in self.pvdata:
+                continue
+            itrace += 1
+            if len(self.plots_drawn) < itrace:
+                self.plots_drawn.extend([False]*3)
+            side = 'left'
+            if itrace == 1:
+                side = 'right'
+            data = self.pvdata[pname][:]
+            if len(data)  < 2:
+                update_failed = True
+                continue
+            tdat = timescale * (array([i[0] for i in data]) - tnow)
+            mask = where(tdat > self.tmin)
+            if (len(mask[0]) < 2 or
+                ((abs(min(tdat)) / abs(1 -self.tmin)) > 0.1)):
+                data.append((time.time(), data[0][-1]))
+                tdat = timescale*(array([i[0] for i in data]) - tnow)
                 mask = where(tdat > self.tmin)
-                
-                if (len(mask[0]) < 2 or
-                    ((abs(min(tdat)) / abs(1 -self.tmin)) > 0.1)):
-                    data.append((time.time(), data[0][-1]))
-                    tdat = timescale*(array([i[0] for i in data]) - tnow)
-                    mask = where(tdat > self.tmin)
 
-                i0 = mask[0][0]
-                if i0 > 0: i0 = i0 -1
-                i1 = mask[0][-1] + 1
-                tdat = timescale*(array([i[0] for i in data[i0:i1]]) - tnow)
-                ydat = array([i[1] for i in data[i0:i1]])
-                if len(ydat)  < 2:
+            i0 = mask[0][0]
+            if i0 > 0:
+                i0 = i0-1
+            i1 = mask[0][-1] + 1
+            tdat = timescale*(array([i[0] for i in data[i0:i1]]) - tnow)
+            ydat = array([i[1] for i in data[i0:i1]])
+
+            if len(ydat)  < 2:
+                update_failed = True
+                continue
+            if ymin is None:
+                ymin = min(ydat)
+            if ymax is None:
+                ymax = max(ydat)
+
+            # for more that 2 plots, scale to left hand axis
+            if itrace ==  0:
+                span1 = (ymax-ymin, ymin)
+                if span1[0]*ymax < 1.e-6:
                     update_failed = True
                     continue
-                if ymin is None:
-                    ymin = min(ydat)
-                if ymax is None:
-                    ymax = max(ydat)
+            elif itrace > 1:  
+                yr = abs(ymax-ymin)
+                if yr > 1.e-9:
+                    ydat = span1[1] + 0.99*(ydat - ymin)*span1[0]/yr
+                ymin, ymax = min(ydat), max(ydat)
+            
+            if self.needs_refresh:
+                if itrace == 0:
+                    self.plotpanel.set_ylabel(pname)
+                elif itrace == 1:
+                    self.plotpanel.set_y2label(pname)
 
-                if itrace ==  0:
-                    span1 = (ymax-ymin, ymin)
-                    # print 'itrace 0 ', ymin, ymax
-                    if span1[0]*ymax < 1.e-6:
-                        span1 = (1.e-6, ymin)
-                elif itrace > 1:
-                    yr = abs(ymax-ymin)
-                    if yr > 1.e-9:
-                        ydat = span1[1] + (ydat - ymin)*span1[0]/yr
-
-                if not self.needs_refresh:
+                if not self.plots_drawn[itrace]:
+                    plot = self.plotpanel.oplot
+                    if itrace == 0:
+                        plot = self.plotpanel.plot
                     try:
-                        self.plotpanel.update_line(itrace, tdat, ydat)
+                        plot(tdat, ydat,
+                             drawstyle='steps-post', side=side,
+                             ylog_scale=uselog, color=color,
+                             xmin=self.tmin, xmax=0,
+                             xlabel=xlabel, label=pname, autoscale=False)
+                        self.plots_drawn[itrace] = True
                     except:
                         update_failed = True
                 else:
-                    plot = self.plotpanel.oplot
-                    if not hasplot:
-                        plot = self.plotpanel.plot
-                        hasplot = True
-                    if itrace == 1 and not y2labelset:
-                        self.plotpanel.set_y2label(pname)
-                        y2labelset = True
-                    elif not ylabelset:
-                        self.plotpanel.set_ylabel(pname)
-                        ylabelset = True
-                    plot(tdat, ydat, drawstyle='steps-post', side=side,
-                         ylog_scale=uselog, color=color,
-                         xlabel=xlabel, label=pname)
-                if itrace < 2:
-                    self.plotpanel.set_xylims(((self.tmin, 0), (ymin, ymax)),
-                                              side=side, autoscale=False)
-                self.plotpanel.set_title(
-                    time.strftime("%Y-%b-%d %H:%M:%S", time.localtime()))
-        self.plotpanel.canvas.draw()
+                    try:
+                        self.plotpanel.update_line(itrace, tdat, ydat, draw=False)
+                        self.plotpanel.set_xylims((self.tmin, 0, ymin, ymax),
+                                                  side=side, autoscale=False)
+                        did_update = True
+                    except:
+                        update_failed = True
+                axes = left_axes
+                if itrace == 1:
+                    axes = right_axes
+                if uselog and min(ydat) > 0:
+                    axes.set_yscale('log', basey=10)
+                else:
+                    axes.set_yscale('linear')
+                    
+                    
+        self.plotpanel.set_title(time.strftime("%Y-%b-%d %H:%M:%S", time.localtime()))
+        if did_update:
+            self.plotpanel.canvas.draw()
         self.needs_refresh = update_failed
         return
 
