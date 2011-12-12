@@ -22,7 +22,7 @@ FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
 BGCOL  = (250, 250, 240)
 
-POLLTIME = 500
+POLLTIME = 50
 
 STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL|wx.ALIGN_CENTER_VERTICAL
@@ -518,7 +518,7 @@ Matt Newville <newville@cars.uchicago.edu>
         return traces
 
     def onUpdatePlot(self, event=None):
-        if self.paused and not self.needs_refresh:
+        if self.paused or not self.needs_refresh:
             return
 
         tnow = time.time()
@@ -592,7 +592,6 @@ Matt Newville <newville@cars.uchicago.edu>
                     self.plotpanel.set_ylabel(pname)
                 elif itrace == 1:
                     self.plotpanel.set_y2label(pname)
-
                 if not self.plots_drawn[itrace]:
                     plot = self.plotpanel.oplot
                     if itrace == 0:
