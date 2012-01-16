@@ -1,0 +1,7 @@
+This application displays an image from an Epics Area Detector
+
+This really wants the development version of pyepics (version > 3.1.4).
+
+There are lots of potential features to add here!
+
+
