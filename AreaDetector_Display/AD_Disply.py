@@ -92,7 +92,9 @@ class AD_Display(wx.Frame):
                  'ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
                  'ColorMode_RBV')
 
-    cam_attrs = ('Acquire', 'ArrayCounter', 'ArrayCounter_RBV', 'NumImages')
+    cam_attrs = ('Acquire', 'ArrayCounter', 'ArrayCounter_RBV',
+                 'DetectorState_RBV',
+                 'NumImages')
     
     def __init__(self, prefix=None, scale=1.0, approx_height=600):
 
@@ -116,13 +118,13 @@ class AD_Display(wx.Frame):
         self.buildFrame()
 
     def buildFrame(self):
-        sbar = self.CreateStatusBar(2,wx.CAPTION|wx.THICK_FRAME)
+        sbar = self.CreateStatusBar(3, wx.CAPTION|wx.THICK_FRAME)
         sfont = sbar.GetFont()
         sfont.SetWeight(wx.BOLD)
         sfont.SetPointSize(10)
         sbar.SetFont(sfont)
 
-        self.SetStatusWidths([-3,-1])
+        self.SetStatusWidths([-3, -1, -1])
         self.SetStatusText('',0)
 
         sizer = wx.GridBagSizer(10, 4)
@@ -180,6 +182,10 @@ class AD_Display(wx.Frame):
 
         wx.CallAfter(self.connect_pvs )
 
+    def messag(self, s, panel=0):
+        """write a message to the Status Bar"""
+        self.SetStatusText(s, panel)
+
     def onEntry(self, evt=None, key='name', **kw):
         if evt is None:
             return
@@ -191,23 +197,24 @@ class AD_Display(wx.Frame):
             self.prefix = s
             self.connect_pvs()
         else:
-            print 'onEntry ', key
+            print 'onEntry ? ', key
 
     @EpicsFunction
     def connect_pvs(self):
-        print 'Connecting... ', self.prefix
+        self.messag('Connecting to AD %s' % self.prefix)
         self.ad_img = epics.Device(self.prefix + ':image1:', delim='',
                                    attrs=self.img_attrs)
         self.ad_cam = epics.Device(self.prefix + ':cam1:', delim='',
                                    attrs=self.cam_attrs)
         
-        print self.ad_img
-        print self.ad_cam._pvs
         time.sleep(0.01)
         if not self.ad_img.PV('UniqueId_RBV').connected:
             epics.ca.poll()
             if not self.ad_img.PV('UniqueId_RBV').connected:
+                self.messag('Warning:  Camera seems to not be connected!')
                 return
+
+        self.messag('Connected to AD %s' % self.prefix)
 
         self.SetTitle("Epics Image Display: %s" % self.prefix)
         self.ad_img.add_callback('UniqueId_RBV',   self.onNewImage)
@@ -215,6 +222,7 @@ class AD_Display(wx.Frame):
         self.ad_img.add_callback('ArraySize1_RBV', self.onProperty, dim=1)
         self.ad_img.add_callback('ArraySize2_RBV', self.onProperty, dim=2)
         self.ad_img.add_callback('ColorMode_RBV',  self.onProperty, dim='color')
+        self.ad_cam.add_callback('DetectorState_RBV',  self.onDetState)
 
         self.GetImageSize()
         epics.poll()
@@ -237,6 +245,10 @@ class AD_Display(wx.Frame):
         if self.colormode == 2:
             self.img_w = self.arrsize[2]
             self.img_h = self.arrsize[1]
+        
+    @DelayedEpicsCallback
+    def onDetState(self, pvname=None, value=None, char_value=None, **kw):
+        self.messag(char_value, panel=1)
         
     @DelayedEpicsCallback
     def onProperty(self, pvname=None, value=None, dim=None, **kw):
@@ -268,7 +280,7 @@ class AD_Display(wx.Frame):
         d.add('know image size/type')
         rawdata = self.ad_img.PV('ArrayData').get(count=arraysize)
         d.add('have rawdata')
-        self.SetStatusText(' Image %i ' % self.ad_cam.ArrayCounter_RBV, 1)
+        self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
 
         imbuff =  Image.frombuffer(im_mode, im_size, rawdata,
                                    'raw', im_mode, 0, 1)
