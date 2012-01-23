@@ -103,8 +103,10 @@
   <div class="section" id="strip-chart-display">
 <h1>Strip Chart Display<a class="headerlink" href="#strip-chart-display" title="Permalink to this headline">¶</a></h1>
 <p>StripChart is a wxPython GUI application for viewing time traces of PVs as
-a strip chart.   This is inspired by the classic Epics Stripchart
-application written with X/Motif.</p>
+a strip chart.  It feature interactive graphics, with click-and-drag
+zooming, updating the plotted time range, saving figures as high-quality
+PNGs, and saving data to ASCII files.  Stripchart is inspired somewhat by the
+classic Epics Stripchart application written with X/Motif, but has many differences.</p>
 <div class="section" id="dependencies-installation">
 <h2>Dependencies, Installation<a class="headerlink" href="#dependencies-installation" title="Permalink to this headline">¶</a></h2>
 <p>This application needs pyepics, numpy, matplotlib, and wxPython.</p>
@@ -128,8 +130,13 @@ like this:</p>
 </div>
 <div class="section" id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
-<p>Plot details such as line colors, thicknesses, labels, etc can be adjusted
-from the configuration screen, available from the Menu.</p>
+<p>Plot details can be adjusted from the configuration form, available from
+the Options Menu, and shown below.  From this frame, you can adjust trace
+colors, symbols, line width and style, symbol size and styles, axes labels,
+and the contents and location of a plot legend.  Text for titles, axes
+labels, and legend can include latex strings for math/Greek characters.</p>
+<p>From the main plot, Ctrl-C works to copy to the system clipboard, and
+Ctrl-P will open a print dialog.</p>
 <img alt="_images/StripChart_Config.png" src="_images/StripChart_Config.png" />
 </div>
 </div>

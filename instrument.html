@@ -61,8 +61,10 @@
   <h3><a href="index.html">Table Of Contents</a></h3>
   <ul>
 <li><a class="reference internal" href="#">Using Epics Instruments</a><ul>
+<li><a class="reference internal" href="#dependencies-installation">Dependencies, Installation</a></li>
 <li><a class="reference internal" href="#getting-started">Getting Started</a></li>
-<li><a class="reference internal" href="#defining-an-instrument">Defining an Instrument</a></li>
+<li><a class="reference internal" href="#defining-a-new-instrument">Defining a New Instrument</a></li>
+<li><a class="reference internal" href="#editing-an-exisiting-instrument">Editing an Exisiting Instrument</a></li>
 <li><a class="reference internal" href="#the-instrument-file">The Instrument File</a></li>
 </ul>
 </li>
@@ -102,17 +104,60 @@
             
   <div class="section" id="using-epics-instruments">
 <h1>Using Epics Instruments<a class="headerlink" href="#using-epics-instruments" title="Permalink to this headline">¶</a></h1>
+<p>Epics Instruments is a GUI application (using wxPython) that lets any user:</p>
+<blockquote>
+<div><ul class="simple">
+<li>Organize PVs into Instruments: a named collection of PVs</li>
+<li>Manage Instruments with modern Notebook-tab interface.</li>
+<li>Save Positions for any Instrument by name.</li>
+<li>Restore Positions for any Instrument by name.</li>
+<li>Remember Settings for all definitions into a single file that can be loaded later.</li>
+<li>Multiple Users can be using multiple instrument files at any one time.</li>
+</ul>
+</div></blockquote>
+<p>It was originally written to replace and organize the multitude of similar MEDM
+screens that appear at many workstations using Epics.</p>
+<div class="section" id="dependencies-installation">
+<h2>Dependencies, Installation<a class="headerlink" href="#dependencies-installation" title="Permalink to this headline">¶</a></h2>
+<p>This application needs pyepics, numpy, wxPython, and SQLAlchemy (available
+at <a class="reference external" href="http://www.sqlalchemy.org/">http://www.sqlalchemy.org/</a>).</p>
+<p>To install, use:</p>
+<div class="highlight-python"><pre>python setup.py install</pre>
+</div>
+<p>from the Instruments folder.   A windows installer may be available.</p>
+</div>
 <div class="section" id="getting-started">
 <h2>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h2>
-<p>To run Epics Instruments, click on the icon.  You will see a small window
-to select an Epics Instrument File.  If this is your first time using the
-application, choose a name, and hit return to start a new Instrument File.
-The next time you run Epics Instruments, it should remember which files
-you've recently used, and present you with a drop-down list of Instrument
-Files.</p>
+<p>To run Epics Instruments, use:</p>
+<div class="highlight-python"><pre>python pyepics_instruments.py</pre>
 </div>
-<div class="section" id="defining-an-instrument">
-<h2>Defining an Instrument<a class="headerlink" href="#defining-an-instrument" title="Permalink to this headline">¶</a></h2>
+<p>or click on the icon.</p>
+<p>A small window to select an Epics Instrument File, like this</p>
+<img alt="_images/Inst_Startup.png" src="_images/Inst_Startup.png" />
+<p>If this is your first time using the application, choose a name, and hit
+return to start a new Instrument File.  The next time you run Epics
+Instruments, it should remember which files you've recently used, and
+present you with a drop-down list of Instrument Files.  Since all the
+definitions, positions, and settings are saved in a single file, restoring
+this file will recall the earlier session of instrument definitions and
+saved positions.</p>
+<p>An Epics <strong>Instrument</strong> is a collection of PVs.  Each Instrument will also
+have a collection of <strong>Positions</strong>, which are just the locations of all the
+PVs in the instrument at the time the Position was saved.  Like a PV, each
+Instrument and each Position for an Instrument has a unique name.</p>
+</div>
+<div class="section" id="defining-a-new-instrument">
+<h2>Defining a New Instrument<a class="headerlink" href="#defining-a-new-instrument" title="Permalink to this headline">¶</a></h2>
+<p>To define a new Instrument, select <strong>Create New Instrument</strong> from the
+Instruments Menu.  A screen will appear in which you can name the
+instrument and the PVs that belong to the Instrument.</p>
+<p>If you add a few PVs and click OK, the PVs will connect, and you will see a
+screen something like this</p>
+<img alt="_images/InstMain_Stage.png" src="_images/InstMain_Stage.png" />
+</div>
+<div class="section" id="editing-an-exisiting-instrument">
+<h2>Editing an Exisiting Instrument<a class="headerlink" href="#editing-an-exisiting-instrument" title="Permalink to this headline">¶</a></h2>
+<img alt="_images/Inst_Edit.png" src="_images/Inst_Edit.png" />
 </div>
 <div class="section" id="the-instrument-file">
 <h2>The Instrument File<a class="headerlink" href="#the-instrument-file" title="Permalink to this headline">¶</a></h2>
