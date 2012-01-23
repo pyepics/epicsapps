@@ -1,0 +1,8 @@
+$(P)$(Q):host
+$(P)$(Q):dir
+$(P)$(Q):subdir
+$(P)$(Q):filebase
+$(P)$(Q):format 
+$(P)$(Q):fileext
+$(P)$(Q):det
+$(P)$(Q):nelem

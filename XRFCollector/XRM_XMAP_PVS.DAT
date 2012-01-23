@@ -1,0 +1,23 @@
+S:SRcurrentAI.VAL        Storage Ring Current
+ID13ds:Energy.VAL        Undulator Energy
+ID13ds:Gap.VAL           Undulator Gap
+ID13ds:HarmonicValue.VAL Undulator Harmonic
+BL13:SRID:HPosition.VAL  ID H Beam Pos
+BL13:SRID:HAngle.VAL     ID H Beam Angle
+BL13:SRID:VPosition.VAL  ID V Beam Pos
+BL13:SRID:VAngle.VAL     ID V Beam Angle
+13IDA:E:Energy.VAL       Mono Energy drive val
+13IDA:E:E_RBV            Mono Energy readback
+13IDA:m17.RBV            FOE Mono angle readback
+13SDD1:dxp1:PeakingTime         Vortex dxp1 Peaking Time 
+13SDD1:dxp2:PeakingTime         Vortex dxp2 Peaking Time
+13SDD1:dxp3:PeakingTime         Vortex dxp3 Peaking Time
+13SDD1:dxp4:PeakingTime         Vortex dxp4 Peaking Time
+13SDD1:dxp1:InputCountRate      Vortex dxp1 Input Count Rate
+13SDD1:dxp2:InputCountRate      Vortex dxp2 Input Count Rate
+13SDD1:dxp3:InputCountRate      Vortex dxp3 Input Count Rate
+13SDD1:dxp4:InputCountRate      Vortex dxp4 Input Count Rate
+13SDD1:dxp1:OutputCountRate     Vortex dxp1 Output Count Rate
+13SDD1:dxp2:OutputCountRate     Vortex dxp2 Output Count Rate
+13SDD1:dxp3:OutputCountRate     Vortex dxp3 Output Count Rate
+13SDD1:dxp4:OutputCountRate     Vortex dxp4 Output Count Rate

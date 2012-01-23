@@ -1,0 +1,23 @@
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/epicsapps/!svn/ver/1/trunk/XRFCollector/iocboot
+END
+XRF_Collect.db
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/epicsapps/!svn/ver/1/trunk/XRFCollector/iocboot/XRF_Collect.db
+END
+XRF_Collect.req
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/epicsapps/!svn/ver/1/trunk/XRFCollector/iocboot/XRF_Collect.req
+END
+st_cmd_text
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/epicsapps/!svn/ver/1/trunk/XRFCollector/iocboot/st_cmd_text
+END

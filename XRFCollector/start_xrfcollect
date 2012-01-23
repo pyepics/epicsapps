@@ -1,0 +1,35 @@
+#!/usr/bin/python
+from MED_Collect import MED_Collector
+from epics import PV
+import time
+import sys
+import getopt
+
+Force_Restart = False
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "f",["force"])
+    for k,v in opts:
+        if k in ("-f", "--force"):  Force_Restart = True
+except:
+    pass # opts,args  = {},()
+
+
+ts_pv = PV('13XRM:XRF:UNIXTS')
+last_time = ts_pv.get()
+
+Running_Msg = '''XRF collection seems to be running fine.
+use "start_xrfcollect -f" to force a restart
+ '''
+
+if (time.time()-last_time > 10) or Force_Restart:
+    print 'starting XRF Collect...'
+    med= MED_Collector()
+    med.run()
+else:
+    print Running_Msg
+    
+
+    
+
+
