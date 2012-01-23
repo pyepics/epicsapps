@@ -4,12 +4,13 @@ Python Epics Applications
 ================================
 
 PyEpics Apps contains several Epics Applications written in python, using
-the pyepics module.  Many of these are GUI Application for interacting with
-Epics devices through Channel Access.  The programs here are meant to be
-useful as end-user applications, or at least as examples showing how one
-can build complex applications with PyEpics. Many of the applications here
-rely on wxPython, and some also rely on other 3rd party modules (such as 
-Image and SQLAlchemy).
+the pyepics module (see `http://pyepics.github.com/epicsapps/
+<http://pyepics.github.com/epicsapps/>`_).  Many of these are GUI
+Application for interacting with Epics devices through Channel Access.  The
+programs here are meant to be useful as end-user applications, or at least
+as examples showing how one can build complex applications with
+PyEpics. Many of the applications here rely on wxPython, and some also rely
+on other 3rd party modules (such as Image and SQLAlchemy).
 
 The list of applications should be expanding, but currently include:
 
