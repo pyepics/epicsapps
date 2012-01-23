@@ -16,7 +16,9 @@ from debugtime import debugtime
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '16777216'
 
 import epics
-from epics.wx import DelayedEpicsCallback, EpicsFunction, Closure
+import epics.wx
+from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
+                      PVEnumChoice, PVFloatCtrl)
 
 class ImageView(wx.Window):
     def __init__(self, parent, id=-1, pos=wx.DefaultPosition,
@@ -25,7 +27,7 @@ class ImageView(wx.Window):
         
         self.image = None
         self.SetBackgroundColour('WHITE')
-
+        self.can_resize = True
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Bind(wx.EVT_SIZE, self.OnSize)
 
@@ -34,9 +36,10 @@ class ImageView(wx.Window):
         self.Refresh()
     
     def OnSize(self, event):
-        self.DrawImage(size=event.GetSize())
+        if self.can_resize:
+            self.DrawImage(size=event.GetSize())
+            self.Refresh()
         event.Skip()
-        self.Refresh()
 
     def OnPaint(self, event):
         self.DrawImage()
@@ -93,29 +96,38 @@ class AD_Display(wx.Frame):
                  'ColorMode_RBV')
 
     cam_attrs = ('Acquire', 'ArrayCounter', 'ArrayCounter_RBV',
-                 'DetectorState_RBV',
-                 'NumImages')
+                 'DetectorState_RBV',  'NumImages', 'ColorMode',
+                 'AcquireTime', 'AcquirePeriod', 'ImageMode',
+                 'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
+                 'SizeX', 'SizeY', 'MinX', 'MinY')
+                 
     
-    def __init__(self, prefix=None, scale=1.0, approx_height=600):
+    def __init__(self, prefix=None, app=None, scale=1.0, approx_height=600):
 
-
-
+        self.app = app
         self.ad_img = None
         self.ad_cam = None
+        self.imgcount = 0
         self.prefix = prefix
         self.scale  = scale
         self.arrsize  = [0,0,0]
         self.imbuff = None
         self.colormode = 0
+        self.last_update = 0.0
 
+        
+        wx.CallAfter(self.connect_pvs )
         wx.Frame.__init__(self, None, -1,
                           "Epics Area Detector Display",
                           style=wx.DEFAULT_FRAME_STYLE)
-        
+
+        self.timer = wx.Timer(self, -1)        
+        self.Bind(wx.EVT_TIMER, self.onTimer)
         self.img_w = 0
         self.img_h = 0
         self.wximage = wx.EmptyImage(approx_height, approx_height)
         self.buildFrame()
+        self.timer.Start(100)
 
     def buildFrame(self):
         sbar = self.CreateStatusBar(3, wx.CAPTION|wx.THICK_FRAME)
@@ -129,43 +141,61 @@ class AD_Display(wx.Frame):
 
         sizer = wx.GridBagSizer(10, 4)
         panel = wx.Panel(self)
+        self.panel = panel
         labstyle = wx.ALIGN_LEFT|wx.LEFT|wx.TOP|wx.EXPAND        
 
-        sizer.Add(wx.StaticText(panel, label='Base PV:', size=(120, -1)),
-                  (0, 0), (1, 1), labstyle)
-                               
-        sizer.Add(wx.StaticText(panel, label='NX ', size=(60, -1)),
-                  (0, 1), (1, 1), labstyle)
-                               
-        sizer.Add(wx.StaticText(panel, label='NY ', size=(60, -1)),
-                  (0, 2), (1, 1), labstyle)
-                               
-        sizer.Add(wx.StaticText(panel, label='NZ ', size=(60, -1)),
-                  (0, 3), (1, 1), labstyle)
 
-#         sizer.Add(wx.StaticText(panel, label='Color', size=(60, -1)),
-#                   (0, 4), (1, 1), labstyle)
-# 
         txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
         self.wids = {}
-        self.wids['name']= wx.TextCtrl(panel, -1,  size=(120,-1),
+        self.wids['name']= wx.TextCtrl(panel, -1,  size=(100,-1),
                                        style=txtstyle)
-        self.wids['nx'] = wx.StaticText(panel, -1, size=(60,-1),
-                                     style=txtstyle)
-        self.wids['ny'] = wx.StaticText(panel, -1, size=(60,-1),
-                                       style=txtstyle)
-        self.wids['nz'] = wx.StaticText(panel, -1, size=(60,-1),
-                                       style=txtstyle)        
+        self.wids['expt']   = PVFloatCtrl(panel, pv=None, size=(60,-1))
+        self.wids['period'] = PVFloatCtrl(panel, pv=None, size=(60,-1))
+
+
+        self.wids['imagemode'] = PVEnumChoice(panel, pv=None)
+        self.wids['triggermode'] = PVEnumChoice(panel, pv=None)
+        self.wids['color'] = PVEnumChoice(panel, pv=None)
+        self.wids['start'] = wx.Button(panel, -1, label='Start', size=(50,-1))
+        self.wids['stop']  = wx.Button(panel, -1, label='Stop', size=(50,-1))
 
         self.wids['name'].SetValue(self.prefix)
+
+        for key in ('start', 'stop'):
+            self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onEntry, key=key))
+       
+        for key in ('name',):
+            self.wids[key].Bind(wx.EVT_TEXT_ENTER, Closure(self.onEntry, key=key))
         
-        for key, val in self.wids.items():
-            val.Bind(wx.EVT_TEXT_ENTER, Closure(self.onEntry, key=key))
-        
+        sizer.Add(wx.StaticText(panel, label='PV Name:', size=(100, -1)),
+                  (0, 0), (1, 1), labstyle)
+                               
+        sizer.Add(wx.StaticText(panel, label='Exposure Time ', size=(60, -1)),
+                  (0, 1), (1, 1), labstyle)
+                               
+        sizer.Add(wx.StaticText(panel, label='Period ', size=(60, -1)),
+                  (0, 2), (1, 1), labstyle)
+                               
+        sizer.Add(wx.StaticText(panel, label='Image Mode ', size=(60, -1)),
+                  (0, 3), (1, 1), labstyle)
+
+        sizer.Add(wx.StaticText(panel, label='Trigger Mode ', size=(60, -1)),
+                  (0, 4), (1, 1), labstyle)
+
+        sizer.Add(wx.StaticText(panel, label='Color', size=(60, -1)),
+                  (0, 5), (1, 1), labstyle)
+
+        sizer.Add(wx.StaticText(panel, label=' Acquire ', size=(120, -1)),
+                  (0, 6), (1, 2), labstyle)
+
         sizer.Add(self.wids['name'], (1, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['nx'],  (1, 1), (1, 1), labstyle)
-        sizer.Add(self.wids['ny'],  (1, 2), (1, 1), labstyle)
-        sizer.Add(self.wids['nz'],  (1, 3), (1, 1), labstyle)
+        sizer.Add(self.wids['expt'],  (1, 1), (1, 1), labstyle)
+        sizer.Add(self.wids['period'],  (1, 2), (1, 1), labstyle)
+        sizer.Add(self.wids['imagemode'],  (1, 3), (1, 1), labstyle)
+        sizer.Add(self.wids['triggermode'], (1, 4), (1, 1), labstyle)
+        sizer.Add(self.wids['color'], (1, 5), (1, 1), labstyle)
+        sizer.Add(self.wids['start'], (1, 6), (1, 1), labstyle)
+        sizer.Add(self.wids['stop'],  (1, 7), (1, 1), labstyle)
 
         self.image = ImageView(self, size=(600,500))
         
@@ -186,6 +216,7 @@ class AD_Display(wx.Frame):
         """write a message to the Status Bar"""
         self.SetStatusText(s, panel)
 
+    @EpicsFunction
     def onEntry(self, evt=None, key='name', **kw):
         if evt is None:
             return
@@ -196,27 +227,39 @@ class AD_Display(wx.Frame):
             if s.endswith(':cam1:'):   s = s[:-6]            
             self.prefix = s
             self.connect_pvs()
+        elif key == 'start':
+            self.ad_cam.Acquire = 1
+        elif key == 'stop':
+            self.ad_cam.Acquire = 0
         else:
             print 'onEntry ? ', key
 
     @EpicsFunction
-    def connect_pvs(self):
-        self.messag('Connecting to AD %s' % self.prefix)
+    def connect_pvs(self, verbose=True):
+        if verbose:
+            self.messag('Connecting to AD %s' % self.prefix)
         self.ad_img = epics.Device(self.prefix + ':image1:', delim='',
                                    attrs=self.img_attrs)
         self.ad_cam = epics.Device(self.prefix + ':cam1:', delim='',
                                    attrs=self.cam_attrs)
         
-        time.sleep(0.01)
+        time.sleep(0.005)
         if not self.ad_img.PV('UniqueId_RBV').connected:
             epics.ca.poll()
             if not self.ad_img.PV('UniqueId_RBV').connected:
                 self.messag('Warning:  Camera seems to not be connected!')
                 return
-
-        self.messag('Connected to AD %s' % self.prefix)
+        if verbose:
+            self.messag('Connected to AD %s' % self.prefix)
 
         self.SetTitle("Epics Image Display: %s" % self.prefix)
+        
+        self.wids['color'].SetPV(self.ad_cam.PV('ColorMode'))
+        self.wids['expt'].SetPV(self.ad_cam.PV('AcquireTime'))
+        self.wids['period'].SetPV(self.ad_cam.PV('AcquirePeriod'))        
+        self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
+        self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))        
+
         self.ad_img.add_callback('UniqueId_RBV',   self.onNewImage)
         self.ad_img.add_callback('ArraySize0_RBV', self.onProperty, dim=0)
         self.ad_img.add_callback('ArraySize1_RBV', self.onProperty, dim=1)
@@ -236,9 +279,9 @@ class AD_Display(wx.Frame):
         self.arrsize[2] = self.ad_img.ArraySize2_RBV
         self.colormode = self.ad_img.ColorMode_RBV
 
-        self.wids['nx'].SetLabel('%i' % self.arrsize[0])
-        self.wids['ny'].SetLabel('%i' % self.arrsize[1])
-        self.wids['nz'].SetLabel('%i' % self.arrsize[2])
+        #self.wids['nx'].SetLabel('%i' % self.arrsize[0])
+        #self.wids['ny'].SetLabel('%i' % self.arrsize[1])
+        #self.wids['nz'].SetLabel('%i' % self.arrsize[2])
 
         self.img_w = self.arrsize[1]
         self.img_h = self.arrsize[0]
@@ -256,15 +299,41 @@ class AD_Display(wx.Frame):
             self.colormode=value
         else:
             self.arrsize[dim] = value
-        
+       
+    def onTimer(self, evt=None):
+        self.app.ProcessPendingEvents()
+        try:
+            self.app.Yield()
+        except:
+            pass
+
+
     @DelayedEpicsCallback
     def onNewImage(self, pvname=None, value=None, **kw):
         self.RefreshImage()
-        
+
     @EpicsFunction
     def RefreshImage(self):
-        d = debugtime()
         imgdim = self.ad_img.NDimensions_RBV
+        imgcount = self.ad_cam.ArrayCounter_RBV
+        if imgcount == self.imgcount:
+            return
+        self.imgcount = imgcount
+        time.sleep(0.01)
+        self.app.ProcessPendingEvents()
+        try:
+            self.app.Yield()
+        except:
+            pass
+
+        now = time.time()
+        if abs(now - self.last_update) < 0.03:
+            return
+
+        self.last_update = time.time()
+
+        self.image.can_resize = False
+
         arraysize = self.arrsize[0] * self.arrsize[1]
         if imgdim == 3:
             arraysize = arraysize * self.arrsize[2] 
@@ -277,29 +346,25 @@ class AD_Display(wx.Frame):
         if self.colormode == 2:
             im_mode = 'RGB'
             im_size = [self.arrsize[1], self.arrsize[2]]
-        d.add('know image size/type')
+
+
         rawdata = self.ad_img.PV('ArrayData').get(count=arraysize)
-        d.add('have rawdata')
         self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
 
         imbuff =  Image.frombuffer(im_mode, im_size, rawdata,
                                    'raw', im_mode, 0, 1)
-        d.add('data to imbuff')
         self.GetImageSize()
         if self.img_h < 1 or self.img_w < 1:
             return
         display_size = (int(self.img_h*self.scale), int(self.img_w*self.scale))
 
         imbuff = imbuff.resize(display_size)
-        d.add('imbuff resized')
         if self.wximage.GetSize() != imbuff.size:
              self.wximage = wx.EmptyImage(display_size[0], display_size[1])
 
         self.wximage.SetData(imbuff.convert('RGB').tostring())
         self.image.SetValue(self.wximage)
-
-        d.add('wx bitmap set')
-        #if self.ad_cam.ArrayCounter_RBV % 5 == 0: d.show()
+        self.image.can_resize = True        
         
 if __name__ == '__main__':
     import sys
@@ -308,7 +373,7 @@ if __name__ == '__main__':
         prefix = sys.argv[1]
 
     app = wx.PySimpleApp()
-    frame = AD_Display(prefix=prefix)
+    frame = AD_Display(prefix=prefix, app=app)
     frame.Show()
     app.MainLoop()
 
