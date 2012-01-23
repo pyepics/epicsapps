@@ -29,7 +29,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Epics Applications'
-copyright = u'2011, Matthew Newville'
+copyright = u'2012, Matthew Newville'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -152,7 +152,7 @@ html_show_sourcelink = True
 #html_file_suffix = ''
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'epicsinst'
+htmlhelp_basename = 'epicsapps'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -166,7 +166,7 @@ htmlhelp_basename = 'epicsinst'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-    ('index', 'epicsapps.tex', u'Epics Applications Documentation',
+    ('index', 'epicsapps.tex', u'Epics Applications using PyEpics',
      u'Matthew Newville', 'manual'),
     ]
 

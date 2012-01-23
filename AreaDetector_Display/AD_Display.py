@@ -115,7 +115,6 @@ class AD_Display(wx.Frame):
         self.colormode = 0
         self.last_update = 0.0
 
-        
         wx.CallAfter(self.connect_pvs )
         wx.Frame.__init__(self, None, -1,
                           "Epics Area Detector Display",
@@ -160,12 +159,11 @@ class AD_Display(wx.Frame):
         self.wids['stop']  = wx.Button(panel, -1, label='Stop', size=(50,-1))
 
         self.wids['name'].SetValue(self.prefix)
+        self.wids['name'].Bind(wx.EVT_TEXT_ENTER, self.onName)
 
         for key in ('start', 'stop'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onEntry, key=key))
        
-        for key in ('name',):
-            self.wids[key].Bind(wx.EVT_TEXT_ENTER, Closure(self.onEntry, key=key))
         
         sizer.Add(wx.StaticText(panel, label='PV Name:', size=(100, -1)),
                   (0, 0), (1, 1), labstyle)
@@ -216,18 +214,25 @@ class AD_Display(wx.Frame):
         """write a message to the Status Bar"""
         self.SetStatusText(s, panel)
 
+
+    def onName(self, evt=None, **kws):
+        if evt is None:
+            return
+        s = evt.GetString()
+        s = str(s).strip()
+        if s.endswith(':image1:'): s = s[:-8]
+        if s.endswith(':cam1:'):   s = s[:-6]            
+        if s.endswith(':'):   s = s[:-1]
+        self.prefix = s
+        self.connect_pvs()
+
     @EpicsFunction
     def onEntry(self, evt=None, key='name', **kw):
         if evt is None:
             return
         s = evt.GetString()
         s = str(s).strip()
-        if key == 'name':
-            if s.endswith(':image1:'): s = s[:-8]
-            if s.endswith(':cam1:'):   s = s[:-6]            
-            self.prefix = s
-            self.connect_pvs()
-        elif key == 'start':
+        if key == 'start':
             self.ad_cam.Acquire = 1
         elif key == 'stop':
             self.ad_cam.Acquire = 0
@@ -236,8 +241,13 @@ class AD_Display(wx.Frame):
 
     @EpicsFunction
     def connect_pvs(self, verbose=True):
+        if self.prefix is None or len(self.prefix) < 4:
+            return
+
+
         if verbose:
             self.messag('Connecting to AD %s' % self.prefix)
+
         self.ad_img = epics.Device(self.prefix + ':image1:', delim='',
                                    attrs=self.img_attrs)
         self.ad_cam = epics.Device(self.prefix + ':cam1:', delim='',
@@ -368,7 +378,7 @@ class AD_Display(wx.Frame):
         
 if __name__ == '__main__':
     import sys
-    prefix = '13IDCPS1'
+    prefix = ''
     if len(sys.argv) > 1:
         prefix = sys.argv[1]
 

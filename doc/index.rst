@@ -70,9 +70,9 @@ Associated .db file and medm .adl file are provided.
    installation
    ad_display
    stripchart
-   instruments
-   ionchamber
+   instrument
    xrfcollect
+   ionchamber
 
 
 
