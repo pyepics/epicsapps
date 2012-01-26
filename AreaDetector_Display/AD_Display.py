@@ -11,7 +11,7 @@ import wx
 import numpy as np
 import Image
 
-from debugtime import debugtime
+# from debugtime import debugtime
 
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '16777216'
 
@@ -49,7 +49,10 @@ class ImageView(wx.Window):
             return
         if size is None:
             size = self.GetSize()
-        wwidth,wheight = size
+        try:
+            wwidth,wheight = size
+        except:
+            return
         image = self.image
         bmp = None
         if image.IsOk():
@@ -74,12 +77,10 @@ class ImageView(wx.Window):
         oheight = int(scale*iheight)
         diffx = (wwidth - owidth)/2   # center calc
         diffy = (wheight - oheight)/2   # center calc
-
         if bmp is None:
             if owidth!=iwidth or oheight!=iheight:
                 image = image.Scale(owidth,oheight)
             bmp = image.ConvertToBitmap()
-
         if dc is None:
             try:
                 dc = wx.PaintDC(self)
@@ -87,8 +88,7 @@ class ImageView(wx.Window):
                 pass
         if dc is not None:
             dc.DrawBitmap(bmp, diffx, diffy, useMask=True)
-
-
+        
 class AD_Display(wx.Frame):
     """AreaDetector Display """
     img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
@@ -101,8 +101,7 @@ class AD_Display(wx.Frame):
                  'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
                  'SizeX', 'SizeY', 'MinX', 'MinY')
                  
-    
-    def __init__(self, prefix=None, app=None, scale=1.0, approx_height=600):
+    def __init__(self, prefix=None, app=None, scale=1.0, approx_height=1024):
 
         self.app = app
         self.ad_img = None
@@ -114,19 +113,20 @@ class AD_Display(wx.Frame):
         self.imbuff = None
         self.colormode = 0
         self.last_update = 0.0
-
+        self.n_img   = 0
+        self.n_drawn = 0
+        self.img_id = 0
+        self.starttime = time.time()
+        self.drawing = False
         wx.CallAfter(self.connect_pvs )
         wx.Frame.__init__(self, None, -1,
                           "Epics Area Detector Display",
                           style=wx.DEFAULT_FRAME_STYLE)
 
-        self.timer = wx.Timer(self, -1)        
-        self.Bind(wx.EVT_TIMER, self.onTimer)
         self.img_w = 0
         self.img_h = 0
         self.wximage = wx.EmptyImage(approx_height, approx_height)
         self.buildFrame()
-        self.timer.Start(100)
 
     def buildFrame(self):
         sbar = self.CreateStatusBar(3, wx.CAPTION|wx.THICK_FRAME)
@@ -207,7 +207,6 @@ class AD_Display(wx.Frame):
         mainsizer.Add(self.image, 1, wx.CENTER|wx.GROW|wx.ALL, 1)
         self.SetSizer(mainsizer)
         mainsizer.Fit(self)
-
         wx.CallAfter(self.connect_pvs )
 
     def messag(self, s, panel=0):
@@ -233,11 +232,14 @@ class AD_Display(wx.Frame):
         s = evt.GetString()
         s = str(s).strip()
         if key == 'start':
+            self.n_img   = 0
+            self.n_drawn = 0
+            self.starttime = time.time()
             self.ad_cam.Acquire = 1
         elif key == 'stop':
             self.ad_cam.Acquire = 0
         else:
-            print 'onEntry ? ', key
+            print 'unknown Entry ? ', key
 
     @EpicsFunction
     def connect_pvs(self, verbose=True):
@@ -310,59 +312,70 @@ class AD_Display(wx.Frame):
         else:
             self.arrsize[dim] = value
        
-    def onTimer(self, evt=None):
-        self.app.ProcessPendingEvents()
-        try:
-            self.app.Yield()
-        except:
-            pass
-
-
     @DelayedEpicsCallback
     def onNewImage(self, pvname=None, value=None, **kw):
-        self.RefreshImage()
+        if value != self.img_id:
+            self.img_id = value
+            self.n_img += 1
+            if not self.drawing:
+                self.drawing = True
+                self.RefreshImage()
+
 
     @EpicsFunction
-    def RefreshImage(self):
-        imgdim = self.ad_img.NDimensions_RBV
-        imgcount = self.ad_cam.ArrayCounter_RBV
-        if imgcount == self.imgcount:
-            return
-        self.imgcount = imgcount
-        time.sleep(0.01)
-        self.app.ProcessPendingEvents()
+    def RefreshImage(self, pvname=None, **kws):
         try:
-            self.app.Yield()
+            time.sleep(0.01)
+            app = wx.GetApp()
+            app.ProcessIdle()
+            wx.Yield()
         except:
             pass
+        # d = debugtime()
+        imgdim = self.ad_img.NDimensions_RBV
+        imgcount = self.ad_cam.ArrayCounter_RBV
 
         now = time.time()
-        if abs(now - self.last_update) < 0.03:
+        if (imgcount == self.imgcount or abs(now - self.last_update) < 0.05):
+            self.drawing = False
             return
+        # d.add('refresh img start')
+        self.imgcount = imgcount
+        self.drawing = True
+        self.n_drawn += 1
 
         self.last_update = time.time()
-
         self.image.can_resize = False
 
         arraysize = self.arrsize[0] * self.arrsize[1]
         if imgdim == 3:
             arraysize = arraysize * self.arrsize[2] 
         if not self.ad_img.PV('ArrayData').connected:
+            self.drawing = False
             return
 
         im_mode = 'L'
         im_size = (self.arrsize[0], self.arrsize[1])
+
         
         if self.colormode == 2:
             im_mode = 'RGB'
             im_size = [self.arrsize[1], self.arrsize[2]]
 
-
         rawdata = self.ad_img.PV('ArrayData').get(count=arraysize)
+        # d.add('refresh got data')
+
         self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
 
         imbuff =  Image.frombuffer(im_mode, im_size, rawdata,
                                    'raw', im_mode, 0, 1)
+        # d.add('refresh after Image.frombuffer')        
+        nmissed = max(0, self.n_img-self.n_drawn)
+        smsg = 'Drew %i, Missed %i images in %.2f seconds' % (self.n_drawn,
+                                                              nmissed,
+                                                              time.time()-self.starttime)
+        self.messag(smsg, panel=0)
+
         self.GetImageSize()
         if self.img_h < 1 or self.img_w < 1:
             return
@@ -370,11 +383,17 @@ class AD_Display(wx.Frame):
 
         imbuff = imbuff.resize(display_size)
         if self.wximage.GetSize() != imbuff.size:
-             self.wximage = wx.EmptyImage(display_size[0], display_size[1])
-
+            self.wximage = wx.EmptyImage(display_size[0], display_size[1])
+        # d.add('refresh after sizing')
+        
         self.wximage.SetData(imbuff.convert('RGB').tostring())
+        # self.wximage.SetData(imbuff.tostring())
+
+        # d.add('refresh set wximage.tostring')
         self.image.SetValue(self.wximage)
         self.image.can_resize = True        
+        self.drawing = False
+        # d.show()
         
 if __name__ == '__main__':
     import sys
