@@ -16,7 +16,9 @@ class Collector:
 
         time.sleep(0.1)
         
-        self.device.add_callback('request', self.onRequest)
+        # self.device.add_callback('request', self.onRequest)
+    def onRequest(self,  pvname=None, value=None, **kws):
+        print 'Request changed to ', value
         
     def setTime(self, ts=None):
         if ts is None:
@@ -29,9 +31,6 @@ class Collector:
 
     def setStatus(self, status):
         self.device.status  =status
-
-    def onRequest(self,  pvname=None, value=None, **kws):
-        print 'Request changed to ', value
 
     def write_file(self):
         host     = self.device.get('host', as_string=True)
@@ -64,7 +63,7 @@ class Collector:
                 self.setMessage(' Starting ....')
                 self.setStatus(1)
                 self.write_file()
-                
+              
                 self.setMessage(' Done.')                    
                 self.setStatus(0)
                 self.device.request = 0

@@ -1,7 +1,7 @@
 #!/usr/bin/python
 from ExampleApp import Collector
 
-from epics import caget
+from epics import caget, caput
 import time
 import sys
 import getopt
@@ -28,7 +28,7 @@ last_time = caget('%s:unixtime' % PREFIX)
 
 if (time.time()-last_time > 10) or Force_Restart:
     if Force_Restart:
-        caput('%s:request' % PREFIX, 2)
+        caput('%s:request' % PREFIX, 4)
         print 'Waiting for shutdown .... '
         time.sleep(3.)
         
