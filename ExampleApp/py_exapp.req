@@ -1,0 +1,5 @@
+$(P)$(Q):host
+$(P)$(Q):folder
+$(P)$(Q):filename
+$(P)$(Q):fileext
+$(P)$(Q):format

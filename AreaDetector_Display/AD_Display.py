@@ -331,6 +331,7 @@ class AD_Display(wx.Frame):
             wx.Yield()
         except:
             pass
+        print 'Refresh!' 
         # d = debugtime()
         imgdim = self.ad_img.NDimensions_RBV
         imgcount = self.ad_cam.ArrayCounter_RBV
@@ -388,7 +389,7 @@ class AD_Display(wx.Frame):
         
         self.wximage.SetData(imbuff.convert('RGB').tostring())
         # self.wximage.SetData(imbuff.tostring())
-
+        print ' Set Image'
         # d.add('refresh set wximage.tostring')
         self.image.SetValue(self.wximage)
         self.image.can_resize = True        

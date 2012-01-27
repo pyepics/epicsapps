@@ -1,0 +1,44 @@
+#!/usr/bin/python
+from ExampleApp import Collector
+
+from epics import caget
+import time
+import sys
+import getopt
+
+PREFIX = 'Py:EXT'
+
+Force_Restart = False
+Running_Msg = '''
+   Example Collector seems to be running fine.
+   use "start_app -f" to force a restart
+'''
+
+
+try:
+    opts, args = getopt.getopt(sys.argv[1:], "f",["force"])
+    for k,v in opts:
+        if k in ("-f", "--force"):  Force_Restart = True
+except:
+    pass # opts,args  = {},()
+
+
+last_time = caget('%s:unixtime' % PREFIX)
+
+
+if (time.time()-last_time > 10) or Force_Restart:
+    if Force_Restart:
+        caput('%s:request' % PREFIX, 2)
+        print 'Waiting for shutdown .... '
+        time.sleep(3.)
+        
+    print 'starting Collector...'
+    c= Collector(PREFIX)
+    c.run()
+else:
+    print Running_Msg
+    
+
+    
+
+

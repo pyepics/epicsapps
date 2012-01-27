@@ -1,0 +1,124 @@
+# This database contains fields used to allow
+# communication between XRF_Collector and clients
+
+record(mbbo,"$(P)$(Q):status") {
+	field(DESC,"Read State")
+	field(VAL, "0")
+        field(ZRVL,"0")
+        field(ZRST,"Done")
+        field(ONVL,"1")
+        field(ONST,"Collecting")
+        field(TWVL,"2")
+        field(TWST,"Writing")
+        field(THVL,"3")
+        field(THST,"Not Connected")
+}
+
+record(mbbo,"$(P)$(Q):mode") {
+	field(DESC,"Collection Mode")
+	field(VAL, "0")
+        field(ZRVL,"0")
+        field(ZRST,"Empty")
+        field(ONVL,"1")
+        field(ONST,"Background")
+        field(TWVL,"2")
+        field(TWST,"Data")
+        field(THVL,"3")
+        field(THST,"Disconnected")
+}
+ 
+record(ao,"$(P)$(Q):counttime") {
+	field(DESC,"Collection Time")
+        field(PREC,"2")
+	field(VAL,"1.0")
+}
+
+record(mbbo,"$(P)$(Q):request") {
+	field(DESC,"Client Requests Collection")
+	field(VAL, "0")
+        field(ZRVL,"0")
+        field(ZRST,"Stop")
+        field(ONVL,"1")
+        field(ONST,"Start")
+        field(TWVL,"2")
+        field(TWST,"Pause")
+        field(THVL,"3")
+        field(THST,"Resume")
+        field(FRVL,"4")
+        field(FRST,"Shutdown")
+}
+
+record(waveform,"$(P)$(Q):host") {
+        field(DTYP,"Soft Channel") 
+        field(NELM,"128")
+        field(FTVL,"CHAR")
+	field(DESC, "file host")
+}
+
+record(waveform,"$(P)$(Q):folder") {
+        field(DTYP,"Soft Channel") 
+	field(DESC, "file directory")
+        field(NELM,"128")
+        field(FTVL,"CHAR")
+}
+
+record(waveform,"$(P)$(Q):filename") {
+        field(DTYP,"Soft Channel") 
+	field(DESC, "file name")
+        field(NELM,"128")
+        field(FTVL,"CHAR")
+}
+
+record(stringin,"$(P)$(Q):fileext") {
+        field(DTYP,"Soft Channel") 
+	field(DESC, "file extension")
+	field(VAL,  "")  
+}
+
+record(stringin,"$(P)$(Q):format") {
+        field(DTYP,"Soft Channel") 
+	field(DESC, "file format string")
+	field(VAL,  "%s.%s")
+}
+
+
+record(waveform,"$(P)$(Q):message")  {
+       field(DTYP,"Soft Channel")
+       field(DESC,"status message")
+       field(NELM,"128")
+       field(FTVL,"CHAR")
+}
+
+
+record(stringin,"$(P)$(Q):timestamp") {
+        field(DTYP,"Soft Channel") 
+	field(DESC, "timestamp as string")
+	field(VAL,  "Starting")
+}
+
+record(longout,"$(P)$(Q):unixtime") {
+        field(DTYP,"Soft Channel") 
+	field(DESC, "timestamp as integer")
+	field(VAL,  0)
+}
+
+record(waveform,"$(P)$(Q):arg1")  {
+       field(DTYP,"Soft Channel")
+       field(DESC,"user arg 1")
+       field(NELM,"128")
+       field(FTVL,"CHAR")
+}
+
+record(waveform,"$(P)$(Q):arg2")  {
+       field(DTYP,"Soft Channel")
+       field(DESC,"user arg 2")
+       field(NELM,"128")
+       field(FTVL,"CHAR")
+}
+
+record(waveform,"$(P)$(Q):arg3")  {
+       field(DTYP,"Soft Channel")
+       field(DESC,"user arg 3")
+       field(NELM,"128")
+       field(FTVL,"CHAR")
+}
