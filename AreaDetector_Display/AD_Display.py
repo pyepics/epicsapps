@@ -18,7 +18,7 @@ os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '16777216'
 import epics
 import epics.wx
 from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
-                      PVEnumChoice, PVFloatCtrl)
+                      PVEnumChoice, PVFloatCtrl, PVFloatSpin)
 
 class ImageView(wx.Window):
     def __init__(self, parent, id=-1, pos=wx.DefaultPosition,
@@ -35,7 +35,9 @@ class ImageView(wx.Window):
         self.Bind(wx.EVT_MOTION, self.OnMotion)
 
         self.onzoom = onzoom
-
+        self.flipv = False
+        self.fliph = False
+        self.rot90 = 0
         self.zoom_box = None
         self.zoom_coords = None
 
@@ -116,7 +118,6 @@ class ImageView(wx.Window):
             iwidth  = bmp.GetWidth()
             iheight = bmp.GetHeight()
   
-
         xfactor = float(wwidth) / iwidth
         yfactor = float(wheight) / iheight
 
@@ -132,6 +133,18 @@ class ImageView(wx.Window):
         diffy = (wheight - oheight)/2   # center calc
         self.img_size = owidth, oheight
         self.win_size = wwidth, wheight
+
+        if self.flipv:
+            image = image.Mirror(False)
+        if self.fliph:
+            image = image.Mirror(True)
+        if self.rot90 != 0:
+            if self.rot90 == 3:
+                image = image.Rotate90(False)
+            elif self.rot90 == 1:
+                image = image.Rotate90(True)
+            elif self.rot90 == 2:
+                image = image.Rotate90(True).Rotate90(True)
 
         if bmp is None:
             if owidth!=iwidth or oheight!=iheight:
@@ -168,7 +181,7 @@ class AD_Display(wx.Frame):
 
     cam_attrs = ('Acquire', 'ArrayCounter', 'ArrayCounter_RBV',
                  'DetectorState_RBV',  'NumImages', 'ColorMode',
-                 'DataType_RBV', 
+                 'DataType_RBV',  'Gain',
                  'AcquireTime', 'AcquirePeriod', 'ImageMode',
                  'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
                  'SizeX', 'SizeY', 'MinX', 'MinY')
@@ -198,7 +211,71 @@ class AD_Display(wx.Frame):
         self.img_w = 0
         self.img_h = 0
         self.wximage = wx.EmptyImage(approx_height, 1.5*approx_height)
+        self.buildMenus()
         self.buildFrame()
+
+    def buildMenus(self):
+        filemenu = wx.Menu()
+        FOPEN = wx.NewId()
+        FSAVE = wx.NewId()
+        FCOPY = wx.NewId()
+        FEXIT = wx.NewId()
+        HABOUT = wx.NewId()
+
+        filemenu.Append(FOPEN, "&Connect to PV\tCtrl+O",  "Connect to PV")
+        filemenu.Append(FSAVE, "&Save\tCtrl+S",  "Save Image")
+        filemenu.Append(FCOPY, "&Copy\tCtrl+C",  "Copy Image to Clipboard")
+        filemenu.AppendSeparator()
+        filemenu.Append(FEXIT, "E&xit\tCtrl+Q",  "Exit Program")
+
+
+        OROTCW  = wx.NewId()
+        OROTCCW = wx.NewId()
+        OFLIPH  = wx.NewId()
+        OFLIPV  = wx.NewId()
+        OZOOM   = wx.NewId()
+
+        optsmenu = wx.Menu()
+        optsmenu.Append(OROTCW,  "&Rotate Clockwise\tCtrl+R", "Rotate Clockwise")
+        optsmenu.Append(OROTCCW, "&Rotate CounterClockwise", "Rotate Counter Clockwise")
+        optsmenu.AppendSeparator()
+        optsmenu.Append(OFLIPV,  "&Flip Up/Down\tCtrl+F", "Flip Up/Down")
+        optsmenu.Append(OFLIPH,  "&Mlip Left/Right\tCtrl+M", "Flip Left/Right")
+        optsmenu.AppendSeparator()
+        optsmenu.Append(OZOOM,  "&Zoom out\tCtrl+Z", "Zoom Out")
+
+        helpmenu = wx.Menu()
+        helpmenu.Append(HABOUT, "About", "About MPlot")
+
+        mbar = wx.MenuBar()
+
+        mbar.Append(filemenu, "File")
+        mbar.Append(optsmenu, "Options")
+        mbar.Append(helpmenu, "&Help")
+        self.SetMenuBar(mbar)
+
+        self.Bind(wx.EVT_MENU, self.onFlipV,  id=OFLIPV)
+        self.Bind(wx.EVT_MENU, self.onFlipH,  id=OFLIPH)
+        self.Bind(wx.EVT_MENU, self.onRotCW,  id=OROTCW)
+        self.Bind(wx.EVT_MENU, self.onRotCCW,  id=OROTCCW)
+        self.Bind(wx.EVT_MENU, self.unZoom,   id=OZOOM)
+
+            
+    def onRotCW(self, event):
+        self.image.rot90 = (self.image.rot90 + 1) % 4
+        self.image.Refresh()
+
+    def onRotCCW(self, event):
+        self.image.rot90 = (self.image.rot90 - 1) % 4
+        self.image.Refresh()
+
+    def onFlipV(self, event):
+        self.image.flipv= not self.image.flipv
+        self.image.Refresh()
+
+    def onFlipH(self, event):
+        self.image.fliph = not self.image.fliph
+        self.Refresh()
 
     def buildFrame(self):
         sbar = self.CreateStatusBar(3, wx.CAPTION|wx.THICK_FRAME)
@@ -220,9 +297,11 @@ class AD_Display(wx.Frame):
         self.wids = {}
         self.wids['name']= wx.TextCtrl(panel, -1,  size=(100,-1),
                                        style=txtstyle)
-        self.wids['expt']   = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['period'] = PVFloatCtrl(panel, pv=None, size=(60,-1))
+        self.wids['expt']     = PVFloatCtrl(panel, pv=None, size=(60,-1))
+        self.wids['period']   = PVFloatCtrl(panel, pv=None, size=(60,-1))
         self.wids['numimages'] = PVFloatCtrl(panel, pv=None, size=(60,-1))
+        self.wids['gain'] = PVFloatSpin(panel, pv=None, size=(60,-1), 
+                                        min_val=1, max_val=20, increment=1, digits=1)
 
         self.wids['imagemode'] = PVEnumChoice(panel, pv=None)
         self.wids['triggermode'] = PVEnumChoice(panel, pv=None)
@@ -253,39 +332,45 @@ class AD_Display(wx.Frame):
         sizer.Add(wx.StaticText(panel, label='# Images', size=(60, -1)),
                   (0, 3), (1, 1), labstyle)
                                                      
-        sizer.Add(wx.StaticText(panel, label='Image Mode ', size=(60, -1)),
+        sizer.Add(wx.StaticText(panel, label='Gain ', size=(60, -1)),
                   (0, 4), (1, 1), labstyle)
 
-        sizer.Add(wx.StaticText(panel, label='Trigger Mode ', size=(60, -1)),
+        sizer.Add(wx.StaticText(panel, label='Image Mode ', size=(60, -1)),
                   (0, 5), (1, 1), labstyle)
 
-        sizer.Add(wx.StaticText(panel, label='Color', size=(60, -1)),
+        sizer.Add(wx.StaticText(panel, label='Trigger Mode ', size=(60, -1)),
                   (0, 6), (1, 1), labstyle)
 
+
+        sizer.Add(wx.StaticText(panel, label='Color', size=(60, -1)),
+                  (0, 7), (1, 1), labstyle)
+
+
         sizer.Add(wx.StaticText(panel, label=' Acquire ', size=(120, -1)),
-                  (0, 7), (1, 2), labstyle)
+                  (0, 8), (1, 2), labstyle)
 
         sizer.Add(self.wids['name'], (1, 0), (1, 1), labstyle)
         sizer.Add(self.wids['expt'],  (1, 1), (1, 1), labstyle)
-        sizer.Add(self.wids['period'],  (1, 2), (1, 1), labstyle)
-        sizer.Add(self.wids['numimages'],  (1, 3), (1, 1), labstyle)
-        sizer.Add(self.wids['imagemode'],  (1, 4), (1, 1), labstyle)
-        sizer.Add(self.wids['triggermode'], (1, 5), (1, 1), labstyle)
-        sizer.Add(self.wids['color'], (1, 6), (1, 1), labstyle)
-        sizer.Add(self.wids['start'], (1, 7), (1, 1), labstyle)
-        sizer.Add(self.wids['stop'],  (1, 8), (1, 1), labstyle)
+        sizer.Add(self.wids['period'],      (1, 2), (1, 1), labstyle)
+        sizer.Add(self.wids['numimages'],   (1, 3), (1, 1), labstyle)
+        sizer.Add(self.wids['gain'],        (1, 4), (1, 1), labstyle)
+        sizer.Add(self.wids['imagemode'],   (1, 5), (1, 1), labstyle)
+        sizer.Add(self.wids['triggermode'], (1, 6), (1, 1), labstyle)
+        sizer.Add(self.wids['color'],       (1, 7), (1, 1), labstyle)
+        sizer.Add(self.wids['start'],       (1, 8), (1, 1), labstyle)
+        sizer.Add(self.wids['stop'],        (1, 9), (1, 1), labstyle)
 
         sizer.Add(wx.StaticText(panel, label='Region: Start= ', size=(60, -1), style=rlabstyle),
                   (2, 0), (1, 1), rlabstyle)
         sizer.Add(self.wids['xmin'],  (2, 1), (1, 1), labstyle)
         sizer.Add(self.wids['ymin'],  (2, 2), (1, 1), labstyle)
         sizer.Add(wx.StaticText(panel, label=' Size= ', size=(60, -1), style=rlabstyle),
-                  (2, 3), (1, 1), rlabstyle)
-        sizer.Add(self.wids['xsize'],  (2, 4), (1, 1), labstyle)
-        sizer.Add(self.wids['ysize'],  (2, 5), (1, 1), labstyle)
+                  (2, 3), (1, 2), rlabstyle)
+        sizer.Add(self.wids['xsize'],  (2, 5), (1, 1), labstyle)
+        sizer.Add(self.wids['ysize'],  (2, 6), (1, 1), labstyle)
         
-        sizer.Add(self.wids['fullsize'],  (2, 6), (1, 2), labstyle)
-        sizer.Add(self.wids['unzoom'],  (2, 8), (1, 1), labstyle)
+        sizer.Add(self.wids['fullsize'],  (2, 7), (1, 2), labstyle)
+        sizer.Add(self.wids['unzoom'],  (2, 9), (1, 1), labstyle)
     
         self.image = ImageView(self, size=(800,600), onzoom=self.onZoom)
         
@@ -306,7 +391,7 @@ class AD_Display(wx.Frame):
         self.SetStatusText(s, panel)
 
     @EpicsFunction
-    def unZoom(self):
+    def unZoom(self, event=None):
         self.ad_cam.MinX = 0
         self.ad_cam.MinY = 0
         self.ad_cam.SizeX = self.ad_cam.MaxSizeX_RBV
@@ -388,6 +473,7 @@ class AD_Display(wx.Frame):
         self.wids['color'].SetPV(self.ad_cam.PV('ColorMode'))
         self.wids['expt'].SetPV(self.ad_cam.PV('AcquireTime'))
         self.wids['period'].SetPV(self.ad_cam.PV('AcquirePeriod'))        
+        self.wids['gain'].SetPV(self.ad_cam.PV('Gain'))
         self.wids['numimages'].SetPV(self.ad_cam.PV('NumImages'))
         self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
         self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))     
