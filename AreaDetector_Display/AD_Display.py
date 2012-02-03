@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Simple Display for Epics AreaDetector
+   Display Application for Epics AreaDetector
 """
 
 import os
@@ -19,160 +19,8 @@ import epics
 import epics.wx
 from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
                       PVEnumChoice, PVFloatCtrl, PVFloatSpin)
+from imageview import ImageView
 
-class ImageView(wx.Window):
-    def __init__(self, parent, id=-1, pos=wx.DefaultPosition,
-                 size=wx.DefaultSize, onzoom=None, **kw):
-        wx.Window.__init__(self, parent, id, pos, size, **kw)
-        
-        self.image = None
-        self.SetBackgroundColour('#EEEEEE')
-        self.can_resize = True
-        self.Bind(wx.EVT_PAINT, self.OnPaint)
-        self.Bind(wx.EVT_SIZE, self.OnSize)
-        self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
-        self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp)
-        self.Bind(wx.EVT_MOTION, self.OnMotion)
-
-        self.onzoom = onzoom
-        self.flipv = False
-        self.fliph = False
-        self.rot90 = 0
-        self.zoom_box = None
-        self.zoom_coords = None
-
-    def OnLeftDown(self, event=None):
-        self.zoom_box = None
-        self.zoom_coords = [event.x, event.y]
-
-    def OnLeftUp(self, event=None):
-        self.zoom_coords = None
-        if hasattr(self.onzoom, '__call__') and self.zoom_box is not None:
-
-            xoff = (self.win_size[0] - self.img_size[0])/2.0
-            yoff = (self.win_size[1] - self.img_size[1])/2.0
-            x0  = (self.zoom_box[0] - xoff)/ (1.0*self.img_size[0])
-            y0  = (self.zoom_box[1] - yoff)/ (1.0*self.img_size[1])
-            x1  =  self.zoom_box[2] / (1.0*self.img_size[0])
-            y1  =  self.zoom_box[3] / (1.0*self.img_size[1])
-            self.onzoom(x0, y0, x1, y1)
-        self.zoom_box = None
-
-    def OnMotion(self, event=None):
-        if self.zoom_coords is None: 
-            return
-        x0 = min(event.x, self.zoom_coords[0])
-        y0 = min(event.y, self.zoom_coords[1])
-        w  = abs(event.x - self.zoom_coords[0])
-        h  = abs(event.y - self.zoom_coords[1])
-
-        zdc = wx.ClientDC(self)
-        zdc.SetLogicalFunction(wx.XOR)
-        zdc.SetBrush(wx.TRANSPARENT_BRUSH)
-        zdc.SetPen(wx.Pen('White', 2, wx.SOLID))
-        pen = zdc.GetPen()
-
-        zdc.ResetBoundingBox()
-        zdc.BeginDrawing()
-
-        if self.zoom_box is not None:
-            zdc.DrawRectangle(*self.zoom_box)
-        self.zoom_box = (x0, y0, w, h)
-        zdc.DrawRectangle(*self.zoom_box)
-        zdc.EndDrawing()
-        
-    def SetValue(self, image):
-        self.image = image
-        self.Refresh()
-    
-    def OnSize(self, event):
-        if self.can_resize:
-            self.DrawImage(size=event.GetSize())
-            self.Refresh()
-        event.Skip()
-
-    def OnPaint(self, event):
-        self.DrawImage()
-
-    def DrawImage(self, dc=None, isize=None, size=None):
-        if not hasattr(self, 'image') or self.image is None:
-            return
-
-        if size is None:
-            size = self.GetSize()
-        try:
-            wwidth, wheight = size
-        except:
-            return
-
-        image = self.image
-        bmp = None
-        if isize is not None:
-            iwidth, iheight = isize
-        elif image.IsOk():
-            iwidth = image.GetWidth()   
-            iheight = image.GetHeight()
-        else:
-            bmp = wx.ArtProvider.GetBitmap(wx.ART_MISSING_IMAGE,
-                                           wx.ART_MESSAGE_BOX, (64,64))
-            iwidth  = bmp.GetWidth()
-            iheight = bmp.GetHeight()
-  
-        xfactor = float(wwidth) / iwidth
-        yfactor = float(wheight) / iheight
-
-        scale = yfactor
-        if xfactor < yfactor:
-            scale = xfactor
-
-        # print 'Draw Image ', isize is None, image.IsOk(), iwidth, iheight, wwidth, wheight, scale
-
-        owidth = int(scale*iwidth)
-        oheight = int(scale*iheight)
-        diffx = (wwidth - owidth)/2   # center calc
-        diffy = (wheight - oheight)/2   # center calc
-        self.img_size = owidth, oheight
-        self.win_size = wwidth, wheight
-
-        if self.flipv:
-            image = image.Mirror(False)
-        if self.fliph:
-            image = image.Mirror(True)
-        if self.rot90 != 0:
-            if self.rot90 == 3:
-                image = image.Rotate90(False)
-            elif self.rot90 == 1:
-                image = image.Rotate90(True)
-            elif self.rot90 == 2:
-                image = image.Rotate90(True).Rotate90(True)
-
-        if bmp is None:
-            if owidth!=iwidth or oheight!=iheight:
-                image = image.Scale(owidth, oheight)
-            bmp = image.ConvertToBitmap()
-        if dc is None:
-            try:
-                dc = wx.PaintDC(self)
-            except:
-                pass
-        if dc is not None:
-            dc.DrawBitmap(bmp, diffx, diffy, useMask=True)
-
-
-        if self.zoom_box is not None:
-            zdc = wx.ClientDC(self)
-            zdc.SetLogicalFunction(wx.XOR)
-            zdc.SetBrush(wx.TRANSPARENT_BRUSH)
-            zdc.SetPen(wx.Pen('White', 2, wx.SOLID))
-            pen = zdc.GetPen()
-
-            zdc.ResetBoundingBox()
-            zdc.BeginDrawing()
-            zdc.DrawRectangle(*self.zoom_box)
-            zdc.EndDrawing()
-
-
-        
 class AD_Display(wx.Frame):
     """AreaDetector Display """
     img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
@@ -187,12 +35,12 @@ class AD_Display(wx.Frame):
                  'SizeX', 'SizeY', 'MinX', 'MinY')
                  
     def __init__(self, prefix=None, app=None, scale=1.0, approx_height=800):
-
         self.app = app
         self.ad_img = None
         self.ad_cam = None
         self.imgcount = 0
         self.prefix = prefix
+        self.fname = 'AD_Image.tiff'
         self.scale  = scale
         self.arrsize  = [0,0,0]
         self.imbuff = None
@@ -203,16 +51,78 @@ class AD_Display(wx.Frame):
         self.img_id = 0
         self.starttime = time.time()
         self.drawing = False
-        wx.CallAfter(self.connect_pvs )
+        self.zoom_lims = []
+
         wx.Frame.__init__(self, None, -1,
                           "Epics Area Detector Display",
                           style=wx.DEFAULT_FRAME_STYLE)
 
+        if self.prefix is None:
+            self.GetPVName()
+            
         self.img_w = 0
         self.img_h = 0
         self.wximage = wx.EmptyImage(approx_height, 1.5*approx_height)
         self.buildMenus()
         self.buildFrame()
+
+    def GetPVName(self, event=None):
+        dlg = wx.TextEntryDialog(self, 'Enter PV for Area Detector',
+                                 'Enter PV for Area Detector', '')
+        
+        dlg.Raise()
+        if dlg.ShowModal() == wx.ID_OK:
+            self.prefix = dlg.GetValue()
+            wx.CallAfter(self.connect_pvs )
+        dlg.Destroy()
+
+    def onCopyImage(self, event=None):
+        "copy bitmap of canvas to system clipboard"
+        bmp = wx.BitmapDataObject()
+        bmp.SetBitmap(wx.BitmapFromImage(self.wximage))
+        wx.TheClipboard.Open()
+        wx.TheClipboard.SetData(bmp)
+        wx.TheClipboard.Close()
+        wx.TheClipboard.Flush()
+
+    @EpicsFunction
+    def onSaveImage(self, event=None):
+        "prompts for and save image to file"
+        defdir = os.getcwd()
+        self.fname = "Image_%i.tiff"  % self.ad_cam.ArrayCounter_RBV
+        dlg = wx.FileDialog(None, message='Save Image as',
+                            defaultDir=os.getcwd(),
+                            defaultFile=self.fname, 
+                            style=wx.SAVE)
+        path = None
+        if dlg.ShowModal() == wx.ID_OK:
+            path = os.path.abspath(dlg.GetPath())
+
+        dlg.Destroy()
+        if self.imbuff is not None:
+            self.imbuff.save(path)
+
+    def onExit(self, event=None):
+        # self.ad_cam.Acquire = 0
+        try:
+            wx.Yield()
+        except:
+            pass
+        self.ad_cam.Acquire = 0
+        self.Destroy()
+
+    def onAbout(self, event=None):
+        msg =  """Epics Image Display version 0.2
+
+http://pyepics.github.com/epicsapps/
+
+Matt Newville <newville@cars.uchicago.edu>"""
+
+        dlg = wx.MessageDialog(self, msg, "About Epics Image Display",
+                               wx.OK | wx.ICON_INFORMATION)
+        dlg.ShowModal()
+        dlg.Destroy()
+
 
     def buildMenus(self):
         filemenu = wx.Menu()
@@ -228,24 +138,41 @@ class AD_Display(wx.Frame):
         filemenu.AppendSeparator()
         filemenu.Append(FEXIT, "E&xit\tCtrl+Q",  "Exit Program")
 
+        self.Bind(wx.EVT_MENU, self.GetPVName,   id=FOPEN)
+        self.Bind(wx.EVT_MENU, self.onSaveImage, id=FSAVE)
+        self.Bind(wx.EVT_MENU, self.onCopyImage, id=FCOPY)
+        self.Bind(wx.EVT_MENU, self.onExit,      id=FEXIT)
+        self.Bind(wx.EVT_MENU, self.onAbout,     id=HABOUT)
 
         OROTCW  = wx.NewId()
         OROTCCW = wx.NewId()
         OFLIPH  = wx.NewId()
         OFLIPV  = wx.NewId()
         OZOOM   = wx.NewId()
+        ORESET  = wx.NewId()
+        OCMODE  = wx.NewId()
 
         optsmenu = wx.Menu()
         optsmenu.Append(OROTCW,  "&Rotate Clockwise\tCtrl+R", "Rotate Clockwise")
         optsmenu.Append(OROTCCW, "&Rotate CounterClockwise", "Rotate Counter Clockwise")
-        optsmenu.AppendSeparator()
         optsmenu.Append(OFLIPV,  "&Flip Up/Down\tCtrl+F", "Flip Up/Down")
         optsmenu.Append(OFLIPH,  "&Mlip Left/Right\tCtrl+M", "Flip Left/Right")
         optsmenu.AppendSeparator()
+        optsmenu.Append(ORESET,  "Reset Image Counter", "Set Image Counter to 0")
         optsmenu.Append(OZOOM,  "&Zoom out\tCtrl+Z", "Zoom Out")
 
+        self.CM_ZOOM = wx.NewId()
+        self.CM_PROF = wx.NewId()
+        self.CM_SHOW = wx.NewId()
+#         optsmenu.Append(self.CM_ZOOM, "Cursor Mode: Zoom",
+#                         "Zoom to box by clicking and dragging", wx.ITEM_RADIO)
+#         optsmenu.Append(self.CM_SHOW, "Cursor Mode: Show X,Y",
+#                         "Show X,Y, Intensity Values",  wx.ITEM_RADIO)
+#         optsmenu.Append(self.CM_PROF, "Cursor Mode: Line Profile",
+#                         "Show Line Profile",  wx.ITEM_RADIO)
+# 
         helpmenu = wx.Menu()
-        helpmenu.Append(HABOUT, "About", "About MPlot")
+        helpmenu.Append(HABOUT, "About", "About Epics AreadDetector Display")
 
         mbar = wx.MenuBar()
 
@@ -259,7 +186,23 @@ class AD_Display(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onRotCW,  id=OROTCW)
         self.Bind(wx.EVT_MENU, self.onRotCCW,  id=OROTCCW)
         self.Bind(wx.EVT_MENU, self.unZoom,   id=OZOOM)
+        self.Bind(wx.EVT_MENU, self.onResetImageCounter,  id=ORESET)
 
+        self.Bind(wx.EVT_MENU, self.onCursorMode,  id=self.CM_ZOOM)
+        self.Bind(wx.EVT_MENU, self.onCursorMode,  id=self.CM_PROF)
+        self.Bind(wx.EVT_MENU, self.onCursorMode,  id=self.CM_SHOW)
+
+    def onCursorMode(self, event=None):
+        if event.Id == self.CM_ZOOM:
+            self.image.cursor_mode = 'zoom'
+        elif event.Id == self.CM_PROF:
+            self.image.cursor_mode = 'profile'
+        elif event.Id == self.CM_SHOW:
+            self.image.cursor_mode = 'show'
+
+    @DelayedEpicsCallback
+    def onResetImageCounter(self, event=None):
+        self.ad_cam.ArrayCounter = 0
             
     def onRotCW(self, event):
         self.image.rot90 = (self.image.rot90 + 1) % 4
@@ -290,87 +233,63 @@ class AD_Display(wx.Frame):
         sizer = wx.GridBagSizer(10, 4)
         panel = wx.Panel(self)
         self.panel = panel
-        labstyle = wx.ALIGN_LEFT|wx.LEFT|wx.TOP|wx.EXPAND        
+        labstyle = wx.ALIGN_CENTER|wx.ALIGN_BOTTOM|wx.EXPAND        
+
         rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND      
 
         txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
         self.wids = {}
-        self.wids['name']= wx.TextCtrl(panel, -1,  size=(100,-1),
-                                       style=txtstyle)
-        self.wids['expt']     = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['period']   = PVFloatCtrl(panel, pv=None, size=(60,-1))
+        self.wids['exptime']   = PVFloatCtrl(panel, pv=None, size=(60,-1))
+        self.wids['period']    = PVFloatCtrl(panel, pv=None, size=(60,-1))
         self.wids['numimages'] = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['gain'] = PVFloatSpin(panel, pv=None, size=(60,-1), 
-                                        min_val=1, max_val=20, increment=1, digits=1)
+        self.wids['gain']      = PVFloatSpin(panel, pv=None, size=(60,-1), 
+                                             min_val=0, max_val=20, increment=1, digits=1)
 
-        self.wids['imagemode'] = PVEnumChoice(panel, pv=None)
+        self.wids['imagemode']   = PVEnumChoice(panel, pv=None)
         self.wids['triggermode'] = PVEnumChoice(panel, pv=None)
-        self.wids['color'] = PVEnumChoice(panel, pv=None)
+        self.wids['color']       = PVEnumChoice(panel, pv=None)
         self.wids['start'] = wx.Button(panel, -1, label='Start', size=(50,-1))
         self.wids['stop']  = wx.Button(panel, -1, label='Stop', size=(50,-1))
-        self.wids['unzoom']  = wx.Button(panel, -1, label='Zoom Out', size=(75,-1))
 
-        self.wids['name'].SetValue(self.prefix)
-        self.wids['name'].Bind(wx.EVT_TEXT_ENTER, self.onName)
 
-        for key in ('start', 'stop', 'unzoom'):
+        for key in ('start', 'stop'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onEntry, key=key))
-            
-        self.wids['xmin'] = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['ymin'] = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['xsize'] = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['ysize'] = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['fullsize']= wx.StaticText(panel, -1,  size=(120,-1), style=txtstyle)
-        sizer.Add(wx.StaticText(panel, label='PV Name:', size=(100, -1)),
-                  (0, 0), (1, 1), labstyle)
-                               
-        sizer.Add(wx.StaticText(panel, label='Exposure Time ', size=(60, -1)),
-                  (0, 1), (1, 1), labstyle)
-                               
-        sizer.Add(wx.StaticText(panel, label='Period ', size=(60, -1)),
-                  (0, 2), (1, 1), labstyle)
-        sizer.Add(wx.StaticText(panel, label='# Images', size=(60, -1)),
-                  (0, 3), (1, 1), labstyle)
-                                                     
-        sizer.Add(wx.StaticText(panel, label='Gain ', size=(60, -1)),
-                  (0, 4), (1, 1), labstyle)
 
-        sizer.Add(wx.StaticText(panel, label='Image Mode ', size=(60, -1)),
-                  (0, 5), (1, 1), labstyle)
+        self.wids['zoomsize']= wx.StaticText(panel, -1,  size=(170,-1), style=txtstyle)
+        self.wids['fullsize']= wx.StaticText(panel, -1,  size=(170,-1), style=txtstyle)
 
-        sizer.Add(wx.StaticText(panel, label='Trigger Mode ', size=(60, -1)),
-                  (0, 6), (1, 1), labstyle)
+        def txt(label, size=80):
+            return wx.StaticText(panel, label=label, size=(size, -1), style=labstyle)
 
 
-        sizer.Add(wx.StaticText(panel, label='Color', size=(60, -1)),
-                  (0, 7), (1, 1), labstyle)
+        sizer.Add(txt('Image Mode '),       (0, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['imagemode'],   (1, 0), (1, 1), labstyle)
+
+        sizer.Add(txt('# Images '),         (0, 1), (1, 1), labstyle)
+        sizer.Add(self.wids['numimages'],   (1, 1), (1, 1), labstyle)
+
+        sizer.Add(txt('Trigger Mode '),     (0, 2), (1, 1), labstyle)
+        sizer.Add(self.wids['triggermode'], (1, 2), (1, 1), labstyle)
+
+        sizer.Add(txt('Period '),           (0, 3), (1, 1), labstyle)
+        sizer.Add(self.wids['period'],      (1, 3), (1, 1), labstyle)
+
+        sizer.Add(txt('Exposure Time '),    (0, 4), (1, 1), labstyle)
+        sizer.Add(self.wids['exptime'],     (1, 4), (1, 1), labstyle)
 
 
-        sizer.Add(wx.StaticText(panel, label=' Acquire ', size=(120, -1)),
-                  (0, 8), (1, 2), labstyle)
+        sizer.Add(txt('Gain '),             (0, 5), (1, 1), labstyle)
+        sizer.Add(self.wids['gain'],        (1, 5), (1, 1), labstyle)
 
-        sizer.Add(self.wids['name'], (1, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['expt'],  (1, 1), (1, 1), labstyle)
-        sizer.Add(self.wids['period'],      (1, 2), (1, 1), labstyle)
-        sizer.Add(self.wids['numimages'],   (1, 3), (1, 1), labstyle)
-        sizer.Add(self.wids['gain'],        (1, 4), (1, 1), labstyle)
-        sizer.Add(self.wids['imagemode'],   (1, 5), (1, 1), labstyle)
-        sizer.Add(self.wids['triggermode'], (1, 6), (1, 1), labstyle)
-        sizer.Add(self.wids['color'],       (1, 7), (1, 1), labstyle)
-        sizer.Add(self.wids['start'],       (1, 8), (1, 1), labstyle)
-        sizer.Add(self.wids['stop'],        (1, 9), (1, 1), labstyle)
+        sizer.Add(txt('Color Mode'),        (0, 6), (1, 1), labstyle)
+        sizer.Add(self.wids['color'],       (1, 6), (1, 1), labstyle)
 
-        sizer.Add(wx.StaticText(panel, label='Region: Start= ', size=(60, -1), style=rlabstyle),
-                  (2, 0), (1, 1), rlabstyle)
-        sizer.Add(self.wids['xmin'],  (2, 1), (1, 1), labstyle)
-        sizer.Add(self.wids['ymin'],  (2, 2), (1, 1), labstyle)
-        sizer.Add(wx.StaticText(panel, label=' Size= ', size=(60, -1), style=rlabstyle),
-                  (2, 3), (1, 2), rlabstyle)
-        sizer.Add(self.wids['xsize'],  (2, 5), (1, 1), labstyle)
-        sizer.Add(self.wids['ysize'],  (2, 6), (1, 1), labstyle)
-        
-        sizer.Add(self.wids['fullsize'],  (2, 7), (1, 2), labstyle)
-        sizer.Add(self.wids['unzoom'],  (2, 9), (1, 1), labstyle)
+        sizer.Add(txt('Acquire '),          (0, 7), (1, 2), labstyle)
+        sizer.Add(self.wids['start'],       (1, 7), (1, 1), labstyle)
+        sizer.Add(self.wids['stop'],        (1, 8), (1, 1), labstyle)
+
+        sizer.Add(self.wids['fullsize'],    (0, 9), (1, 1), labstyle)
+        sizer.Add(self.wids['zoomsize'],    (1, 9), (1, 1), labstyle)
     
         self.image = ImageView(self, size=(800,600), onzoom=self.onZoom)
         
@@ -391,30 +310,70 @@ class AD_Display(wx.Frame):
         self.SetStatusText(s, panel)
 
     @EpicsFunction
-    def unZoom(self, event=None):
-        self.ad_cam.MinX = 0
-        self.ad_cam.MinY = 0
-        self.ad_cam.SizeX = self.ad_cam.MaxSizeX_RBV
-        self.ad_cam.SizeY = self.ad_cam.MaxSizeY_RBV
-        self.onZoom(0, 0, 1, 1)
+    def unZoom(self, event=None, full=False):
+        if self.zoom_lims is None or full:
+            self.zoom_lims = []
+
+        if len(self.zoom_lims) == 0:
+            xmin, ymin = 0, 0
+            width = self.ad_cam.MaxSizeX_RBV
+            height = self.ad_cam.MaxSizeY_RBV
+            self.zoom_lims = []
+        else:
+            xmin, ymin, width, height = self.zoom_lims.pop()
+            if (self.ad_cam.MinX == xmin and 
+                self.ad_cam.MinY == ymin and
+                self.ad_cam.SizeX == width and
+                self.ad_cam.SizeY == height):
+                try:
+                    xmin, ymin, width, height = self.zoom_lims.pop()
+                except:
+                    xmin, ymin = 0, 0
+                    width = self.ad_cam.MaxSizeX_RBV
+                    height = self.ad_cam.MaxSizeY_RBV
+
+        self.ad_cam.MinX  = xmin
+        self.ad_cam.MinY  = ymin
+        self.ad_cam.SizeX = width
+        self.ad_cam.SizeY = height
+        time.sleep(0.05)
+        self.showZoomsize()
+        self.image.DrawImage(isize=(width, height))
+        self.image.Refresh()
 
     @EpicsFunction
+    def showZoomsize(self):
+        msg  = 'Displaying:  %i x %i pixels' % (self.ad_cam.SizeX, self.ad_cam.SizeY)
+        self.wids['zoomsize'].SetLabel(msg) 
+        
+    @EpicsFunction
     def onZoom(self, x0, y0, x1, y1):
-        # print '=== ZOOM ',x0, y0, x1, y1
         width  = self.ad_cam.SizeX 
         height = self.ad_cam.SizeY
         xmin   = max(0, int(self.ad_cam.MinX  + x0 * width))
         ymin   = max(0, int(self.ad_cam.MinY  + y0 * height))
+
         width  = int(x1 * width)
         height = int(y1 * height)
+        if width < 2 or height < 2: 
+            return
         self.ad_cam.MinX = xmin
         self.ad_cam.MinY = ymin
         self.ad_cam.SizeX = width
         self.ad_cam.SizeY = height
+        if self.zoom_lims is None:
+            self.zoom_lims = []
+        self.zoom_lims.append((xmin, ymin, width, height))
+
+        time.sleep(0.05)
+        self.showZoomsize()
+        
         self.img_w = height
         self.img_h = width
+        self.drawing = True
         self.image.DrawImage(isize=(width, height))
         self.image.Refresh()
+        self.drawing = False
 
     def onName(self, evt=None, **kws):
         if evt is None:
@@ -429,10 +388,8 @@ class AD_Display(wx.Frame):
 
     @EpicsFunction
     def onEntry(self, evt=None, key='name', **kw):
-        
         if evt is None:
             return
-
         if key == 'start':
             self.n_img   = 0
             self.n_drawn = 0
@@ -447,9 +404,8 @@ class AD_Display(wx.Frame):
 
     @EpicsFunction
     def connect_pvs(self, verbose=True):
-        if self.prefix is None or len(self.prefix) < 4:
+        if self.prefix is None or len(self.prefix) < 2:
             return
-
 
         if verbose:
             self.messag('Connecting to AD %s' % self.prefix)
@@ -471,19 +427,18 @@ class AD_Display(wx.Frame):
         self.SetTitle("Epics Image Display: %s" % self.prefix)
         
         self.wids['color'].SetPV(self.ad_cam.PV('ColorMode'))
-        self.wids['expt'].SetPV(self.ad_cam.PV('AcquireTime'))
+        self.wids['exptime'].SetPV(self.ad_cam.PV('AcquireTime'))
         self.wids['period'].SetPV(self.ad_cam.PV('AcquirePeriod'))        
         self.wids['gain'].SetPV(self.ad_cam.PV('Gain'))
         self.wids['numimages'].SetPV(self.ad_cam.PV('NumImages'))
         self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
         self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))     
-        self.wids['xmin'].SetPV(self.ad_cam.PV('MinX'))        
-        self.wids['ymin'].SetPV(self.ad_cam.PV('MinY'))   
-        self.wids['xsize'].SetPV(self.ad_cam.PV('SizeX'))   
-        self.wids['ysize'].SetPV(self.ad_cam.PV('SizeY'))    
-        sizelabel = 'Image Size: %i x %i' % (self.ad_cam.MaxSizeX_RBV, self.ad_cam.MaxSizeY_RBV)
+
+        sizelabel = 'Image Size:   %i x %i pixels' % (self.ad_cam.MaxSizeX_RBV,
+                                                    self.ad_cam.MaxSizeY_RBV)
         self.wids['fullsize'].SetLabel(sizelabel) 
-              
+        self.showZoomsize()
+
         self.ad_img.add_callback('UniqueId_RBV',   self.onNewImage)
         self.ad_img.add_callback('ArraySize0_RBV', self.onProperty, dim=0)
         self.ad_img.add_callback('ArraySize1_RBV', self.onProperty, dim=1)
@@ -504,9 +459,6 @@ class AD_Display(wx.Frame):
         self.arrsize[2] = self.ad_img.ArraySize2_RBV
         self.colormode = self.ad_img.ColorMode_RBV
 
-        #self.wids['nx'].SetLabel('%i' % self.arrsize[0])
-        #self.wids['ny'].SetLabel('%i' % self.arrsize[1])
-        #self.wids['nz'].SetLabel('%i' % self.arrsize[2])
 
         self.img_w = self.arrsize[1]
         self.img_h = self.arrsize[0]
@@ -527,7 +479,6 @@ class AD_Display(wx.Frame):
        
     @DelayedEpicsCallback
     def onNewImage(self, pvname=None, value=None, **kw):
-        # print 'on New Image ', value, self.img_id, self.n_img, self.drawing
         if value != self.img_id:
             self.img_id = value
             self.n_img += 1
@@ -539,9 +490,6 @@ class AD_Display(wx.Frame):
     @EpicsFunction
     def RefreshImage(self, pvname=None, **kws):
         try:
-            #time.sleep(0.005)
-            #app = wx.GetApp()
-            #app.ProcessIdle()
             wx.Yield()
         except:
             pass
@@ -583,10 +531,7 @@ class AD_Display(wx.Frame):
         # d.add('refresh got data')
 
         self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
-        # print 'Image Mode ', im_mode, self.colormode, ' datatype = ', self.ad_cam.get('DataType_RBV', as_string=True)
-        #print type(rawdata), rawdata[:10], rawdata.dtype
-        #rawdata = rawdata.astype(np.uint32)
-        # print type(rawdata), rawdata[:10], rawdata.dtype
+
         imbuff =  Image.frombuffer(im_mode, im_size, rawdata,
                                    'raw', im_mode, 0, 1)
         # d.add('refresh after Image.frombuffer')        
@@ -605,7 +550,7 @@ class AD_Display(wx.Frame):
         if self.wximage.GetSize() != imbuff.size:
             self.wximage = wx.EmptyImage(display_size[0], display_size[1])
         # d.add('refresh after sizing')
-        
+        self.imbuff = imbuff
         self.wximage.SetData(imbuff.convert('RGB').tostring())
         # d.add('refresh set wximage.tostring')
         self.image.SetValue(self.wximage)
@@ -617,7 +562,7 @@ class AD_Display(wx.Frame):
         
 if __name__ == '__main__':
     import sys
-    prefix = ''
+    prefix = None
     if len(sys.argv) > 1:
         prefix = sys.argv[1]
 
