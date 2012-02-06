@@ -2,25 +2,28 @@
 """
    Display Application for Epics AreaDetector
 """
-
 import os
 import sys
 import time
-
 import wx
+from wx._core import PyDeadObjectError
+
 import numpy as np
 import Image
 
 from wxmplot.plotframe import PlotFrame
 
 # from debugtime import debugtime
-
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '16777216'
 
+class Empty:
+    pass
+
 import epics
-import epics.wx
 from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
                       PVEnumChoice, PVFloatCtrl, PVFloatSpin)
+from epics.wx.utils import add_menu
+
 from imageview import ImageView
 
 class AD_Display(wx.Frame):
@@ -36,6 +39,8 @@ class AD_Display(wx.Frame):
                  'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
                  'SizeX', 'SizeY', 'MinX', 'MinY')
                  
+    stat_msg = 'Drew %i, Missed %i images in %.2f seconds'
+    
     def __init__(self, prefix=None, app=None, scale=1.0, approx_height=800):
         self.app = app
         self.ad_img = None
@@ -46,6 +51,7 @@ class AD_Display(wx.Frame):
         self.scale  = scale
         self.arrsize  = [0,0,0]
         self.imbuff = None
+        self.im_size = None
         self.colormode = 0
         self.last_update = 0.0
         self.n_img   = 0
@@ -56,8 +62,7 @@ class AD_Display(wx.Frame):
         self.lineplotter = None
         self.zoom_lims = []
 
-        wx.Frame.__init__(self, None, -1,
-                          "Epics Area Detector Display",
+        wx.Frame.__init__(self, None, -1, "Epics Area Detector Display",
                           style=wx.DEFAULT_FRAME_STYLE)
 
         if self.prefix is None:
@@ -69,10 +74,13 @@ class AD_Display(wx.Frame):
         self.buildMenus()
         self.buildFrame()
 
+    def OnLeftUp(self, event):
+        if self.image is not None:
+            self.image.OnLeftUp(event)
+
     def GetPVName(self, event=None):
         dlg = wx.TextEntryDialog(self, 'Enter PV for Area Detector',
-                                 'Enter PV for Area Detector', '')
-        
+                                       'Enter PV for Area Detector', '')
         dlg.Raise()
         if dlg.ShowModal() == wx.ID_OK:
             self.prefix = dlg.GetValue()
@@ -95,7 +103,7 @@ class AD_Display(wx.Frame):
         self.fname = "Image_%i.tiff"  % self.ad_cam.ArrayCounter_RBV
         dlg = wx.FileDialog(None, message='Save Image as',
                             defaultDir=os.getcwd(),
-                            defaultFile=self.fname, 
+                            defaultFile=self.fname,
                             style=wx.SAVE)
         path = None
         if dlg.ShowModal() == wx.ID_OK:
@@ -126,74 +134,45 @@ Matt Newville <newville@cars.uchicago.edu>"""
         dlg.ShowModal()
         dlg.Destroy()
 
-
     def buildMenus(self):
-        filemenu = wx.Menu()
-        FOPEN = wx.NewId()
-        FSAVE = wx.NewId()
-        FCOPY = wx.NewId()
-        FEXIT = wx.NewId()
-        HABOUT = wx.NewId()
+        fmenu = wx.Menu()
+        add_menu(self, fmenu, "&Connect to PV\tCtrl+O", "Connect to PV", self.GetPVName)
+        add_menu(self, fmenu, "&Save\tCtrl+S", "Save Image", self.onSaveImage)
+        add_menu(self, fmenu, "&Copy\tCtrl+C", "Copy Image to Clipboard", self.onCopyImage)
+        fmenu.AppendSeparator()
+        add_menu(self, fmenu, "E&xit\tCtrl+Q",  "Exit Program", self.onExit)
 
-        filemenu.Append(FOPEN, "&Connect to PV\tCtrl+O",  "Connect to PV")
-        filemenu.Append(FSAVE, "&Save\tCtrl+S",  "Save Image")
-        filemenu.Append(FCOPY, "&Copy\tCtrl+C",  "Copy Image to Clipboard")
-        filemenu.AppendSeparator()
-        filemenu.Append(FEXIT, "E&xit\tCtrl+Q",  "Exit Program")
-
-        self.Bind(wx.EVT_MENU, self.GetPVName,   id=FOPEN)
-        self.Bind(wx.EVT_MENU, self.onSaveImage, id=FSAVE)
-        self.Bind(wx.EVT_MENU, self.onCopyImage, id=FCOPY)
-        self.Bind(wx.EVT_MENU, self.onExit,      id=FEXIT)
-        self.Bind(wx.EVT_MENU, self.onAbout,     id=HABOUT)
-
-        OROTCW  = wx.NewId()
-        OROTCCW = wx.NewId()
-        OFLIPH  = wx.NewId()
-        OFLIPV  = wx.NewId()
-        OZOOM   = wx.NewId()
-        ORESET  = wx.NewId()
-        OCMODE  = wx.NewId()
-
-        optsmenu = wx.Menu()
-        optsmenu.Append(OROTCW,  "&Rotate Clockwise\tCtrl+R", "Rotate Clockwise")
-        optsmenu.Append(OROTCCW, "&Rotate CounterClockwise", "Rotate Counter Clockwise")
-        optsmenu.Append(OFLIPV,  "&Flip Up/Down\tCtrl+F", "Flip Up/Down")
-        optsmenu.Append(OFLIPH,  "&Mlip Left/Right\tCtrl+M", "Flip Left/Right")
-        optsmenu.AppendSeparator()
-        optsmenu.Append(ORESET,  "Reset Image Counter", "Set Image Counter to 0")
-        optsmenu.Append(OZOOM,  "&Zoom out\tCtrl+Z", "Zoom Out")
+        omenu = wx.Menu()
+        add_menu(self, omenu, "&Zoom out\tCtrl+Z", "Zoom Out", self.unZoom)
+        add_menu(self, omenu, "Reset Image Counter", "Set Image Counter to 0", self.onResetImageCounter)
+        omenu.AppendSeparator()
+        add_menu(self, omenu,  "&Rotate Clockwise\tCtrl+R", "Rotate Clockwise", self.onRotCW)
+        add_menu(self, omenu,  "Rotate CounterClockwise", "Rotate Counter Clockwise", self.onRotCCW)
+        add_menu(self, omenu,  "Flip Up/Down\tCtrl+T", "Flip Up/Down", self.onFlipV)
+        add_menu(self, omenu,  "Flip Left/Right\tCtrl+F", "Flip Left/Right", self.onFlipH)
+        omenu.AppendSeparator()
 
         self.CM_ZOOM = wx.NewId()
-        self.CM_PROF = wx.NewId()
         self.CM_SHOW = wx.NewId()
-        optsmenu.Append(self.CM_ZOOM, "Cursor Mode: Zoom",
-                        "Zoom to box by clicking and dragging", wx.ITEM_RADIO)
-        optsmenu.Append(self.CM_SHOW, "Cursor Mode: Show X,Y",
-                        "Show X,Y, Intensity Values",  wx.ITEM_RADIO)
-        optsmenu.Append(self.CM_PROF, "Cursor Mode: Line Profile",
-                        "Show Line Profile",  wx.ITEM_RADIO)
-
-        helpmenu = wx.Menu()
-        helpmenu.Append(HABOUT, "About", "About Epics AreadDetector Display")
-
-        mbar = wx.MenuBar()
-
-        mbar.Append(filemenu, "File")
-        mbar.Append(optsmenu, "Options")
-        mbar.Append(helpmenu, "&Help")
-        self.SetMenuBar(mbar)
-
-        self.Bind(wx.EVT_MENU, self.onFlipV,  id=OFLIPV)
-        self.Bind(wx.EVT_MENU, self.onFlipH,  id=OFLIPH)
-        self.Bind(wx.EVT_MENU, self.onRotCW,  id=OROTCW)
-        self.Bind(wx.EVT_MENU, self.onRotCCW,  id=OROTCCW)
-        self.Bind(wx.EVT_MENU, self.unZoom,   id=OZOOM)
-        self.Bind(wx.EVT_MENU, self.onResetImageCounter,  id=ORESET)
-
+        self.CM_PROF = wx.NewId()
+        omenu.Append(self.CM_ZOOM, "Cursor Mode: Zoom to Box\tCtrl+B" ,
+                     "Zoom to box by clicking and dragging", wx.ITEM_RADIO)
+        omenu.Append(self.CM_SHOW, "Cursor Mode: Show X,Y\tCtrl+X",
+                     "Show X,Y, Intensity Values",  wx.ITEM_RADIO)
+        omenu.Append(self.CM_PROF, "Cursor Mode: Line Profile\tCtrl+L",
+                     "Show Line Profile",  wx.ITEM_RADIO)
         self.Bind(wx.EVT_MENU, self.onCursorMode,  id=self.CM_ZOOM)
         self.Bind(wx.EVT_MENU, self.onCursorMode,  id=self.CM_PROF)
         self.Bind(wx.EVT_MENU, self.onCursorMode,  id=self.CM_SHOW)
+
+        hmenu = wx.Menu()
+        add_menu(self, hmenu, "About", "About Epics AreadDetector Display", self.onAbout)
+
+        mbar = wx.MenuBar()
+        mbar.Append(fmenu, "File")
+        mbar.Append(omenu, "Options")
+        mbar.Append(hmenu, "&Help")
+        self.SetMenuBar(mbar)
 
     def onCursorMode(self, event=None):
         if event.Id == self.CM_ZOOM:
@@ -221,7 +200,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def onFlipH(self, event):
         self.image.fliph = not self.image.fliph
-        self.Refresh()
+        self.image.Refresh()
 
     def buildFrame(self):
         sbar = self.CreateStatusBar(3, wx.CAPTION|wx.THICK_FRAME)
@@ -238,14 +217,14 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.panel = panel
         labstyle = wx.ALIGN_CENTER|wx.ALIGN_BOTTOM|wx.EXPAND        
 
-        rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND      
+        rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
 
         txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
         self.wids = {}
         self.wids['exptime']   = PVFloatCtrl(panel, pv=None, size=(60,-1))
         self.wids['period']    = PVFloatCtrl(panel, pv=None, size=(60,-1))
         self.wids['numimages'] = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['gain']      = PVFloatSpin(panel, pv=None, size=(60,-1), 
+        self.wids['gain']      = PVFloatSpin(panel, pv=None, size=(60,-1),
                                              min_val=0, max_val=20, increment=1, digits=1)
 
         self.wids['imagemode']   = PVEnumChoice(panel, pv=None)
@@ -264,7 +243,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
         def txt(label, size=80):
             return wx.StaticText(panel, label=label, size=(size, -1), style=labstyle)
 
-
         sizer.Add(txt('Image Mode '),       (0, 0), (1, 1), labstyle)
         sizer.Add(self.wids['imagemode'],   (1, 0), (1, 1), labstyle)
 
@@ -280,7 +258,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
         sizer.Add(txt('Exposure Time '),    (0, 4), (1, 1), labstyle)
         sizer.Add(self.wids['exptime'],     (1, 4), (1, 1), labstyle)
 
-
         sizer.Add(txt('Gain '),             (0, 5), (1, 1), labstyle)
         sizer.Add(self.wids['gain'],        (1, 5), (1, 1), labstyle)
 
@@ -293,20 +270,21 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         sizer.Add(self.wids['fullsize'],    (0, 9), (1, 1), labstyle)
         sizer.Add(self.wids['zoomsize'],    (1, 9), (1, 1), labstyle)
-    
-        self.image = ImageView(self, size=(800,600), onzoom=self.onZoom, 
+
+        self.image = ImageView(self, size=(512, 680), onzoom=self.onZoom,
                                onprofile=self.onProfile, onshow=self.onShowXY)
-        
-        self.SetAutoLayout(True)
+
         panel.SetSizer(sizer)
         sizer.Fit(panel)
-        
-        mainsizer = wx.BoxSizer(wx.VERTICAL)
 
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 0, wx.CENTER|wx.GROW|wx.ALL, 1)
         mainsizer.Add(self.image, 1, wx.CENTER|wx.GROW|wx.ALL, 1)
         self.SetSizer(mainsizer)
         mainsizer.Fit(self)
+
+        self.SetAutoLayout(True)
+        self.RefreshImage()
         wx.CallAfter(self.connect_pvs )
 
     def messag(self, s, panel=0):
@@ -320,12 +298,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         if len(self.zoom_lims) == 0:
             xmin, ymin = 0, 0
-            width = self.ad_cam.MaxSizeX_RBV
+            width  = self.ad_cam.MaxSizeX_RBV
             height = self.ad_cam.MaxSizeY_RBV
             self.zoom_lims = []
         else:
             xmin, ymin, width, height = self.zoom_lims.pop()
-            if (self.ad_cam.MinX == xmin and 
+            if (self.ad_cam.MinX == xmin and
                 self.ad_cam.MinY == ymin and
                 self.ad_cam.SizeX == width and
                 self.ad_cam.SizeY == height):
@@ -340,28 +318,41 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.ad_cam.MinY  = ymin
         self.ad_cam.SizeX = width
         self.ad_cam.SizeY = height
+        self.zoom_lims.append((xmin, ymin, width, height))
         time.sleep(0.05)
         self.showZoomsize()
-        self.image.DrawImage(isize=(width, height))
-        self.image.Refresh()
+        if self.ad_cam.Acquire == 0 and self.im_size is not None:
+            self.img_w = width
+            self.img_h = height
+            if self.colormode == 2:
+                self.data.shape = [self.im_size[1], self.im_size[0], 3]
+                zdata = self.data[ymin:ymin+height, xmin:xmin+width,:]
+            else:
+                self.data.shape = self.im_size[1], self.im_size[0]
+                zdata = self.data[ymin:ymin+height,xmin:xmin+width]
+            self.data = self.data.flatten()
+            # print zdata.shape, width, height, self.im_mode
+            self.DatatoImage(zdata, (width, height), self.im_mode)
 
+        self.RefreshImage()
+        self.image.Refresh()
+        
     @EpicsFunction
     def showZoomsize(self):
         msg  = 'Displaying:  %i x %i pixels' % (self.ad_cam.SizeX, self.ad_cam.SizeY)
-        self.wids['zoomsize'].SetLabel(msg) 
+        self.wids['zoomsize'].SetLabel(msg)
 
     @EpicsFunction
     def onZoom(self, x0, y0, x1, y1):
-        width  = self.ad_cam.SizeX 
+        width  = self.ad_cam.SizeX
         height = self.ad_cam.SizeY
         xmin   = max(0, int(self.ad_cam.MinX  + x0 * width))
         ymin   = max(0, int(self.ad_cam.MinY  + y0 * height))
 
         width  = int(x1 * width)
         height = int(y1 * height)
-        if width < 2 or height < 2: 
+        if width < 2 or height < 2:
             return
-
         self.ad_cam.MinX = xmin
         self.ad_cam.MinY = ymin
         self.ad_cam.SizeX = width
@@ -372,25 +363,45 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         time.sleep(0.05)
         self.showZoomsize()
+
+        if self.ad_cam.Acquire == 0:
+            self.img_w = width
+            self.img_h = height
+            if self.colormode == 2:
+                self.data.shape = [self.im_size[1], self.im_size[0], 3]
+                zdata = self.data[ymin:ymin+height, xmin:xmin+width,:]
+            else:
+                self.data.shape = self.im_size[1], self.im_size[0]
+                zdata = self.data[ymin:ymin+height,xmin:xmin+width]
+            self.data = self.data.flatten()
+            self.DatatoImage(zdata, (width, height), self.im_mode)
         
-        self.img_w = height
-        self.img_h = width
-        self.drawing = True
-        self.image.DrawImage(isize=(width, height))
         self.image.Refresh()
-        self.drawing = False
 
+    def DatatoImage(self, data, size, mode):
+        width, height = size
+        try:
+            imbuff =  Image.frombuffer(mode, size, data.flatten(),
+                                       'raw', mode, 0, 1)
+        except:
+            return
+
+        d_size = (int(width*self.scale), int(height*self.scale))
+        imbuff = imbuff.resize(d_size)
+        if self.wximage.GetSize() != imbuff.size:
+            self.wximage = wx.EmptyImage(d_size[0], d_size[1])
+        self.wximage.SetData(imbuff.convert('RGB').tostring())
+        self.image.SetValue(self.wximage)
+        
+        
     def onProfile(self, x0, y0, x1, y1):
-        width  = self.ad_cam.SizeX 
+        width  = self.ad_cam.SizeX
         height = self.ad_cam.SizeY
-        x0   = max(0, self.ad_cam.MinX  + x0 * width)
-        y0   = max(0, self.ad_cam.MinY  + y0 * height)
-        x1   = max(0, self.ad_cam.MinX  + x1 * width)
-        y1   = max(0, self.ad_cam.MinY  + y1 * height)
 
-        # print ' PROFILE ', x0, y0, x1, y1
-        dx = abs(x1 - x0)
-        dy = abs(y1 - y0)
+        x0, y0 = int(x0 * width), int(y0 * height)
+        x1, y1 = int(x1 * width), int(y1 * height)
+        dx, dy = abs(x1 - x0), abs(y1 - y0)
+
         if dx < 2 and dy < 2:
             return
         outdat = []
@@ -414,8 +425,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
                 outdat.append((ix, iy))
 
         if self.lineplotter is None:
-            self.lineplotter = PlotFrame(self)
-            self.lineplotter.clear()
+            self.lineplotter = PlotFrame(self, title='Image Profile')
+        else:
+            try:
+                self.lineplotter.Raise()
+            except PyDeadObjectError:
+                self.lineplotter = PlotFrame(self, title='Image Profile')
 
         if self.colormode == 2:
             x, y, r, g, b = [], [], [], [], []
@@ -428,10 +443,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
             xlabel = 'Pixel (x)'
             if dy > dx:
                 x = y
-            xlabel = 'Pixel (y)'
-            self.lineplotter.plot(x, r, color='red', xlabel=xlabel)
-            self.lineplotter.oplot(x, g, color='green')
-            self.lineplotter.oplot(x, b, color='blue')
+                xlabel = 'Pixel (y)'
+            self.lineplotter.plot(x,  r, color='red', label='red',
+                                  xlabel=xlabel, ylabel='Intensity',
+                                  title='Image %i' % self.ad_cam.ArrayCounter_RBV)
+            self.lineplotter.oplot(x, g, color='green', label='green')
+            self.lineplotter.oplot(x, b, color='blue', label='blue')
 
         else:
             x, y, z = [], [], []
@@ -443,13 +460,11 @@ Matt Newville <newville@cars.uchicago.edu>"""
             if dy > dx:
                 x = y
             xlabel = 'Pixel (y)'
-            # print  x, len(x), len(z)
-
-            self.lineplotter.plot(x, z, color='k', xlabel=xlabel)
-
+            self.lineplotter.plot(x, z, color='k',
+                                  xlabel=xlabel, ylabel='Intensity',
+                                  title='Image %i' % self.ad_cam.ArrayCounter_RBV)
         self.lineplotter.Show()
         self.lineplotter.Raise()
-            
 
     def onShowXY(self, xval, yval):
         ix  = max(0, int( xval * self.ad_cam.SizeX))
@@ -473,7 +488,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         s = evt.GetString()
         s = str(s).strip()
         if s.endswith(':image1:'): s = s[:-8]
-        if s.endswith(':cam1:'):   s = s[:-6]            
+        if s.endswith(':cam1:'):   s = s[:-6]
         if s.endswith(':'):   s = s[:-1]
         self.prefix = s
         self.connect_pvs()
@@ -506,10 +521,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
                                    attrs=self.img_attrs)
         self.ad_cam = epics.Device(self.prefix + ':cam1:', delim='',
                                    attrs=self.cam_attrs)
-        
+
         time.sleep(0.005)
         if not self.ad_img.PV('UniqueId_RBV').connected:
-            epics.ca.poll()
+            epics.poll()
             if not self.ad_img.PV('UniqueId_RBV').connected:
                 self.messag('Warning:  Camera seems to not be connected!')
                 return
@@ -517,18 +532,18 @@ Matt Newville <newville@cars.uchicago.edu>"""
             self.messag('Connected to AD %s' % self.prefix)
 
         self.SetTitle("Epics Image Display: %s" % self.prefix)
-        
+
         self.wids['color'].SetPV(self.ad_cam.PV('ColorMode'))
         self.wids['exptime'].SetPV(self.ad_cam.PV('AcquireTime'))
-        self.wids['period'].SetPV(self.ad_cam.PV('AcquirePeriod'))        
+        self.wids['period'].SetPV(self.ad_cam.PV('AcquirePeriod'))
         self.wids['gain'].SetPV(self.ad_cam.PV('Gain'))
         self.wids['numimages'].SetPV(self.ad_cam.PV('NumImages'))
         self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
-        self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))     
+        self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))
 
         sizelabel = 'Image Size:   %i x %i pixels' % (self.ad_cam.MaxSizeX_RBV,
                                                     self.ad_cam.MaxSizeY_RBV)
-        self.wids['fullsize'].SetLabel(sizelabel) 
+        self.wids['fullsize'].SetLabel(sizelabel)
         self.showZoomsize()
 
         self.ad_img.add_callback('UniqueId_RBV',   self.onNewImage)
@@ -537,11 +552,14 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.ad_img.add_callback('ArraySize2_RBV', self.onProperty, dim=2)
         self.ad_img.add_callback('ColorMode_RBV',  self.onProperty, dim='color')
         self.ad_cam.add_callback('DetectorState_RBV',  self.onDetState)
-    
+
         self.ad_cam.Acquire = 0
         self.GetImageSize()
+        self.unZoom()
+
         epics.poll()
-        
+        self.RefreshImage()
+
     @EpicsFunction
     def GetImageSize(self):
         self.arrsize = [1,1,1]
@@ -556,18 +574,18 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if self.colormode == 2:
             self.img_w = self.arrsize[2]
             self.img_h = self.arrsize[1]
-        
+
     @DelayedEpicsCallback
     def onDetState(self, pvname=None, value=None, char_value=None, **kw):
         self.messag(char_value, panel=1)
-        
+
     @DelayedEpicsCallback
     def onProperty(self, pvname=None, value=None, dim=None, **kw):
         if dim=='color':
             self.colormode=value
         else:
             self.arrsize[dim] = value
-       
+
     @DelayedEpicsCallback
     def onNewImage(self, pvname=None, value=None, **kw):
         if value != self.img_id:
@@ -577,7 +595,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
                 self.drawing = True
                 self.RefreshImage()
 
-
     @EpicsFunction
     def RefreshImage(self, pvname=None, **kws):
         try:
@@ -585,9 +602,11 @@ Matt Newville <newville@cars.uchicago.edu>"""
         except:
             pass
         # d = debugtime()
+
+        if self.ad_img is None or self.ad_cam is None:
+            return 
         imgdim = self.ad_img.NDimensions_RBV
         imgcount = self.ad_cam.ArrayCounter_RBV
-
         now = time.time()
         if (imgcount == self.imgcount or abs(now - self.last_update) < 0.05):
             self.drawing = False
@@ -599,6 +618,11 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         self.last_update = time.time()
         self.image.can_resize = False
+
+        xmin = self.ad_cam.MinX
+        ymin = self.ad_cam.MinY
+        width = self.ad_cam.SizeX
+        height = self.ad_cam.SizeY
 
         arraysize = self.arrsize[0] * self.arrsize[1]
         if imgdim == 3:
@@ -618,41 +642,47 @@ Matt Newville <newville@cars.uchicago.edu>"""
             if rawdata.dtype != np.uint8:
                 im_mode = 'I'
                 rawdata = rawdata.astype(np.uint32)
-        
+
 
         self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
 
-        imbuff =  Image.frombuffer(im_mode, im_size, rawdata,
-                                   'raw', im_mode, 0, 1)
-        # d.add('refresh after Image.frombuffer')        
-        nmissed = max(0, self.n_img-self.n_drawn)
-        self.data = rawdata
-        self.im_size = im_size
+        self.GetImageSize()
 
-        smsg = 'Drew %i, Missed %i images in %.2f seconds' % (self.n_drawn,
-                                                              nmissed,
-                                                              time.time()-self.starttime)
+        self.im_size = im_size
+        self.im_mode = im_mode
+        self.data = rawdata
+        
+        self.DatatoImage(rawdata, im_size, im_mode)
+        self.image.can_resize = True
+        nmissed = max(0, self.n_img-self.n_drawn)
+
+        smsg = self.stat_msg % (self.n_drawn, nmissed,
+                                time.time()-self.starttime)
         self.messag(smsg, panel=0)
 
-        self.GetImageSize()
-        if self.img_h < 1 or self.img_w < 1:
-            return
-        display_size = (int(self.img_h*self.scale), int(self.img_w*self.scale))
-
-        imbuff = imbuff.resize(display_size)
-        if self.wximage.GetSize() != imbuff.size:
-            self.wximage = wx.EmptyImage(display_size[0], display_size[1])
-        # d.add('refresh after sizing')
-        self.imbuff = imbuff
-        self.wximage.SetData(imbuff.convert('RGB').tostring())
-        # d.add('refresh set wximage.tostring')
-        self.image.SetValue(self.wximage)
-        self.image.DrawImage()
-        # self.image.Refresh()
-        self.image.can_resize = True        
         self.drawing = False
-        # d.show()
         
+#         imbuff =  Image.frombuffer(im_mode, im_size, rawdata,
+#                                    'raw', im_mode, 0, 1)
+#         # d.add('refresh after Image.frombuffer')        
+# 
+#         self.GetImageSize()
+# 
+#         if self.img_h < 1 or self.img_w < 1:
+#             return
+#         display_size = (int(self.img_h*self.scale), int(self.img_w*self.scale))
+# 
+#         imbuff = imbuff.resize(display_size)
+#         if self.wximage.GetSize() != imbuff.size:
+#             self.wximage = wx.EmptyImage(display_size[0], display_size[1])
+#         # d.add('refresh after sizing')
+#         self.imbuff = imbuff
+#         self.wximage.SetData(imbuff.convert('RGB').tostring())
+#         # d.add('refresh set wximage.tostring')
+#         self.image.SetValue(self.wximage)
+
+        # d.show()
+
 if __name__ == '__main__':
     import sys
     prefix = None
@@ -664,4 +694,3 @@ if __name__ == '__main__':
     frame = AD_Display(prefix=prefix, app=app)
     frame.Show()
     app.MainLoop()
-

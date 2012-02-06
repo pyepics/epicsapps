@@ -1,6 +1,6 @@
-""" Simple Image Viewing Window
 """
-
+Simple Image Viewing Window
+"""
 import wx
 
 class ImageView(wx.Window):
@@ -8,11 +8,12 @@ class ImageView(wx.Window):
                  size=wx.DefaultSize, onzoom=None, onshow=None,
                  onprofile=None, **kw):
         wx.Window.__init__(self, parent, id, pos, size, **kw)
-        
+
         self.image = None
-        self.SetBackgroundColour('#EEEEEE')
+        self.bmp = None
         self.can_resize = True
-        self.Bind(wx.EVT_PAINT, self.OnPaint)
+        self.SetBackgroundColour('#EEEEEE')
+        self.Bind(wx.EVT_PAINT, self.DrawImage)
         self.Bind(wx.EVT_SIZE, self.OnSize)
         self.Bind(wx.EVT_LEFT_DOWN, self.OnLeftDown)
         self.Bind(wx.EVT_LEFT_UP, self.OnLeftUp)
@@ -27,189 +28,171 @@ class ImageView(wx.Window):
         self.rot90 = 0
         self.zoom_box = None
         self.prof_line = None
-        self.zoom_coords = None
-        
+        self.xy_init = None
+
     def OnLeftDown(self, event=None):
         if self.cursor_mode in ('zoom', 'profile'):
             self.zoom_box = None
             self.prof_line = None
-            self.zoom_coords = [event.x, event.y]
+            self.xy_init = (event.GetX(), event.GetY())
             self.Refresh()
 
         elif self.cursor_mode == 'show':
             xoff = (self.win_size[0] - self.img_size[0])/2.0
             yoff = (self.win_size[1] - self.img_size[1])/2.0
-            x = (event.x - xoff)/ (1.0*self.img_size[0])
-            y = (event.y - yoff)/ (1.0*self.img_size[1])
+            x = (event.GetX() - xoff)/ (1.0*self.img_size[0])
+            y = (event.GetY() - yoff)/ (1.0*self.img_size[1])
             if hasattr(self.onshow, '__call__'):
                 self.onshow(x, y)
 
-                
     def OnLeftUp(self, event=None):
+        """action on left up -- send fractional coordinates of image
+        to onzoom or onprofile method"""
+        # get offset of image within window and image size as floating point
+        xoff  = (self.win_size[0] - self.img_size[0])/2.0
+        yoff  = (self.win_size[1] - self.img_size[1])/2.0
+        xsize = 1.0*self.img_size[0]
+        ysize = 1.0*self.img_size[1]
+
+        # make sure rot90 is either 0 or 1, adjusting flipv/fliph if needed
+        self.rot90 = self.rot90 % 4
+        if self.rot90 > 1:
+            self.flipv, self.fliph = not self.flipv, not self.fliph
+            self.rot90 = self.rot90 - 2
+
         if self.cursor_mode == 'zoom':
-            self.zoom_coords = None
             if hasattr(self.onzoom, '__call__') and self.zoom_box is not None:
-                xoff = (self.win_size[0] - self.img_size[0])/2.0
-                yoff = (self.win_size[1] - self.img_size[1])/2.0
-                x0  = (self.zoom_box[0] - xoff)/ (1.0*self.img_size[0])
-                y0  = (self.zoom_box[1] - yoff)/ (1.0*self.img_size[1])
-                x1  =  self.zoom_box[2] / (1.0*self.img_size[0])
-                y1  =  self.zoom_box[3] / (1.0*self.img_size[1])
-                self.onzoom(x0, y0, x1, y1)
-            self.zoom_box = None
-        elif self.cursor_mode == 'profile':
-            # print 'draw profile',  
-            # print (event.x, event.y) , self.zoom_coords,  self.prof_line
+                x0  = (self.zoom_box[0] - xoff)/ xsize
+                xw  =  self.zoom_box[2] / xsize
+                y0  = (self.zoom_box[1] - yoff)/ ysize
+                yw  =  self.zoom_box[3] / ysize
+                if self.flipv:
+                    y0 = 1-y0-yw
+                if self.fliph:
+                    x0 = 1-x0-xw
+                if self.rot90 == 1:
+                    x0, xw, y0, yw = y0, yw, 1-x0-xw, xw
+                x1, y1 = x0+xw, y0+yw
+                x0, y0 = max(0, min(1, x0)), max(0, min(1, y0))
+                x1, y1 = max(0, min(1, x1)), max(0, min(1, y1))
+                xw, yw = x1-x0, y1-y0
+                self.onzoom(x0, y0, xw, yw)
 
+        elif self.cursor_mode == 'profile':
             if hasattr(self.onprofile, '__call__') and self.prof_line is not None:
-                xoff = (self.win_size[0] - self.img_size[0])/2.0
-                yoff = (self.win_size[1] - self.img_size[1])/2.0
-
-                px0 = self.zoom_coords[0]
-                py0 = self.zoom_coords[1]
-                px1 = event.x
-                py1 = event.y
-                x0  = (px0 - xoff) / (1.0*self.img_size[0])
-                y0  = (py0 - yoff) / (1.0*self.img_size[1])
-                x1  = (px1 - xoff) / (1.0*self.img_size[0])
-                y1  = (py1 - yoff) / (1.0*self.img_size[1])
-
+                x0  = (self.prof_line[0] - xoff) / xsize
+                y0  = (self.prof_line[1] - yoff) / ysize
+                x1  = (self.prof_line[2] - xoff) / xsize
+                y1  = (self.prof_line[3] - yoff) / ysize
+                if self.flipv:
+                    y0, y1 = (1-y1), (1-y0)
+                if self.fliph:
+                    x0, x1 = (1-x1), (1-x0)
+                if self.rot90 == 1:
+                    x0, x1, y0, y1 = y0, y1, (1-x0), (1-x1)
+                x0, y0 = max(0, min(1, x0)), max(0, min(1, y0))
+                x1, y1 = max(0, min(1, x1)), max(0, min(1, y1))
                 self.onprofile(x0, y0, x1, y1)
+        self.zoom_box = None
+        self.prof_line = None
+        self.xy_init = None
 
-            self.zoom_box = None
-            self.zoom_coords = None
-            self.prof_line = None
-            
     def OnMotion(self, event=None):
-        if self.zoom_coords is None: 
+        if self.xy_init is None:
             return
+        xi, yi = self.xy_init
+        xe, ye = (event.GetX(), event.GetY())
+        if self.cursor_mode == 'profile':
+            self.updateDynamicBox((xi, yi, xe, ye))
+        elif self.cursor_mode == 'zoom':
+            x, w = min(xe, xi), abs(xe-xi)
+            y, h = min(ye, yi), abs(ye-yi)
+            self.updateDynamicBox((x, y, w, h))
 
-        if self.cursor_mode == 'zoom':
-            x0 = min(event.x, self.zoom_coords[0])
-            y0 = min(event.y, self.zoom_coords[1])
-            w  = abs(event.x - self.zoom_coords[0])
-            h  = abs(event.y - self.zoom_coords[1])
-
-            zdc = wx.ClientDC(self)
-            zdc.SetLogicalFunction(wx.XOR)
-            zdc.SetBrush(wx.TRANSPARENT_BRUSH)
-            zdc.SetPen(wx.Pen('White', 2, wx.SOLID))
-            pen = zdc.GetPen()
-
-            zdc.ResetBoundingBox()
-            zdc.BeginDrawing()
-
-            if self.zoom_box is not None:
-                zdc.DrawRectangle(*self.zoom_box)
-            self.zoom_box = (x0, y0, w, h)
-            zdc.DrawRectangle(*self.zoom_box)
-            zdc.EndDrawing()
-
-        elif self.cursor_mode == 'profile':
-            x0, y0 = self.zoom_coords
-            zdc = wx.ClientDC(self)
-            zdc.SetLogicalFunction(wx.XOR)
-            zdc.SetBrush(wx.TRANSPARENT_BRUSH)
-            zdc.SetPen(wx.Pen('White', 2, wx.SOLID))
-            pen = zdc.GetPen()
-            zdc.ResetBoundingBox()
-            zdc.BeginDrawing()
-
+    def updateDynamicBox(self, bbox, erase=False):
+        "common dynamic update of zoom box or profile line"
+        zdc = wx.ClientDC(self)
+        zdc.SetLogicalFunction(wx.XOR)
+        zdc.SetBrush(wx.TRANSPARENT_BRUSH)
+        zdc.SetPen(wx.Pen('White', 2, wx.SOLID))
+        zdc.ResetBoundingBox()
+        zdc.BeginDrawing()
+        if self.cursor_mode == 'profile':
             if self.prof_line is not None:
                 zdc.DrawLine(*self.prof_line)
-            self.prof_line = (x0, y0, event.x, event.y)
-            zdc.DrawLine(*self.prof_line)
-            zdc.EndDrawing()
-        
+            if not erase:
+                self.prof_line = bbox
+                zdc.DrawLine(*self.prof_line)
+        elif self.cursor_mode == 'zoom':
+            if self.zoom_box is not None:
+                zdc.DrawRectangle(*self.zoom_box)
+            if not erase:
+                self.zoom_box = bbox
+                zdc.DrawRectangle(*self.zoom_box)
+        zdc.EndDrawing()
+
     def SetValue(self, image):
         self.image = image
         self.Refresh()
-    
+
     def OnSize(self, event):
         if self.can_resize:
             self.DrawImage(size=event.GetSize())
             self.Refresh()
         event.Skip()
 
-    def OnPaint(self, event):
-        self.DrawImage()
-
-    def DrawImage(self, dc=None, isize=None, size=None):
+    def DrawImage(self, event=None, isize=None, size=None):
+        # print 'DrawImage ', event, isize, size
+        if event is None:
+            return
         if not hasattr(self, 'image') or self.image is None:
             return
 
-        if size is None:
-            size = self.GetSize()
+        if size is None:   size = self.GetSize()
         try:
-            wwidth, wheight = size
+            w_win, h_win = size
         except:
             return
 
-        image = self.image
-        bmp = None
+        img = self.image
         if isize is not None:
-            iwidth, iheight = isize
-        elif image.IsOk():
-            iwidth = image.GetWidth()   
-            iheight = image.GetHeight()
+            w_img, h_img = isize
+        elif img.IsOk():
+            w_img = img.GetWidth()
+            h_img = img.GetHeight()
         else:
-            bmp = wx.ArtProvider.GetBitmap(wx.ART_MISSING_IMAGE,
-                                           wx.ART_MESSAGE_BOX, (64,64))
-            iwidth  = bmp.GetWidth()
-            iheight = bmp.GetHeight()
-  
-        xfactor = float(wwidth) / iwidth
-        yfactor = float(wheight) / iheight
+            return
 
-        scale = yfactor
-        if xfactor < yfactor:
-            scale = xfactor
+        xscale = float(w_win) / w_img
+        yscale = float(h_win) / h_img
 
-        owidth = int(scale*iwidth)
-        oheight = int(scale*iheight)
-        diffx = (wwidth - owidth)/2   # center calc
-        diffy = (wheight - oheight)/2   # center calc
-        self.img_size = owidth, oheight
-        self.win_size = wwidth, wheight
+        scale = yscale
+        if xscale < yscale:
+            scale = xscale
 
+        w_scaled = int(scale * w_img)
+        h_scaled = int(scale * h_img)
+        w_pad    = (w_win - w_scaled)/2
+        h_pad    = (h_win - h_scaled)/2
+        self.img_size = w_scaled, h_scaled
+        self.win_size = w_win, h_win
         if self.flipv:
-            image = image.Mirror(False)
+            img = img.Mirror(False)
         if self.fliph:
-            image = image.Mirror(True)
+            img = img.Mirror(True)
         if self.rot90 != 0:
-            if self.rot90 == 3:
-                image = image.Rotate90(False)
-            elif self.rot90 == 1:
-                image = image.Rotate90(True)
-            elif self.rot90 == 2:
-                image = image.Rotate90(True).Rotate90(True)
-
-        if bmp is None:
-            if owidth!=iwidth or oheight!=iheight:
-                image = image.Scale(owidth, oheight)
-            bmp = image.ConvertToBitmap()
-        if dc is None:
-            try:
-                dc = wx.PaintDC(self)
-            except:
-                pass
-        if dc is not None:
-            dc.DrawBitmap(bmp, diffx, diffy, useMask=True)
+            for i in range(self.rot90):
+                img = img.Rotate90(True)
 
 
-        if self.zoom_box is not None or self.prof_line is not None:
-            zdc = wx.ClientDC(self)
-            zdc.SetLogicalFunction(wx.XOR)
-            zdc.SetBrush(wx.TRANSPARENT_BRUSH)
-            zdc.SetPen(wx.Pen('White', 2, wx.SOLID))
-            pen = zdc.GetPen()
+        if w_scaled != w_img or h_scaled!=h_img:
+            img = img.Scale(w_scaled, h_scaled)
+        dc = wx.PaintDC(self)
+        #print dir(dc)
+        #print dir(img)
+        dc.DrawBitmap(wx.BitmapFromImage(img), w_pad, h_pad, useMask=True)
 
-            zdc.ResetBoundingBox()
-            zdc.BeginDrawing()
-            if self.zoom_box is not None:
-                zdc.DrawRectangle(*self.zoom_box)
-            if self.prof_line is not None:
-                zdc.DrawLine(*self.prof_line)
-
-            zdc.EndDrawing()
-            
+        if self.zoom_box is not None:
+            self.updateDynamicBox(self.zoom_box, erase=True)
+        elif self.prof_line is not None:
+            self.updateDynamicBox(self.prof_line, erase=True)
