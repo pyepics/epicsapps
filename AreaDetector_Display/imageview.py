@@ -20,6 +20,8 @@ class ImageView(wx.Window):
 
         self.cursor_mode = 'zoom'
         self.onzoom = onzoom
+        self.onshow = onshow
+        self.onprofile = onprofile
         self.flipv = False
         self.fliph = False
         self.rot90 = 0
@@ -32,17 +34,21 @@ class ImageView(wx.Window):
             self.zoom_box = None
             self.prof_line = None
             self.zoom_coords = [event.x, event.y]
+            self.Refresh()
+
         elif self.cursor_mode == 'show':
-            self.xycoords = (event.x, event.y)
+            xoff = (self.win_size[0] - self.img_size[0])/2.0
+            yoff = (self.win_size[1] - self.img_size[1])/2.0
+            x = (event.x - xoff)/ (1.0*self.img_size[0])
+            y = (event.y - yoff)/ (1.0*self.img_size[1])
             if hasattr(self.onshow, '__call__'):
-                self.onshow(event.x, event.y)
+                self.onshow(x, y)
 
                 
     def OnLeftUp(self, event=None):
         if self.cursor_mode == 'zoom':
             self.zoom_coords = None
             if hasattr(self.onzoom, '__call__') and self.zoom_box is not None:
-                
                 xoff = (self.win_size[0] - self.img_size[0])/2.0
                 yoff = (self.win_size[1] - self.img_size[1])/2.0
                 x0  = (self.zoom_box[0] - xoff)/ (1.0*self.img_size[0])
@@ -52,8 +58,24 @@ class ImageView(wx.Window):
                 self.onzoom(x0, y0, x1, y1)
             self.zoom_box = None
         elif self.cursor_mode == 'profile':
-            # print 'draw profile',  (event.x, event.y), self.zoom_coords
-            # print 'need to erase liness ' 
+            # print 'draw profile',  
+            # print (event.x, event.y) , self.zoom_coords,  self.prof_line
+
+            if hasattr(self.onprofile, '__call__') and self.prof_line is not None:
+                xoff = (self.win_size[0] - self.img_size[0])/2.0
+                yoff = (self.win_size[1] - self.img_size[1])/2.0
+
+                px0 = self.zoom_coords[0]
+                py0 = self.zoom_coords[1]
+                px1 = event.x
+                py1 = event.y
+                x0  = (px0 - xoff) / (1.0*self.img_size[0])
+                y0  = (py0 - yoff) / (1.0*self.img_size[1])
+                x1  = (px1 - xoff) / (1.0*self.img_size[0])
+                y1  = (py1 - yoff) / (1.0*self.img_size[1])
+
+                self.onprofile(x0, y0, x1, y1)
+
             self.zoom_box = None
             self.zoom_coords = None
             self.prof_line = None
@@ -84,7 +106,7 @@ class ImageView(wx.Window):
             zdc.EndDrawing()
 
         elif self.cursor_mode == 'profile':
-            x0, y0 =  self.zoom_coords
+            x0, y0 = self.zoom_coords
             zdc = wx.ClientDC(self)
             zdc.SetLogicalFunction(wx.XOR)
             zdc.SetBrush(wx.TRANSPARENT_BRUSH)
@@ -98,7 +120,6 @@ class ImageView(wx.Window):
             self.prof_line = (x0, y0, event.x, event.y)
             zdc.DrawLine(*self.prof_line)
             zdc.EndDrawing()
-
         
     def SetValue(self, image):
         self.image = image

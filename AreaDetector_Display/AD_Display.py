@@ -11,6 +11,8 @@ import wx
 import numpy as np
 import Image
 
+from wxmplot.plotframe import PlotFrame
+
 # from debugtime import debugtime
 
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '16777216'
@@ -51,6 +53,7 @@ class AD_Display(wx.Frame):
         self.img_id = 0
         self.starttime = time.time()
         self.drawing = False
+        self.lineplotter = None
         self.zoom_lims = []
 
         wx.Frame.__init__(self, None, -1,
@@ -164,13 +167,13 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.CM_ZOOM = wx.NewId()
         self.CM_PROF = wx.NewId()
         self.CM_SHOW = wx.NewId()
-#         optsmenu.Append(self.CM_ZOOM, "Cursor Mode: Zoom",
-#                         "Zoom to box by clicking and dragging", wx.ITEM_RADIO)
-#         optsmenu.Append(self.CM_SHOW, "Cursor Mode: Show X,Y",
-#                         "Show X,Y, Intensity Values",  wx.ITEM_RADIO)
-#         optsmenu.Append(self.CM_PROF, "Cursor Mode: Line Profile",
-#                         "Show Line Profile",  wx.ITEM_RADIO)
-# 
+        optsmenu.Append(self.CM_ZOOM, "Cursor Mode: Zoom",
+                        "Zoom to box by clicking and dragging", wx.ITEM_RADIO)
+        optsmenu.Append(self.CM_SHOW, "Cursor Mode: Show X,Y",
+                        "Show X,Y, Intensity Values",  wx.ITEM_RADIO)
+        optsmenu.Append(self.CM_PROF, "Cursor Mode: Line Profile",
+                        "Show Line Profile",  wx.ITEM_RADIO)
+
         helpmenu = wx.Menu()
         helpmenu.Append(HABOUT, "About", "About Epics AreadDetector Display")
 
@@ -291,7 +294,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
         sizer.Add(self.wids['fullsize'],    (0, 9), (1, 1), labstyle)
         sizer.Add(self.wids['zoomsize'],    (1, 9), (1, 1), labstyle)
     
-        self.image = ImageView(self, size=(800,600), onzoom=self.onZoom)
+        self.image = ImageView(self, size=(800,600), onzoom=self.onZoom, 
+                               onprofile=self.onProfile, onshow=self.onShowXY)
         
         self.SetAutoLayout(True)
         panel.SetSizer(sizer)
@@ -345,7 +349,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
     def showZoomsize(self):
         msg  = 'Displaying:  %i x %i pixels' % (self.ad_cam.SizeX, self.ad_cam.SizeY)
         self.wids['zoomsize'].SetLabel(msg) 
-        
+
     @EpicsFunction
     def onZoom(self, x0, y0, x1, y1):
         width  = self.ad_cam.SizeX 
@@ -357,6 +361,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         height = int(y1 * height)
         if width < 2 or height < 2: 
             return
+
         self.ad_cam.MinX = xmin
         self.ad_cam.MinY = ymin
         self.ad_cam.SizeX = width
@@ -374,6 +379,93 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.image.DrawImage(isize=(width, height))
         self.image.Refresh()
         self.drawing = False
+
+    def onProfile(self, x0, y0, x1, y1):
+        width  = self.ad_cam.SizeX 
+        height = self.ad_cam.SizeY
+        x0   = max(0, self.ad_cam.MinX  + x0 * width)
+        y0   = max(0, self.ad_cam.MinY  + y0 * height)
+        x1   = max(0, self.ad_cam.MinX  + x1 * width)
+        y1   = max(0, self.ad_cam.MinY  + y1 * height)
+
+        # print ' PROFILE ', x0, y0, x1, y1
+        dx = abs(x1 - x0)
+        dy = abs(y1 - y0)
+        if dx < 2 and dy < 2:
+            return
+        outdat = []
+        if self.colormode == 2:
+            self.data.shape = (self.im_size[1], self.im_size[0], 3)
+        else:
+            self.data.shape = self.im_size[1], self.im_size[0]
+
+        if dy  > dx:
+            _y0 = min(int(y0), int(y1+0.5))
+            _y1 = max(int(y0), int(y1+0.5))
+
+            for iy in range(_y0, _y1):
+                ix = int(x0 + (iy-int(y0))*(x1-x0)/(y1-y0))
+                outdat.append((ix, iy))
+        else:
+            _x0 = min(int(x0), int(x1+0.5))
+            _x1 = max(int(x0), int(x1+0.5))
+            for ix in range(_x0, _x1):
+                iy = int(y0 + (ix-int(x0))*(y1-y0)/(x1-x0))
+                outdat.append((ix, iy))
+
+        if self.lineplotter is None:
+            self.lineplotter = PlotFrame(self)
+            self.lineplotter.clear()
+
+        if self.colormode == 2:
+            x, y, r, g, b = [], [], [], [], []
+            for ix, iy in outdat:
+                x.append(ix)
+                y.append(iy)
+                r.append(self.data[iy,ix,0])
+                g.append(self.data[iy,ix,1])
+                b.append(self.data[iy,ix,2])
+            xlabel = 'Pixel (x)'
+            if dy > dx:
+                x = y
+            xlabel = 'Pixel (y)'
+            self.lineplotter.plot(x, r, color='red', xlabel=xlabel)
+            self.lineplotter.oplot(x, g, color='green')
+            self.lineplotter.oplot(x, b, color='blue')
+
+        else:
+            x, y, z = [], [], []
+            for ix, iy in outdat:
+                x.append(ix)
+                y.append(iy)
+                z.append(self.data[iy,ix])
+            xlabel = 'Pixel (x)'
+            if dy > dx:
+                x = y
+            xlabel = 'Pixel (y)'
+            # print  x, len(x), len(z)
+
+            self.lineplotter.plot(x, z, color='k', xlabel=xlabel)
+
+        self.lineplotter.Show()
+        self.lineplotter.Raise()
+            
+
+    def onShowXY(self, xval, yval):
+        ix  = max(0, int( xval * self.ad_cam.SizeX))
+        iy  = max(0, int( yval * self.ad_cam.SizeY))
+
+        if self.colormode == 2:
+            self.data.shape = (self.im_size[1], self.im_size[0], 3)
+            ival = tuple(self.data[iy, ix, :])
+            smsg  = 'Pixel %i, %i, (R, G, B) = %s' % (ix, iy, repr(ival))
+        else:
+            self.data.shape = self.im_size[1], self.im_size[0]
+            ival = self.data[iy, ix]
+            smsg  = 'Pixel %i, %i, Intensity = %i' % (ix, iy, ival)
+
+        self.messag(smsg, panel=0)
+
 
     def onName(self, evt=None, **kws):
         if evt is None:
@@ -449,7 +541,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.ad_cam.Acquire = 0
         self.GetImageSize()
         epics.poll()
-        self.RefreshImage()
         
     @EpicsFunction
     def GetImageSize(self):
@@ -528,7 +619,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
                 im_mode = 'I'
                 rawdata = rawdata.astype(np.uint32)
         
-        # d.add('refresh got data')
 
         self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
 
@@ -536,6 +626,9 @@ Matt Newville <newville@cars.uchicago.edu>"""
                                    'raw', im_mode, 0, 1)
         # d.add('refresh after Image.frombuffer')        
         nmissed = max(0, self.n_img-self.n_drawn)
+        self.data = rawdata
+        self.im_size = im_size
+
         smsg = 'Drew %i, Missed %i images in %.2f seconds' % (self.n_drawn,
                                                               nmissed,
                                                               time.time()-self.starttime)
