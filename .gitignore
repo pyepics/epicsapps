@@ -1,4 +1,5 @@
 *.pyc
+*.ein
 *~
 *#
 doc/_build
@@ -7,4 +8,5 @@ tests/.coverage*
 build
 dist
 junk
+NonGit
 
