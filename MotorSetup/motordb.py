@@ -15,7 +15,7 @@ from datetime import datetime
 
 from utils import backup_versions, save_backup
 
-from sqlalchemy import MetaData, create_engine, and_, \
+from sqlalchemy import MetaData, and_, create_engine, \
      Table, Column, Integer, Float, String, Text, DateTime, ForeignKey
 
 from sqlalchemy.orm import sessionmaker,  mapper, clear_mappers, relationship
@@ -25,15 +25,29 @@ from sqlalchemy.pool import SingletonThreadPool
 
 # needed for py2exe?
 import sqlalchemy.dialects.sqlite
+import sqlalchemy.dialects.mysql
 
-def isMotorDB(dbname):
+try:
+    from mysql_settings import HOST, USER, PASSWD, DBNAME
+except ImportError:
+    pass
+
+def make_engine(dbname, server):
+    if server == 'mysql':
+        conn_str= 'mysql+mysqldb://%s:%s@%s/%s'
+        return create_engine(conn_str % (USER, PASSWD, HOST, DBNAME))
+    else:
+        return create_engine('sqlite:///%s' % (dbname),
+                             poolclass=SingletonThreadPool)
+
+
+def isMotorDB(dbname, server='sqlite'):
     """test if a file is a valid motor Library file:
        must be a sqlite db file, with tables named 'motor'
     """
     result = False
     try:
-        engine = create_engine('sqlite:///%s' % dbname,
-                               poolclass=SingletonThreadPool)
+        engine = make_engine(dbname, server)
         meta = MetaData(engine)
         meta.reflect()
         if ('info' in meta.tables and 'motors' in meta.tables):
@@ -90,16 +104,16 @@ class MotorDBException(Exception):
 
 
 def StrCol(name, size=None, **kws):
-    if size is None:
-        return Column(name, Text, **kws)
-    else:
-        return Column(name, String(size), **kws)
+    val = Text
+    if size is not None: val = String(size)
+    return Column(name, val, **kws)
+
 
 def NamedTable(tablename, metadata, keyid='id', nameid='name',
                name=True, notes=True, attributes=True, cols=None):
     args  = [Column(keyid, Integer, primary_key=True)]
     if name:
-        args.append(StrCol(nameid, nullable=False, unique=True))
+        args.append(StrCol(nameid, size=512, nullable=False, unique=True))
     if notes:
         args.append(StrCol('notes'))
     if attributes:
@@ -108,43 +122,51 @@ def NamedTable(tablename, metadata, keyid='id', nameid='name',
         args.extend(cols)
     return Table(tablename, metadata, *args)
 
-def make_newdb(dbname, server= 'sqlite'):
-    engine  = create_engine('%s:///%s' % (server, dbname))
+def make_newdb(dbname, server='sqlite'):
+    engine  = make_engine(dbname, server)
     metadata =  MetaData(engine)
-    
-    x = NamedTable('motors', metadata,
-                   cols=[StrCol('dtype'),
-                         StrCol('description'), 
-                         StrCol('units'), 
-                         Column('card', Integer), 
-                         Column('dir',  Integer), 
+    print dbname, engine, metadata
+    x = NamedTable('motors', metadata, 
+                   cols=[StrCol('dtype', size=64),
+                         StrCol('units', size=64), 
+                         Column('prec', Integer),
                          Column('velo', Float),
                          Column('vbas', Float),
                          Column('accl', Float),
                          Column('bdst', Float),
                          Column('bvel', Float),
                          Column('bacc', Float),
-                         Column('srev', Float),
+                         Column('srev', Integer),
                          Column('urev', Float),
-                         Column('prec', Float),
                          Column('dhlm', Float),
-                         Column('dllm', Float) ])
+                         Column('dllm', Float),
+                         Column('frac', Float),
+                         Column('eres', Float),
+                         Column('rres', Float),
+                         Column('dly',  Float),
+                         Column('rdbd', Float),
+                         Column('rtry', Integer),
+                         StrCol('ueip', size=64),
+                         StrCol('urip', size=64),
+                         StrCol('ntm',  size=64),
+                         Column('ntmf', Integer),                         
+                         ])
 
     info = Table('info', metadata,
-                 Column('key', Text, primary_key=True, unique=True), 
+                 Column('keyname', String(64), primary_key=True, unique=True), 
                  StrCol('value'))
 
     metadata.create_all()
     session = sessionmaker(bind=engine)()
     now = datetime.isoformat(datetime.now())
-    for key, value in (["version", "0.1"],
-                       ["verify_erase", "1"],
-                       ["verify_overwrite",  "1"],
-                       ["create_date", '<now>'],
-                       ["modify_date", '<now>']):
+    for keyname, value in (["version", "0.1"],
+                           ["verify_erase", "1"],
+                           ["verify_overwrite",  "1"],
+                           ["create_date", '<now>'],
+                           ["modify_date", '<now>']):
         if value == '<now>':
             value = now
-        info.insert().execute(key=key, value=value)
+        info.insert().execute(keyname=keyname, value=value)
 
     session.commit()    
 
@@ -157,10 +179,10 @@ class _BaseTable(object):
 
 class InfoTable(_BaseTable):
     "general information table (versions, etc)"
-    key, value = None, None
+    keyname, value = None, None
     def __repr__(self):
         name = self.__class__.__name__
-        fields = ['%s=%s' % (getattr(self, 'key', '?'),
+        fields = ['%s=%s' % (getattr(self, 'keyname', '?'),
                              getattr(self, 'value', '?'))]
         return "<%s(%s)>" % (name, ', '.join(fields))
 
@@ -170,8 +192,9 @@ class MotorsTable(_BaseTable):
 
 class MotorDB(object):
     "interface to Motors Database"
-    def __init__(self, dbname=None):
+    def __init__(self, server='sqlite', dbname=None):
         self.dbname = dbname
+        self.server = server
         self.tables = None
         self.engine = None
         self.session = None
@@ -179,8 +202,8 @@ class MotorDB(object):
         self.metadata = None
         self.pvs = {}
         self.restoring_pvs = []
-        if dbname is not None:
-            self.connect(dbname)
+        if dbname is not None or server=='mysql':
+            self.connect(dbname, server=server)
 
     def create_newdb(self, dbname, connect=False):
         "create a new, empty database"
@@ -190,19 +213,19 @@ class MotorDB(object):
             time.sleep(0.5)
             self.connect(dbname, backup=False)
 
-    def connect(self, dbname, backup=True):
+    def connect(self, dbname, server='sqlite', backup=True):
         "connect to an existing database"
-        if not os.path.exists(dbname):
-            raise IOError("Database '%s' not found!" % dbname)
+        if server == 'sqlite':
+            if not os.path.exists(dbname):
+                raise IOError("Database '%s' not found!" % dbname)
+            
+            if not isMotorDB(dbname):
+                raise ValueError("'%s' is not an Motor file!" % dbname)
 
-        if not isMotorDB(dbname):
-            raise ValueError("'%s' is not an Motor file!" % dbname)
-
-        if backup:
-            save_backup(dbname)
+            if backup:
+                save_backup(dbname)
         self.dbname = dbname
-        self.engine = create_engine('sqlite:///%s' % self.dbname,
-                                    poolclass = SingletonThreadPool)
+        self.engine = make_engine(dbname, server)
         self.conn = self.engine.connect()
         self.session = sessionmaker(bind=self.engine)()
 
@@ -234,23 +257,23 @@ class MotorDB(object):
         "generic query"
         return self.session.query(*args, **kws)
 
-    def get_info(self, key, default=None):
+    def get_info(self, keyname, default=None):
         """get a value from a key in the info table"""
-        errmsg = "get_info expected 1 or None value for key='%s'"
-        out = self.query(InfoTable).filter(InfoTable.key==key).all()
-        thisrow = None_or_one(out, errmsg % key)
+        errmsg = "get_info expected 1 or None value for keyname='%s'"
+        out = self.query(InfoTable).filter(InfoTable.keyname==keyname).all()
+        thisrow = None_or_one(out, errmsg % keyname)
         if thisrow is None:
             return default
         return thisrow.value
 
-    def set_info(self, key, value):
+    def set_info(self, keyname, value):
         """set key / value in the info table"""
         table = self.tables['info']
-        vals  = self.query(table).filter(InfoTable.key==key).all()
+        vals  = self.query(table).filter(InfoTable.keyname==keyname).all()
         if len(vals) < 1:
-            table.insert().execute(key=key, value=value)
+            table.insert().execute(keyname=keyname, value=value)
         else:
-            table.update(whereclause="key='%s'" % key).execute(value=value)
+            table.update(whereclause="keyname='%s'" % keyname).execute(value=value)
 
     def set_hostpid(self, clear=False):
         """set hostname and process ID, as on intial set up"""
@@ -262,6 +285,8 @@ class MotorDB(object):
 
     def check_hostpid(self):
         """check whether hostname and process ID match current config"""
+        if self.server != 'sqlite':
+            return True
         db_host_name = self.get_info('host_name', default='')
         db_process_id  = self.get_info('process_id', default='0')
         return ((db_host_name == '' and db_process_id == '0') or
@@ -329,13 +354,22 @@ arguments
         return None_or_one(out, 'get_motor expected 1 or None Motor')
 
     def add_motor(self, name, notes=None,
-                  attributes=None, **kws):
-        """add instrument
-        notes and attributes optional
-        returns Instruments instance"""
+                  attributes=None, motor=None, **kws):
+        """add motor,    notes and attributes optional
+        returns motor instance"""
         kws['notes'] = notes
         kws['attributes'] = attributes
         name = name.strip()
+        if motor is not None:
+            kws['dtype'] = motor.get('DTYP', as_string=True)
+            kws['units'] = motor.EGU
+            for key in ('velo', 'vbas', 'accl', 'bdst', 'bvel', 'bacc',
+                        'srev', 'urev', 'prec', 'dhlm', 'dllm', 'frac',
+                        'eres', 'rres', 'dly', 'rdbd', 'rtry', 'ueip',
+                        'urip', 'ntm', 'ntmf'):            
+                as_string = key in ('dir', 'urip', 'ueip', 'ntm')
+                kws[key] = motor.get(key.upper(), as_string=as_string)
+
         row = self.__addRow(MotorsTable, ('name',), (name,), **kws)
         self.session.add(row)
         self.commit()
@@ -343,7 +377,7 @@ arguments
 
     def add_info(self, key, value):
         """add Info key value pair -- returns Info instance"""
-        row = self.__addRow(InfoTable, ('key', 'value'), (key, value))
+        row = self.__addRow(InfoTable, ('keyname', 'value'), (key, value))
         self.commit()
         return row
 
@@ -354,4 +388,5 @@ arguments
 
         tab = self.tables['motors']
         self.conn.execute(tab.delete().where(tab.c.id==inst.id))
+
 

@@ -21,8 +21,8 @@ from motordb import isMotorDB, MotorDB
 
 from utils import GUIColors, ConnectDialog, set_font_with_children, MDB_WILDCARD
  
-#from settingsframe import SettingsFrame
-#from editframe import EditInstrumentFrame
+from motorapp_utils import SaveMotorDialog, MotorChoiceDialog, MotorUpdateDialog
+
 
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON|flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS
 FNB_STYLE |= flat_nb.FNB_NO_NAV_BUTTONS|flat_nb.FNB_FF2
@@ -36,7 +36,6 @@ pattern
 #'''
 
 
-
 FILE_IN_USE_MSG = """The motor database file  %s
 may be in use:
     Machine = %s
@@ -44,12 +43,14 @@ may be in use:
 
 Using two applications with a single file can cause data corruption!
 
-Would you like this application to use this instrument file?
+Would you like this application to use this motor database file?
 """
 
+
+
 class MotorSetupFrame(wx.Frame):
-    def __init__(self, parent=None, dbname=None, **kwds):
-        self.db, self.dbname = self.connect_db(dbname)
+    def __init__(self, parent=None, server='sqlite', dbname=None, **kwds):
+        self.db, self.dbname = self.connect_db(server=server, dbname=dbname)
         if self.db is None:
             return
         wx.Frame.__init__(self, parent=parent, title='Epics Motor Setup',
@@ -63,8 +64,11 @@ class MotorSetupFrame(wx.Frame):
         self.create_Menus()
         self.create_Frame()
 
-    def connect_db(self, dbname=None, new=False):
+    def connect_db(self, server, dbname=None, new=False):
         """connects to a db, possibly creating a new one"""
+        if server == 'mysql':
+            db = MotorDB(server=server)
+            return db, dbname
         if dbname is None:
             dlg = ConnectDialog(filelist=None)
             dlg.Raise()
@@ -125,19 +129,6 @@ class MotorSetupFrame(wx.Frame):
             self.nb.DeleteAllPages()
         self.Thaw()
 
-    @EpicsFunction
-    def connect_pvs(self, inst, wait_time=2.0):
-        """connect to PVs for an instrument.."""
-        self.connected = False
-        for pv in inst.pvs:
-            self.epics_pvs[pv.name]  = epics.PV(pv.name)
-            time.sleep(0.002)
-        t0 = time.time()
-        while (time.time() - t0) < wait_time:
-            time.sleep(0.002)
-            if all(x.connected for x in self.epics_pvs.values()):
-                break
-        return
 
     def create_Menus(self):
         """create menus"""
@@ -145,24 +136,29 @@ class MotorSetupFrame(wx.Frame):
         file_menu = wx.Menu()
 
         add_menu(self, file_menu,
-                 "Connect to a &Motor", "Connect to a  Motor",
+                 "Connect to a Motor\tCtrl+N", 
+                 "Connect to a  Motor",
                  action=self.onNewMotor)
         add_menu(self, file_menu,
-                 "&Save Motor Settings", "Save Motor Settings to Database",
+                 "&Save Motor Settings\tCtrl+S", 
+                 "Save Motor Settings to Database",
                  action=self.onSaveMotor)
         add_menu(self, file_menu,
-                 "&Read Motor Settings", "Read Motor Settings from Database",
+                 "&Read Motor Settings\tCtrl+R", 
+                 "Read Motor Settings from Database",
                  action=self.onReadMotor)
         file_menu.AppendSeparator()
         add_menu(self, file_menu,
-                 "&Copy Motor Template" , "Copy Template Paragraph to Clipboard",
+                 "&Copy Motor Template\tCtrl+T" ,
+                 "Copy Template Paragraph to Clipboard",
                  action=self.onCopyTemplate)
         add_menu(self, file_menu,
-                 "&Write Motor Template to File", "Write Paragraph a Template File",
+                 "&Write Motor Template to File\tCtrl+W", 
+                 "Write Paragraph a Template File",
                  action=self.onWriteTemplate)
         file_menu.AppendSeparator()
         add_menu(self, file_menu,
-                 "E&xit", "Terminate the program",
+                 "E&xit\tCtrl+X", "Terminate the program",
                  action=self.onClose)
 
         mbar.Append(file_menu, "&File")
@@ -179,7 +175,6 @@ class MotorSetupFrame(wx.Frame):
         self.SetStatusText(text)
 
     def onNewMotor(self, event=None):
-        "add a new, empty instrument and start adding PVs"
         dlg = wx.TextEntryDialog(self, 'Enter Motor Prefix',
                                        'Enter Motor Prefix', '')
         dlg.Raise()
@@ -187,15 +182,6 @@ class MotorSetupFrame(wx.Frame):
             prefix = dlg.GetValue()
             wx.CallAfter(self.addMotorPage, prefix)
         dlg.Destroy()
-
-    def onSaveMotor(self, event=None):
-        "add a new, empty instrument and start adding PVs"
-        print 'would save motor ', event
-        page = self.nb.GetCurrentPage()
-
-    def onReadMotor(self, event=None):
-        "add a new, empty instrument and start adding PVs"
-        print 'would read motor '
 
     def _MakeTemplate(self):
         motor = self.nb.GetCurrentPage().motor
@@ -216,11 +202,9 @@ class MotorSetupFrame(wx.Frame):
                        motor.BACC, motor.SREV, motor.UREV, motor.PREC, motor.DHLM, motor.DLLM)
 
         return '\n'.join([TEMPLATE_TOP, dline , '}'])
-         
+
     def onWriteTemplate(self, event=None):
-        "add a new, empty instrument and start adding PVs"
         motor = self.nb.GetCurrentPage().motor
-        print 'would write template for motor  ', motor
         name = motor._prefix.replace(':', '_').replace('.', '_')
         fname = FileSave(self, 'Save Template File',
                          wildcard='Template Files(*.template)|*.template|All files (*.*)|*.*',
@@ -229,31 +213,97 @@ class MotorSetupFrame(wx.Frame):
             fout = open(fname, 'w+')
             fout.write("%s\n" % self._MakeTemplate())
             fout.close()
-
-
+        self.write_message('Wrote Template to %s' % fname)
 
     def onCopyTemplate(self, event=None):
-        "add a new, empty instrument and start adding PVs"
         dat = wx.TextDataObject()
         dat.SetText(self._MakeTemplate())
         wx.TheClipboard.Open()
         wx.TheClipboard.SetData(dat)
         wx.TheClipboard.Close()
+        self.write_message('Copied Template to Clipboard')
+        
+    def onSaveMotor(self, event=None):
+        try:
+            motor = self.nb.GetCurrentPage().motor
+        except AttributeError:
+            pass
+        
+        dlg = SaveMotorDialog(self, motor)
+        dlg.Raise()
+        if dlg.ShowModal() == wx.ID_OK:
+            name = dlg.GetName()
+            desc = dlg.GetDesc()
+            wx.CallAfter(self.saveMotorSettingsDb, motor, name, desc)
+        dlg.Destroy()
 
+    def onReadMotor(self, event=None, motorname=None):
+        if motorname is None:
+            dlg = MotorChoiceDialog(self, self.db.get_all_motors())
+            dlg.Raise()
+            if dlg.ShowModal() == wx.ID_OK:
+                motorname = dlg.getMotorName()
+            dlg.Destroy()
+        if motorname is None:
+            return
+        db_motor = self.db.get_motor(motorname)
+        if db_motor is None:
+            return
+        try:
+            curmotor = self.nb.GetCurrentPage().motor
+        except AttributeError:
+            return
+            
+        dlg = MotorUpdateDialog(self, curmotor, db_motor)
+        t0 = time.time()
+        while time.time()-t0 < 10.0:
+            if dlg.ready:
+                break
+        if dlg.ShowModal() == wx.ID_OK:
+            out = {}
+            for key, val in dlg.checkboxes.items():
+                if val[0].IsChecked():
+                    out[key] = val[1]
+            self.update_motor(out)
+        dlg.Destroy()
 
+    @EpicsFunction
+    def update_motor(self, newvals):
+        try:
+            motor = self.nb.GetCurrentPage().motor
+        except AttributeError:
+            return
+        for key, val in newvals.items():
+            motor.put(key.upper(), val)
+        
+        
     @EpicsFunction
     def addMotorPage(self, prefix=None, event=None):
         "add motor page"
-        print 'Add Motor Page ', prefix
         motor = epics.Motor(prefix)
         panel = MotorDetailPanel(parent=self, motor=motor)
         self.nb.AddPage(panel, prefix, True)
+
+    @EpicsFunction
+    def saveMotorSettingsDb(self, motor, name, desc):
+        name = name.replace('\n', ' ').strip()
+        if self.db.get_motor(name) is not None:
+            msg = """Overwrite Motor settings?
+      %s
+This will overwrite the old settings
+and cannot be undone.""" % name
+            dlg = wx.MessageDialog(self, msg, 'Overwrite %s?' % name,
+                               wx.NO_DEFAULT|wx.YES_NO|wx.ICON_EXCLAMATION)
+            if dlg.ShowModal() != wx.ID_YES:
+                return
+            dlg.Destroy()
+        self.db.add_motor(name, notes=desc, motor=motor)
 
     def onAbout(self, event=None):
         # First we create and fill the info object
         info = wx.AboutDialogInfo()
         info.Name = "Motor Setup"
-        info.Version = "0.31"
+        info.Version = "0.1"
         info.Copyright = "2012, Matt Newville, University of Chicago"
         info.Description = """
         Motor Setup is an application to manage Epics Motors, 
@@ -262,35 +312,6 @@ class MotorSetupFrame(wx.Frame):
 
         wx.AboutBox(info)
 
-    def onSave(self, event=None):
-        outfile = FileSave(self, 'Save Instrument File As',
-                           wildcard=EIN_WILDCARD,
-                           default_file=self.dbname)
-
-        # save current tab/instrument mapping
-        fulldbname = os.path.abspath(self.dbname)
-
-        if outfile not in (None, self.dbname, fulldbname):
-            self.db.close()
-            try:
-                shutil.copy(self.dbname, outfile)
-            except shutil.Error:
-                pass
-
-            time.sleep(1.0)
-            self.dbname = outfile
-
-            self.db = InstrumentDB(outfile)
-
-            # set current tabs to the new db
-
-            insts = [(i, self.nb.GetPageText(i)) for i in range(self.nb.GetPageCount())]
-
-            for nbpage, name in insts:
-                self.nb.GetPage(nbpage).db = self.db
-                self.nb.GetPage(nbpage).inst = self.db.get_instrument(name)
-
-            self.write_message("Saved Instrument File: %s" % outfile)
 
     def onSelectFont(self, evt=None):
         fontdata = wx.FontData()
@@ -315,24 +336,22 @@ class MotorSetupFrame(wx.Frame):
 
 
 class EpicsMotorSetupApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, dbname=None, **kws):
+    def __init__(self, server='sqlite', dbname=None, **kws):
         self.dbname = dbname
+        self.server = server
         wx.App.__init__(self)
 
     def OnInit(self):
         self.Init()
-        frame = MotorSetupFrame(dbname=self.dbname)
+        frame = MotorSetupFrame(server=self.server, dbname=self.dbname)
         frame.Show()
         self.SetTopWindow(frame)
         return True
 
 if __name__ == '__main__':
     dbname = 'GSECARS_Motors.mdb'
+    server='mysql'
     inspect = True
-    app = EpicsMotorSetupApp(dbname=dbname)
-
-
-    #app = wx.PySimpleApp()
-    #MotorSetupApp(conf=conf, dbname=dbname).Show()
+    app = EpicsMotorSetupApp(dbname=dbname, server=server)
 
     app.MainLoop()

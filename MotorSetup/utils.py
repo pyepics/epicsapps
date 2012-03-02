@@ -23,48 +23,6 @@ def get_pvdesc(pvname):
     return desc
         
 
-def get_pvtypes(pvobj, instrument=None):
-    """create tuple of choices for PV Type for database,
-    which sets how to display PV entry.
-    
-    if pvobj is an epics.PV, the epics record type and
-    pv.type are used to select the choices.
-
-    if pvobj is an instrument.PV (ie, a db entry), the
-    pvobj.pvtype.name field is used.
-    """    
-    inst_pv = None
-    if instrument is not None:
-        inst_pv = instrument.PV
-    
-    choices = ['numeric', 'string']
-    if isinstance(pvobj, epics.PV):
-        prefix = pvobj.pvname
-        suffix = None
-        typename = pvobj.type
-        if '.' in prefix:
-            prefix, suffix = prefix.split('.')
-        rectype = epics.caget("%s.RTYP" % prefix)
-        if rectype == 'motor' and suffix in (None, 'VAL'):
-            typename = 'motor'
-        if pvobj.type == 'char' and pvobj.count > 1:
-            typename = 'string'
-            
-    elif inst_pv is  not None and isinstance(pvobj, inst_pv):
-        typename = str(pvobj.pvtype.name)
-
-    # now we have typename: use as default, add alternate choices
-    if typename == 'motor':
-        choices = ['numeric', 'string']
-    elif typename == 'enum':
-        choices = ['numeric', 'string']
-    elif typename == 'string':
-        choices = ['numeric']
-    else:
-        typename = None
-    if typename is not None:
-        choices.insert(0, typename)
-    return tuple(choices)
 
 def dumpsql(dbname, fname=None):
     """ dump SQL statements for an sqlite db"""
