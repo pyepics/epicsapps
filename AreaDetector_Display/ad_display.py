@@ -12,6 +12,7 @@ import numpy as np
 import Image
 
 from wxmplot.plotframe import PlotFrame
+ICON_FILE = 'camera.ico'
 
 # from debugtime import debugtime
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '16777216'
@@ -284,6 +285,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
         mainsizer.Fit(self)
 
         self.SetAutoLayout(True)
+
+        try:
+            self.SetIcon(wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO))
+        except:
+            pass
+
         self.RefreshImage()
         wx.CallAfter(self.connect_pvs )
 
