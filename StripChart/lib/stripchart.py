@@ -17,6 +17,7 @@ from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
 from wxmplot.utils import LabelEntry
 
+ICON_FILE = 'stripchart.ico'
 
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
@@ -172,6 +173,14 @@ Matt Newville <newville@cars.uchicago.edu>
         self.SetAutoLayout(True)
         self.SetSizer(mainsizer)
         self.Fit()
+
+        try:
+            self.SetIcon(wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO))
+        except:
+            pass
+
+        self.Refresh()
+
 
     def build_statusbar(self):
         sbar = self.CreateStatusBar(2, wx.CAPTION|wx.THICK_FRAME)

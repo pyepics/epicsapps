@@ -85,7 +85,10 @@ def backup_versions(fname, max=5):
                 shutil.move(fb0, fb1)
             except:
                 pass 
-    shutil.move(fname, "%s_1%s" % (base, ext))
+    try:
+        shutil.move(fname, "%s_1%s" % (base, ext))
+    except:
+        pass
 
     
 def save_backup(fname, outfile=None):
