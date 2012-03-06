@@ -66,6 +66,7 @@ class MotorSetupFrame(wx.Frame):
 
     def connect_db(self, server, dbname=None, new=False):
         """connects to a db, possibly creating a new one"""
+        print 'CONNECT DB ', server, dbname, new
         if server == 'mysql':
             db = MotorDB(server=server)
             return db, dbname

@@ -51,7 +51,7 @@ def isMotorDB(dbname, server='sqlite'):
         meta = MetaData(engine)
         meta.reflect()
         if ('info' in meta.tables and 'motors' in meta.tables):
-            keys = [row.key for row in
+            keys = [row.keyname for row in
                     meta.tables['info'].select().execute().fetchall()]
             result = 'version' in keys and 'create_date' in keys
     except:
