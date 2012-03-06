@@ -123,16 +123,14 @@ class MotorChoiceDialog(wx.Dialog):
 
         mlabel = wx.StaticText(self, -1, "Motor Type:")
 
-        self.choice = wx.Choice(self, -1, (220, 130),
-                                choices=motor_names)
+        self.choice = wx.Choice(self, -1, (250, 250), choices=motor_names)
         self.choice.Bind(wx.EVT_CHOICE, self._onName)
         self.choice.SetSelection(0)
         
-        self.desc = wx.StaticText(self, -1, ' ',
-                                  size=(220, 150))
+        self.desc = wx.StaticText(self, -1, ' ',  size=(220, 150))
         
         sizer.Add(mlabel,      (1, 0), (1, 1), wx.ALIGN_CENTRE|wx.ALL, 5)
-        sizer.Add(self.choice, (1, 1), (1, 1), wx.ALIGN_CENTRE|wx.ALL, 5)
+        sizer.Add(self.choice, (1, 1), (1, 1), wx.ALIGN_CENTRE|wx.ALL|wx.EXPAND, 5)
         sizer.Add(self.desc,   (2, 0), (1, 2), wx.ALIGN_CENTRE|wx.ALL, 5)
 
         

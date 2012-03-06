@@ -19,6 +19,7 @@ from epics.wx import MotorDetailPanel
 
 from motordb import isMotorDB, MotorDB
 
+from configfile import MotorsConfig
 from utils import GUIColors, ConnectDialog, set_font_with_children, MDB_WILDCARD
  
 from motorapp_utils import SaveMotorDialog, MotorChoiceDialog, MotorUpdateDialog
@@ -32,8 +33,7 @@ ICON_FILE = 'motorapp.ico'
 TEMPLATE_TOP = '''file "$(CARS)/CARSApp/Db/motor.db"
 {
 pattern
-{P,  M,  DTYP,  C,  S,  DESC,  EGU,  DIR,  VELO, VBAS, ACCL, BDST, BVEL, BACC, SREV, UREV, PREC, DHLM, DLLM}
-#'''
+{P,  M,  DTYP,  C,  S,  DESC,  EGU,  DIR,  VELO, VBAS, ACCL, BDST, BVEL, BACC, SREV, UREV, PREC, DHLM, DLLM}'''
 
 
 FILE_IN_USE_MSG = """The motor database file  %s
@@ -49,7 +49,9 @@ Would you like this application to use this motor database file?
 
 
 class MotorSetupFrame(wx.Frame):
-    def __init__(self, parent=None, server='sqlite', dbname=None, **kwds):
+    def __init__(self, parent=None, server='sqlite', dbname=None, conf=None, **kwds):
+
+        self.config = MotorsConfig(name=None)
         self.db, self.dbname = self.connect_db(server=server, dbname=dbname)
         if self.db is None:
             return
@@ -66,12 +68,15 @@ class MotorSetupFrame(wx.Frame):
 
     def connect_db(self, server, dbname=None, new=False):
         """connects to a db, possibly creating a new one"""
-        print 'CONNECT DB ', server, dbname, new
+
         if server == 'mysql':
             db = MotorDB(server=server)
             return db, dbname
         if dbname is None:
-            dlg = ConnectDialog(filelist=None)
+            filelist = self.config.get_dblist()
+            if new:
+                filelist = None
+            dlg = ConnectDialog(filelist=filelist)
             dlg.Raise()
             if dlg.ShowModal() == wx.ID_OK:
                 dbname = dlg.filebrowser.GetValue()
@@ -98,7 +103,7 @@ class MotorSetupFrame(wx.Frame):
 
         else:
             db.create_newdb(dbname, connect=True)
-
+        self.config.set_current_db(dbname)
         return db, dbname
 
     def create_Frame(self):
@@ -115,7 +120,7 @@ class MotorSetupFrame(wx.Frame):
         sizer.Add(self.nb, 1, wx.EXPAND)
 
         self.create_nbpages()
-        self.SetMinSize((525, 500))
+        self.SetMinSize((525, 625))
 
         pack(self, sizer)
         try:
@@ -198,11 +203,11 @@ class MotorSetupFrame(wx.Frame):
         direc = motor.get('DIR', as_string=True)
 
         fmt = '{%s:, %s, "%s", %i, %i, "%s", %s, %s, %f, %f, %f, %f, %f, %f, %i, %f, %i, %f, %f}' 
-        dline = fmt % (pref, mname, dtype, motor.CARD, -1, motor.DESC, motor.EGU,
+        datline = fmt % (pref, mname, dtype, motor.CARD, -1, motor.DESC, motor.EGU,
                        direc, motor.VELO, motor.VBAS, motor.ACCL, motor.BDST, motor.BVEL, 
                        motor.BACC, motor.SREV, motor.UREV, motor.PREC, motor.DHLM, motor.DLLM)
-
-        return '\n'.join([TEMPLATE_TOP, dline , '}'])
+        comline= '# OFF=%f, NTM=%i' % (motor.OFF, motor.NTM)
+        return '\n'.join([TEMPLATE_TOP, comline, datline , '}'])
 
     def onWriteTemplate(self, event=None):
         motor = self.nb.GetCurrentPage().motor
@@ -330,7 +335,7 @@ and cannot be undone.""" % name
     def onClose(self, event):
         self.db.set_hostpid(clear=True)
         self.db.commit()
-
+        self.config.write()
         epics.poll()
         time.sleep(0.1)
         self.Destroy()

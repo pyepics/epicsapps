@@ -25,11 +25,11 @@ def get_appdir(appname):
 
 default_config="""
 [dbs]
-most_recent=MyInstruments.ein
+most_recent=Motors.mdb
 """
     
-class InstrumentConfig(object):
-    basename = 'epics_insts'
+class MotorsConfig(object):
+    basename = 'epics_motorss'
     sections = ('dbs',)
     
     def __init__(self, name=None):

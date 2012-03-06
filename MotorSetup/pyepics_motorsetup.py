@@ -10,11 +10,7 @@ else:
 
 if __name__ == '__main__':
     server = 'sqlite'
-    dbname = None # 'Motors.mdb'
-    
-    #dbname = 'GSECARS_Motors.mdb'
-    #server='mysql'
-    app = EpicsMotorSetupApp(dbname=dbname, server=server)
+    server = 'mysql'
+    app = EpicsMotorSetupApp(dbname=None, server=server)
     app.MainLoop()
-
 
