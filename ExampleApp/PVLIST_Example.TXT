@@ -1,0 +1,62 @@
+S:SRcurrentAI.VAL        Storage Ring Current
+ID13ds:Energy.VAL        Undulator Energy
+ID13ds:Gap.VAL           Undulator Gap
+ID13ds:HarmonicValue.VAL Undulator Harmonic
+BL13:SRID:HPosition.VAL  ID H Beam Pos
+BL13:SRID:HAngle.VAL     ID H Beam Angle
+BL13:SRID:VPosition.VAL  ID V Beam Pos
+BL13:SRID:VAngle.VAL     ID V Beam Angle
+13IDA:E:Energy.VAL       Mono Energy drive val
+13IDA:E:E_RBV            Mono Energy readback
+13IDA:m17.RBV            FOE Mono angle readback
+13XRM:ION:Current        I0 current (uA)
+13XRM:ION:FluxAbs        I0 absorbed flux (Hz)
+13XRM:ION:FluxOut        I0 transmitted flux (Hz)
+13XRM:ION:Volts          I0 input voltage 
+13XRM:ION:Amp            I0 input amplifier
+13XRM:ION:Length         I0 chamber length (cm)
+13XRM:ION:Gas            I0 chamber gas 
+13IDE:A1sens_unit.VAL    I0 sensitivity units
+13IDE:A1sens_num.VAL     I0 sensitivity value
+13IDE:A2sens_unit.VAL    I1 sensitivity units
+13IDE:A2sens_num.VAL     I1 sensitivity value
+13IDE:A3sens_unit.VAL    I2 sensitivity units
+13IDE:A3sens_num.VAL     I2 sensitivity value
+13IDA:m1.VAL             FOE H Slit Pos
+13IDA:m2.VAL             FOE H Slit Wid
+13IDA:m3.VAL             FOE H Slit Pos
+13IDA:m4.VAL             FOE V Slit Wid
+13IDA:m10.VAL            FOE Mono Yout
+13IDA:m11.VAL            FOE Mono Yin
+13IDA:m12.VAL            FOE Mono Yup
+13IDA:m13.VAL            FOE Mono Cage Y
+13IDA:m14.VAL            FOE Mono Z
+13IDE:m1.VAL             Spect Table Yup
+13IDE:m2.VAL             Spect Table Yin
+13IDE:m3.VAL             Spect Table Yout
+13IDE:m4.VAL             Spect Table Xup
+13IDE:m5.VAL             Spect Table Xdn
+13IDE:m6.VAL             Spect Table Ybase
+13IDE:m13.VAL            Table Slit Bottom
+13IDE:m14.VAL            Table Slit Top
+13IDE:m15.VAL            Table Slit Inboard
+13IDE:m16.VAL            Table Slit Outboard
+13IDE:m25.VAL            KB V mirror Ypos
+13IDE:m26.VAL            KB V mirror Yrot
+13IDE:m27.VAL            KB V mirror Fup
+13IDE:m28.VAL            KB V mirror Fdn
+13IDE:m29.VAL            KB H mirror Xpos
+13IDE:m30.VAL            KB H mirror Xrot
+13IDE:m31.VAL            KB H mirror Fup
+13IDE:m32.VAL            KB H mirror Fdn
+13IDE:scan1.P1PV         scan1 Positioner #1
+13IDE:scan2.P1PV         scan2 Positioner #1
+13XRM:m1.VAL             Sample Stage Fine X
+13XRM:m2.VAL             Sample Stage Fine Y 
+13XRM:m3.VAL             Sample Theta
+13XRM:m4.VAL             Sample Stage Coarse X
+13XRM:m5.VAL             Sample Stage Coarse Z (focus)
+13XRM:m6.VAL             Sample Stage Coarse Y (vert)
+13IDE:m9.VAL             Vortex X 
+13IDE:m10.VAL            Vortex Y
+13IDE:m11.VAL            Vortex Z
