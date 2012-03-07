@@ -199,10 +199,14 @@ Matt Newville <newville@cars.uchicago.edu>
         name = SimpleText(panel, ' PV:  ',       minsize=(75, -1), style=LSTY)
         colr = SimpleText(panel, ' Color ',      minsize=(50, -1), style=LSTY)
         logs = SimpleText(panel, ' Log Scale?',  minsize=(85, -1), style=LSTY)
+        ymin = SimpleText(panel, ' Y Minimum ',  minsize=(85, -1), style=LSTY)
+        ymax = SimpleText(panel, ' Y Maximum ',  minsize=(85, -1), style=LSTY)
 
         sizer.Add(name, (0, 0), (1, 1), LSTY|wx.EXPAND, 2)
         sizer.Add(colr, (0, 1), (1, 1), LSTY, 1)
         sizer.Add(logs, (0, 2), (1, 1), LSTY, 1)
+        sizer.Add(ymin, (0, 3), (1, 1), LSTY, 1)
+        sizer.Add(ymax, (0, 4), (1, 1), LSTY, 1)
 
         self.npv_rows = 0
         for i in range(4):
