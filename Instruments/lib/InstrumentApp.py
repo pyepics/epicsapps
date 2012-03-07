@@ -51,6 +51,8 @@ class InstrumentFrame(wx.Frame):
             return
 
         self.epics_pvs = {}
+        self.connected = {}
+        self.panels = {}
         self.epics_server = None
         self.server_timer = None
         wx.Frame.__init__(self, parent=parent, title='Epics Instruments',
@@ -118,7 +120,7 @@ class InstrumentFrame(wx.Frame):
         sizer.Add(self.nb, 1, wx.EXPAND)
 
         self.create_nbpages()
-        self.SetMinSize((725, 300))
+        self.SetMinSize((850, 350))
 
         pack(self, sizer)
         try:
@@ -128,7 +130,6 @@ class InstrumentFrame(wx.Frame):
         self.Refresh()
 
     def create_nbpages(self):
-        # self.Freeze()
         if self.nb.GetPageCount() > 0:
             self.nb.DeleteAllPages()
 
@@ -138,19 +139,21 @@ class InstrumentFrame(wx.Frame):
             if int(inst.show) == 1:
                 self.add_instrument_page(inst)
 
-        # self.Thaw()
 
     def add_instrument_page(self, inst):
-        self.connect_pvs(inst, wait_time=1.0)
         panel = InstrumentPanel(self, inst, db=self.db,
                                 size=(925, -1),
                                 writer = self.write_message)
+
+        panel.Freeze()
+        self.panels[inst.name] = panel
+        self.connect_pvs(inst, wait_time=2.0)
+
         self.nb.AddPage(panel, inst.name, True)
 
     @EpicsFunction
     def connect_pvs(self, inst, wait_time=2.0):
         """connect to PVs for an instrument.."""
-        self.connected = False
         for pv in inst.pvs:
             self.epics_pvs[pv.name]  = epics.PV(pv.name)
             time.sleep(0.002)
@@ -159,6 +162,7 @@ class InstrumentFrame(wx.Frame):
             time.sleep(0.002)
             if all(x.connected for x in self.epics_pvs.values()):
                 break
+        self.panels[inst.name].Thaw()
         return
 
     def create_Menus(self):

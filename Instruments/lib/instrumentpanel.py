@@ -252,7 +252,7 @@ class InstrumentPanel(wx.Panel):
 
         splitter.SplitVertically(self.leftpanel, rpanel, -150)
 
-        self.leftpanel.SetMinSize((650, 150))
+        self.leftpanel.SetMinSize((750, 150))
         rpanel.SetMinSize((150, -1))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
