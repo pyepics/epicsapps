@@ -45,8 +45,8 @@
    <li><a href="installation.html">download</a>|</li>
    <li><a href="ad_display.html">AreaDetector</a>|</li>
    <li><a href="stripchart.html">StripChart</a>|</li>
+   <li><a href="motorsetup.html">MotorSetup</a>|</li>
    <li><a href="instrument.html">Instruments</a>|</li>
-   <li><a href="more.html">more</a>|</li>
    &nbsp;&nbsp;<li><a href="search.html">search</a></li>
  
       </ul>
@@ -104,12 +104,16 @@ on other 3rd party modules (such as Image and SQLAlchemy).</p>
 <p>The list of applications should be expanding, but currently include:</p>
 <div class="section" id="areadetector-display">
 <h2>AreaDetector Display<a class="headerlink" href="#areadetector-display" title="Permalink to this headline">¶</a></h2>
-<p>A simple, live display for an Epics Area Detector.</p>
+<p>An application to control and view images from an Epics Area Detector.  The
+controls available in this viewer are minimal, but you can change mode,
+exposure time and frame rate, and start and stop the Area Detector.  The
+image can be manipulated by zooming, rotating, and so on.</p>
 </div>
 <div class="section" id="strip-chart">
 <h2>Strip Chart<a class="headerlink" href="#strip-chart" title="Permalink to this headline">¶</a></h2>
-<p>A simple &quot;live plot&quot; of a set of PVs, similar to the common Epics
-StripTool.</p>
+<p>A simple &quot;live plot&quot; of the recent history of a set of PV values, similar
+to the common Epics StripTool.  Time ranges and ranges for Y values can be
+changed, and data can be saved to plain text files.</p>
 </div>
 <div class="section" id="epics-instruments">
 <h2>Epics Instruments<a class="headerlink" href="#epics-instruments" title="Permalink to this headline">¶</a></h2>
@@ -126,6 +130,19 @@ saving and restoring positions as you wish.</p>
 <h2>Sample Stage<a class="headerlink" href="#sample-stage" title="Permalink to this headline">¶</a></h2>
 <p>A GSECARS-specific GUI for moving a set of motors for a sample stage,
 grabbing microscope images from a webcam, and saving named positions.</p>
+</div>
+<div class="section" id="motor-setup">
+<h2>Motor Setup<a class="headerlink" href="#motor-setup" title="Permalink to this headline">¶</a></h2>
+<p>An application for setting up and saving the configuration of Epics Motors.
+For each opened motor, a full setup screen is shown in a tabbed notebook
+display.  A paragraph for a Motors.template file can be saved for each
+motor, or copied to the system clipboard.  In addition, you can save and
+read &quot;known motor types&quot; to a database, which holds most of the motor
+parameters.</p>
+<p>The Local version uses a local sqlite database to store and read the known
+motor types, while the GSE version (which works only at GSECARS, of course)
+connects to a mysql server on the GSECARS network to store are read the
+known motor types.</p>
 </div>
 <div class="section" id="ion-chamber">
 <h2>Ion Chamber<a class="headerlink" href="#ion-chamber" title="Permalink to this headline">¶</a></h2>
@@ -163,6 +180,7 @@ Associated .db file and medm .adl file are provided.</p>
 <li class="toctree-l2"><a class="reference internal" href="instrument.html#the-instrument-file">The Instrument File</a></li>
 </ul>
 </li>
+<li class="toctree-l1"><a class="reference internal" href="motorsetup.html">Using Epics Motor Setup</a></li>
 <li class="toctree-l1"><a class="reference internal" href="xrfcollect.html">XRF Collector</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ionchamber.html">Ion Chamber</a></li>
 </ul>
@@ -188,8 +206,8 @@ Associated .db file and medm .adl file are provided.</p>
    <li><a href="installation.html">download</a>|</li>
    <li><a href="ad_display.html">AreaDetector</a>|</li>
    <li><a href="stripchart.html">StripChart</a>|</li>
+   <li><a href="motorsetup.html">MotorSetup</a>|</li>
    <li><a href="instrument.html">Instruments</a>|</li>
-   <li><a href="more.html">more</a>|</li>
    &nbsp;&nbsp;<li><a href="search.html">search</a></li>
  
       </ul>
