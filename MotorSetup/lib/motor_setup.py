@@ -155,13 +155,22 @@ class MotorSetupFrame(wx.Frame):
                  action=self.onReadMotor)
         file_menu.AppendSeparator()
         add_menu(self, file_menu,
-                 "&Copy Motor Template\tCtrl+T" ,
+                 "&Copy All Motor Template for all motors\tCtrl+T" ,
                  "Copy Template Paragraph to Clipboard",
-                 action=self.onCopyTemplate)
+                 action=Closure(self.onCopyTemplate, all=True))
         add_menu(self, file_menu,
-                 "&Write Motor Template to File\tCtrl+W", 
+                 "&Write Motor Template to File for all motors\tCtrl+W", 
                  "Write Paragraph a Template File",
-                 action=self.onWriteTemplate)
+                 action=Closure(self.onWriteTemplate, all=True))
+        add_menu(self, file_menu,
+                 "&Copy Motor Template for this motor" ,
+                 "Copy Template Paragraph to Clipboard",
+                 action=Closure(self.onCopyTemplate, all=False))
+        add_menu(self, file_menu,
+                 "&Write Motor Template to File for this motor", 
+                 "Write Paragraph a Template File",
+                 action=Closure(self.onWriteTemplate, all=False))
+
         file_menu.AppendSeparator()
         add_menu(self, file_menu,
                  "E&xit\tCtrl+X", "Terminate the program",
@@ -189,27 +198,41 @@ class MotorSetupFrame(wx.Frame):
             wx.CallAfter(self.addMotorPage, prefix)
         dlg.Destroy()
 
-    def _MakeTemplate(self):
-        motor = self.nb.GetCurrentPage().motor
-        if motor is None: 
-            return ''
+    def _MakeTemplate(self, all=False):
+        if self.nb.GetPageCount() < 1:
+            return
 
-        #  {P,  M,  DTYP,  C,  S,  DESC,  EGU,  DIR,  VELO, VBAS, ACCL, BDST, BVEL, BACC, SREV, UREV, PREC, DHLM, DLLM}
-        pref = motor._prefix
-        if pref.endswith('.'):
-            pref = pref[:-1]
-        pref, mname = pref.split(':')
-        dtype = motor.get('DTYP', as_string=True)
-        direc = motor.get('DIR', as_string=True)
+        buff = [TEMPLATE_TOP]
+        motors = [self.nb.GetCurrentPage().motor]
+        if all:
+            motors = [self.nb.GetPage(i).motor for i in range(self.nb.GetPageCount())]
 
-        fmt = '{%s:, %s, "%s", %i, %i, "%s", %s, %s, %f, %f, %f, %f, %f, %f, %i, %f, %i, %f, %f}' 
-        datline = fmt % (pref, mname, dtype, motor.CARD, -1, motor.DESC, motor.EGU,
-                       direc, motor.VELO, motor.VBAS, motor.ACCL, motor.BDST, motor.BVEL, 
-                       motor.BACC, motor.SREV, motor.UREV, motor.PREC, motor.DHLM, motor.DLLM)
-        comline= '# OFF=%f, NTM=%i' % (motor.OFF, motor.NTM)
-        return '\n'.join([TEMPLATE_TOP, comline, datline , '}'])
+        # print "MOTORS : ", all, motors
+        # for i in range(self.nb.GetPageCount()):
+        #     print i, self.nb.GetPage(i)
+        #     print i, self.nb.GetPage(i).motor
+        # print self.nb.GetCurrentPage()
+        # print self.nb.GetCurrentPage().motor
+        
+        for motor in motors:
+            #  {P,  M,  DTYP,  C,  S,  DESC,  EGU,  DIR,  VELO, VBAS, ACCL, BDST, BVEL, BACC, SREV, UREV, PREC, DHLM, DLLM}
+            pref = motor._prefix
+            if pref.endswith('.'):
+                pref = pref[:-1]
+            pref, mname = pref.split(':')
+            dtype = motor.get('DTYP', as_string=True)
+            direc = motor.get('DIR', as_string=True)
 
-    def onWriteTemplate(self, event=None):
+            fmt = '{%s:, %s, "%s", %i, %i, "%s", %s, %s, %f, %f, %f, %f, %f, %f, %i, %f, %i, %f, %f}' 
+            buff.append('# VAL=%f, OFF=%f, NTM=%i' % (motor.VAL, motor.OFF, motor.NTM))
+            buff.append(fmt % (pref, mname, dtype, motor.CARD, -1, motor.DESC, motor.EGU,
+                               direc, motor.VELO, motor.VBAS, motor.ACCL, motor.BDST, motor.BVEL, 
+                               motor.BACC, motor.SREV, motor.UREV, motor.PREC, motor.DHLM, motor.DLLM))
+
+        buff.append('}')
+        return '\n'.join(buff)
+
+    def onWriteTemplate(self, event=None, all=False):
         motor = self.nb.GetCurrentPage().motor
         name = motor._prefix.replace(':', '_').replace('.', '_')
         fname = FileSave(self, 'Save Template File',
@@ -217,13 +240,13 @@ class MotorSetupFrame(wx.Frame):
                          default_file='Motor_%s.template' % name)
         if fname is not None:
             fout = open(fname, 'w+')
-            fout.write("%s\n" % self._MakeTemplate())
+            fout.write("%s\n" % self._MakeTemplate(all=all))
             fout.close()
         self.write_message('Wrote Template to %s' % fname)
 
-    def onCopyTemplate(self, event=None):
+    def onCopyTemplate(self, event=None, all=False):
         dat = wx.TextDataObject()
-        dat.SetText(self._MakeTemplate())
+        dat.SetText(self._MakeTemplate(all=all))
         wx.TheClipboard.Open()
         wx.TheClipboard.SetData(dat)
         wx.TheClipboard.Close()
