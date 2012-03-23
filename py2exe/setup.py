@@ -3,8 +3,10 @@ import py2exe
 import os
 import shutil
 import epics
-import sqlalchemy
+# import Image
+# import sqlalchemy
 import matplotlib
+ca = epics.ca.initialize_libca()
 matplotlib.use('WXAgg')
 
 extra_files = ['inno_setup.iss', 'license.txt', 'readme.txt']
@@ -25,18 +27,22 @@ py2exe_opts = {'optimize':1,
                'includes': ['epics', 'ctypes', 'wx', 'ConfigParser',
                             'numpy', 'numpy.fft', 'numpy.random',
                             'Image', 'MySQLdb', 'sqlite3', 'sqlalchemy'],
+               'packages': ['MySQLdb', 'sqlite3', 'sqlalchemy.dialects.mysql',
+                            'sqlalchemy.dialects.sqlite', 'epics.ca'], 
                'excludes': ['Tkinter', '_tkinter', 'Tkconstants', 'tcl',
                             '_imagingtk', 'PIL._imagingtk', 'ImageTk',
                             'PIL.ImageTk', 'FixTk''_gtkagg', '_tkagg',
-                            'qt', 'PyQt4Gui', 'Carbon', 'email',], 
+                            'qt', 'PyQt4Gui', 'Carbon', 'email'],
                'dll_excludes': ['libgdk-win32-2.0-0.dll',
-                                'libgobject-2.0-0.dll']}
+                                'libgobject-2.0-0.dll']
+               }
 
 # include matplotlib datafiles
 setup(name = "Epics Applications",
       windows = apps,
       options = {'py2exe': py2exe_opts},
-      data_files = matplotlib.get_py2exe_datafiles())
+      data_files = matplotlib.get_py2exe_datafiles(),
+      )
 
 for fname in extra_files:
     shutil.copy(fname, os.path.join('dist', fname))
