@@ -94,6 +94,7 @@ Associated .db file and medm .adl file are provided.
    ad_display
    stripchart
    instrument
+   motorsetup
    xrfcollect
    ionchamber
 
