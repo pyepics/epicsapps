@@ -29,7 +29,8 @@ class ImageView(wx.Window):
         self.zoom_box = None
         self.prof_line = None
         self.xy_init = None
-
+        self.win_size = 1, 1
+        
     def OnLeftDown(self, event=None):
         if self.cursor_mode in ('zoom', 'profile'):
             self.zoom_box = None

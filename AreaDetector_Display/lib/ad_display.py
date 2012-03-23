@@ -321,6 +321,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
                     width = self.ad_cam.MaxSizeX_RBV
                     height = self.ad_cam.MaxSizeY_RBV
 
+
         self.ad_cam.MinX  = xmin
         self.ad_cam.MinY  = ymin
         self.ad_cam.SizeX = width
@@ -346,8 +347,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
         
     @EpicsFunction
     def showZoomsize(self):
-        msg  = 'Displaying:  %i x %i pixels' % (self.ad_cam.SizeX, self.ad_cam.SizeY)
-        self.wids['zoomsize'].SetLabel(msg)
+        try:
+            msg  = 'Displaying:  %i x %i pixels' % (self.ad_cam.SizeX,
+                                                    self.ad_cam.SizeY)
+            self.wids['zoomsize'].SetLabel(msg)
+        except:
+            pass
 
     @EpicsFunction
     def onZoom(self, x0, y0, x1, y1):
@@ -523,7 +528,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         if verbose:
             self.messag('Connecting to AD %s' % self.prefix)
-
         self.ad_img = epics.Device(self.prefix + ':image1:', delim='',
                                    attrs=self.img_attrs)
         self.ad_cam = epics.Device(self.prefix + ':cam1:', delim='',
@@ -548,8 +552,14 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
         self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))
 
-        sizelabel = 'Image Size:   %i x %i pixels' % (self.ad_cam.MaxSizeX_RBV,
-                                                    self.ad_cam.MaxSizeY_RBV)
+        sizelabel = 'Image Size:   %i x %i pixels'
+        try:
+            sizelabel = sizelabel  % (self.ad_cam.MaxSizeX_RBV,
+                                      self.ad_cam.MaxSizeY_RBV)
+        except:
+            sizelabel = sizelabel  % (-1, -1)
+
+            
         self.wids['fullsize'].SetLabel(sizelabel)
         self.showZoomsize()
 
