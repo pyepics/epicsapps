@@ -1,0 +1,169 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Using Epics Motor Setup &mdash; Python Epics Applications</title>
+    
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Python Epics Applications" href="index.html" />
+    <link rel="next" title="XRF Collector" href="xrfcollect.html" />
+    <link rel="prev" title="Using Epics Instruments" href="instrument.html" /> 
+  </head>
+  <body>
+<div style="background-color: #E4EAED; text-align: left; padding: 0px 0px 15px 15px">
+ <h1> <a href="index.html">Epics Applications using PyEpics</a></h1>
+</div>
+
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="xrfcollect.html" title="XRF Collector"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="instrument.html" title="Using Epics Instruments"
+             accesskey="P">previous</a> |</li>
+   <li><a href="installation.html">download</a>|</li>
+   <li><a href="ad_display.html">AreaDetector</a>|</li>
+   <li><a href="stripchart.html">StripChart</a>|</li>
+   <li><a href="#">MotorSetup</a>|</li>
+   <li><a href="instrument.html">Instruments</a>|</li>
+   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
+ 
+      </ul>
+    </div> 
+
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="instrument.html"
+                        title="previous chapter">Using Epics Instruments</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="xrfcollect.html"
+                        title="next chapter">XRF Collector</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/motorsetup.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="using-epics-motor-setup">
+<h1>Using Epics Motor Setup<a class="headerlink" href="#using-epics-motor-setup" title="Permalink to this headline">¶</a></h1>
+<p>Epics Motor Setup is a fairly simple GUI application (using wxPython) for
+setting up Epics Motors.   A full configuration screen is shown for each
+motor, using a Notebook display:</p>
+<img alt="_images/MotorSetup.png" src="_images/MotorSetup.png" />
+<p>The real advantage of this Application is in two simple features:</p>
+<blockquote>
+<div><p>1. being able to write a <strong>motors.template</strong> file for all the open
+motors.</p>
+<p>2. being able to read and save motor settings for future use to a
+database.  By default, a local SQLite database is used, but users at
+GSECARS can also use a GSE-wide database.</p>
+</div></blockquote>
+<p>To save the <strong>motors.template</strong> information, simply type Ctrl-T to copy the
+full template paragraph to the system clipboard, then copy into the
+appropriate file. A simple example is:</p>
+<div class="highlight-python"><pre>file "$(CARS)/CARSApp/Db/motor.db"
+{
+pattern
+{P,  M,  DTYP,  C,  S,  DESC,  EGU,  DIR,  VELO, VBAS, ACCL, BDST,
+BVEL, BACC, S    REV, UREV, PREC, DHLM, DLLM}
+# VAL=1.999519, OFF=0.799999, NTM=1
+{13IDE:, m1, "OMS VME58", 0, -1, "Upstream Y", mm, Pos, 0.200000, 0.005000, 1.00    0000, 0.000000, 0.200000, 0.200000, 400, 0.023813, 4, 50.00000    0, 0.000000}
+# VAL=2.001424, OFF=-1.000026, NTM=1
+{13IDE:, m2, "OMS VME58", 0, -1, "Inboard Y", mm, Pos, 0.200000, 0.005000, 1.000    000, 0.000000, 0.200000, 0.200000, 400, 0.023813, 4, 50.000000, 0.000000}
+# VAL=1.999519, OFF=1.069979, NTM=1
+{13IDE:, m3, "OMS VME58", 0, -1, "Outboard Y", mm, Pos, 0.200000, 0.005000, 1.000000, 0.000000, 0.200000, 0.200000, 400, 0.023813, 4, 50.000000, 0.000000}
+# VAL=11.035400, OFF=1.505489, NTM=1
+{13IDE:, m4, "OMS VME58", 0, -1, "Upstream X", mm, Pos, 0.500000, 0.005000, 0.500000, 0.000000, 0.500000, 0.200000, 400, -0.035278, 4, 23.494511, -52.000000}
+# VAL=38.084885, OFF=1.505479, NTM=1
+{13IDE:, m5, "OMS VME58", 0, -1, "Downstream X", mm, Pos, 0.500000, 0.005000, 0.500000, 0.000000, 0.500000, 0.200000, 400, 0.035278, 4, 41.000021, -75.000000}
+}</pre>
+</div>
+<p>A few things to note here are:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li>You may need to change &quot;$(CARS)/CARSApp/Db/motor.db&quot; to point to the correct location of the motor.db file.</li>
+<li>Though the motor &quot;device type&quot; and &quot;card&quot; are filled out, the &quot;slot&quot; is not available as a PV, and so is not filled out.</li>
+<li>The VAL (User Value), OFF (Dial Offset) and NTM field are saved for each motor as a comment.</li>
+</ol>
+</div></blockquote>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="xrfcollect.html" title="XRF Collector"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="instrument.html" title="Using Epics Instruments"
+             >previous</a> |</li>
+   <li><a href="installation.html">download</a>|</li>
+   <li><a href="ad_display.html">AreaDetector</a>|</li>
+   <li><a href="stripchart.html">StripChart</a>|</li>
+   <li><a href="#">MotorSetup</a>|</li>
+   <li><a href="instrument.html">Instruments</a>|</li>
+   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
+ 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Matthew Newville.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>
