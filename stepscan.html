@@ -1,0 +1,254 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>StepScan: Epics Scans with Python &mdash; Python Epics Applications</title>
+    
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Python Epics Applications" href="index.html" />
+    <link rel="next" title="Strip Chart Display" href="stripchart.html" />
+    <link rel="prev" title="Area Detector Display" href="ad_display.html" /> 
+  </head>
+  <body>
+<div style="background-color: #E4EAED; text-align: left; padding: 0px 0px 15px 15px">
+ <h1> <a href="index.html">Epics Applications using PyEpics</a></h1>
+</div>
+
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="stripchart.html" title="Strip Chart Display"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ad_display.html" title="Area Detector Display"
+             accesskey="P">previous</a> |</li>
+   <li><a href="installation.html">download</a>|</li>
+   <li><a href="ad_display.html">AreaDetector</a>|</li>
+   <li><a href="#">StepScan</a>|</li>
+   <li><a href="stripchart.html">StripChart</a>|</li>
+   <li><a href="motorsetup.html">MotorSetup</a>|</li>
+   <li><a href="instrument.html">Instruments</a>|</li>
+   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
+ 
+      </ul>
+    </div>
+
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">StepScan:  Epics Scans with Python</a><ul>
+<li><a class="reference internal" href="#dependencies-installation">Dependencies, Installation</a></li>
+<li><a class="reference internal" href="#running-step-scan">Running Step Scan</a></li>
+<li><a class="reference internal" href="#scan-concepts">Scan Concepts</a><ul>
+<li><a class="reference internal" href="#positioners">Positioners</a></li>
+<li><a class="reference internal" href="#triggers">Triggers</a></li>
+<li><a class="reference internal" href="#counters">Counters</a></li>
+<li><a class="reference internal" href="#detectors">Detectors</a></li>
+<li><a class="reference internal" href="#defining-a-new-scan">Defining a New Scan</a></li>
+<li><a class="reference internal" href="#running-a-scan">Running a Scan</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ad_display.html"
+                        title="previous chapter">Area Detector Display</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="stripchart.html"
+                        title="next chapter">Strip Chart Display</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/stepscan.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="stepscan-epics-scans-with-python">
+<h1>StepScan:  Epics Scans with Python<a class="headerlink" href="#stepscan-epics-scans-with-python" title="Permalink to this headline">¶</a></h1>
+<p>StepScan is a set of routines and GUI application for running simple to
+moderately complex step scans of Epics motors, detectors, and so on.  Many
+concepts are borrowed from the Epics SScan record and from Spec, but
+neither of those are used by StepScan -- the scans happen in the python
+client application.  With Epics, nearly any Process Variable can be scanned
+or counted during a scan, and so a Step Scan can be a fairly complex thing.
+Fortunately, simple things are still easy to do, but a description of some terms
+in the <a class="reference internal" href="#scan-concepts-label"><em>Scan Concepts</em></a> section may be helpful.</p>
+<div class="section" id="dependencies-installation">
+<h2>Dependencies, Installation<a class="headerlink" href="#dependencies-installation" title="Permalink to this headline">¶</a></h2>
+<p>This application needs pyepics, numpy, and wxPython.  In order to save data
+to HDF5, the HDF5 library, and h5py module (available at
+<a class="reference external" href="http://code.google.com/p/h5py/">http://code.google.com/p/h5py/</a>).</p>
+<p>To install, use:</p>
+<div class="highlight-python"><pre>python setup.py install</pre>
+</div>
+<p>from the StepScan folder.   A windows installer will be made available soon</p>
+</div>
+<div class="section" id="running-step-scan">
+<h2>Running Step Scan<a class="headerlink" href="#running-step-scan" title="Permalink to this headline">¶</a></h2>
+<p>To run Epics StepScan, use:</p>
+<div class="highlight-python"><pre>python pyepics_stepscan.py</pre>
+</div>
+<p>or click on the icon.</p>
+<hr class="docutils" />
+</div>
+<div class="section" id="scan-concepts">
+<span id="scan-concepts-label"></span><h2>Scan Concepts<a class="headerlink" href="#scan-concepts" title="Permalink to this headline">¶</a></h2>
+<p>In StepScan, a scan is a simple <strong>for loop</strong> that iterates a collection of
+<strong>Positioners</strong> (any Epics PV -- not restricted to Motors) over a set of
+pre-determined position values.  At each position, a set of detectors are
+<strong>triggered</strong> (which is to say, collection is started), and then waited
+upon until they announce they are complete.  At that point a collection of
+<strong>Counters</strong> (again, any Epics PV, though for those holding waveform values
+see the notes below) are read, and the loop starts over, moving on to the
+next point in the list of positions.</p>
+<dl class="docutils">
+<dt>A StepScan also contains several other components::</dt>
+<dd><ul class="first last simple">
+<li>extra_pvs: a set of PVs to record once (or a few times) for each
+scan, but not at every point in the scan.</li>
+<li>breakpoints: a series of points in the scan at which data collected
+so far is dumped to file, and perhaps other tasks are done.</li>
+<li>pre_scan: a set of functions to call just prior to beginning the scan.</li>
+<li>post_scan: a set of functions to call just after the scan completes.</li>
+<li>at_break: a set of functions to call at each breakpoint (after the
+data is written to disk).</li>
+</ul>
+</dd>
+</dl>
+<div class="section" id="positioners">
+<h3>Positioners<a class="headerlink" href="#positioners" title="Permalink to this headline">¶</a></h3>
+<p>Positioners are what is changed in the scan -- the dependent variables.
+The can be represented by any Epics PV, such as Motors, temperatures,
+currents, count times, or a combination of these.  Scans can have multiple
+positioners, either moving in tandem to make a complex motion in the
+positioner space, or independently to make a mesh in the positioner space.</p>
+<p>In addition to a PV, each positioner will have an array of positions which
+it should take during the scan.  The Positioner holds the full array
+positions.  There are methods available for creating this from Start, Stop,
+Step, and Npts parameters for simple linear scans, but you can also give it
+a non-uniform array,</p>
+<p>If you have multiple positioners, they must all have an array of positions
+that is the same length.</p>
+</div>
+<div class="section" id="triggers">
+<h3>Triggers<a class="headerlink" href="#triggers" title="Permalink to this headline">¶</a></h3>
+<p>A Trigger is something that starts a detector counting.  The general
+assumption is that these start integrating detectors with a finite count
+time (which may have been set prior to the scan, or set as one of the
+Positioners).  The scan waits for these triggers to announce that they have
+completed (ie, the Epics &quot;put&quot; has completed).  That means that not just
+any PV can be used as a Trigger -- you really need a trigger that will
+finish.</p>
+<p>For many detectors using standard Epics Records (Scalers, MCAs,
+multi-element MCAs, AreaDetectors), using a Detector (see below) will
+include the appropriate Trigger.</p>
+</div>
+<div class="section" id="counters">
+<h3>Counters<a class="headerlink" href="#counters" title="Permalink to this headline">¶</a></h3>
+<p>A Counter is any PV that you wish to measure at each point in the scan.</p>
+<p>Counters for waveforms:</p>
+<p>For many detectors using standard Epics Records (Scalers, MCAs,
+multi-element MCAs, AreaDetectors), using a Detector (see below) will
+automatically include a wide range of Counters.</p>
+</div>
+<div class="section" id="detectors">
+<h3>Detectors<a class="headerlink" href="#detectors" title="Permalink to this headline">¶</a></h3>
+<p>Detectors are essentially a combination of Triggers and Counters that
+represent a detector as defined by one of the common Epics detector
+records.  These include Scalers, MCAs, multi-element MCAs, and
+AreaDetectors.</p>
+</div>
+<div class="section" id="defining-a-new-scan">
+<h3>Defining a New Scan<a class="headerlink" href="#defining-a-new-scan" title="Permalink to this headline">¶</a></h3>
+<p>To define a new Instrument, select <strong>Create New Instrument</strong> from the
+Instruments Menu.  A screen will appear in which you can name the
+instrument and the PVs that belong to the Instrument.</p>
+<p>If you add a few PVs and click OK, the PVs will connect, and you will see a
+screen something like this</p>
+</div>
+<div class="section" id="running-a-scan">
+<h3>Running a Scan<a class="headerlink" href="#running-a-scan" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="stripchart.html" title="Strip Chart Display"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ad_display.html" title="Area Detector Display"
+             >previous</a> |</li>
+   <li><a href="installation.html">download</a>|</li>
+   <li><a href="ad_display.html">AreaDetector</a>|</li>
+   <li><a href="#">StepScan</a>|</li>
+   <li><a href="stripchart.html">StripChart</a>|</li>
+   <li><a href="motorsetup.html">MotorSetup</a>|</li>
+   <li><a href="instrument.html">Instruments</a>|</li>
+   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
+ 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Matthew Newville.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>
