@@ -23,6 +23,11 @@ exposure time and frame rate, and start and stop the Area Detector.  The
 image can be manipulated by zooming, rotating, and so on.
 
 
+Step Scan
+~~~~~~~~~~~~~~
+
+A (work in progress!!) scanning program.
+
 
 Strip Chart
 ~~~~~~~~~~~~~~
@@ -60,7 +65,7 @@ For each opened motor, a full setup screen is shown in a tabbed notebook
 display.  A paragraph for a Motors.template file can be saved for each
 motor, or copied to the system clipboard.  In addition, you can save and
 read "known motor types" to a database, which holds most of the motor
-parameters.   
+parameters.
 
 The Local version uses a local sqlite database to store and read the known
 motor types, while the GSE version (which works only at GSECARS, of course)
@@ -82,7 +87,7 @@ XRF Collector
 
 This non-GUI application interacts with a small epics database to save data
 from a multi-element fluorescence detector.  The script runs as a separate
-process, watching PVs and saving data from the detector on demand. 
+process, watching PVs and saving data from the detector on demand.
 Associated .db file and medm .adl file are provided.
 
 
@@ -92,6 +97,7 @@ Associated .db file and medm .adl file are provided.
    overview
    installation
    ad_display
+   stepscan
    stripchart
    instrument
    motorsetup
