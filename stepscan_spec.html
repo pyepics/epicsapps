@@ -1,0 +1,240 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>Spec-like Scans with StepScan &mdash; Python Epics Applications</title>
+    
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Python Epics Applications" href="index.html" />
+    <link rel="up" title="StepScan: Epics Scans with Python" href="stepscan.html" />
+    <link rel="next" title="Using the StepScan GUI" href="stepscan_gui.html" />
+    <link rel="prev" title="Using StepScan" href="stepscan_usage.html" /> 
+  </head>
+  <body>
+<div style="background-color: #E4EAED; text-align: left; padding: 0px 0px 15px 15px">
+ <h1> <a href="index.html">Epics Applications using PyEpics</a></h1>
+</div>
+
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="stepscan_gui.html" title="Using the StepScan GUI"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="stepscan_usage.html" title="Using StepScan"
+             accesskey="P">previous</a> |</li>
+   <li><a href="installation.html">download</a>|</li>
+   <li><a href="ad_display.html">AreaDetector</a>|</li>
+   <li><a href="stepscan.html">StepScan</a>|</li>
+   <li><a href="stripchart.html">StripChart</a>|</li>
+   <li><a href="motorsetup.html">MotorSetup</a>|</li>
+   <li><a href="instrument.html">Instruments</a>|</li>
+   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
+
+          <li><a href="stepscan.html" accesskey="U">StepScan:  Epics Scans with Python</a> &raquo;</li> 
+      </ul>
+    </div>
+
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">Spec-like Scans with StepScan</a><ul>
+<li><a class="reference internal" href="#setting-up-and-configuring-the-spec-emulation-layer">Setting up and Configuring the spec emulation layer</a></li>
+<li><a class="reference internal" href="#using-the-spec-emulation-layer">Using the spec emulation layer</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="stepscan_usage.html"
+                        title="previous chapter">Using StepScan</a></p>
+  <h4>Next topic</h4>
+  <p class="topless"><a href="stepscan_gui.html"
+                        title="next chapter">Using the StepScan GUI</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/stepscan_spec.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="spec-like-scans-with-stepscan">
+<h1>Spec-like Scans with StepScan<a class="headerlink" href="#spec-like-scans-with-stepscan" title="Permalink to this headline">¶</a></h1>
+<p>Spec is a commonly used program for collecting data at synchrotrons, as it
+can not only communicate with Motors and Detectors, but can also work in
+the geometries needed to run diffractometers, and includes a convenient
+macro language.  Spec is not without limitations, and a reasonable goal of
+StepScan would be to replace some uses of Spec. Of course, Python can
+replace the macro language, and Epics Channel Access can control Motor and
+Detectors.</p>
+<span class="target" id="module-spec_emulator"></span><p>To better enable a transition of some scanning away from Spec and toward
+Python, StepScan has a <a class="reference internal" href="#module-spec_emulator" title="spec_emulator"><tt class="xref py py-mod docutils literal"><span class="pre">spec_emulator</span></tt></a> module that provides Spec-like
+functionality, with scanning methods <tt class="xref py py-meth docutils literal"><span class="pre">ascan()</span></tt>, <tt class="xref py py-meth docutils literal"><span class="pre">dscan()</span></tt>,
+<tt class="xref py py-meth docutils literal"><span class="pre">a2scan()</span></tt>, <tt class="xref py py-meth docutils literal"><span class="pre">d2scan()</span></tt>, <tt class="xref py py-meth docutils literal"><span class="pre">lup()</span></tt>, and <tt class="xref py py-meth docutils literal"><span class="pre">mesh()</span></tt> that closely
+match the Spec routines of the same name.</p>
+<div class="section" id="setting-up-and-configuring-the-spec-emulation-layer">
+<h2>Setting up and Configuring the spec emulation layer<a class="headerlink" href="#setting-up-and-configuring-the-spec-emulation-layer" title="Permalink to this headline">¶</a></h2>
+<p>To emulate Spec, one creates a <tt class="xref py py-class docutils literal"><span class="pre">SpecScan</span></tt> object:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span> <span class="nn">epicsapps.stepscan</span> <span class="kn">import</span> <span class="n">SpecScan</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span> <span class="o">=</span> <span class="n">SpecScan</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>This creates an empty SpecScan object, which does not have any
+configuration information about Motors and Detectors to use during a scan.
+Motors can be added to the configuration with:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">add_motors</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s">&#39;XXX:m1&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s">&#39;XXX:m2&#39;</span><span class="p">,</span> <span class="n">theta</span><span class="o">=</span><span class="s">&#39;XXX:m3&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>where you can add as many <em>label=PV_NAME</em> keyword arguments as you like.
+Later on, when scanning, you'll use the labels to mean the underlying PVs.
+As with all of StepScan, the PVs are not required to be motors.</p>
+<p>We'll also need to add some detectors.  StepScan supports many kinds of
+detectors, but for simple scans with point-detectors, an Epics Scaler
+record usually suffices, so we'll start with that:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">add_detector</span><span class="p">(</span><span class="s">&#39;XXX:scaler1&#39;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s">&#39;scaler&#39;</span><span class="p">,</span> <span class="n">nchan</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">use_calc</span><span class="o">=</span><span class="bp">False</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>By saying <cite>kind='scaler'</cite>, StepScan will know what to use for a Trigger,
+how to set the dwell time, and what Counters to count -- all the channels 1
+through 8 that have a non-blank name will be collected.  There is also the
+option to set <cite>use_calc=True</cite> to use the calc record associated with the
+Scan Record, which can be used to support offset values and simple
+calculations.</p>
+<p>As with other parts of StepScan, we can add <em>extra PVs</em> -- values to be
+recorded at the start of each scan, with a list of (description, pvname)
+tuples:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">add_extra_pvs</span><span class="p">(((</span><span class="s">&#39;Ring Current&#39;</span><span class="p">,</span> <span class="s">&#39;S:SRcurrentAI.VAL&#39;</span><span class="p">),</span>
+<span class="go">                        (&#39;Ring Lifetime&#39;, &#39;S:SRlifeTimeHrsCC.VAL&#39;)))</span>
+</pre></div>
+</div>
+<p>We haven't yet set the name of the output file.   This is still a
+work-in-progress, but currently, the Spec file is not emulated in detail,
+but an ASCII file is written to for each scan.  We can change this anytime
+with:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">filename</span> <span class="o">=</span> <span class="s">&#39;myoutput.dat&#39;</span>
+</pre></div>
+</div>
+<p>At this point, we have a fully configured (if minimal) Spec emulator, and
+can start running scans. It is likely</p>
+</div>
+<div class="section" id="using-the-spec-emulation-layer">
+<h2>Using the spec emulation layer<a class="headerlink" href="#using-the-spec-emulation-layer" title="Permalink to this headline">¶</a></h2>
+<p>To perform a simple absolute scan, we can use <tt class="xref py py-meth docutils literal"><span class="pre">ascan()</span></tt>, which would be
+as simple as:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">ascan</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mi">51</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>which scans Motor 'x' between 0 and 0.5 in 21 steps, counting for 0.5
+second per point.</p>
+<p>Other supported scan routines are <tt class="xref py py-meth docutils literal"><span class="pre">dscan()</span></tt>, which is like
+<tt class="xref py py-meth docutils literal"><span class="pre">ascan()</span></tt> but with start and stop positions relative to the current
+position:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">dscan</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">41</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>The routines <tt class="xref py py-meth docutils literal"><span class="pre">a2scan()</span></tt> and <tt class="xref py py-meth docutils literal"><span class="pre">d2scan()</span></tt> simultaneously moves 2
+Motors (in absolute and relative coordinates, respectively):</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">a2scan</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s">&#39;y&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">d2scan</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="s">&#39;y&#39;</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>That is, these move along a line in 'x'-'y' space.</p>
+<p>The routines <tt class="xref py py-meth docutils literal"><span class="pre">a3scan()</span></tt> and <tt class="xref py py-meth docutils literal"><span class="pre">d3scan()</span></tt> simultaneously moves 3
+Motors (in absolute and relative coordinates, respectively):</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">a3scan</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s">&#39;y&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="s">&#39;theta&#39;</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">10.1</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Finally, <tt class="xref py py-meth docutils literal"><span class="pre">mesh()</span></tt> will make a 2-dimensional mesh, or map:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="gp">&gt;&gt;&gt; </span><span class="n">spec</span><span class="o">.</span><span class="n">mesh</span><span class="p">(</span><span class="s">&#39;x&#39;</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">21</span><span class="p">,</span> <span class="n">theta</span><span class="s">&#39;, 10.0, 10.1, 11,  0.25)</span>
+</pre></div>
+</div>
+<p>This will make a 21 x 11 pixel map, moving 'x' between 10 and 11 for each
+'theta' value, so that 'theta' scans slowly.</p>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="stepscan_gui.html" title="Using the StepScan GUI"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="stepscan_usage.html" title="Using StepScan"
+             >previous</a> |</li>
+   <li><a href="installation.html">download</a>|</li>
+   <li><a href="ad_display.html">AreaDetector</a>|</li>
+   <li><a href="stepscan.html">StepScan</a>|</li>
+   <li><a href="stripchart.html">StripChart</a>|</li>
+   <li><a href="motorsetup.html">MotorSetup</a>|</li>
+   <li><a href="instrument.html">Instruments</a>|</li>
+   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
+
+          <li><a href="stepscan.html" >StepScan:  Epics Scans with Python</a> &raquo;</li> 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Matthew Newville.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+    </div>
+  </body>
+</html>

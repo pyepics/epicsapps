@@ -8,7 +8,7 @@
   <head>
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
     
-    <title>StepScan: Epics Scans with Python &mdash; Python Epics Applications</title>
+    <title>Using the StepScan GUI &mdash; Python Epics Applications</title>
     
     <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
     <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
@@ -26,8 +26,9 @@
     <script type="text/javascript" src="_static/underscore.js"></script>
     <script type="text/javascript" src="_static/doctools.js"></script>
     <link rel="top" title="Python Epics Applications" href="index.html" />
-    <link rel="next" title="StepScan Installation" href="stepscan_install.html" />
-    <link rel="prev" title="Area Detector Display" href="ad_display.html" /> 
+    <link rel="up" title="StepScan: Epics Scans with Python" href="stepscan.html" />
+    <link rel="next" title="Strip Chart Display" href="stripchart.html" />
+    <link rel="prev" title="Spec-like Scans with StepScan" href="stepscan_spec.html" /> 
   </head>
   <body>
 <div style="background-color: #E4EAED; text-align: left; padding: 0px 0px 15px 15px">
@@ -44,33 +45,34 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="stepscan_install.html" title="StepScan Installation"
+          <a href="stripchart.html" title="Strip Chart Display"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="ad_display.html" title="Area Detector Display"
+          <a href="stepscan_spec.html" title="Spec-like Scans with StepScan"
              accesskey="P">previous</a> |</li>
    <li><a href="installation.html">download</a>|</li>
    <li><a href="ad_display.html">AreaDetector</a>|</li>
-   <li><a href="#">StepScan</a>|</li>
+   <li><a href="stepscan.html">StepScan</a>|</li>
    <li><a href="stripchart.html">StripChart</a>|</li>
    <li><a href="motorsetup.html">MotorSetup</a>|</li>
    <li><a href="instrument.html">Instruments</a>|</li>
    &nbsp;&nbsp;<li><a href="search.html">search</a></li>
- 
+
+          <li><a href="stepscan.html" accesskey="U">StepScan:  Epics Scans with Python</a> &raquo;</li> 
       </ul>
     </div>
 
       <div class="sphinxsidebar">
         <div class="sphinxsidebarwrapper">
   <h4>Previous topic</h4>
-  <p class="topless"><a href="ad_display.html"
-                        title="previous chapter">Area Detector Display</a></p>
+  <p class="topless"><a href="stepscan_spec.html"
+                        title="previous chapter">Spec-like Scans with StepScan</a></p>
   <h4>Next topic</h4>
-  <p class="topless"><a href="stepscan_install.html"
-                        title="next chapter">StepScan Installation</a></p>
+  <p class="topless"><a href="stripchart.html"
+                        title="next chapter">Strip Chart Display</a></p>
   <h3>This Page</h3>
   <ul class="this-page-menu">
-    <li><a href="_sources/stepscan.txt"
+    <li><a href="_sources/stepscan_gui.txt"
            rel="nofollow">Show Source</a></li>
   </ul>
 <div id="searchbox" style="display: none">
@@ -94,47 +96,8 @@
         <div class="bodywrapper">
           <div class="body">
             
-  <div class="section" id="stepscan-epics-scans-with-python">
-<h1>StepScan:  Epics Scans with Python<a class="headerlink" href="#stepscan-epics-scans-with-python" title="Permalink to this headline">¶</a></h1>
-<p>StepScan is a library and (soon...) GUI application for running
-simple to moderately complex step scans of Epics motors,
-detectors, and general variables.  Many concepts are borrowed from
-the Epics SScan record and from Spec, but neither of those are
-used by StepScan -- the scans happen in the python client
-application.</p>
-<p>With Epics, nearly any Process Variable can be scanned or counted
-during a scan, and so a Step Scan can be a fairly complex thing.
-Fortunately, simple things are still easy to do.  A description of
-some terms in the <a class="reference internal" href="stepscan_concepts.html#scan-concepts-label"><em>Step Scan Concepts</em></a> section may be
-helpful.</p>
-<div class="toctree-wrapper compound">
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="stepscan_install.html">StepScan Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_install.html#dependencies-installation">Dependencies, Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_install.html#running-the-stepscan-gui">Running the StepScan GUI</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_install.html#using-stepscan-from-python">Using StepScan from Python</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="stepscan_concepts.html">Step Scan Concepts</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_concepts.html#positioners">Positioners</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_concepts.html#triggers">Triggers</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_concepts.html#counters">Counters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_concepts.html#detectors">Detectors</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="stepscan_usage.html">Using StepScan</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_usage.html#defining-a-new-scan">Defining a New Scan</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_usage.html#running-a-scan">Running a Scan</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="stepscan_spec.html">Spec-like Scans with StepScan</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_spec.html#setting-up-and-configuring-the-spec-emulation-layer">Setting up and Configuring the spec emulation layer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_spec.html#using-the-spec-emulation-layer">Using the spec emulation layer</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="stepscan_gui.html">Using the StepScan GUI</a></li>
-</ul>
-</div>
+  <div class="section" id="using-the-stepscan-gui">
+<h1>Using the StepScan GUI<a class="headerlink" href="#using-the-stepscan-gui" title="Permalink to this headline">¶</a></h1>
 </div>
 
 
@@ -153,19 +116,20 @@ helpful.</p>
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="right" >
-          <a href="stepscan_install.html" title="StepScan Installation"
+          <a href="stripchart.html" title="Strip Chart Display"
              >next</a> |</li>
         <li class="right" >
-          <a href="ad_display.html" title="Area Detector Display"
+          <a href="stepscan_spec.html" title="Spec-like Scans with StepScan"
              >previous</a> |</li>
    <li><a href="installation.html">download</a>|</li>
    <li><a href="ad_display.html">AreaDetector</a>|</li>
-   <li><a href="#">StepScan</a>|</li>
+   <li><a href="stepscan.html">StepScan</a>|</li>
    <li><a href="stripchart.html">StripChart</a>|</li>
    <li><a href="motorsetup.html">MotorSetup</a>|</li>
    <li><a href="instrument.html">Instruments</a>|</li>
    &nbsp;&nbsp;<li><a href="search.html">search</a></li>
- 
+
+          <li><a href="stepscan.html" >StepScan:  Epics Scans with Python</a> &raquo;</li> 
       </ul>
     </div>
     <div class="footer">
