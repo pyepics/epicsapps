@@ -69,8 +69,14 @@
 <li><a class="reference internal" href="#">Step Scan Concepts</a><ul>
 <li><a class="reference internal" href="#positioners">Positioners</a></li>
 <li><a class="reference internal" href="#triggers">Triggers</a></li>
-<li><a class="reference internal" href="#counters">Counters</a></li>
+<li><a class="reference internal" href="#counters">Counters</a><ul>
+<li><a class="reference internal" href="#counters-for-waveforms">Counters for waveforms</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#detectors">Detectors</a></li>
+<li><a class="reference internal" href="#extra-pvs">Extra PVs</a></li>
+<li><a class="reference internal" href="#breakpoints">Breakpoints</a></li>
+<li><a class="reference internal" href="#pre-and-post-scan-functions">Pre- and Post-Scan functions</a></li>
 </ul>
 </li>
 </ul>
@@ -163,10 +169,17 @@ include the appropriate Trigger.</p>
 <div class="section" id="counters">
 <h2>Counters<a class="headerlink" href="#counters" title="Permalink to this headline">¶</a></h2>
 <p>A Counter is any PV that you wish to measure at each point in the scan.</p>
-<p>Counters for waveforms:</p>
 <p>For many detectors using standard Epics Records (Scalers, MCAs,
 multi-element MCAs, AreaDetectors), using a Detector (see below) will
 automatically include a wide range of Counters.</p>
+<div class="section" id="counters-for-waveforms">
+<h3>Counters for waveforms<a class="headerlink" href="#counters-for-waveforms" title="Permalink to this headline">¶</a></h3>
+<p>Currently, these are not directly supported, mostly as it is not yet
+determined how to save this data into a plain ASCII file.  If more complex
+file formats are used, these could be supported.</p>
+<p>Note that a Trigger for an AreaDetector can be included, which
+might cause it to save data through its own means.</p>
+</div>
 </div>
 <div class="section" id="detectors">
 <h2>Detectors<a class="headerlink" href="#detectors" title="Permalink to this headline">¶</a></h2>
@@ -174,6 +187,36 @@ automatically include a wide range of Counters.</p>
 represent a detector as defined by one of the common Epics detector
 records.  These include Scalers, MCAs, multi-element MCAs, and
 AreaDetectors.</p>
+</div>
+<div class="section" id="extra-pvs">
+<h2>Extra PVs<a class="headerlink" href="#extra-pvs" title="Permalink to this headline">¶</a></h2>
+<p>Extra PVs are simply Epics PVs that should be recorded once (or
+occasionally) during a scan, but but not at every point in the scan.  These
+might include configuration information, detector and motor settings, and
+ancillary data like temperatures, ring current, etc.</p>
+<p>These should be supplied as a list of <em>(Label, PVname)</em> tuples.   The
+values for these will be recorded at the beginning of each scan, and at
+each breakpoint.</p>
+</div>
+<div class="section" id="breakpoints">
+<h2>Breakpoints<a class="headerlink" href="#breakpoints" title="Permalink to this headline">¶</a></h2>
+<p>Breakpoints are points in the scan at which the scan pauses briefly to
+to read values for Extra PVs, write out these and the data collected so far
+to disk,  and run any other user-defined functions.</p>
+<p>A typical short, one dimensional scan will not need any breakpoints -- the
+data will be written at the end of the scan. On the other hand, a two
+dimensional mesh scan may want to set a breakpoint at the end of each row,
+so that the data collected to date can be read from the datafile.</p>
+<p>To set breakpoints, just put the indices of the points to break after
+(starting the counting from 0) into a <cite>scan.breakpoints</cite> list.</p>
+<p>Users can add their own functions to be run at each breakpoint as well.</p>
+</div>
+<div class="section" id="pre-and-post-scan-functions">
+<h2>Pre- and Post-Scan functions<a class="headerlink" href="#pre-and-post-scan-functions" title="Permalink to this headline">¶</a></h2>
+<p>These functions are run prior to and just after the scan has run.
+Detectors and Positioners may add their own <tt class="xref py py-func docutils literal"><span class="pre">pre_scan()</span></tt> and
+<tt class="xref py py-func docutils literal"><span class="pre">post_scan()</span></tt> methods, for example to place a detector in the right
+mode for scanning.</p>
 </div>
 </div>
 
@@ -211,7 +254,7 @@ AreaDetectors.</p>
     </div>
     <div class="footer">
         &copy; Copyright 2012, Matthew Newville.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.2.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
     </div>
   </body>
 </html>
