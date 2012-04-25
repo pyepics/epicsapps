@@ -65,11 +65,20 @@ Counters
 
 A Counter is any PV that you wish to measure at each point in the scan.
 
-Counters for waveforms:
-
 For many detectors using standard Epics Records (Scalers, MCAs,
 multi-element MCAs, AreaDetectors), using a Detector (see below) will
 automatically include a wide range of Counters.
+
+Counters for waveforms
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Currently, these are not directly supported, mostly as it is not yet
+determined how to save this data into a plain ASCII file.  If more complex
+file formats are used, these could be supported.
+
+Note that a Trigger for an AreaDetector can be included, which
+might cause it to save data through its own means.
 
 Detectors
 =============
@@ -78,4 +87,44 @@ Detectors are essentially a combination of Triggers and Counters that
 represent a detector as defined by one of the common Epics detector
 records.  These include Scalers, MCAs, multi-element MCAs, and
 AreaDetectors.
+
+
+Extra PVs
+=============
+
+Extra PVs are simply Epics PVs that should be recorded once (or
+occasionally) during a scan, but but not at every point in the scan.  These
+might include configuration information, detector and motor settings, and
+ancillary data like temperatures, ring current, etc.
+
+These should be supplied as a list of *(Label, PVname)* tuples.   The
+values for these will be recorded at the beginning of each scan, and at
+each breakpoint.
+
+
+Breakpoints
+===============
+
+Breakpoints are points in the scan at which the scan pauses briefly to
+to read values for Extra PVs, write out these and the data collected so far
+to disk,  and run any other user-defined functions.
+
+A typical short, one dimensional scan will not need any breakpoints -- the
+data will be written at the end of the scan. On the other hand, a two
+dimensional mesh scan may want to set a breakpoint at the end of each row,
+so that the data collected to date can be read from the datafile.
+
+To set breakpoints, just put the indices of the points to break after
+(starting the counting from 0) into a `scan.breakpoints` list.
+
+Users can add their own functions to be run at each breakpoint as well.
+
+
+Pre- and Post-Scan functions
+============================
+
+These functions are run prior to and just after the scan has run.
+Detectors and Positioners may add their own :func:`pre_scan` and 
+:func:`post_scan` methods, for example to place a detector in the right
+mode for scanning. 
 
