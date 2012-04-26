@@ -2,6 +2,7 @@
 *.ein
 *~
 *#
+*.dat
 doc/_build
 doc/*.pdf
 tests/.coverage*
