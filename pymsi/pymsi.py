@@ -62,7 +62,7 @@ if __name__ == "__main__":
         args.include = [ y for x in args.include for y in x.split(":") ]
 
     if (args.MD or args.MF) and args.output == sys.stdout:
-        print "Cannot use the -MD or -MF options when sending output to stdout."
+        print("Cannot use the -MD or -MF options when sending output to stdout.")
         sys.exit(1)
     if args.MD:
         args.MF = os.path.splitext(args.input.name)[0] + ".d"
@@ -86,7 +86,7 @@ if __name__ == "__main__":
 
         for c in results:
             args.output.write(c.to_database())
-    except dbparser.DatabaseParseException, err:
+    except dbparser.DatabaseParseException as err:
         print_stderr(err)
         output_dependencies(args)
         sys.exit(2)

@@ -133,7 +133,7 @@ def parse_dbd(dbd_file, dbd_cache_path=None):
                         field.params["menu_values"] = menus[field.params["menu"]]
         update_cache(dbd_file, record_types, dbd_cache_path)
         return record_types
-    except ParseBaseException, err:
+    except ParseBaseException as err:
         raise dbparser.DatabaseInnerParseException(dbd_file.name, err)
 
 
@@ -184,10 +184,10 @@ def verify_record(dbd, record, s,loc):
             rtype.fields[name].verify_field(record, rtype, value)
         except KeyError:
             raise ParseFatalException(s,loc,"Record '%s' - type '%s' does not define a field named '%s'" % (record.name, rtype.name, name))
-        except DbdFieldError, err:
+        except DbdFieldError as err:
             raise ParseFatalException(s,loc,"Record '%s' - invalid field '%s': %s" %
                                       (record.name, name, err))
-        except Exception, err:
+        except Exception as err:
             traceback.print_exc()
             raise ParseFatalException(s,loc,"Failed to verify field '%s' against dbd: %s" % (name, err))
 

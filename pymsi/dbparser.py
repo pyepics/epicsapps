@@ -98,7 +98,7 @@ def _process_include(s,loc,toks):
     _ctx.verbose_fn("include %s at %s - %s" % (path, _ctx.filename, line))
     try:
         included = parse_database_file(path, None)
-    except DatabaseParseException, err:
+    except DatabaseParseException as err:
         raise DatabaseOuterParseException(_ctx.filename, "included", line, err)
     return [ "# %s:%d include \"%s\"" % (_ctx.filename, line, path),
              included,
@@ -125,7 +125,7 @@ def _process_expand(s,loc,toks):
     _ctx.verbose_fn("expand %s at %s - %s (macros %s)" % (path, _ctx.filename, line, macros))
     try:
         inner = parse_database_file(path, macros)
-    except DatabaseParseException, err:
+    except DatabaseParseException as err:
         raise DatabaseOuterParseException(_ctx.filename, "expanded", line, err)
     return [ Comment(["\n# >>> expand \"%s\" at %s:%d\n" % (path, _ctx.filename, line)]),
              inner,
@@ -198,7 +198,7 @@ def parse_database_file(path, push_macro_stack=None):
             if _ctx is not None:
                 _ctx.dependency_callback(path)
             return parse_database(f, push_macro_stack)
-    except IOError, r:
+    except IOError as r:
         raise DatabaseInnerParseException(path, r)
 
 _ctx = None
@@ -225,7 +225,7 @@ def parse_database(fileobj, push_macro_stack=None, initial_context=None):
         _ctx.filename_stack.append(fileobj.name)
         try:
             nested_result = database_content.parseString(fileobj.read())
-        except ParseBaseException, err:
+        except ParseBaseException as err:
             raise DatabaseInnerParseException(fileobj.name, err)
         # pyparsing produces a nested data structure, flatten it out:
         result = []

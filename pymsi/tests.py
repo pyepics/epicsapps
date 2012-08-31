@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import unittest
 from dbparser import parse_database_file, Record, DatabaseParseException
 from pyparsing import ParseSyntaxException, ParseFatalException
@@ -29,7 +30,6 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(len(records), 4)
         self.assertEqual(records[0].name, "name_a")
         self.assertEqual(records[3].name, "subst_name")
-        print records[3].fields
         self.assertTrue(("FLNK", "subst_flnk") in records[3].fields)
         self.assertTrue(("DRVH", "subst_drvh") in records[3].fields)
 
