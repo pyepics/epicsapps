@@ -45,7 +45,7 @@ VisualDCT's flatdb function.
 
 
 Dependencies
------------
+------------
 
 * pyparsing_ python parsing module, version 1.5.6 or newer
   (can be installed via *pip install pyparsing* or *easy_install install pyparsing*)
@@ -342,6 +342,25 @@ the source files change, but not otherwise.
 
 Strips comments from the output database file.
 
+
+Development & Bugs
+------------------
+
+If you find bugs in pymsi, please report them via the epicsapps
+Issues_page_ on github. Please include a sample if the bug is a
+parsing problem with a particular snippet of database or database
+defintion format text.
+
+Patches, pull requests and other contributions are always welcome as well!
+
+The pymsi parser has a unit test suite which ran be run from the pymsi
+directory via **./tests.py -b**. If adding parser features or fixing
+complex bugs, I very much recommend test driven development - write a
+test database for the feature/bug first under the testdata/ directory,
+then write unit tests that fail. Then bugfix until all tests pass. :)
+
+
   .. _msi: http://www.aps.anl.gov/epics/extensions/msi/index.php
   .. _VisualDCT: http://www.slac.stanford.edu/grp/cd/soft/epics/extensions/vdct/doc/MAN-VisualDCT_Users_Manual.html#flatdb
   .. _pyparsing: http://pyparsing.wikispaces.com/
+  .. _Issues_page: https://github.com/pyepics/epicsapps/issues
