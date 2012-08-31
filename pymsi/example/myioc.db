@@ -1,0 +1,60 @@
+
+# >>> expand "./top-section-gauges.sdb" at myioc.sdb:4
+
+
+# >>> expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:1
+
+record(ai, section1:vacuum) {
+  field(DTYP, "asynInt32")
+  field(INP, "@asyn(adcA 0)")
+  field(LINR, "LINEAR")
+  field(EGU, "Torr")
+  field(EGUL, "0")
+  field(EGUF, "1")
+  field(PREC, "8")
+  field(HIGH, "0.00001")
+  field(HSV, "MAJOR")
+}
+
+
+# <<<< end expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:2
+
+
+# >>> expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:7
+
+record(ai, section2:vacuum) {
+  field(DTYP, "asynInt32")
+  field(INP, "@asyn(adcA 1)")
+  field(LINR, "LINEAR")
+  field(EGU, "Torr")
+  field(EGUL, "0")
+  field(EGUF, "1")
+  field(PREC, "8")
+  field(HIGH, "0.000001")
+  field(HSV, "MAJOR")
+}
+
+
+# <<<< end expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:8
+
+
+# >>> expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:13
+
+record(ai, midsection:vacuum) {
+  field(DTYP, "asynInt32")
+  field(INP, "@asyn(adcB 3)")
+  field(LINR, "LINEAR")
+  field(EGU, "Torr")
+  field(EGUL, "0")
+  field(EGUF, "1")
+  field(PREC, "8")
+  field(HIGH, "0.0000001")
+  field(HSV, "MAJOR")
+}
+
+
+# <<<< end expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:14
+
+
+# <<<< end expand "./top-section-gauges.sdb" at myioc.sdb:5
+
