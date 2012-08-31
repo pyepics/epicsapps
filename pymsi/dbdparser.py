@@ -103,13 +103,16 @@ def _process_device(s,loc,toks):
     return [ Device(*toks) ]
 device.setParseAction(_process_device)
 
-# ignore driver, registrar, function & variable directives, mean nothing here
-driver = Literal("driver").suppress() - parentheses(name).suppress()
-registrar = Literal("registrar").suppress() - parentheses(name).suppress()
-variable = Literal("variable").suppress() - parentheses(comma_delimited(name,name)).suppress()
-function = Literal("function").suppress() - parentheses(name).suppress()
+# ignore all other dbd directives, mean nothing here
+driver = Literal("driver") - parentheses(name)
+registrar = Literal("registrar") - parentheses(name)
+variable = Literal("variable") - parentheses(comma_delimited(name,name))
+function = Literal("function") - parentheses(name)
+breaktable = Literal("breaktable") - parentheses(name) + Regex("{.*?}")
 
-dbd_content = ZeroOrMore(menu|record_type|function|device|variable|function|driver|registrar) + StringEnd()
+ignore = (driver|registrar|variable|function|breaktable).suppress()
+
+dbd_content = ZeroOrMore(menu|record_type|device|ignore) + StringEnd()
 
 def parse_dbd(dbd_file, dbd_cache_path=None):
     try:
@@ -136,6 +139,7 @@ def parse_dbd(dbd_file, dbd_cache_path=None):
     except ParseBaseException as err:
         raise dbparser.DatabaseInnerParseException(dbd_file.name, err)
 
+## Cache methods
 
 def try_read_cache(dbd_file, dbd_cache_path):
     """
