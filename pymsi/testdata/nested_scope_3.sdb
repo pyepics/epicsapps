@@ -1,0 +1,3 @@
+# name macro was set way back in nested_scope_1.sdb, but should have passed through
+record(mbbo, "$(name)") {
+}
