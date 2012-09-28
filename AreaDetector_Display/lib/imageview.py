@@ -11,6 +11,8 @@ class ImageView(wx.Window):
 
         self.image = None
         self.bmp = None
+        self.w_pad = 10
+        self.h_pad = 10
         self.can_resize = True
         self.SetBackgroundColour('#EEEEEE')
         self.Bind(wx.EVT_PAINT, self.DrawImage)
@@ -38,7 +40,7 @@ class ImageView(wx.Window):
             self.xy_init = (event.GetX(), event.GetY())
             self.Refresh()
 
-        elif self.cursor_mode == 'show':
+        if self.cursor_mode in ('zoom', 'show'):
             xoff = (self.win_size[0] - self.img_size[0])/2.0
             yoff = (self.win_size[1] - self.img_size[1])/2.0
             x = (event.GetX() - xoff)/ (1.0*self.img_size[0])
@@ -115,7 +117,7 @@ class ImageView(wx.Window):
         zdc = wx.ClientDC(self)
         zdc.SetLogicalFunction(wx.XOR)
         zdc.SetBrush(wx.TRANSPARENT_BRUSH)
-        zdc.SetPen(wx.Pen('White', 2, wx.SOLID))
+        zdc.SetPen(wx.Pen('Black', 2, wx.SOLID))
         zdc.ResetBoundingBox()
         zdc.BeginDrawing()
         if self.cursor_mode == 'profile':
@@ -134,18 +136,17 @@ class ImageView(wx.Window):
 
     def SetValue(self, image):
         self.image = image
+        self.CalcBitmap()
         self.Refresh()
-
+        
     def OnSize(self, event):
         if self.can_resize:
-            self.DrawImage(size=event.GetSize())
+
+            self.CalcBitmap(size=event.GetSize())
             self.Refresh()
         event.Skip()
 
-    def DrawImage(self, event=None, isize=None, size=None):
-        # print 'DrawImage ', event, isize, size
-        if event is None:
-            return
+    def CalcBitmap(self, isize=None, size=None):
         if not hasattr(self, 'image') or self.image is None:
             return
 
@@ -154,7 +155,6 @@ class ImageView(wx.Window):
             w_win, h_win = size
         except:
             return
-
         img = self.image
         if isize is not None:
             w_img, h_img = isize
@@ -173,8 +173,8 @@ class ImageView(wx.Window):
 
         w_scaled = int(scale * w_img)
         h_scaled = int(scale * h_img)
-        w_pad    = (w_win - w_scaled)/2
-        h_pad    = (h_win - h_scaled)/2
+        self.w_pad    = (w_win - w_scaled)/2
+        self.h_pad    = (h_win - h_scaled)/2
         self.img_size = w_scaled, h_scaled
         self.win_size = w_win, h_win
         if self.flipv:
@@ -188,10 +188,14 @@ class ImageView(wx.Window):
 
         if w_scaled != w_img or h_scaled!=h_img:
             img = img.Scale(w_scaled, h_scaled)
+        self.bmp = wx.BitmapFromImage(img)
+
+    def DrawImage(self, event=None):
+        if not hasattr(self, 'bmp') or self.bmp is None:
+            return
+
         dc = wx.PaintDC(self)
-        #print dir(dc)
-        #print dir(img)
-        dc.DrawBitmap(wx.BitmapFromImage(img), w_pad, h_pad, useMask=True)
+        dc.DrawBitmap(self.bmp, self.w_pad, self.h_pad, useMask=True)
 
         if self.zoom_box is not None:
             self.updateDynamicBox(self.zoom_box, erase=True)

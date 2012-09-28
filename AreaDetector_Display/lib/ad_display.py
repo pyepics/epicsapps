@@ -399,12 +399,11 @@ Matt Newville <newville@cars.uchicago.edu>"""
             return
 
         d_size = (int(width*self.scale), int(height*self.scale))
-        imbuff = imbuff.resize(d_size)
+        self.imbuff = imbuff = imbuff.resize(d_size)
         if self.wximage.GetSize() != imbuff.size:
             self.wximage = wx.EmptyImage(d_size[0], d_size[1])
         self.wximage.SetData(imbuff.convert('RGB').tostring())
         self.image.SetValue(self.wximage)
-        
         
     def onProfile(self, x0, y0, x1, y1):
         width  = self.ad_cam.SizeX
@@ -482,16 +481,18 @@ Matt Newville <newville@cars.uchicago.edu>"""
         ix  = max(0, int( xval * self.ad_cam.SizeX))
         iy  = max(0, int( yval * self.ad_cam.SizeY))
 
-        if self.colormode == 2:
-            self.data.shape = (self.im_size[1], self.im_size[0], 3)
-            ival = tuple(self.data[iy, ix, :])
-            smsg  = 'Pixel %i, %i, (R, G, B) = %s' % (ix, iy, repr(ival))
-        else:
-            self.data.shape = self.im_size[1], self.im_size[0]
-            ival = self.data[iy, ix]
-            smsg  = 'Pixel %i, %i, Intensity = %i' % (ix, iy, ival)
-
-        self.messag(smsg, panel=0)
+        try:
+            if self.colormode == 2:
+                self.data.shape = (self.im_size[1], self.im_size[0], 3)
+                ival = tuple(self.data[iy, ix, :])
+                smsg  = 'Pixel %i, %i, (R, G, B) = %s' % (ix, iy, repr(ival))
+            else:
+                self.data.shape = self.im_size[1], self.im_size[0]
+                ival = self.data[iy, ix]
+                smsg  = 'Pixel %i, %i, Intensity = %i' % (ix, iy, ival)
+            self.messag(smsg, panel=0)
+        except:
+            pass
 
 
     def onName(self, evt=None, **kws):
