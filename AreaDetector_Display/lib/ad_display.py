@@ -14,7 +14,7 @@ import Image
 from wxmplot.plotframe import PlotFrame
 ICON_FILE = 'camera.ico'
 
-# from debugtime import debugtime
+from debugtime import debugtime
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '16777216'
 
 class Empty:
@@ -40,7 +40,7 @@ class AD_Display(wx.Frame):
                  'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
                  'SizeX', 'SizeY', 'MinX', 'MinY')
                  
-    stat_msg = 'Drew %i, Missed %i images in %.2f seconds'
+    stat_msg = 'Read %.1f%% of images: rate=%.1f frames/sec'
     
     def __init__(self, prefix=None, app=None, scale=1.0, approx_height=800):
         self.app = app
@@ -52,6 +52,7 @@ class AD_Display(wx.Frame):
         self.scale  = scale
         self.arrsize  = [0,0,0]
         self.imbuff = None
+        self.d_size = None
         self.im_size = None
         self.colormode = 0
         self.last_update = 0.0
@@ -111,8 +112,9 @@ class AD_Display(wx.Frame):
             path = os.path.abspath(dlg.GetPath())
 
         dlg.Destroy()
-        if self.imbuff is not None:
-            self.imbuff.save(path)
+        if path is not None and self.data is not None:
+            Image.frombuffer(self.im_mode, self.im_size, self.data.flatten(),
+                             'raw', self.im_mode, 0, 1).save(path)
 
     def onExit(self, event=None):
         # self.ad_cam.Acquire = 0
@@ -238,8 +240,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
         for key in ('start', 'stop'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onEntry, key=key))
 
-        self.wids['zoomsize']= wx.StaticText(panel, -1,  size=(170,-1), style=txtstyle)
-        self.wids['fullsize']= wx.StaticText(panel, -1,  size=(170,-1), style=txtstyle)
+        self.wids['zoomsize']= wx.StaticText(panel, -1,  size=(210,-1), style=txtstyle)
+        self.wids['fullsize']= wx.StaticText(panel, -1,  size=(210,-1), style=txtstyle)
 
         def txt(label, size=80):
             return wx.StaticText(panel, label=label, size=(size, -1), style=labstyle)
@@ -296,7 +298,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def messag(self, s, panel=0):
         """write a message to the Status Bar"""
-        self.SetStatusText(s, panel)
+        wx.CallAfter(Closure(self.SetStatusText, text=s, number=panel))
+        # self.SetStatusText(s, panel)
 
     @EpicsFunction
     def unZoom(self, event=None, full=False):
@@ -338,9 +341,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
             else:
                 self.data.shape = self.im_size[1], self.im_size[0]
                 zdata = self.data[ymin:ymin+height,xmin:xmin+width]
-            self.data = self.data.flatten()
+            self.data = zdata #self.data.flatten()
+            self.im_size = (width, height)
             # print zdata.shape, width, height, self.im_mode
-            self.DatatoImage(zdata, (width, height), self.im_mode)
+            self.DatatoImage()   # zdata, (width, height), self.im_mode)
 
         self.RefreshImage()
         self.image.Refresh()
@@ -348,8 +352,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
     @EpicsFunction
     def showZoomsize(self):
         try:
-            msg  = 'Displaying:  %i x %i pixels' % (self.ad_cam.SizeX,
-                                                    self.ad_cam.SizeY)
+            msg  = 'Showing:  %i x %i' % (self.ad_cam.SizeX, self.ad_cam.SizeY)
             self.wids['zoomsize'].SetLabel(msg)
         except:
             pass
@@ -385,25 +388,43 @@ Matt Newville <newville@cars.uchicago.edu>"""
             else:
                 self.data.shape = self.im_size[1], self.im_size[0]
                 zdata = self.data[ymin:ymin+height,xmin:xmin+width]
-            self.data = self.data.flatten()
-            self.DatatoImage(zdata, (width, height), self.im_mode)
+            self.data = zdata #. flatten()
+            self.im_size = (width, height)
+            self.DatatoImage()
         
         self.image.Refresh()
 
-    def DatatoImage(self, data, size, mode):
-        width, height = size
-        try:
-            imbuff =  Image.frombuffer(mode, size, data.flatten(),
-                                       'raw', mode, 0, 1)
-        except:
-            return
+    def DatatoImage(self):  #,  data, size, mode):
 
+        # print 'DATA TO IMAGE ', self.im_size, self.im_mode, self.scale, self.data.shape
+        x = debugtime()
+        width, height = self.im_size
         d_size = (int(width*self.scale), int(height*self.scale))
-        self.imbuff = imbuff = imbuff.resize(d_size)
-        if self.wximage.GetSize() != imbuff.size:
+        data = self.data.flatten()
+        mode  = self.im_mode
+        if self.imbuff is None or d_size != self.d_size:
+            try:
+                x.add(' image from buffer, data : %s' % (repr( data.shape )))
+                self.imbuff =  Image.frombuffer(self.im_mode, self.im_size, data,
+                                                'raw', self.im_mode, 0, 1)
+                
+                x.add(' image from buffer, data : %s' % (repr( data.shape )))
+            except:
+                return
+        self.d_size = d_size = (int(width*self.scale), int(height*self.scale))
+        self.imbuff = self.imbuff.resize(d_size)
+
+        if self.wximage.GetSize() != self.imbuff.size:
             self.wximage = wx.EmptyImage(d_size[0], d_size[1])
-        self.wximage.SetData(imbuff.convert('RGB').tostring())
+
+        if mode == 'RGB':
+            data.shape = (3, width, height)
+            self.wximage = wx.ImageFromBuffer(width, height, data)
+        elif mode == 'L':
+            self.wximage.SetData(self.imbuff.convert('RGB').tostring())
         self.image.SetValue(self.wximage)
+        #x.add(' image convert to string')
+        #x.show()
         
     def onProfile(self, x0, y0, x1, y1):
         width  = self.ad_cam.SizeX
@@ -481,18 +502,16 @@ Matt Newville <newville@cars.uchicago.edu>"""
         ix  = max(0, int( xval * self.ad_cam.SizeX))
         iy  = max(0, int( yval * self.ad_cam.SizeY))
 
-        try:
-            if self.colormode == 2:
-                self.data.shape = (self.im_size[1], self.im_size[0], 3)
-                ival = tuple(self.data[iy, ix, :])
-                smsg  = 'Pixel %i, %i, (R, G, B) = %s' % (ix, iy, repr(ival))
-            else:
-                self.data.shape = self.im_size[1], self.im_size[0]
-                ival = self.data[iy, ix]
-                smsg  = 'Pixel %i, %i, Intensity = %i' % (ix, iy, ival)
-            self.messag(smsg, panel=0)
-        except:
-            pass
+        if self.colormode == 2:
+            self.data.shape = (self.im_size[1], self.im_size[0], 3)
+            ival = tuple(self.data[iy, ix, :])
+            smsg  = 'Pixel %i, %i, (R, G, B) = %s' % (ix, iy, repr(ival))
+        else:
+            self.data.shape = self.im_size[1], self.im_size[0]
+            ival = self.data[iy, ix]
+            smsg  = 'Pixel %i, %i, Intensity = %i' % (ix, iy, ival)
+
+        self.messag(smsg, panel=0)
 
 
     def onName(self, evt=None, **kws):
@@ -619,7 +638,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             wx.Yield()
         except:
             pass
-        # d = debugtime()
+        d = debugtime()
 
         if self.ad_img is None or self.ad_cam is None:
             return 
@@ -629,7 +648,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if (imgcount == self.imgcount or abs(now - self.last_update) < 0.05):
             self.drawing = False
             return
-        # d.add('refresh img start')
+        d.add('refresh img start')
         self.imgcount = imgcount
         self.drawing = True
         self.n_drawn += 1
@@ -648,8 +667,9 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if not self.ad_img.PV('ArrayData').connected:
             self.drawing = False
             return
-
+        d.add('refresh img before raw get %i' % arraysize)
         rawdata = self.ad_img.PV('ArrayData').get(count=arraysize)
+        d.add('refresh img after raw get')        
         im_mode = 'L'
         im_size = (self.arrsize[0], self.arrsize[1])
 
@@ -661,25 +681,29 @@ Matt Newville <newville@cars.uchicago.edu>"""
                 im_mode = 'I'
                 rawdata = rawdata.astype(np.uint32)
 
-
+        d.add('refresh img before msg')
         self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
-
+        d.add('refresh img before get image size')
         self.GetImageSize()
 
         self.im_size = im_size
         self.im_mode = im_mode
         self.data = rawdata
-        
-        self.DatatoImage(rawdata, im_size, im_mode)
+        d.add('refresh img before data to image')
+        self.DatatoImage()
+        d.add('refresh img after data to image')        
         self.image.can_resize = True
         nmissed = max(0, self.n_img-self.n_drawn)
 
-        smsg = self.stat_msg % (self.n_drawn, nmissed,
-                                time.time()-self.starttime)
+        delt = time.time()-self.starttime
+        percent_drawn = self.n_drawn * 100 / (self.n_drawn+nmissed)
+        smsg = self.stat_msg % (percent_drawn, self.n_drawn/delt)
         self.messag(smsg, panel=0)
 
         self.drawing = False
-        
+        d.add('refresh img done')
+        # d.show()
+
 #         imbuff =  Image.frombuffer(im_mode, im_size, rawdata,
 #                                    'raw', im_mode, 0, 1)
 #         # d.add('refresh after Image.frombuffer')        
