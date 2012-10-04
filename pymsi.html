@@ -1,0 +1,438 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    
+    <title>pymsi EPICS macro substitution and expansion tool &mdash; Python Epics Applications</title>
+    
+    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    
+    <script type="text/javascript">
+      var DOCUMENTATION_OPTIONS = {
+        URL_ROOT:    '',
+        VERSION:     '1.0',
+        COLLAPSE_INDEX: false,
+        FILE_SUFFIX: '.html',
+        HAS_SOURCE:  true
+      };
+    </script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <link rel="top" title="Python Epics Applications" href="index.html" />
+    <link rel="prev" title="Ion Chamber" href="ionchamber.html" /> 
+  </head>
+  <body>
+<div style="background-color: #E4EAED; text-align: left; padding: 0px 0px 15px 15px">
+ <h1> <a href="index.html">Epics Applications using PyEpics</a></h1>
+</div>
+
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ionchamber.html" title="Ion Chamber"
+             accesskey="P">previous</a> |</li>
+   <li><a href="installation.html">download</a>|</li>
+   <li><a href="ad_display.html">AreaDetector</a>|</li>
+   <li><a href="stepscan.html">StepScan</a>|</li>
+   <li><a href="stripchart.html">StripChart</a>|</li>
+   <li><a href="motorsetup.html">MotorSetup</a>|</li>
+   <li><a href="instrument.html">Instruments</a>|</li>
+   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
+ 
+      </ul>
+    </div>
+
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+  <h3><a href="index.html">Table Of Contents</a></h3>
+  <ul>
+<li><a class="reference internal" href="#">pymsi EPICS macro substitution and expansion tool</a><ul>
+<li><a class="reference internal" href="#history">History</a></li>
+<li><a class="reference internal" href="#dependencies">Dependencies</a></li>
+<li><a class="reference internal" href="#similarities-to-msi">Similarities to msi</a></li>
+<li><a class="reference internal" href="#workflow">Workflow</a></li>
+<li><a class="reference internal" href="#quick-example">Quick Example</a></li>
+<li><a class="reference internal" href="#source-database-options">Source Database Options</a></li>
+<li><a class="reference internal" href="#integration-with-epics-build-system">Integration with EPICS Build System</a></li>
+<li><a class="reference internal" href="#development-bugs">Development &amp; Bugs</a></li>
+</ul>
+</li>
+</ul>
+
+  <h4>Previous topic</h4>
+  <p class="topless"><a href="ionchamber.html"
+                        title="previous chapter">Ion Chamber</a></p>
+  <h3>This Page</h3>
+  <ul class="this-page-menu">
+    <li><a href="_sources/pymsi.txt"
+           rel="nofollow">Show Source</a></li>
+  </ul>
+<div id="searchbox" style="display: none">
+  <h3>Quick search</h3>
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    <p class="searchtip" style="font-size: 90%">
+    Enter search terms or a module, class or function name.
+    </p>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            
+  <div class="section" id="pymsi-epics-macro-substitution-and-expansion-tool">
+<h1>pymsi EPICS macro substitution and expansion tool<a class="headerlink" href="#pymsi-epics-macro-substitution-and-expansion-tool" title="Permalink to this headline">¶</a></h1>
+<p>The pymsi tool is a powerful alternative to the <a class="reference external" href="http://www.aps.anl.gov/epics/extensions/msi/index.php">msi</a> tool in
+EPICS. Both tools allow you to structure your EPICS databases as
+'source code' and build them into one final output database when you
+compile your IOC application. The IOC can then load a single output
+database when it boots.</p>
+<p>pymi can be found under pymsi/ in the pyepics epicsapps distribution.</p>
+<p>Advantages to using pymsi:</p>
+<ul class="simple">
+<li>Database functionality can be encapsulated in individual source
+databases, for easier comprehension.</li>
+<li>Reusable components can be created and reused for shorter, simpler
+descriptions of databases. Components can be nested hierarchically.</li>
+<li>Embedded database parser, verifies database syntax at compile time.</li>
+<li>dbd verification allows every field in the database to be checked against
+the database definition at compile time.</li>
+<li>Powerful macro expansion engine - local scopes, inline default values,
+errors on missing macros.</li>
+<li>Automatic dependency generator for Makefile integration.</li>
+<li>Detailed error messages with accurate line &amp; column numbers for
+quick and accurate debugging.</li>
+</ul>
+<div class="section" id="history">
+<h2>History<a class="headerlink" href="#history" title="Permalink to this headline">¶</a></h2>
+<p>pymsi was originally developed by Angus Gratton at Australian National
+University. It is currently used on the ANU 14UD accelerator to
+process 109 very specific source databases (organised in
+subdirectories by function) and produce 7 monolithic IOC databases. It
+expands 638 source database records to 3363.</p>
+<p>pymsi takes many ideas from <a class="reference external" href="http://www.slac.stanford.edu/grp/cd/soft/epics/extensions/vdct/doc/MAN-VisualDCT_Users_Manual.html#flatdb">VisualDCT</a> by Cosylab, especially
+VisualDCT's flatdb function.</p>
+</div>
+<div class="section" id="dependencies">
+<h2>Dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><a class="reference external" href="http://pyparsing.wikispaces.com/">pyparsing</a> python parsing module, version 1.5.6 or newer
+(can be installed via <em>pip install pyparsing</em> or <em>easy_install install pyparsing</em>)</li>
+</ul>
+</div>
+<div class="section" id="similarities-to-msi">
+<h2>Similarities to msi<a class="headerlink" href="#similarities-to-msi" title="Permalink to this headline">¶</a></h2>
+<p>Some features from msi are supported verbatim:</p>
+<ul class="simple">
+<li>&quot;substitute&quot; and &quot;include&quot; directives</li>
+<li>Command line options to be used as an inline filter w/ stdin/stdout.</li>
+</ul>
+<p>The msi &quot;substitution file&quot; format is not currently
+supported. Instead, pymsi uses expand clauses that can be inserted
+anywhere in a source database.</p>
+</div>
+<div class="section" id="workflow">
+<h2>Workflow<a class="headerlink" href="#workflow" title="Permalink to this headline">¶</a></h2>
+<p>pymsi processes one or more &quot;source database files&quot;, nested under a
+parent source database, to produce a single EPICS database that can be
+loaded by an IOC.</p>
+<p>I suggest using file extension '.sdb' for source databases, but you can
+use any extension you like.</p>
+</div>
+<div class="section" id="quick-example">
+<h2>Quick Example<a class="headerlink" href="#quick-example" title="Permalink to this headline">¶</a></h2>
+<p>The source databases used in this example can be found in the epicsapps
+source under /pymsi/example/</p>
+<p>The example generates an IOC to monitor a set of FAKECORP-1 vacuum
+gauges, each outputting a single analog value to an ADC. The gauges
+are all configured the same, but the alarm status cuts in at different
+levels depending on the location of the gauge.</p>
+<p>The first source database describes the vacuum gauge and its common
+properties:</p>
+<p>vacuum-fc-1.sdb:</p>
+<div class="highlight-python"><pre># A FAKECORP 1 model vacuum gauge
+
+record(ai, "$(section_name):vacuum") {
+  field(DTYP, "asynInt32")
+  field(INP, "@asyn($(port))")
+  field(LINR, "LINEAR")
+  field(EGU, "Torr")
+  field(EGUL, "0")
+  field(EGUF, "1")
+  field(PREC, "8")
+  field(HIGH, "$(warning_level)")
+  field(HSV, "MAJOR")
+}</pre>
+</div>
+<p>Then there is a source database describing all of the vacuum gauges controlled by the IOC:</p>
+<p>top-section-gauges.sdb:</p>
+<div class="highlight-python"><pre>expand("vacuum-fc-1.sdb") {
+  macro(section_name, "section1")
+  macro(port, "adcA 0")
+  macro(warning_level, "0.00001")
+}
+
+expand("vacuum-fc-1.sdb") {
+  macro(section_name, "section2")
+  macro(port, "adcA 1")
+  macro(warning_level, "0.000001")
+}
+
+expand("vacuum-fc-1.sdb") {
+  macro(section_name, "midsection")
+  macro(port, "adcB 3")
+  macro(warning_level, "0.0000001")
+}</pre>
+</div>
+<p>Finally, there is a &quot;master&quot; top-level source database for the IOC.
+This references the major functions in that IOC (just one in this
+example, probably more in practice!):</p>
+<p>myioc.sdb:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="c"># IOC located near the top section of the device</span>
+<span class="c"># supports vacuum monitoring, valve control, heating functions.</span>
+
+<span class="n">expand</span><span class="p">(</span><span class="s">&quot;top-section-gauges.sdb&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>To expand myioc.sdb into an output database myioc.db, run pymsi.py:</p>
+<div class="highlight-python"><pre>pymsi.py -s -o myioc.db myioc.sdb</pre>
+</div>
+<p>The '-s' option to pymsi instructs it to strip comments from the
+source databases, producing a thinner output database. pymsi still inserts
+comments describing the structure of the original source databases:</p>
+<p>Generated output database myioc.db:</p>
+<div class="highlight-python"><pre># &gt;&gt;&gt; expand "./top-section-gauges.sdb" at myioc.sdb:4
+# &gt;&gt;&gt; expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:1
+
+record(ai, section1:vacuum) {
+  field(DTYP, "asynInt32")
+  field(INP, "@asyn(adcA 0)")
+  field(LINR, "LINEAR")
+  field(EGU, "Torr")
+  field(EGUL, "0")
+  field(EGUF, "1")
+  field(PREC, "8")
+  field(HIGH, "0.00001")
+  field(HSV, "MAJOR")
+}
+
+# &lt;&lt;&lt;&lt; end expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:2
+# &gt;&gt;&gt; expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:7
+
+record(ai, section2:vacuum) {
+  field(DTYP, "asynInt32")
+  field(INP, "@asyn(adcA 1)")
+  field(LINR, "LINEAR")
+  field(EGU, "Torr")
+  field(EGUL, "0")
+  field(EGUF, "1")
+  field(PREC, "8")
+  field(HIGH, "0.000001")
+  field(HSV, "MAJOR")
+}
+
+# &lt;&lt;&lt;&lt; end expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:8
+# &gt;&gt;&gt; expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:13
+
+record(ai, midsection:vacuum) {
+  field(DTYP, "asynInt32")
+  field(INP, "@asyn(adcB 3)")
+  field(LINR, "LINEAR")
+  field(EGU, "Torr")
+  field(EGUL, "0")
+  field(EGUF, "1")
+  field(PREC, "8")
+  field(HIGH, "0.0000001")
+  field(HSV, "MAJOR")
+}
+
+# &lt;&lt;&lt;&lt; end expand "./vacuum-fc-1.sdb" at ./top-section-gauges.sdb:14
+# &lt;&lt;&lt;&lt; end expand "./top-section-gauges.sdb" at myioc.sdb:5</pre>
+</div>
+<p>At this point, pymsi has also confirmed this is a valid EPICS database.</p>
+<p>If you also want to confirm that all fields conform to the database
+definition used by the IOC, you can run pymsi with the --dbd argument:</p>
+<div class="highlight-python"><pre>pymsi.py --dbd /path/to/my.dbd -s -o myioc.db myioc.sdb</pre>
+</div>
+</div>
+<div class="section" id="source-database-options">
+<h2>Source Database Options<a class="headerlink" href="#source-database-options" title="Permalink to this headline">¶</a></h2>
+<p>As well as plain EPICS database syntax, source databases can contain the following various clauses:</p>
+<p><strong>expand</strong>:</p>
+<div class="highlight-python"><pre>expand(&lt;sourcefile&gt;) [ {
+  macro(macroname, macrovalue)
+  ...
+  } ]</pre>
+</div>
+<p>Recursively expands a source database as a child of this one. Any
+specified macros are defined in the child database, but not in the
+parent database.</p>
+<p>The following are all valid clauses for expansion:</p>
+<div class="highlight-python"><pre> expand("cheese.sdb") {
+   macro(name, "gorganzola")
+ }
+
+ expand("cheese.sdb") {
+   macro(name, "gorgonzola")
+   macro(odour_level, "9")
+ }
+
+expand("delicious-cheeses.sdb")</pre>
+</div>
+<p>Because the expanded &quot;child&quot; database is considered a nested scope,
+any macros which are set inside that database will not be propagated
+back up into the parent database.</p>
+<p><strong>substitute clauses</strong>:</p>
+<div class="highlight-python"><pre>substitute "name=value,name2=value2"</pre>
+</div>
+<p>These clauses immediately substitute the given macro names for the
+given macro values. The values are set in the current database, and
+any child databases which are expanded are included from this one.</p>
+<p><strong>include clauses</strong>:</p>
+<div class="highlight-python"><pre>include "sourcedatabasefile"</pre>
+</div>
+<p>This clause immediately includes the contents of the specified source
+database. Unlike the expand clause, this is not considered a &quot;child&quot;
+database with a separate scope - if macros are set in the included
+database, they are also set in the parent database.</p>
+<p><strong>macro values</strong>:</p>
+<div class="highlight-python"><pre>$(macro_name [ |default_value ])</pre>
+</div>
+<p>Macros can be expanded anywhere that databases expect a field name,
+record name or a macro value. $(macro_name) will be replaced with the
+current value of the macro.</p>
+<p>If a macro doesn't exist, pymsi reports an error. This behaviour can
+be overriden with the &quot;-m&quot; pymsi command line flag to ignore missing
+macros optional. This is the opposite to msi, which allows missing
+macros by default.</p>
+<p>Optionally, you can specify a default value for a macro by including a
+pipe character (|) followed by the default value to use if the macro
+is not defined. The default value itself can expand a macro.</p>
+<p>This contrived example shows several possibilities for macro expansion:</p>
+<div class="highlight-python"><pre># analog readback
+#
+# use 'name' macro to set name
+# Optionally set macro 'prec' to precision, default is 3.
+#
+# Operator range:
+# 3 alternatives:
+# * Set macros 'low' and 'high' and the range becomes $(low) to $(high).
+# * Set the macro 'limit' and the range becomes -$(limit) to +$(limit).
+# * Set only the macro 'high' and the range becomes 0 - $(high)
+record(ai, $(name)) {
+  field(PREC, "$(prec|3)")
+  field(LOPR, "$(low|-$(limit|0))")
+  field(HOPR, "$(high|$(limit))")
+}</pre>
+</div>
+</div>
+<div class="section" id="integration-with-epics-build-system">
+<h2>Integration with EPICS Build System<a class="headerlink" href="#integration-with-epics-build-system" title="Permalink to this headline">¶</a></h2>
+<p>pymsi can be easily integrated into an existing EPICS App database build system. Add rules like this to your TOP/configure/RULES file:</p>
+<div class="highlight-python"><pre>$(COMMON_DIR)/%.db: $(COMMON_DIR)/../%.sdb $(INSTALL_DBD)
+      pymsi.py --dbd $(INSTALL_DBD)/mydbdfile.dbd --dbd-cache dbd.cache -MF $(@:.db=.d) -s -I $(COMMON_DIR)/.. -o $@ $&lt;
+
+include $(wildcard $(COMMON_DIR)/*.d)</pre>
+</div>
+<p>This rule assumes that for any output mydb.db file, there is a source file mydb.sdb. For example, if you create myApp/Db/mydb.sdb you also edit myApp/Db/Makefile with:</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="n">DB</span> <span class="o">+=</span> <span class="n">mydb</span><span class="o">.</span><span class="n">db</span>
+</pre></div>
+</div>
+<p>So that mydb.sdb gets expanded to create output database mydb.db</p>
+<blockquote>
+<div>also assumes pymsi.py is on the PATH. Otherwise you can specify a PYMSI variable with the full path, and use it here.</div></blockquote>
+<p>The additional options given in the RULES are:</p>
+<div class="highlight-python"><pre>--dbd $(INSTALL_DBD)/mydbdfile.dbd --dbd-cache dbd.cache</pre>
+</div>
+<p>You'll need to edit &quot;mydbdfile.dbd&quot; to the name of your dbd file. This
+causes database output to be automatically verified against the dbd
+file. The --dbd-cache option speeds up generation by only parsing the
+dbd file when it changes, the cache used to support this is created in
+the O.Common directory and automatically removed during 'make clean'.</p>
+<div class="highlight-python"><pre>-MF $(@:.db=.d)</pre>
+</div>
+<p>with</p>
+<div class="highlight-python"><pre>include $(wildcard $(COMMON_DIR)/*.d)</pre>
+</div>
+<p>pymsi will produce a Make-compatible mydb.d file giving the source
+database files that are dependencies for the output database. This
+means the output database will be automatically regenerated if any of
+the source files change, but not otherwise.</p>
+<div class="highlight-python"><div class="highlight"><pre><span class="o">-</span><span class="n">s</span>
+</pre></div>
+</div>
+<p>Strips comments from the output database file.</p>
+</div>
+<div class="section" id="development-bugs">
+<h2>Development &amp; Bugs<a class="headerlink" href="#development-bugs" title="Permalink to this headline">¶</a></h2>
+<p>If you find bugs in pymsi, please report them via the epicsapps
+<a class="reference external" href="https://github.com/pyepics/epicsapps/issues">Issues_page</a> on github. Please include a sample if the bug is a
+parsing problem with a particular snippet of database or database
+defintion format text.</p>
+<p>Patches, pull requests and other contributions are always welcome as well!</p>
+<p>The pymsi parser has a unit test suite which ran be run from the pymsi
+directory via <strong>./tests.py -b</strong>. If adding parser features or fixing
+complex bugs, I very much recommend test driven development - write a
+test database for the feature/bug first under the testdata/ directory,
+then write unit tests that fail. Then bugfix until all tests pass. :)</p>
+<blockquote>
+<div></div></blockquote>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="ionchamber.html" title="Ion Chamber"
+             >previous</a> |</li>
+   <li><a href="installation.html">download</a>|</li>
+   <li><a href="ad_display.html">AreaDetector</a>|</li>
+   <li><a href="stepscan.html">StepScan</a>|</li>
+   <li><a href="stripchart.html">StripChart</a>|</li>
+   <li><a href="motorsetup.html">MotorSetup</a>|</li>
+   <li><a href="instrument.html">Instruments</a>|</li>
+   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
+ 
+      </ul>
+    </div>
+    <div class="footer">
+        &copy; Copyright 2012, Matthew Newville.
+      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    </div>
+  </body>
+</html>
