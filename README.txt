@@ -1,7 +1,7 @@
 This repository contains Epics Channel Access Applications using PyEpics.
 The intention herer is to include programs that are either general-purpose
 stand-alone applications or specific-use applications that can be viewed as
-examples. 
+examples.
 
 Each application should live in its own folder, and have its own
 installation scripts and documentation. The applicaions may vary in their
@@ -13,15 +13,18 @@ Dependencies below.
 Some applications may expect to interact with specific Epics databases or
 define new (usually small. trivial) databases and possibly Epics Display
 files (.adls for MEDM, for example).  These should be included in the
-directory. 
+directory.
+
+Complete documentation can be found at http://pyepics.github.com/epicsapps/
+
 
 A brief description of the current Epics Applications:
 
 ======================================
 Folder: Instruments
-App Name:  Epics Instruments   
-Dependencies: wxPython, sqlalchemy. 
- 
+App Name:  Epics Instruments
+Dependencies: wxPython, sqlalchemy.
+
 Epics Instruments is a GUI app that allows a user to group Epics PVs into a
 named "Instrument".  Many Instruments can be defined, with each Instrument
 having its own Tab in a Notebook window.  PVs will be displayed as
@@ -56,7 +59,18 @@ Dependencies: wx
 
 A GUI app for controlling a sample stage, including saving/restoring
 positions and capturing images (web-cam only, currently) associated
-with each position. 
+with each position.
+
+======================================
+Folder: pymsi
+App Name:  pymsi
+Dependencies: pyparsing
+
+pymsi is a powerful alternative to the "msi" tool that comes with
+EPICS. It is a tool for creating EPICS databases by writing simpler
+components as "source databases", and then expanding them at compile
+time into "output databases" that can be loaded by EPICS IOCs.
 
 
 ======================================
+

@@ -1,0 +1,8 @@
+# Error is on line 3
+#
+record(ao) {
+  field(FLNK, "le:triplet:trigger")
+  field(DRVL, "-30")
+  field(DRVH, "30")
+  field(PREC, "3")
+}

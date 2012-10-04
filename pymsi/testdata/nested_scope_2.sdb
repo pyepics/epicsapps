@@ -1,0 +1,3 @@
+expand("testdata/nested_scope_3.sdb") {
+}
+

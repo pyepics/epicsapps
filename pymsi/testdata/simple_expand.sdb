@@ -1,0 +1,9 @@
+# This is a comment
+
+# More comments here!
+
+expand("testdata/simple.sdb") {
+  macro(name, "expand_name")
+  macro(drvh, "expand_drvh")
+  macro(flnk, "expand_flnk PP")
+}

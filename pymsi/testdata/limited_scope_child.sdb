@@ -1,0 +1,11 @@
+
+# should have child_name_a as the record name
+record(ao, "$(name)") {
+}
+
+substitute "name=child_name_b"
+
+# should still have child_name_b as the record name
+record(ao, "$(name)") {
+}
+

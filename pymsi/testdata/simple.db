@@ -1,0 +1,51 @@
+# I AM A COMMENT
+#
+record(ao, le:triplet:balance) {
+  field(FLNK, "le:triplet:trigger")
+  field(DRVL, "-30")
+  field(DRVH, "30")
+  field(PREC, "3")
+}
+
+record(ao, le:triplet:focus) {
+  field(FLNK, "le:triplet:trigger PP")
+  field(DRVL, "0")
+  field(DRVH, "15")
+  field(PREC, "3")
+}
+
+record(ao, le:triplet:Y) {
+  field(FLNK, "le:triplet:trigger")
+  field(DRVL, "-30")
+  field(DRVH, "30")
+  field(PREC, "3")
+}
+
+record(calcout, le:triplet:calc_v3) {
+  field(CALC, "A+(D-B)/20")
+  field(INPA, "le:triplet:focus")
+  field(INPB, "le:triplet:X")
+  field(INPC, "le:triplet:Y")
+  field(INPD, "le:triplet:balance")
+  field(OUT, "le:triplet:set_v3.VAL PP")
+}
+
+record(ao, linec:ladder:set_sample) {
+  field(DRVL, "1")
+  field(DRVH, "10")
+  field(VAL, "5")
+}
+
+record(bo, linec:ladder:ramp_on) {
+  field(ZNAM, "Off")
+  field(ONAM, "On")
+}
+
+# 10 elements, indexed from 1
+record(waveform, linec:ladder:positions) {
+  field(NELM, "11")
+  field(FTVL, "USHORT")
+  field(LOPR, "100")
+  field(HOPR, "2000")
+}
+

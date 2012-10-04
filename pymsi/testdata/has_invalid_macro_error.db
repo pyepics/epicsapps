@@ -1,0 +1,8 @@
+# Error is on line 6
+#
+record(ao, le:triplet:balance) {
+  field(FLNK, "le:triplet:trigger")
+  field(DRVL, "-30")
+  field(DRVH, "$($()")
+  field(PREC, "3")
+}

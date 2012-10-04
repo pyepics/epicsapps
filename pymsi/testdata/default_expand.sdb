@@ -1,0 +1,35 @@
+# This is a comment
+
+# More comments here!
+
+# in this template expansion, name uses default value
+expand("testdata/simple.sdb") {
+  macro(name, "$(name|default name)")
+  macro(drvh, "expand_drvh")
+  macro(flnk, "expand_flnk PP")
+}
+
+substitute "name=some other name"
+
+# in this template expansion, name is set
+expand("testdata/simple.sdb") {
+  macro(name, "$(name|default name)")
+  macro(drvh, "expand_drvh")
+  macro(flnk, "expand_flnk PP")
+}
+
+substitute "name=yet another name"
+
+# in this template expansion, othername isn't set but name is
+expand("testdata/simple.sdb") {
+  macro(name, "$(othername|$(name))")
+  macro(drvh, "expand_drvh")
+  macro(flnk, "expand_flnk PP")
+}
+
+# same as above, but mixing a string literal with the template expansion
+expand("testdata/simple.sdb") {
+  macro(name, "$(othername|not just $(name), is it?)")
+  macro(drvh, "expand_drvh")
+  macro(flnk, "expand_flnk PP")
+}
