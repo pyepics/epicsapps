@@ -62,15 +62,4 @@ positions and capturing images (web-cam only, currently) associated
 with each position.
 
 ======================================
-Folder: pymsi
-App Name:  pymsi
-Dependencies: pyparsing
-
-pymsi is a powerful alternative to the "msi" tool that comes with
-EPICS. It is a tool for creating EPICS databases by writing simpler
-components as "source databases", and then expanding them at compile
-time into "output databases" that can be loaded by EPICS IOCs.
-
-
-======================================
 

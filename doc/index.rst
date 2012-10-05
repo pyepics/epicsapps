@@ -90,14 +90,6 @@ from a multi-element fluorescence detector.  The script runs as a separate
 process, watching PVs and saving data from the detector on demand.
 Associated .db file and medm .adl file are provided.
 
-pymsi
-~~~~~
-
-pymsi is a powerful alternative to the "msi" tool that comes with
-EPICS. It is a tool for creating EPICS databases by writing simpler
-components as "source databases", and then expanding them at compile
-time into "output databases" that can be loaded by EPICS IOCs.
-
 .. toctree::
    :maxdepth: 2
 
@@ -110,7 +102,7 @@ time into "output databases" that can be loaded by EPICS IOCs.
    motorsetup
    xrfcollect
    ionchamber
-   pymsi
+
 
 
 

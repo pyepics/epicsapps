@@ -1,8 +1,0 @@
-# Error is on line 5
-#
-record(ao, le:triplet:balance) {
-  field(FLNK, "le:triplet:trigger")
-  fielz(DRVL, "-30")
-  field(DRVH, "30")
-  field(PREC, "3")
-}

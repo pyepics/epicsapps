@@ -1,7 +1,0 @@
-
-# This is a comment
-# Outer error comes on line 5, inner error is from has_record_error.db
-
-expand("testdata/has_record_error.db") {
-  macro(name, "error_record_this_is")
-}

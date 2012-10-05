@@ -1,9 +1,0 @@
-# I am a comment
-
-record(ao, $(name)) {
-  field(FLNK, "$(flnk)")
-  field(DRVL, "0")
-  field(DRVH, "$(drvh)")
-  field(PREC, "3")
-}
-

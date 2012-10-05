@@ -1,3 +1,0 @@
-expand("testdata/nested_scope_2.sdb") {
-  macro(name, "toplevel_name")
-}
