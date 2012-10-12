@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """
    Display Application for Epics AreaDetector
+(in /lib)
 """
 import os
 import sys
@@ -224,11 +225,11 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
         self.wids = {}
-        self.wids['exptime']   = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['period']    = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['numimages'] = PVFloatCtrl(panel, pv=None, size=(60,-1))
-        self.wids['gain']      = PVFloatSpin(panel, pv=None, size=(60,-1),
-                                             min_val=0, max_val=20, increment=1, digits=1)
+        self.wids['exptime']   = PVFloatCtrl(panel, pv=None, size=(60, -1))
+        self.wids['period']    = PVFloatCtrl(panel, pv=None, size=(60, -1))
+        self.wids['numimages'] = PVFloatCtrl(panel, pv=None, size=(60, -1))
+        self.wids['gain']      = PVFloatCtrl(panel, pv=None, size=(30, -1),
+                                             minval=0, maxval=20, precision=1)
 
         self.wids['imagemode']   = PVEnumChoice(panel, pv=None)
         self.wids['triggermode'] = PVEnumChoice(panel, pv=None)
@@ -395,36 +396,38 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.image.Refresh()
 
     def DatatoImage(self):  #,  data, size, mode):
+        """convert raw data to image"""
+        #x = debugtime()
 
-        # print 'DATA TO IMAGE ', self.im_size, self.im_mode, self.scale, self.data.shape
-        x = debugtime()
         width, height = self.im_size
         d_size = (int(width*self.scale), int(height*self.scale))
         data = self.data.flatten()
-        mode  = self.im_mode
-        if self.imbuff is None or d_size != self.d_size:
+        #x.add('flatten')
+        if self.imbuff is None or d_size != self.d_size or self.im_mode == 'L':
             try:
-                x.add(' image from buffer, data : %s' % (repr( data.shape )))
                 self.imbuff =  Image.frombuffer(self.im_mode, self.im_size, data,
-                                                'raw', self.im_mode, 0, 1)
-                
-                x.add(' image from buffer, data : %s' % (repr( data.shape )))
+                                                'raw',  self.im_mode, 0, 1)
+                #x.add('made image')
             except:
-                return
+                creturn
+
         self.d_size = d_size = (int(width*self.scale), int(height*self.scale))
         self.imbuff = self.imbuff.resize(d_size)
+        # x.add('resized imbuff')
 
         if self.wximage.GetSize() != self.imbuff.size:
             self.wximage = wx.EmptyImage(d_size[0], d_size[1])
-
-        if mode == 'RGB':
-            data.shape = (3, width, height)
-            self.wximage = wx.ImageFromBuffer(width, height, data)
-        elif mode == 'L':
+        #x.add('created wximage %s  ' % (repr(self.wximage.GetSize())))
+        if self.im_mode == 'L':
             self.wximage.SetData(self.imbuff.convert('RGB').tostring())
+        elif self.im_mode == 'RGB':
+            data.shape = (3, width, height)
+            self.wximage = wx.ImageFromData(width, height, data)
+        #x.add('set wx image wximage')            
         self.image.SetValue(self.wximage)
-        #x.add(' image convert to string')
+        #x.add('set image value')
         #x.show()
+
         
     def onProfile(self, x0, y0, x1, y1):
         width  = self.ad_cam.SizeX
@@ -638,7 +641,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             wx.Yield()
         except:
             pass
-        d = debugtime()
+        #d = debugtime()
 
         if self.ad_img is None or self.ad_cam is None:
             return 
@@ -648,7 +651,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if (imgcount == self.imgcount or abs(now - self.last_update) < 0.05):
             self.drawing = False
             return
-        d.add('refresh img start')
+        #d.add('refresh img start')
         self.imgcount = imgcount
         self.drawing = True
         self.n_drawn += 1
@@ -667,31 +670,31 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if not self.ad_img.PV('ArrayData').connected:
             self.drawing = False
             return
-        d.add('refresh img before raw get %i' % arraysize)
+        #d.add('refresh img before raw get %i' % arraysize)
         rawdata = self.ad_img.PV('ArrayData').get(count=arraysize)
-        d.add('refresh img after raw get')        
+        #d.add('refresh img after raw get')        
         im_mode = 'L'
         im_size = (self.arrsize[0], self.arrsize[1])
 
         if self.colormode == 2:
             im_mode = 'RGB'
             im_size = [self.arrsize[1], self.arrsize[2]]
-        if (self.colormode == 0 and isinstance(rawdata, np.ndarray)):
-            if rawdata.dtype != np.uint8:
-                im_mode = 'I'
-                rawdata = rawdata.astype(np.uint32)
+        if (self.colormode == 0 and isinstance(rawdata, np.ndarray) and
+            rawdata.dtype != np.uint8):
+            im_mode = 'I'
+            rawdata = rawdata.astype(np.uint32)
 
-        d.add('refresh img before msg')
+        #d.add('refresh img before msg')
         self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
-        d.add('refresh img before get image size')
+        #d.add('refresh img before get image size')
         self.GetImageSize()
 
         self.im_size = im_size
         self.im_mode = im_mode
         self.data = rawdata
-        d.add('refresh img before data to image')
+        #d.add('refresh img before data to image')
         self.DatatoImage()
-        d.add('refresh img after data to image')        
+        #d.add('refresh img after data to image')        
         self.image.can_resize = True
         nmissed = max(0, self.n_img-self.n_drawn)
 
@@ -701,7 +704,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.messag(smsg, panel=0)
 
         self.drawing = False
-        d.add('refresh img done')
+        #d.add('refresh img done')
         # d.show()
 
 #         imbuff =  Image.frombuffer(im_mode, im_size, rawdata,
