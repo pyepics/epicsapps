@@ -409,7 +409,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
                                                 'raw',  self.im_mode, 0, 1)
                 #x.add('made image')
             except:
-                creturn
+                return
 
         self.d_size = d_size = (int(width*self.scale), int(height*self.scale))
         self.imbuff = self.imbuff.resize(d_size)
