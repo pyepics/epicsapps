@@ -1,13 +1,25 @@
+##
+"""
+Important note:
+seeing errors in build with python setup.py py2exe?
+
+move whole directory to a non-networked drive!
+
+
+"""
+##
 from distutils.core import setup
+# from setuptools import setup
 import py2exe
 import os
 import shutil
 import epics
-# import Image
-# import sqlalchemy
+import Image
+import sqlalchemy
 import matplotlib
 ca = epics.ca.initialize_libca()
 matplotlib.use('WXAgg')
+mpl_data_files = matplotlib.get_py2exe_datafiles()
 
 extra_files = ['inno_setup.iss', 'license.txt', 'readme.txt']
 
@@ -25,7 +37,7 @@ for script, iconfile in (('EpicsAreaDetectorViewer.py', 'camera.ico'),
 py2exe_opts = {'optimize':1,
                'bundle_files':2,
                'includes': ['epics', 'ctypes', 'wx', 'ConfigParser',
-                            'numpy', 'numpy.fft', 'numpy.random',
+                            'numpy', 
                             'Image', 'MySQLdb', 'sqlite3', 'sqlalchemy'],
                'packages': ['MySQLdb', 'sqlite3', 'sqlalchemy.dialects.mysql',
                             'sqlalchemy.dialects.sqlite', 'epics.ca'], 
@@ -38,11 +50,11 @@ py2exe_opts = {'optimize':1,
                }
 
 # include matplotlib datafiles
+
 setup(name = "Epics Applications",
       windows = apps,
       options = {'py2exe': py2exe_opts},
-      data_files = matplotlib.get_py2exe_datafiles(),
-      )
-
+      data_files = mpl_data_files)
+ 
 for fname in extra_files:
     shutil.copy(fname, os.path.join('dist', fname))
