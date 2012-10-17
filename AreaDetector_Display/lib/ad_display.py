@@ -549,6 +549,13 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if self.prefix is None or len(self.prefix) < 2:
             return
 
+        if self.prefix.endswith(':'):
+            self.prefix = self.prefix[:-1]
+        if self.prefix.endswith(':image1'):
+            self.prefix = self.prefix[:-7]
+        if self.prefix.endswith(':cam1'):
+            self.prefix = self.prefix[:-5]
+
         if verbose:
             self.messag('Connecting to AD %s' % self.prefix)
         self.ad_img = epics.Device(self.prefix + ':image1:', delim='',
@@ -556,7 +563,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.ad_cam = epics.Device(self.prefix + ':cam1:', delim='',
                                    attrs=self.cam_attrs)
 
-        time.sleep(0.005)
+        time.sleep(0.010)
         if not self.ad_img.PV('UniqueId_RBV').connected:
             epics.poll()
             if not self.ad_img.PV('UniqueId_RBV').connected:
