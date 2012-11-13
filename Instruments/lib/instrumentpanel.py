@@ -228,7 +228,7 @@ class InstrumentPanel(wx.Panel):
             self.add_pv(ordered_pvs.pv.name)
 
         rsizer = wx.BoxSizer(wx.VERTICAL)
-        btn_goto = add_button(rpanel, "Go To",  size=(70, -1),
+        btn_goto = add_button(rpanel, "Go To", size=(70, -1),
                               action=self.OnMove)
         btn_erase = add_button(rpanel, "Erase",  size=(70, -1),
                                action=self.onErase)
@@ -240,6 +240,8 @@ class InstrumentPanel(wx.Panel):
         self.pos_list  = wx.ListBox(rpanel)
         self.pos_list.SetBackgroundColour(wx.WHITE)
         self.pos_list.Bind(wx.EVT_RIGHT_DOWN, self.onRightClick)
+        self.pos_list.Bind(wx.EVT_LISTBOX, self.onPosSelect)
+        self.pos_list.Bind(wx.EVT_LEFT_DCLICK, self.OnMove)
 
         self.pos_list.Clear()
         for pos in inst.positions:
@@ -491,6 +493,13 @@ class InstrumentPanel(wx.Panel):
                 return
             dlg.Destroy()
 
+    def onPosSelect(self, evt=None):
+        "  " 
+        if evt is not None:
+            self.pos_name.SetValue(evt.GetString())
+            evt.Skip()
+
+        
     def onRightClick(self, evt=None):
         menu = wx.Menu()
         if not hasattr(self, 'popup_up1'):
@@ -547,7 +556,7 @@ class InstrumentPanel(wx.Panel):
         verify = int(self.db.get_info('verify_erase'))
 
         if verify:
-            ret = popup(self, "Erase  %s?" % (posname),
+            ret = popup(self, "Erase position '%s'?" % (posname),
                         'Verify Erase',
                         style=wx.YES_NO|wx.ICON_QUESTION)
             if ret != wx.ID_YES:

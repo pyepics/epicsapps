@@ -1,9 +1,5 @@
 #!/usr/bin/env python
-
-#import wx
-#import sys
-
-
+import wx, sys
 import lib
 lib.EpicsInstrumentApp().MainLoop()
 

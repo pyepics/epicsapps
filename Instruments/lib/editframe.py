@@ -61,6 +61,121 @@ class FocusEventFrame(wx.Window):
         else:
             event.Skip()
 
+class NewPositionFrame(wx.Frame, FocusEventFrame) :
+    """ Edit / Add Instrument"""
+    def __init__(self, parent=None, pos=(-1, -1),
+                 inst=None, db=None, page=None):
+
+        title = 'New Position'
+        if inst is not None:
+            title = 'New Position for Instrument  %s ' % inst.name
+
+        style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
+        wx.Frame.__init__(self, None, -1, title, size=(350, 450), 
+                          style=style, pos=pos)
+        self.Handle_FocusEvents()
+
+        panel = scrolled.ScrolledPanel(self, size=(400, 500), style=wx.GROW|wx.TAB_TRAVERSAL)
+        
+        colors = GUIColors()
+
+        font = self.GetFont()
+        if parent is not None:
+            font = parent.GetFont()
+
+        titlefont  = font
+        titlefont.PointSize += 1
+        titlefont.SetWeight(wx.BOLD)
+
+        panel.SetBackgroundColour(colors.bg)
+
+        self.parent = parent
+        self.page = page
+        self.db = db
+        self.inst = db.get_instrument(inst)
+
+        STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
+        LSTY = wx.ALIGN_LEFT|wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
+        RSTY = wx.ALIGN_RIGHT|STY
+        CSTY = wx.ALIGN_CENTER|STY
+        CEN  = wx.ALIGN_CENTER|wx.GROW|wx.ALL
+        LEFT = wx.ALIGN_LEFT|wx.GROW|wx.ALL
+
+
+        self.name =  wx.TextCtrl(panel, value='', size=(200, -1))
+
+
+        sizer = wx.GridBagSizer(12, 3)
+
+        ir = 0
+        sizer.Add(SimpleText(panel, " New Position for '%s'" % self.inst.name,
+                             font=titlefont,  colour=colors.title),
+                  (ir, 0), (1, 2), LSTY, 2)
+
+        ir += 1        
+        sizer.Add(SimpleText(panel, 'Position Name:'),  (ir, 0), (1, 1), LSTY, 2)
+        sizer.Add(self.name,                            (ir, 1), (1, 2), LSTY, 2)
+        ir += 1
+        sizer.Add(SimpleText(panel, 'PV Name:'),        (ir, 0), (1, 1), LSTY, 2)
+        sizer.Add(SimpleText(panel, 'Position:'),       (ir, 1), (1, 1), LSTY, 2)
+
+        ir += 1
+        sizer.Add(wx.StaticLine(panel, size=(195, -1), style=wx.LI_HORIZONTAL),
+                  (ir, 0), (1, 3), CEN, 2)
+
+        self.positions = []
+        ir += 1
+        for p in self.inst.pvs:
+            val =  wx.TextCtrl(panel, value='', size=(150, -1))            
+            sizer.Add(SimpleText(panel, p.name), (ir, 0), (1, 1), LSTY, 2)
+            sizer.Add(val,                       (ir, 1), (1, 1), LSTY, 2)            
+            self.positions.append(val)
+            ir += 1
+            
+        sizer.Add(wx.StaticLine(panel, size=(195, -1), style=wx.LI_HORIZONTAL),
+                  (ir, 0), (1, 3), CEN, 2)
+
+        btn_panel = wx.Panel(panel, size=(75, -1))
+        btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        btn_ok     = add_button(btn_panel, 'OK',     size=(70, -1),
+                                action=self.onOK)
+        btn_cancel = add_button(btn_panel, 'Cancel', size=(70, -1), action=self.onCancel)
+
+        btn_sizer.Add(btn_ok,     0, wx.ALIGN_LEFT,  2)
+        btn_sizer.Add(btn_cancel, 0, wx.ALIGN_RIGHT,  2)
+        pack(btn_panel, btn_sizer)
+
+        ir += 1
+        sizer.Add(btn_panel,  (ir, 0), (1, 3), CEN, 2)
+        ir += 1
+       
+        sizer.Add(wx.StaticLine(panel, size=(195, -1), style=wx.LI_HORIZONTAL),
+                  (ir, 0), (1, 3), CEN, 2)
+
+        pack(panel, sizer)
+        panel.SetupScrolling()
+        self.Layout()
+        self.Show()
+        self.Raise()
+
+    def onOK(self, evt=None):
+        posname = self.name.GetValue()
+        values = {}
+        valid = len(posname) > 0
+        for pv, newval in zip(self.inst.pvs, self.positions):
+            val = str(newval.GetValue())
+            values[pv.name] = val
+            valid = valid and len(val) > 0
+        if valid:
+            self.db.save_position(posname, self.inst, values)
+            if self.page is not None:
+                poslist = self.page.pos_list
+                if posname not in poslist.GetItems():
+                    poslist.Append(posname)
+        self.Destroy()
+        
+    def onCancel(self, evt=None):
+        self.Destroy()            
 
 class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
     """ Edit / Add Instrument"""
@@ -221,7 +336,6 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1, LSTY)
         pack(self, mainsizer)
-
 
         self.Layout()
         self.Show()

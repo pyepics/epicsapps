@@ -24,7 +24,7 @@ from utils import GUIColors, ConnectDialog, set_font_with_children, EIN_WILDCARD
 from instrumentpanel import InstrumentPanel
 
 from settingsframe import SettingsFrame
-from editframe import EditInstrumentFrame
+from editframe import EditInstrumentFrame, NewPositionFrame
 from epics_server import EpicsInstrumentServer
 
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON|flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS
@@ -104,11 +104,11 @@ class InstrumentFrame(wx.Frame):
         return db, dbname
 
     def create_Frame(self):
-        self.nb = flat_nb.FlatNotebook(self, wx.ID_ANY, agwStyle=FNB_STYLE)
+        self.nb = flat_nb.FlatNotebook(self, wx.ID_ANY,
+                                       agwStyle=FNB_STYLE)
 
         self.server_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.OnServerTimer, self.server_timer)
-
         colors = self.colors
         self.nb.SetActiveTabColour(colors.nb_active)
         self.nb.SetTabAreaColour(colors.nb_area)
@@ -138,7 +138,6 @@ class InstrumentFrame(wx.Frame):
                 inst.show = 1
             if int(inst.show) == 1:
                 self.add_instrument_page(inst)
-
 
     def add_instrument_page(self, inst):
         panel = InstrumentPanel(self, inst, db=self.db,
@@ -208,7 +207,6 @@ class InstrumentFrame(wx.Frame):
                  "&Remove Current Instrument",
                  "Permanently Remove Current Instrument",
                  action=self.onRemoveInstrument)
-
 
         add_menu(self, opts_menu, "&Settings",
                  "Change Settings for GUI behavior",
@@ -332,9 +330,10 @@ class InstrumentFrame(wx.Frame):
 
     def onEnterPosition(self, event=None):
         "enter a new position for the current instrument"
-        inst = self.nb.GetCurrentPage().inst
-        EditInstrumentFrame(parent=self, db=self.db, inst=inst,
-                            epics_pvs=self.epics_pvs)
+        page = self.nb.GetCurrentPage()
+        inst = page.inst
+        NewPositionFrame(parent=self, db=self.db, inst=inst,
+                         page=page)
 
 
     def onRemoveInstrument(self, event=None):

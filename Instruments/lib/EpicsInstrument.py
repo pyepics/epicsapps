@@ -7,7 +7,7 @@ sys.path.insert(0, '.')
 
 from InstrumentApp import InstrumentFrame
 
-app = wx.PySimpleApp()
+app = wx.PyApp()
 frame = InstrumentFrame(conf=None, dbname=None)
 frame.Show()        
 app.MainLoop()
