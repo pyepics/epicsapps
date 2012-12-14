@@ -181,6 +181,7 @@ class SampleStage(wx.Frame):
         self.SetTitle("XRM Sample Stage")
         wx.EVT_CLOSE(self, self.onClose)
 
+        self.waiting_for_imagefile = False
         self.tweaks = {}
         self.motors = None
         self.motorwids = {}
@@ -209,7 +210,6 @@ class SampleStage(wx.Frame):
 
     def read_config(self, configfile=None, get_dir=False):
         "open/read ini config file"
-        get_dir = False
         if get_dir:
             try:
                 workdir = open(WORKDIR_FILE, 'r').readline()[:-1]
@@ -219,6 +219,7 @@ class SampleStage(wx.Frame):
             ret = SelectWorkdir(self)
             if ret is None:
                 self.Destroy()
+            os.chdir(ret)            
 
         self.cnf = StageConfig('SampleStage.ini') # configfile)
         self.config = self.cnf.config
@@ -231,11 +232,20 @@ class SampleStage(wx.Frame):
         self.finex_dir = self.config['setup']['finex_dir']
         self.finey_dir = self.config['setup']['finey_dir']
 
-        self.imgdir     = self.config['camera']['image_folder']
-        self.cam_type   = self.config['camera']['type']
-        self.cam_adpref = self.config['camera']['ad_prefix']
-        self.cam_adform = self.config['camera']['ad_format']
-        self.cam_weburl = self.config['camera']['web_url']
+        self.imgdir     = 'Sample_Images'
+        self.cam_type   = 'areadetector'
+        self.cam_adpref = '13IDEPS1:'
+        self.cam_adform = 'JPEG'
+        self.cam_weburl = 'http://164.54.160.115/jpg/2/image.jpg'
+        try:
+            self.imgdir     = self.config['camera']['image_folder']
+            self.cam_type   = self.config['camera']['type']
+            self.cam_adpref = self.config['camera']['ad_prefix']
+            self.cam_adform = self.config['camera']['ad_format']
+            self.cam_weburl = self.config['camera']['web_url']
+        except:
+            pass
+        
         if not os.path.exists(self.imgdir):
             os.makedirs(self.imgdir)
         if not os.path.exists(self.htmllog):
@@ -486,7 +496,7 @@ class SampleStage(wx.Frame):
             btn = wx.BitmapButton(panel, -1, wx.BitmapFromImage(img),
                                 style = wx.NO_BORDER)
             btn.Bind(wx.EVT_BUTTON, Closure(self.onMove,
-                                          group=group, name=name))
+                                            group=group, name=name))
             return btn
         if full:
             sizer.Add(_btn('nw'),     0, wx.ALL|wx.EXPAND)
@@ -594,7 +604,7 @@ class SampleStage(wx.Frame):
             return
         self.pos_name.SetValue(name)
         thispos = self.positions[name]
-        imgfile = os.path.join(self.imgdir, thispos['image'])
+        imgfile = "%s/%s" % (self.imgdir, thispos['image'])
         tstamp =  thispos.get('timestamp', None)
         if tstamp is None:
             try:
@@ -632,7 +642,8 @@ class SampleStage(wx.Frame):
             if ret != wx.ID_YES:
                 return
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
-        fname =  os.path.join(self.imgdir, imgfile)
+        fname =  "%s/%s" % (self.imgdir, imgfile)
+        self.waiting_for_imagefile = True        
         self.save_image(fname=fname)
 
         tmp_pos = []
@@ -647,13 +658,13 @@ class SampleStage(wx.Frame):
             self.pos_list.Append(name)
 
         self.pos_name.Clear()
-        self.onSelectPosition(event=None, name=name)
         self.pos_list.SetStringSelection(name)
         # auto-save file
         self.config['positions'] = self.positions
         self.autosave()
         self.write_htmllog(name)
         self.write_message("Saved Position '%s', image in %s" % (name, fname))
+        wx.CallAfter(Closure(self.onSelectPosition, event=None, name=name))
 
     def autosave(self):
         self.cnf.Save('SampleStage_autosave.ini')
@@ -682,6 +693,8 @@ class SampleStage(wx.Frame):
     @EpicsFunction
     def ConfigCamera(self):
         if not self.cam_type.lower().startswith('web'):
+            if not self.cam_adpref.endswith(':'):
+                self.cam_adpref = "%s:" % self.cam_adpref
             cname = "%s%s1:"% (self.cam_adpref, self.cam_adform.upper())
             caput("%sEnableCallbacks" % cname, 1)
             thisdir = os.path.abspath(os.getcwd())
@@ -697,6 +710,7 @@ class SampleStage(wx.Frame):
     @EpicsFunction
     def save_image(self, fname=None):
         "save image to file"
+        self.waiting_for_imagefile = True
         if self.cam_type.lower().startswith('web'):
             try:
                 img = urlopen(self.cam_weburl).read()
@@ -719,8 +733,8 @@ class SampleStage(wx.Frame):
             time.sleep(0.001)
             caput("%sWriteFile" % cname, 1)
             self.write_message('saved image to %s' % fname)
-            
-            
+            time.sleep(0.50)
+        self.waiting_for_imagefile = False
         return fname
 
     def onGo(self, event):
@@ -780,10 +794,24 @@ class SampleStage(wx.Frame):
     def display_imagefile(self, fname=None, name='', tstamp=''):
         "display raw jpeg image as wx bitmap"
         bmp = empty_bitmap(IMG_W, IMG_H, value=200)
-        if fname is not None and os.path.exists(fname):
-            stream = StringIO(open(fname, "rb").read())
-            bmp = wx.BitmapFromImage( wx.ImageFromStream(
-                (stream)).Rescale(IMG_W, IMG_H))
+        t0 = time.time()
+        while self.waiting_for_imagefile and time.time() < t0 + 5.0:
+            time.sleep(0.1)
+        if fname is not None:
+            if not os.path.exists(fname):  time.sleep(0.25)
+            if os.path.exists(fname):
+                try:
+                    stream = StringIO(open(fname, "rb").read())
+                    bmp = wx.BitmapFromImage( wx.ImageFromStream(
+                        (stream)).Rescale(IMG_W, IMG_H))
+                except:
+                    time.sleep(0.25)
+                    try:
+                        stream = StringIO(open(fname, "rb").read())
+                        bmp = wx.BitmapFromImage( wx.ImageFromStream(
+                            (stream)).Rescale(IMG_W, IMG_H))
+                    except:
+                        pass
 
         self.img.SetBitmap(bmp)
         if tstamp != '':

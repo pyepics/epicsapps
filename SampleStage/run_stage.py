@@ -13,13 +13,10 @@ epics.ca.initialize_libca()
 ## before the GUI is really going.
 ## this speeds up loading and can avoid unconnected PVs
 # print SampleStage.CONFIG_DIR
-configfile = os.path.join('.' , #  SampleStage.CONFIG_DIR,
+configfile = os.path.join(SampleStage.CONFIG_DIR,
                           'SampleStage.ini')
 # configfile = 'SampleStage.ini'
 cnf = StageConfig(configfile)
-
-print 'Config Sections = ', cnf.sections()
-print 'Camera  ', cnf.get('camera')
 
 stages = []
 #print 'Connecting'

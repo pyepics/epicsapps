@@ -172,6 +172,8 @@ class StageConfig(object):
                     except:
                         pass
         o.append('#------------------#\n')
+        # print 'Conf autosave ', fname
+        # print os.path.abspath(fname)
         f = open(fname,'w')
         f.write('\n'.join(o))
         f.close()
