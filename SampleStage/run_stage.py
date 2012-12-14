@@ -12,15 +12,20 @@ epics.ca.initialize_libca()
 ## read default config file to pre-connect epics motors
 ## before the GUI is really going.
 ## this speeds up loading and can avoid unconnected PVs
-configfile = os.path.join(SampleStage.CONFIG_DIR,
+# print SampleStage.CONFIG_DIR
+configfile = os.path.join('.' , #  SampleStage.CONFIG_DIR,
                           'SampleStage.ini')
 # configfile = 'SampleStage.ini'
 cnf = StageConfig(configfile)
+
+print 'Config Sections = ', cnf.sections()
+print 'Camera  ', cnf.get('camera')
 
 stages = []
 #print 'Connecting'
 for pvname in cnf.config['stages']:
     stages.append(epics.Motor(name=pvname))
+
 
 ## fetch motor fields for the side-effect of actually
 ## making the network connection

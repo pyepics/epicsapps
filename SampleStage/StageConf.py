@@ -16,10 +16,15 @@ DEFAULT_CONF = """
 verify_move = 1
 verify_erase = 1
 verify_overwrite = 1
-webcam = http://164.54.160.115/jpg/4/image.jpg
-imgdir  = Sample_Images
 finex_dir = 1
 finey_dir = 1
+#--------------------------#
+[camera]
+type = areadetector
+image_folder = Sample_Images
+ad_prefix    = 13IDEPS1:
+ad_format    = JPEG
+web_url = http://164.54.160.115/jpg/4/image.jpg
 #--------------------------#
 [stages]
 # index =  Motor ||  name ||  description   ||   sign
@@ -36,11 +41,13 @@ finey_dir = 1
 """
 conf_sects = {'setup':{'bools': ('verify_move','verify_erase', 'verify_overwrite'),
                        'ints': ('finex_dir', 'finey_dir')},
+              'camera': {'ordered':False},
               'stages': {'ordered':True},
               'positions': {'ordered':True} }
 
 conf_objs = OrderedDict( (('setup', ('verify_move', 'verify_erase', 'verify_overwrite',
-                                     'webcam', 'imgdir', 'finex_dir', 'finey_dir')),
+                                      'finex_dir', 'finey_dir')),
+                          ('camera', ('type', 'image_folder', 'ad_prefix', 'ad_format', 'web_url')),
                           ('stages', None),
                           ('positions', None)) )
 

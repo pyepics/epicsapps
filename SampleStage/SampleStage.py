@@ -12,8 +12,9 @@ import wx.lib.mixins.inspection
 from  cStringIO import StringIO
 from  urllib import urlopen
 
-from epics import Motor
+from epics import Motor, PV, caput
 from epics.wx import finalize_epics, MotorPanel
+from epics.wx import EpicsFunction
 
 from epics.wx.utils import  (empty_bitmap, add_button, add_menu, popup,
                              pack, Closure , NumericCombo, SimpleText, 
@@ -36,6 +37,9 @@ CONFIG_DIR  = '//cars5/Data/xas_user/config/SampleStage/'
 WORKDIR_FILE = os.path.join(CONFIG_DIR, 'workdir.txt')
 ICON_FILE = os.path.join(CONFIG_DIR, 'micro.ico')
 
+CAM_CHOICES = ('Web Camera', 'AreaDetector')
+AD_TYPES    = ('JPEG', 'TIFF')
+
 class SettingsFrame(wx.Frame):
     def __init__(self, parent=None,  *args, **kwds):
         wx.Frame.__init__(self, None, wx.ID_ANY, '',
@@ -46,6 +50,10 @@ class SettingsFrame(wx.Frame):
         CEN  = wx.ALIGN_CENTER|wx.GROW|wx.ALL
 
         self.parent = parent
+        cam_type = 'ad'
+        if parent.cam_type.lower().startswith('web'):
+            cam_type = 'web'
+
         sizer = wx.GridBagSizer(10, 2)
         panel = wx.Panel(self, style=wx.GROW)
         
@@ -53,47 +61,100 @@ class SettingsFrame(wx.Frame):
         sizer.Add(wx.StaticLine(panel, size=(150, -1), style=wx.LI_HORIZONTAL),
                   (irow, 0), (1, 2), CEN, 2)
 
-        irow += 1
-        self.webcam_name =  wx.TextCtrl(panel, value=parent.webcam, size=(260, -1))
-        sizer.Add(SimpleText(panel, 'Webcam: '), (irow, 0), (1, 1), LSTY, 2)
-        sizer.Add(self.webcam_name,              (irow, 1), (1, 1), LSTY, 2)
+        self.cam_type   = wx.Choice(panel, -1, size=(150, -1), choices=CAM_CHOICES)
+        self.cam_adform = wx.Choice(panel, -1, size=(150, -1), choices=AD_TYPES)
+
+        self.cam_adform.SetSelection(0)
+        self.cam_type.SetSelection({'web':0, 'ad':1}[cam_type])
+
+        self.cam_weburl =  wx.TextCtrl(panel, value=parent.cam_weburl, size=(260, -1))
+        self.cam_adpref =  wx.TextCtrl(panel, value=parent.cam_adpref, size=(260, -1))
+
+        self.image_dir  =  wx.TextCtrl(panel, value=parent.imgdir,  size=(260, -1))
 
         irow += 1
-        self.image_dir  =  wx.TextCtrl(panel, value=parent.imgdir, size=(260, -1))
-        sizer.Add(SimpleText(panel, 'Image Folder: '), (irow, 0), (1, 1), LSTY, 2)
-        sizer.Add(self.image_dir,                      (irow, 1), (1, 1), LSTY, 2)
+        sizer.Add(SimpleText(panel, 'Image Sub Folder: '), (irow, 0), (1, 1), LSTY, 2)
+        sizer.Add(self.image_dir,                          (irow, 1), (1, 1), LSTY, 2)
 
+        irow += 1
+        sizer.Add(SimpleText(panel, 'Camera Type:'), (irow, 0), (1, 1), LSTY, 2)
+        sizer.Add(self.cam_type,                     (irow, 1), (1, 1), LSTY, 2)
+
+        irow += 1
+        sizer.Add(wx.StaticLine(panel, size=(150, -1), style=wx.LI_HORIZONTAL),
+                  (irow, 0), (1, 2), CEN, 2)
+
+        irow += 1
+        sizer.Add(SimpleText(panel, 'Web Camera URL: '),(irow, 0), (1, 1), LSTY, 2)
+        sizer.Add(self.cam_weburl,        (irow, 1), (1, 1), LSTY, 2)
+
+        irow += 1
+        sizer.Add(wx.StaticLine(panel, size=(150, -1), style=wx.LI_HORIZONTAL),
+                  (irow, 0), (1, 2), CEN, 2)
+
+        irow += 1
+        sizer.Add(SimpleText(panel, 'Area Detector Format: '),
+                  (irow, 0), (1, 1), LSTY, 2)
+        sizer.Add(self.cam_adform,        (irow, 1), (1, 1), LSTY, 2)
+
+        irow += 1
+        sizer.Add(SimpleText(panel, 'Area Detector Prefix: '),
+                  (irow, 0), (1, 1), LSTY, 2)
+        sizer.Add(self.cam_adpref,        (irow, 1), (1, 1), LSTY, 2)
 
         irow += 1
         sizer.Add(wx.StaticLine(panel, size=(150, -1), style=wx.LI_HORIZONTAL),
                   (irow, 0), (1, 2), CEN, 2)
         
-        btn_ok     = add_button(panel, 'Done',   size=(70, -1), action=self.OnDone)
-        btn_cancel = add_button(panel, 'Cancel', size=(70, -1), action=self.OnCancel)
-        
+        btn_ok     = add_button(panel, 'Done',   size=(70, -1), action=self.onOK)
+        btn_cancel = add_button(panel, 'Cancel', size=(70, -1), action=self.onCancel)
+
         irow += 1
         sizer.Add(btn_ok,     (irow, 0), (1, 1), LSTY, 2)
         sizer.Add(btn_cancel, (irow, 1), (1, 1), LSTY, 2)
 
         pack(panel, sizer)
         mainsizer = wx.BoxSizer(wx.VERTICAL)
-        mainsizer.Add(panel, 1, LSTY)
+        mainsizer.Add(panel, 1, LSTY|STY)
         pack(self, mainsizer)
-
         self.Layout()
         self.Show()
         self.Raise()
+        self.cam_type.Bind(wx.EVT_CHOICE,   self.onCameraType)
+        self.onCameraType()
+        
 
-    def OnDone(self, event=None):
-        self.parent.webcam =  self.webcam_name.GetValue()
-        self.parent.config['setup']['webcam'] = self.parent.webcam       
+    def onCameraType(self, evt=None):
+        thistype = self.cam_type.GetStringSelection().lower()
+        if thistype.startswith('web'):
+            self.cam_weburl.Enable()
+            self.cam_adpref.Disable()
+            self.cam_adform.Disable()
+        else:
+            self.cam_weburl.Disable()
+            self.cam_adpref.Enable()
+            self.cam_adform.Enable()
+            
+    def onOK(self, event=None):
+        self.parent.cam_weburl =  self.cam_weburl.GetValue()
+        self.parent.config['camera']['web_url'] = self.parent.cam_weburl
 
         self.parent.imgdir  =  self.image_dir.GetValue()
-        self.parent.config['setup']['imgdir'] = self.parent.imgdir
+        self.parent.config['camera']['image_folder'] = self.parent.imgdir
+
+        self.parent.cam_type = self.cam_type.GetStringSelection().replace(' ','').lower()
+        self.parent.config['camera']['type'] = self.parent.cam_type
+
+        self.parent.cam_adpref = self.cam_adpref.GetValue()
+        self.parent.config['camera']['ad_prefix'] = self.parent.cam_adpref
+
+        self.parent.cam_adform = self.cam_adform.GetStringSelection()
+        self.parent.config['camera']['ad_format'] = self.parent.cam_adform
+        self.parent.ConfigCamera()
         self.Destroy()
 
         
-    def OnCancel(self, event=None):
+    def onCancel(self, event=None):
         self.Destroy()
 
 class SampleStage(wx.Frame):
@@ -148,6 +209,7 @@ class SampleStage(wx.Frame):
 
     def read_config(self, configfile=None, get_dir=False):
         "open/read ini config file"
+        get_dir = False
         if get_dir:
             try:
                 workdir = open(WORKDIR_FILE, 'r').readline()[:-1]
@@ -158,8 +220,9 @@ class SampleStage(wx.Frame):
             if ret is None:
                 self.Destroy()
 
-        self.cnf = StageConfig(configfile)
+        self.cnf = StageConfig('SampleStage.ini') # configfile)
         self.config = self.cnf.config
+
         self.positions = self.config['positions']
         self.stages    = self.config['stages']
         self.v_move    = self.config['setup']['verify_move']
@@ -167,13 +230,17 @@ class SampleStage(wx.Frame):
         self.v_replace = self.config['setup']['verify_overwrite']
         self.finex_dir = self.config['setup']['finex_dir']
         self.finey_dir = self.config['setup']['finey_dir']
-        self.imgdir    = self.config['setup']['imgdir']
-        self.webcam    = self.config['setup']['webcam']
+
+        self.imgdir     = self.config['camera']['image_folder']
+        self.cam_type   = self.config['camera']['type']
+        self.cam_adpref = self.config['camera']['ad_prefix']
+        self.cam_adform = self.config['camera']['ad_format']
+        self.cam_weburl = self.config['camera']['web_url']
         if not os.path.exists(self.imgdir):
             os.makedirs(self.imgdir)
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
-
+        self.ConfigCamera()
         self.get_tweakvalues()
 
     def get_tweakvalues(self):
@@ -235,7 +302,7 @@ class SampleStage(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onMenuOption, mitem)
 
         omenu.AppendSeparator()
-        add_menu(self, omenu, label="Webcam Settings",  text="Edit Webcam Settings",
+        add_menu(self, omenu, label="Camera Settings",  text="Edit Camera Settings",
                  action = self.onSettings)
 
         mbar.Append(fmenu, '&File')
@@ -612,23 +679,48 @@ class SampleStage(wx.Frame):
 </table>""" % (imgfile, imgfile, name, tstamp, labels, pvnames, pos))
         fout.close()
 
+    @EpicsFunction
+    def ConfigCamera(self):
+        if not self.cam_type.lower().startswith('web'):
+            cname = "%s%s1:"% (self.cam_adpref, self.cam_adform.upper())
+            caput("%sEnableCallbacks" % cname, 1)
+            thisdir = os.path.abspath(os.getcwd())
+            thisdir = thisdir.replace('\\', '/').replace('T:/', '/Volumes/Data/')
+
+            caput("%sFilePath" % cname, thisdir)
+            caput("%sAutoSave" % cname, 0)
+            caput("%sAutoIncrement" % cname, 0)
+            caput("%sFileTemplate" % cname, "%s%s")
+            if self.cam_adform.upper() == 'JPEG':
+                caput("%sJPEGQuality" % cname, 90)
+
+    @EpicsFunction
     def save_image(self, fname=None):
         "save image to file"
-        try:
-            img = urlopen(self.webcam).read()
-        except:
-            self.write_message('could not open webcam: %s' % self.webcam)
-            return 
+        if self.cam_type.lower().startswith('web'):
+            try:
+                img = urlopen(self.cam_weburl).read()
+            except:
+                self.write_message('could not open camera: %s' % self.cam_weburl)
+                return 
 
-        if fname is None:
-            fname = FileSave(self, 'Save Image File',
-                             wildcard='JPEG (*.jpg)|*.jpg|All files (*.*)|*.*',
-                             default_file='sample.jpg')
-        if img is not None and fname is not None:
-            out = open(fname,"wb")
-            out.write(img)
-            out.close()
+            if fname is None:
+                fname = FileSave(self, 'Save Image File',
+                                 wildcard='JPEG (*.jpg)|*.jpg|All files (*.*)|*.*',
+                                 default_file='sample.jpg')
+            if img is not None and fname is not None:
+                out = open(fname,"wb")
+                out.write(img)
+                out.close()
+                self.write_message('saved image to %s' % fname)
+        else: # areaDetector
+            cname = "%s%s1:"% (self.cam_adpref, self.cam_adform.upper())
+            caput("%sFileName" % cname, fname)
+            time.sleep(0.001)
+            caput("%sWriteFile" % cname, 1)
             self.write_message('saved image to %s' % fname)
+            
+            
         return fname
 
     def onGo(self, event):
