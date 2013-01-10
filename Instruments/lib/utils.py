@@ -11,6 +11,12 @@ FileBrowser = filebrowse.FileBrowseButtonWithHistory
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 EIN_WILDCARD = 'Epics Instrument Files (*.ein)|*.ein|All files (*.*)|*.*'
+
+def normalize_pvname(pvname):
+    pvname = str(pvname)
+    if '.' not in pvname:
+        pvname = '%s.VAL' % pvname
+    return pvname
        
 def get_pvdesc(pvname):
     desc = pref = pvname

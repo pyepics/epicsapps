@@ -27,6 +27,8 @@ from settingsframe import SettingsFrame
 from editframe import EditInstrumentFrame, NewPositionFrame
 from epics_server import EpicsInstrumentServer
 
+from pvconnector import EpicsPVList
+
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON|flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS
 FNB_STYLE |= flat_nb.FNB_DROPDOWN_TABS_LIST|flat_nb.FNB_NO_NAV_BUTTONS
 
@@ -54,9 +56,12 @@ class InstrumentFrame(wx.Frame):
         self.connected = {}
         self.panels = {}
         self.epics_server = None
+
         self.server_timer = None
         wx.Frame.__init__(self, parent=parent, title='Epics Instruments',
                           size=(925, -1), **kwds)
+
+        self.pvlist = EpicsPVList(self)
 
         self.colors = GUIColors()
         self.SetBackgroundColour(self.colors.bg)
@@ -142,26 +147,22 @@ class InstrumentFrame(wx.Frame):
     def add_instrument_page(self, inst):
         panel = InstrumentPanel(self, inst, db=self.db,
                                 size=(925, -1),
+                                pvlist = self.pvlist,
                                 writer = self.write_message)
 
-        panel.Freeze()
-        self.panels[inst.name] = panel
-        self.connect_pvs(inst, wait_time=2.0)
+        for pv in inst.pvs:
+            panel.add_pv(pv.name)
 
+        self.panels[inst.name] = panel
+        # self.connect_pvs(inst, wait_time=0.10)
         self.nb.AddPage(panel, inst.name, True)
 
-    @EpicsFunction
-    def connect_pvs(self, inst, wait_time=2.0):
+    def connect_pvs(self, inst, wait_time=0.10):
         """connect to PVs for an instrument.."""
-        for pv in inst.pvs:
-            self.epics_pvs[pv.name]  = epics.PV(pv.name)
-            time.sleep(0.002)
-        t0 = time.time()
-        while (time.time() - t0) < wait_time:
-            time.sleep(0.002)
-            if all(x.connected for x in self.epics_pvs.values()):
-                break
-        self.panels[inst.name].Thaw()
+
+        panel = self.panels[inst.name]
+
+
         return
 
     def create_Menus(self):
