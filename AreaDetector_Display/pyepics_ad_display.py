@@ -5,6 +5,7 @@ import numpy
 import Image
 import sys
 
+# use -d option for debug mode
 if (len(sys.argv) > 1 and sys.argv[1].startswith('-d')):
     from lib import AD_Display
 else:
