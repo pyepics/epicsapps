@@ -12,8 +12,7 @@ setup(name = 'epicsapp_stripchart',
       description = 'Epics PV Stripchart',
       package_dir = {'epicsapps.stripchart': 'lib',
                      'epicsapps': 'base'},
-      packages = ['epicsapps', 'epicsapps.stripchart',
-                  'epicsapps.stripchart.mplot'],
+      packages = ['epicsapps', 'epicsapps.stripchart'],
       data_files  = [('bin', ['pyepics_stripchart.py'])])
 
 

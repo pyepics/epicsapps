@@ -17,7 +17,7 @@ import socket
 
 from datetime import datetime
 
-from utils import backup_versions, save_backup, get_pvtypes
+from utils import backup_versions, save_backup, get_pvtypes, normalize_pvname
 from creator import make_newdb
 
 
@@ -388,7 +388,11 @@ arguments
         if isinstance(name, PV):
             return name
         out = self.query(PV).filter(PV.name==name).all()
-        return None_or_one(out, 'get_pv expected 1 or None PV')
+        ret = None_or_one(out, 'get_pv expected 1 or None PV')
+        if ret is None and name.endswith('.VAL'):
+            out = self.query(PV).filter(PV.name==name[:-4]).all()
+            ret = None_or_one(out, 'get_pv expected 1 or None PV')
+        return ret
 
     def rename_position(self, oldname, newname, instrument=None):
         """rename a position"""
@@ -450,6 +454,7 @@ arguments
         """add pv
         notes and attributes optional
         returns PV instance"""
+        name = normalize_pvname(name)
         out =  self.query(PV).filter(PV.name==name).all()
         if len(out) > 0:
             return

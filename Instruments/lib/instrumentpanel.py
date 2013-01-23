@@ -12,6 +12,15 @@ from epics.wx.ordereddict import OrderedDict
 
 from utils import ALL_EXP , GUIColors, get_pvtypes, get_pvdesc
 
+MOTOR_FIELDS = ('SET', 'disabled', 'LLM', 'HLM',  'LVIO', 'TWV',
+                'HLS', 'LLS', 'SPMG', 'DESC')
+
+def normalize_pvname(pvname):
+    pvname = str(pvname)
+    if '.' not in pvname:
+        pvname = '%s.VAL' % pvname
+    return pvname
+
 class RenameDialog(wx.Dialog):
     """Rename a Position"""
     msg = '''Select Recent Instrument File, create a new one'''
@@ -160,15 +169,21 @@ class MoveToDialog(wx.Dialog):
 class InstrumentPanel(wx.Panel):
     """ create Panel for an instrument"""
     def __init__(self, parent, inst, db=None, writer=None,
-                 size=(-1, -1)):
+                 pvlist = None, size=(-1, -1)):
         self.last_draw = 0
         self.inst = inst
+        self.pvlist = pvlist
         self.db   = db
         self.write_message = writer
         self.pvs  = {}
         self.pvdesc = {}
         self.pv_components  = OrderedDict()
+
         wx.Panel.__init__(self, parent, size=size)
+
+        #for p in self.db.get_ordered_instpvs(inst):
+        #    self.add_pv(p.pv.name)
+
 
         self.colors = colors = GUIColors()
         self.parent = parent
@@ -180,13 +195,13 @@ class InstrumentPanel(wx.Panel):
         splitter = wx.SplitterWindow(self, -1,
                                      style=wx.SP_3D|wx.SP_BORDER|wx.SP_LIVE_UPDATE)
 
-        rpanel = wx.Panel(splitter, style=wx.BORDER_SUNKEN, size=(-1, 175))
-        self.leftpanel = wx.Panel(splitter, style=wx.BORDER_SUNKEN, size=(-1, 175))
+        rpanel = wx.Panel(splitter, style=wx.BORDER_SUNKEN, size=(-1, 225))
+        self.leftpanel = wx.Panel(splitter, style=wx.BORDER_SUNKEN, size=(-1,325))
 
         # self.leftsizer = wx.GridBagSizer(12, 4)
         self.leftsizer = wx.BoxSizer(wx.VERTICAL)
 
-        splitter.SetMinimumPaneSize(150)
+        splitter.SetMinimumPaneSize(225)
 
         toprow = wx.Panel(self.leftpanel)
 
@@ -216,16 +231,16 @@ class InstrumentPanel(wx.Panel):
 
         # start a timer to check for when to fill in PV panels
         timer_id = wx.NewId()
-        self.etimer = wx.Timer(self)
+        # self.etimer = wx.Timer(self)
+        self.etimer2 = wx.Timer(self)
         self.puttimer = wx.Timer(self)
         self.etimer_count = 0
-        self.etimer_poll = 50
+        self.etimer_poll = 25
 
-        self.Bind(wx.EVT_TIMER, self.OnConnectTimer, self.etimer)
+        # self.Bind(wx.EVT_TIMER, self.OnConnectTimer, self.etimer)
+        self.Bind(wx.EVT_TIMER, self.OnEtimer2, self.etimer2)
+        
         self.Bind(wx.EVT_TIMER, self.OnPutTimer, self.puttimer)
-
-        for ordered_pvs in self.db.get_ordered_instpvs(inst):
-            self.add_pv(ordered_pvs.pv.name)
 
         rsizer = wx.BoxSizer(wx.VERTICAL)
         btn_goto = add_button(rpanel, "Go To", size=(70, -1),
@@ -237,7 +252,7 @@ class InstrumentPanel(wx.Panel):
         brow.Add(btn_goto,   0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_erase,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
 
-        self.pos_list  = wx.ListBox(rpanel)
+        self.pos_list  = wx.ListBox(rpanel, size=(225, -1))
         self.pos_list.SetBackgroundColour(wx.WHITE)
         self.pos_list.Bind(wx.EVT_RIGHT_DOWN, self.onRightClick)
         self.pos_list.Bind(wx.EVT_LISTBOX, self.onPosSelect)
@@ -260,6 +275,8 @@ class InstrumentPanel(wx.Panel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(splitter, 1, wx.GROW|wx.ALL, 0)
         pack(self, sizer)
+        print ' start etimer2 for ' , self.inst.name, time.ctime()
+        self.etimer2.Start(1)
 
     def undisplay_pv(self, pvname):
         "remove pv from display"
@@ -267,16 +284,19 @@ class InstrumentPanel(wx.Panel):
             self.pv_components.pop(pvname)
             self.redraw_leftpanel()
 
-    @EpicsFunction
+        # @EpicsFunction
     def redraw_leftpanel(self, force=False):
         """ redraws the left panel """
         if (time.time() - self.last_draw) < 0.5:
             return
 
+        print 'redraw left! ', time.ctime()
+
         self.Freeze()
         self.Hide()
         self.leftsizer.Clear()
 
+        # print 'redraw left 1 ', time.ctime()
         self.leftsizer.Add(self.toprow, 0, wx.ALIGN_LEFT|wx.TOP, 2)
 
         current_comps = [self.toprow]
@@ -290,10 +310,14 @@ class InstrumentPanel(wx.Panel):
             panel = None
             if pvtype == 'motor':
                 try:
+                    #print 'MotorPanel create ', self.inst.name, pvname
+                    t0 = time.time()
                     panel = MotorPanel(self.leftpanel, pvname)
+                    #print 'MotorPanel done ', time.time()-t0
                 except PyDeadObjectError:
+                    #print 'Error making motorpanel'
                     pass
-            elif pv.pvname not in skip:
+            elif pv is not None and hasattr(pv, 'pvname') and pv.pvname not in skip:
                 panel = wx.Panel(self.leftpanel)
                 sizer = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -354,15 +378,22 @@ class InstrumentPanel(wx.Panel):
         self.Layout()
         self.Thaw()
         self.Show()
+        print 'redraw left End ', time.ctime()
         self.last_draw = time.time()
 
 
     def add_pv(self, pvname):
         """add a PV to the left panel"""
+        pvname = normalize_pvname(pvname)
+        # print 'add pv ', pvname, self.inst.name
         self.pv_components[pvname] = (False, None, None)
-        time.sleep(0.010)
-        if not self.etimer.IsRunning():
-            self.etimer.Start(self.etimer_poll)
+        db_pv = self.db.get_pv(pvname)
+        if db_pv.pvtype.name == 'motor':
+            idot = pvname.find('.')
+            for ext in MOTOR_FIELDS:
+                self.pvlist.connect_pv('%s.%s' % (pvname[:idot], ext))
+        # self.PV_Panel(pvname)                
+
 
     def write(self, msg, status='normal'):
         if self.write_message is None:
@@ -373,63 +404,72 @@ class InstrumentPanel(wx.Panel):
         """Timer Event for GoTo to look if move is complete."""
         if self.db.restore_complete():
             self.puttimer.Stop()
-            # print 'would do inst post commands now!'
 
     def OnConnectTimer(self, evt=None):
         """Timer Event: look for uncompleted PV panels
         and try to create them ...
         """
         if all([comp[0] for comp in self.pv_components.values()]): # "all connected"
-            self.etimer.Stop()
-            wx.CallAfter(self.redraw_leftpanel)
-
-        for pvname in self.pv_components:
-            self.PV_Panel(pvname)
-
+            # self.etimer.Stop()
+            self.etimer2.Stop()
+            self.redraw_leftpanel()
+            # return
         # if we've done 20 rounds, there are probably
         # really unconnected PVs -- let's slow down.
-        self.etimer_count += 1
-        if self.etimer_count > 20:
-            self.etimer.Stop()
-            self.etimer_count = 0
-            self.etimer_poll *=  2
-            self.etimer_poll = min(self.etimer_poll, 5000)
-            self.etimer.Start(self.etimer_poll)
 
-    @EpicsFunction
+    def OnEtimer2(self, evt=None):
+        print 'etimer2 event ', self.inst.name, time.ctime()
+        for pvname in self.pv_components:
+            self.PV_Panel(pvname)        
+
+        if all([comp[0] for comp in self.pv_components.values()]): # "all connected"
+            print 'Etimer2 --> draw left ', self.inst.name, time.ctime()
+            self.redraw_leftpanel()
+            self.etimer2.Stop()
+
+
     def PV_Panel(self, pvname): # , panel, sizer, current_wid=None):
         """ try to create a PV Panel for the given pv
         returns quickly for an unconnected PV, to be tried later
         by the timer"""
-        if pvname not in self.pvs:
-            pv = epics.PV(pvname)
-            self.pvs[pvname] = pv
+        pvname = str(pvname)
+
+        if '.' not in pvname:
+            pvname = '%s.VAL' % pvname
+
+        if pvname not in self.pvlist.pvs:
+            self.pvlist.connect_pv(pvname)
+        
+        # print 'PV Panel ', self.inst.name, pvname, len(self.pvlist.pvs), time.ctime()
+        if pvname in self.pvlist.pvs:
+            pv = self.pvlist.pvs[pvname]
         else:
-            pv = self.pvs[pvname]
+            # print 'pvname not yet in pvlist ? ', pvname, len(self.pvlist.pvs)
+            return
 
         # return if not connected
-        if pv.connected == False:
+        if not pv.connected:
+            print 'pv not connected'
             return
 
         if pvname not in self.pv_components:
+            print 'pv not in components', pvname
             return
 
-        pv.get_ctrlvars()
-        pvtype = None
-        db_pv = self.db.get_pv(pvname)
-        try:
-            pvtype = str(db_pv.pvtype.name)
-        except AttributeError:
-            pass
-
+        # pv.get_ctrlvars()
+        pvtype = self.pv_components[pvname][1]
         if pvtype is None:
-            pvtype  = get_pvtypes(pv)[0]
+            db_pv = self.db.get_pv(pvname)
+            try:
+                pvtype = str(db_pv.pvtype.name)
+            except AttributeError:
+                pass
 
-        self.db.set_pvtype(pvname, pvtype)
+        #   pvtype  = get_pvtypes(pv)[0]
         self.pv_components[pvname] = (True, pvtype, pv)
 
-        wx.CallAfter(self.redraw_leftpanel)
-
+        # self.db.set_pvtype(pvname, pvtype)
+            
     @EpicsFunction
     def save_current_position(self, posname):
         values = {}
@@ -541,7 +581,6 @@ class InstrumentPanel(wx.Panel):
             if dlg.ShowModal() == wx.ID_OK:
                 newname = dlg.newname.GetValue()
             dlg.Destroy()
-            # print '--> ', posname, newname
             if newname is not None:
                 self.db.rename_position(posname, newname, instrument=self.inst)
                 namelist[idx] = newname
