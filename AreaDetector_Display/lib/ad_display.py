@@ -241,8 +241,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
         for key in ('start', 'stop'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onEntry, key=key))
 
-        self.wids['zoomsize']= wx.StaticText(panel, -1,  size=(210,-1), style=txtstyle)
-        self.wids['fullsize']= wx.StaticText(panel, -1,  size=(210,-1), style=txtstyle)
+        self.wids['zoomsize']= wx.StaticText(panel, -1,  size=(350,-1), style=txtstyle)
+        self.wids['fullsize']= wx.StaticText(panel, -1,  size=(350,-1), style=txtstyle)
 
         def txt(label, size=80):
             return wx.StaticText(panel, label=label, size=(size, -1), style=labstyle)
@@ -582,14 +582,13 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
         self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))
 
-        sizelabel = 'Image Size:   %i x %i pixels'
+        sizelabel = 'Image Size: %i x %i pixels'
         try:
             sizelabel = sizelabel  % (self.ad_cam.MaxSizeX_RBV,
                                       self.ad_cam.MaxSizeY_RBV)
         except:
             sizelabel = sizelabel  % (-1, -1)
 
-            
         self.wids['fullsize'].SetLabel(sizelabel)
         self.showZoomsize()
 
