@@ -43,7 +43,7 @@ class AD_Display(wx.Frame):
                  
     stat_msg = 'Read %.1f%% of images: rate=%.1f frames/sec'
     
-    def __init__(self, prefix=None, app=None, scale=1.0, approx_height=800):
+    def __init__(self, prefix=None, app=None, scale=1.0, approx_height=1200):
         self.app = app
         self.ad_img = None
         self.ad_cam = None
@@ -58,6 +58,7 @@ class AD_Display(wx.Frame):
         self.colormode = 0
         self.last_update = 0.0
         self.n_img   = 0
+        self.imgcount_start = 0
         self.n_drawn = 0
         self.img_id = 0
         self.starttime = time.time()
@@ -73,7 +74,7 @@ class AD_Display(wx.Frame):
             
         self.img_w = 0
         self.img_h = 0
-        self.wximage = wx.EmptyImage(approx_height, 1.5*approx_height)
+        self.wximage = wx.EmptyImage(1024, 1360) # 1360, 1024) # approx_height, 1.5*approx_height)
         self.buildMenus()
         self.buildFrame()
 
@@ -219,71 +220,74 @@ Matt Newville <newville@cars.uchicago.edu>"""
         sizer = wx.GridBagSizer(10, 4)
         panel = wx.Panel(self)
         self.panel = panel
-        labstyle = wx.ALIGN_CENTER|wx.ALIGN_BOTTOM|wx.EXPAND        
+        labstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND
+        ctrlstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 
         rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
 
         txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
         self.wids = {}
-        self.wids['exptime']   = PVFloatCtrl(panel, pv=None, size=(60, -1))
-        self.wids['period']    = PVFloatCtrl(panel, pv=None, size=(60, -1))
-        self.wids['numimages'] = PVFloatCtrl(panel, pv=None, size=(60, -1))
-        self.wids['gain']      = PVFloatCtrl(panel, pv=None, size=(30, -1),
+        self.wids['exptime']   = PVFloatCtrl(panel, pv=None, size=(100, -1))
+        self.wids['period']    = PVFloatCtrl(panel, pv=None, size=(100, -1))
+        self.wids['numimages'] = PVFloatCtrl(panel, pv=None, size=(100, -1))
+        self.wids['gain']      = PVFloatCtrl(panel, pv=None, size=(100, -1),
                                              minval=0, maxval=20, precision=1)
-
-        self.wids['imagemode']   = PVEnumChoice(panel, pv=None)
-        self.wids['triggermode'] = PVEnumChoice(panel, pv=None)
-        self.wids['color']       = PVEnumChoice(panel, pv=None)
-        self.wids['start'] = wx.Button(panel, -1, label='Start', size=(50,-1))
-        self.wids['stop']  = wx.Button(panel, -1, label='Stop', size=(50,-1))
+        
+        self.wids['imagemode']   = PVEnumChoice(panel, pv=None, size=(100, -1))
+        self.wids['triggermode'] = PVEnumChoice(panel, pv=None, size=(100, -1))
+        self.wids['color']       = PVEnumChoice(panel, pv=None, size=(100, -1))
+        self.wids['start']       = wx.Button(panel, -1, label='Start', size=(50, -1))
+        self.wids['stop']        = wx.Button(panel, -1, label='Stop', size=(50,  -1))
 
 
         for key in ('start', 'stop'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onEntry, key=key))
 
-        self.wids['zoomsize']= wx.StaticText(panel, -1,  size=(350,-1), style=txtstyle)
-        self.wids['fullsize']= wx.StaticText(panel, -1,  size=(350,-1), style=txtstyle)
+        self.wids['zoomsize']= wx.StaticText(panel, -1,  size=(250,-1), style=txtstyle)
+        self.wids['fullsize']= wx.StaticText(panel, -1,  size=(250,-1), style=txtstyle)
 
-        def txt(label, size=80):
+        def txt(label, size=100):
             return wx.StaticText(panel, label=label, size=(size, -1), style=labstyle)
 
-        sizer.Add(txt('Image Mode '),       (0, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['imagemode'],   (1, 0), (1, 1), labstyle)
+        sizer.Add(txt(' '),                 (0, 0), (1, 1), labstyle)
+        sizer.Add(txt('Image Mode '),       (1, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['imagemode'],   (1, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('# Images '),         (0, 1), (1, 1), labstyle)
-        sizer.Add(self.wids['numimages'],   (1, 1), (1, 1), labstyle)
+        sizer.Add(txt('# Images '),         (2, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['numimages'],   (2, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Trigger Mode '),     (0, 2), (1, 1), labstyle)
-        sizer.Add(self.wids['triggermode'], (1, 2), (1, 1), labstyle)
+        sizer.Add(txt('Trigger Mode '),     (3, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['triggermode'], (3, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Period '),           (0, 3), (1, 1), labstyle)
-        sizer.Add(self.wids['period'],      (1, 3), (1, 1), labstyle)
+        sizer.Add(txt('Period '),           (4, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['period'],      (4, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Exposure Time '),    (0, 4), (1, 1), labstyle)
-        sizer.Add(self.wids['exptime'],     (1, 4), (1, 1), labstyle)
+        sizer.Add(txt('Exposure Time '),    (5, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['exptime'],     (5, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Gain '),             (0, 5), (1, 1), labstyle)
-        sizer.Add(self.wids['gain'],        (1, 5), (1, 1), labstyle)
+        sizer.Add(txt('Gain '),             (6, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['gain'],        (6, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Color Mode'),        (0, 6), (1, 1), labstyle)
-        sizer.Add(self.wids['color'],       (1, 6), (1, 1), labstyle)
+        sizer.Add(txt('Color Mode'),        (7, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['color'],       (7, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Acquire '),          (0, 7), (1, 2), labstyle)
-        sizer.Add(self.wids['start'],       (1, 7), (1, 1), labstyle)
-        sizer.Add(self.wids['stop'],        (1, 8), (1, 1), labstyle)
+        sizer.Add(txt('Acquire '),          (9, 0), (1, 1), labstyle)
 
-        sizer.Add(self.wids['fullsize'],    (0, 9), (1, 1), labstyle)
-        sizer.Add(self.wids['zoomsize'],    (1, 9), (1, 1), labstyle)
+        sizer.Add(self.wids['start'],       (9, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['stop'],        (9, 2), (1, 1), ctrlstyle)
 
-        self.image = ImageView(self, size=(512, 680), onzoom=self.onZoom,
+        sizer.Add(self.wids['fullsize'],    (12, 0), (1, 3), labstyle)
+        sizer.Add(self.wids['zoomsize'],    (13, 0), (1, 3), labstyle)
+
+        self.image = ImageView(self, size=(1360, 1024), onzoom=self.onZoom,
                                onprofile=self.onProfile, onshow=self.onShowXY)
 
         panel.SetSizer(sizer)
         sizer.Fit(panel)
 
-        mainsizer = wx.BoxSizer(wx.VERTICAL)
-        mainsizer.Add(panel, 0, wx.CENTER|wx.GROW|wx.ALL, 1)
-        mainsizer.Add(self.image, 1, wx.CENTER|wx.GROW|wx.ALL, 1)
+        mainsizer = wx.BoxSizer(wx.HORIZONTAL)
+        mainsizer.Add(panel, 0, wx.LEFT|wx.GROW|wx.ALL, 5)
+        mainsizer.Add(self.image, 1, wx.CENTER|wx.GROW|wx.ALL, 5)
         self.SetSizer(mainsizer)
         mainsizer.Fit(self)
 
@@ -353,7 +357,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
     @EpicsFunction
     def showZoomsize(self):
         try:
-            msg  = 'Showing:  %i x %i' % (self.ad_cam.SizeX, self.ad_cam.SizeY)
+            msg  = 'Showing:  %i x %i pixels' % (self.ad_cam.SizeX, self.ad_cam.SizeY)
             self.wids['zoomsize'].SetLabel(msg)
         except:
             pass
@@ -392,9 +396,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
             self.data = zdata #. flatten()
             self.im_size = (width, height)
             self.DatatoImage()
-        
         self.image.Refresh()
-
+        
     def DatatoImage(self):  #,  data, size, mode):
         """convert raw data to image"""
         #x = debugtime()
@@ -410,10 +413,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
                 #x.add('made image')
             except:
                 return
-
         self.d_size = d_size = (int(width*self.scale), int(height*self.scale))
-        self.imbuff = self.imbuff.resize(d_size)
-        # x.add('resized imbuff')
+        if self.imbuff.size != d_size:
+            self.imbuff = self.imbuff.resize(d_size)
+            #x.add('resized imbuff')
 
         if self.wximage.GetSize() != self.imbuff.size:
             self.wximage = wx.EmptyImage(d_size[0], d_size[1])
@@ -423,7 +426,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         elif self.im_mode == 'RGB':
             data.shape = (3, width, height)
             self.wximage = wx.ImageFromData(width, height, data)
-        #x.add('set wx image wximage')            
+        #x.add('set wx image wximage : %i, %i ' % d_size)            
         self.image.SetValue(self.wximage)
         #x.add('set image value')
         #x.show()
@@ -504,7 +507,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
     def onShowXY(self, xval, yval):
         ix  = max(0, int( xval * self.ad_cam.SizeX))
         iy  = max(0, int( yval * self.ad_cam.SizeY))
-
+        
         if self.colormode == 2:
             self.data.shape = (self.im_size[1], self.im_size[0], 3)
             ival = tuple(self.data[iy, ix, :])
@@ -514,7 +517,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             ival = self.data[iy, ix]
             smsg  = 'Pixel %i, %i, Intensity = %i' % (ix, iy, ival)
 
-        self.messag(smsg, panel=0)
+        self.messag(smsg, panel=1)
 
 
     def onName(self, evt=None, **kws):
@@ -536,6 +539,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             self.n_img   = 0
             self.n_drawn = 0
             self.starttime = time.time()
+            self.imgcount_start = self.ad_cam.ArrayCounter_RBV            
             self.ad_cam.Acquire = 1
         elif key == 'stop':
             self.ad_cam.Acquire = 0
@@ -587,12 +591,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
             sizelabel = sizelabel  % (self.ad_cam.MaxSizeX_RBV,
                                       self.ad_cam.MaxSizeY_RBV)
         except:
-            sizelabel = sizelabel  % (-1, -1)
+            sizelabel = sizelabel  % (0, 0)
 
         self.wids['fullsize'].SetLabel(sizelabel)
         self.showZoomsize()
 
-        self.ad_img.add_callback('UniqueId_RBV',   self.onNewImage)
+        self.ad_img.add_callback('ArrayCounter_RBV',   self.onNewImage)
         self.ad_img.add_callback('ArraySize0_RBV', self.onProperty, dim=0)
         self.ad_img.add_callback('ArraySize1_RBV', self.onProperty, dim=1)
         self.ad_img.add_callback('ArraySize2_RBV', self.onProperty, dim=2)
@@ -636,7 +640,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
     def onNewImage(self, pvname=None, value=None, **kw):
         if value != self.img_id:
             self.img_id = value
-            self.n_img += 1
             if not self.drawing:
                 self.drawing = True
                 self.RefreshImage()
@@ -647,20 +650,22 @@ Matt Newville <newville@cars.uchicago.edu>"""
             wx.Yield()
         except:
             pass
-        #d = debugtime()
+        d = debugtime()
 
         if self.ad_img is None or self.ad_cam is None:
             return 
         imgdim = self.ad_img.NDimensions_RBV
         imgcount = self.ad_cam.ArrayCounter_RBV
         now = time.time()
-        if (imgcount == self.imgcount or abs(now - self.last_update) < 0.05):
+        if (imgcount == self.imgcount or abs(now - self.last_update) < 0.025):
             self.drawing = False
             return
-        #d.add('refresh img start')
+        d.add('refresh img start')
         self.imgcount = imgcount
         self.drawing = True
         self.n_drawn += 1
+        self.n_img = imgcount - self.imgcount_start
+        #print 'ImgCount, n_drawn: ', imgcount, self.n_img, self.n_drawn
 
         self.last_update = time.time()
         self.image.can_resize = False
@@ -676,12 +681,13 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if not self.ad_img.PV('ArrayData').connected:
             self.drawing = False
             return
-        #d.add('refresh img before raw get %i' % arraysize)
+        
+        d.add('refresh img before raw get %i' % arraysize)
         rawdata = self.ad_img.PV('ArrayData').get(count=arraysize)
-        #d.add('refresh img after raw get')        
+        d.add('refresh img after raw get')        
         im_mode = 'L'
         im_size = (self.arrsize[0], self.arrsize[1])
-
+        
         if self.colormode == 2:
             im_mode = 'RGB'
             im_size = [self.arrsize[1], self.arrsize[2]]
@@ -690,28 +696,28 @@ Matt Newville <newville@cars.uchicago.edu>"""
             im_mode = 'I'
             rawdata = rawdata.astype(np.uint32)
 
-        #d.add('refresh img before msg')
+        d.add('refresh img before msg')
         self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
-        #d.add('refresh img before get image size')
+        d.add('refresh img before get image size')
         self.GetImageSize()
 
         self.im_size = im_size
         self.im_mode = im_mode
         self.data = rawdata
-        #d.add('refresh img before data to image')
+        d.add('refresh img before data to image')
         self.DatatoImage()
-        #d.add('refresh img after data to image')        
+        d.add('refresh img after data to image')        
         self.image.can_resize = True
         nmissed = max(0, self.n_img-self.n_drawn)
-
+        
         delt = time.time()-self.starttime
         percent_drawn = self.n_drawn * 100 / (self.n_drawn+nmissed)
         smsg = self.stat_msg % (percent_drawn, self.n_drawn/delt)
         self.messag(smsg, panel=0)
 
         self.drawing = False
-        #d.add('refresh img done')
-        # d.show()
+        d.add('refresh img done')
+        #d.show()
 
 #         imbuff =  Image.frombuffer(im_mode, im_size, rawdata,
 #                                    'raw', im_mode, 0, 1)
