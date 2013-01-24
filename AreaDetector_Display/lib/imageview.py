@@ -38,13 +38,13 @@ class ImageView(wx.Window):
             self.xy_init = (event.GetX(), event.GetY())
             self.Refresh()
 
-        elif self.cursor_mode == 'show':
-            xoff = (self.win_size[0] - self.img_size[0])/2.0
-            yoff = (self.win_size[1] - self.img_size[1])/2.0
-            x = (event.GetX() - xoff)/ (1.0*self.img_size[0])
-            y = (event.GetY() - yoff)/ (1.0*self.img_size[1])
-            if hasattr(self.onshow, '__call__'):
-                self.onshow(x, y)
+        #  elif self.cursor_mode == 'show':
+        xoff = (self.win_size[0] - self.img_size[0])/2.0
+        yoff = (self.win_size[1] - self.img_size[1])/2.0
+        x = (event.GetX() - xoff)/ (1.0*self.img_size[0])
+        y = (event.GetY() - yoff)/ (1.0*self.img_size[1])
+        if hasattr(self.onshow, '__call__'):
+            self.onshow(x, y)
 
     def OnLeftUp(self, event=None):
         """action on left up -- send fractional coordinates of image
@@ -143,7 +143,6 @@ class ImageView(wx.Window):
         event.Skip()
 
     def DrawImage(self, event=None, isize=None, size=None):
-        
         if event is None: return
         if not hasattr(self, 'image') or self.image is None:
             return
@@ -187,13 +186,8 @@ class ImageView(wx.Window):
 
         if w_scaled != w_img or h_scaled!=h_img:
             img = img.Scale(w_scaled, h_scaled)
-        # print 'DrawImage: dc DrawBitmap ', event.EventType, event.Id, event.GetTimestamp(), event.WasProcessed()
-        # print event.Skipped, event.ShouldPropagate()
         dc = wx.PaintDC(self)
-        #print dir(dc)
-        #print dir(img)
         dc.DrawBitmap(wx.BitmapFromImage(img), w_pad, h_pad, useMask=True)
-
         if self.zoom_box is not None:
             self.updateDynamicBox(self.zoom_box, erase=True)
         elif self.prof_line is not None:
