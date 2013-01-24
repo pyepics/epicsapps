@@ -39,6 +39,6 @@ class debugtime(object):
             dt = t-tlast
             if len(m)<lmsg:
                 m = m + ' '*(lmsg-len(m))
-            out.append(" %s   %10.3f    %10.3f" % (m,dt, tt))
+            out.append(" %s   %10.4f    %10.4f" % (m,dt, tt))
             tlast = t
         return '\n'.join(out)
