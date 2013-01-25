@@ -143,7 +143,8 @@ class ImageView(wx.Window):
         event.Skip()
 
     def DrawImage(self, event=None, isize=None, size=None):
-        if event is None: return
+        if event is None: 
+            return
         if not hasattr(self, 'image') or self.image is None:
             return
 
@@ -186,8 +187,9 @@ class ImageView(wx.Window):
 
         if w_scaled != w_img or h_scaled!=h_img:
             img = img.Scale(w_scaled, h_scaled)
-        dc = wx.PaintDC(self)
-        dc.DrawBitmap(wx.BitmapFromImage(img), w_pad, h_pad, useMask=True)
+        #dc = wx.PaintDC(self)
+        #dc.DrawBitmap(wx.BitmapFromImage(img), w_pad, h_pad, useMask=True)
+        dc = wx.BufferedPaintDC(self, wx.BitmapFromImage(img))
         if self.zoom_box is not None:
             self.updateDynamicBox(self.zoom_box, erase=True)
         elif self.prof_line is not None:
