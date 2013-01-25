@@ -221,9 +221,8 @@ class SampleStage(wx.Frame):
                 self.Destroy()
             os.chdir(ret)            
 
-        self.cnf = StageConfig('SampleStage.ini') # configfile)
+        self.cnf = StageConfig(configfile)
         self.config = self.cnf.config
-
         self.positions = self.config['positions']
         self.stages    = self.config['stages']
         self.v_move    = self.config['setup']['verify_move']
@@ -518,8 +517,8 @@ class SampleStage(wx.Frame):
 
     def set_position_list(self):
         "set the list of position on the left-side panel"
-        self.pos_list.Clear()
 
+        self.pos_list.Clear()
         if self.positions is None:
             self.positions = self.config['positions']
         for name in self.positions:
