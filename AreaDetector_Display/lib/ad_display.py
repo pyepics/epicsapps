@@ -40,7 +40,10 @@ class AD_Display(wx.Frame):
                  'AcquireTime', 'AcquirePeriod', 'ImageMode',
                  'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
                  'SizeX', 'SizeY', 'MinX', 'MinY')
-                 
+    
+    # plugins to enable
+    enabled_plugins = ('image1', 'Over1', 'ROI1', 'JPEG1', 'TIFF1')
+    
     stat_msg = 'Read %.1f%% of images: rate=%.1f frames/sec'
     
     def __init__(self, prefix=None, app=None, scale=1.0, approx_height=1200):
@@ -603,6 +606,13 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.ad_img.add_callback('ColorMode_RBV',  self.onProperty, dim='color')
         self.ad_cam.add_callback('DetectorState_RBV',  self.onDetState)
 
+        epics.caput("%s:cam1:ArrayCallbacks" % self.prefix, 1)
+        for p in self.enabled_plugins:
+            epics.caput("%s:%s:EnableCallbacks" % (self.prefix, p), 1)
+        epics.caput("%s:JPEG1:NDArrayPort" % self.prefix, "OVER1")
+        epics.caput("%s:TIFF1:NDArrayPort" % self.prefix, "OVER1")
+        epics.caput("%s:image1:NDArrayPort"% self.prefix, "OVER1")
+        
         self.ad_cam.Acquire = 0
         self.GetImageSize()
         self.unZoom()
