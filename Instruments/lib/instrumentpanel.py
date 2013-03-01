@@ -80,7 +80,7 @@ class MoveToDialog(wx.Dialog):
         self.pvs  = pvs
         if pvdesc is None:
             pvdesc = {}
-            
+
         thispos = db.get_position(posname, inst)
         if thispos is None:
             return
@@ -128,7 +128,7 @@ class MoveToDialog(wx.Dialog):
             desc = get_pvdesc(pvname)
             if desc != pvname:
                 desc = "%s (%s)" % (desc, pvname)
-                
+
             curr_val = self.pvs[pvname].get(as_string=True)
             if curr_val is None:
                 curr_val = 'Unknown'
@@ -239,7 +239,7 @@ class InstrumentPanel(wx.Panel):
 
         # self.Bind(wx.EVT_TIMER, self.OnConnectTimer, self.etimer)
         self.Bind(wx.EVT_TIMER, self.OnEtimer2, self.etimer2)
-        
+
         self.Bind(wx.EVT_TIMER, self.OnPutTimer, self.puttimer)
 
         rsizer = wx.BoxSizer(wx.VERTICAL)
@@ -381,7 +381,6 @@ class InstrumentPanel(wx.Panel):
         print 'redraw left End ', time.ctime()
         self.last_draw = time.time()
 
-
     def add_pv(self, pvname):
         """add a PV to the left panel"""
         pvname = normalize_pvname(pvname)
@@ -392,7 +391,7 @@ class InstrumentPanel(wx.Panel):
             idot = pvname.find('.')
             for ext in MOTOR_FIELDS:
                 self.pvlist.connect_pv('%s.%s' % (pvname[:idot], ext))
-        # self.PV_Panel(pvname)                
+        # self.PV_Panel(pvname)
 
 
     def write(self, msg, status='normal'):
@@ -420,7 +419,7 @@ class InstrumentPanel(wx.Panel):
     def OnEtimer2(self, evt=None):
         print 'etimer2 event ', self.inst.name, time.ctime()
         for pvname in self.pv_components:
-            self.PV_Panel(pvname)        
+            self.PV_Panel(pvname)
 
         if all([comp[0] for comp in self.pv_components.values()]): # "all connected"
             print 'Etimer2 --> draw left ', self.inst.name, time.ctime()
@@ -439,7 +438,7 @@ class InstrumentPanel(wx.Panel):
 
         if pvname not in self.pvlist.pvs:
             self.pvlist.connect_pv(pvname)
-        
+
         # print 'PV Panel ', self.inst.name, pvname, len(self.pvlist.pvs), time.ctime()
         if pvname in self.pvlist.pvs:
             pv = self.pvlist.pvs[pvname]
@@ -469,7 +468,7 @@ class InstrumentPanel(wx.Panel):
         self.pv_components[pvname] = (True, pvtype, pv)
 
         # self.db.set_pvtype(pvname, pvtype)
-            
+
     @EpicsFunction
     def save_current_position(self, posname):
         values = {}
@@ -479,7 +478,7 @@ class InstrumentPanel(wx.Panel):
         self.write("Saved position '%s' for '%s'" % (posname, self.inst.name))
 
     def onSavePosition(self, evt=None):
-        posname = evt.GetString()
+        posname = evt.GetString().strip()
         verify = int(self.db.get_info('verify_overwrite'))
         if verify and posname in self.pos_list.GetItems():
 
@@ -534,12 +533,12 @@ class InstrumentPanel(wx.Panel):
             dlg.Destroy()
 
     def onPosSelect(self, evt=None):
-        "  " 
+        "  "
         if evt is not None:
             self.pos_name.SetValue(evt.GetString())
             evt.Skip()
 
-        
+
     def onRightClick(self, evt=None):
         menu = wx.Menu()
         if not hasattr(self, 'popup_up1'):
