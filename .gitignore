@@ -9,5 +9,5 @@ tests/.coverage*
 build
 dist
 junk
-NonGit
-
+sandbox
+*/sandbox
