@@ -28,6 +28,7 @@ from epics.wx.utils import add_menu
 
 from imageview import ImageView
 
+
 class AD_Display(wx.Frame):
     """AreaDetector Display """
     img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
@@ -46,7 +47,8 @@ class AD_Display(wx.Frame):
     
     stat_msg = 'Read %.1f%% of images: rate=%.1f frames/sec'
     
-    def __init__(self, prefix=None, app=None, scale=1.0, approx_height=1200):
+    def __init__(self, prefix=None, app=None, scale=1.0, approx_height=1200,
+                 known_cameras=None):
         self.app = app
         self.ad_img = None
         self.ad_cam = None
@@ -54,6 +56,7 @@ class AD_Display(wx.Frame):
         self.prefix = prefix
         self.fname = 'AD_Image.tiff'
         self.scale  = scale
+        self.known_cameras = known_cameras
         self.arrsize  = [0,0,0]
         self.imbuff = None
         self.d_size = None
@@ -72,8 +75,10 @@ class AD_Display(wx.Frame):
         wx.Frame.__init__(self, None, -1, "Epics Area Detector Display",
                           style=wx.DEFAULT_FRAME_STYLE)
 
-        if self.prefix is None:
-            self.GetPVName()
+        if known_cameras is not None:
+            self.ConnectToCamera(name=self.prefix)
+        else:
+            self.ConnectToPV(name=self.prefix)
             
         self.img_w = 0
         self.img_h = 0
@@ -85,13 +90,33 @@ class AD_Display(wx.Frame):
         if self.image is not None:
             self.image.OnLeftUp(event)
 
-    def GetPVName(self, event=None):
+    def ConnectToCamera(self, name=None, event=None):
+        if name is None:
+            name = ''
+        if self.known_cameras is None:
+            return
+        cam_names = self.known_cameras.keys()
+        cam_names.sort()
+        dlg = wx.SingleChoiceDialog(self, 'Select Camera',
+                                    caption='Select Camera',
+                                    choices=cam_names)
+        dlg.Raise()
+        if dlg.ShowModal() == wx.ID_OK:
+            cname = dlg.GetStringSelection()
+            if cname in self.known_cameras:
+                self.prefix = self.known_cameras[cname]
+            wx.CallAfter(self.connect_pvs)
+        dlg.Destroy()
+
+    def ConnectToPV(self, name=None, event=None):
+        if name is None: name = ''
         dlg = wx.TextEntryDialog(self, 'Enter PV for Area Detector',
-                                       'Enter PV for Area Detector', '')
+                                 caption='Enter PV for Area Detector',
+                                 defaultValue=name)
         dlg.Raise()
         if dlg.ShowModal() == wx.ID_OK:
             self.prefix = dlg.GetValue()
-            wx.CallAfter(self.connect_pvs )
+            wx.CallAfter(self.connect_pvs)
         dlg.Destroy()
 
     def onCopyImage(self, event=None):
@@ -144,7 +169,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def buildMenus(self):
         fmenu = wx.Menu()
-        add_menu(self, fmenu, "&Connect to PV\tCtrl+O", "Connect to PV", self.GetPVName)
+        add_menu(self, fmenu, "&Connect to Pre-defiend Camera", "Connect to PV", self.ConnectToCamera)
+        add_menu(self, fmenu, "&Connect to AreaDetector PV\tCtrl+O", "Connect to PV", self.ConnectToPV)
         add_menu(self, fmenu, "&Save\tCtrl+S", "Save Image", self.onSaveImage)
         add_menu(self, fmenu, "&Copy\tCtrl+C", "Copy Image to Clipboard", self.onCopyImage)
         fmenu.AppendSeparator()
@@ -615,7 +641,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         epics.caput("%s:TIFF1:NDArrayPort" % self.prefix, "OVER1")
         epics.caput("%s:image1:NDArrayPort"% self.prefix, "OVER1")
         
-        self.ad_cam.Acquire = 0
+        self.ad_cam.Acquire = 1
         self.GetImageSize()
         self.unZoom()
 
