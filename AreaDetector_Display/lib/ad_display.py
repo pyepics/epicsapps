@@ -332,7 +332,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
                     width = self.ad_cam.MaxSizeX_RBV
                     height = self.ad_cam.MaxSizeY_RBV
 
-
         self.ad_cam.MinX  = xmin
         self.ad_cam.MinY  = ymin
         self.ad_cam.SizeX = width
@@ -343,12 +342,15 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if self.ad_cam.Acquire == 0 and self.im_size is not None:
             self.img_w = width
             self.img_h = height
-            if self.colormode == 2:
-                self.data.shape = [self.im_size[1], self.im_size[0], 3]
-                zdata = self.data[ymin:ymin+height, xmin:xmin+width,:]
-            else:
-                self.data.shape = self.im_size[1], self.im_size[0]
-                zdata = self.data[ymin:ymin+height,xmin:xmin+width]
+            try: 
+                if self.colormode == 2:
+                    self.data.shape = [self.im_size[1], self.im_size[0], 3]
+                    zdata = self.data[ymin:ymin+height, xmin:xmin+width,:]
+                else:
+                    self.data.shape = self.im_size[1], self.im_size[0]
+                    zdata = self.data[ymin:ymin+height,xmin:xmin+width]
+            except ValueError:
+                pass
             self.data = zdata #self.data.flatten()
             self.im_size = (width, height)
             # print zdata.shape, width, height, self.im_mode
