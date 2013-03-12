@@ -13,7 +13,8 @@ import numpy as np
 import Image
 
 from wxmplot.plotframe import PlotFrame
-ICON_FILE = 'camera.ico'
+
+ICON_FILE = '/Users/epics/bin/camera.ico'
 
 from debugtime import debugtime
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '16777216'
@@ -108,8 +109,10 @@ class AD_Display(wx.Frame):
             wx.CallAfter(self.connect_pvs)
         dlg.Destroy()
 
-    def ConnectToPV(self, name=None, event=None):
-        if name is None: name = ''
+    def ConnectToPV(self, event=None, name=None):
+        print 'Connect To PV ', name , event
+        if name is None:
+            name = ''
         dlg = wx.TextEntryDialog(self, 'Enter PV for Area Detector',
                                  caption='Enter PV for Area Detector',
                                  defaultValue=name)
@@ -127,6 +130,14 @@ class AD_Display(wx.Frame):
         wx.TheClipboard.SetData(bmp)
         wx.TheClipboard.Close()
         wx.TheClipboard.Flush()
+
+    @EpicsFunction
+    def CameraOff(self):
+        try:
+            self.ad_cam.Acquire = 0
+        except:
+            pass
+        
 
     @EpicsFunction
     def onSaveImage(self, event=None):
@@ -147,12 +158,11 @@ class AD_Display(wx.Frame):
                              'raw', self.im_mode, 0, 1).save(path)
 
     def onExit(self, event=None):
-        # self.ad_cam.Acquire = 0
         try:
             wx.Yield()
         except:
             pass
-        self.ad_cam.Acquire = 0
+        self.CameraOff()
         self.Destroy()
 
     def onAbout(self, event=None):
@@ -583,6 +593,11 @@ Matt Newville <newville@cars.uchicago.edu>"""
     def connect_pvs(self, verbose=True):
         if self.prefix is None or len(self.prefix) < 2:
             return
+
+        try:
+            self.ad_cam.Acquire = 0
+        except:
+            pass
 
         if self.prefix.endswith(':'):
             self.prefix = self.prefix[:-1]
