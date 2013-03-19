@@ -8,11 +8,13 @@ import sys
 import time
 import wx
 from wx._core import PyDeadObjectError
+import wx.lib.colourselect  as csel
 
 import numpy as np
 import Image
 
 from wxmplot.plotframe import PlotFrame
+from wxmplot.colors import hexcolor
 
 ICON_FILE = '/Users/epics/bin/camera.ico'
 
@@ -24,8 +26,10 @@ class Empty:
 
 import epics
 from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
-                      PVEnumChoice, PVFloatCtrl, PVFloatSpin)
+                      PVEnumChoice, PVFloatCtrl, PVFloatSpin, PVTextCtrl)
 from epics.wx.utils import add_menu
+
+from epics.devices.ad_overlay import AD_OverlayPlugin
 
 from imageview import ImageView
 
@@ -278,6 +282,23 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.wids['start']       = wx.Button(panel, -1, label='Start', size=(50, -1))
         self.wids['stop']        = wx.Button(panel, -1, label='Stop', size=(50,  -1))
 
+        self.wids['o1color']  = csel.ColourSelect(panel,  -1, "", '#FEFEFE', size=(60, 25))
+        self.wids['o1color'].Bind(csel.EVT_COLOURSELECT, Closure(self.onColor, item=1))
+        self.wids['o1posx']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
+        self.wids['o1posy']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
+        self.wids['o1sizx']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
+        self.wids['o1sizy']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
+        self.wids['o1shape']  = PVEnumChoice(panel, pv=None, size=(100, -1))
+        self.wids['o1name']  = PVTextCtrl(panel, pv=None, size=(100, -1))
+        
+        self.wids['o2color']  = csel.ColourSelect(panel,  -1, "", '#FEFEFE', size=(60, 25))
+        self.wids['o2color'].Bind(csel.EVT_COLOURSELECT, Closure(self.onColor, item=2))
+        self.wids['o2posx']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
+        self.wids['o2posy']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
+        self.wids['o2sizx']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
+        self.wids['o2sizy']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
+        self.wids['o2shape']  = PVEnumChoice(panel, pv=None, size=(100, -1))
+        self.wids['o2name']  = PVTextCtrl(panel, pv=None, size=(100, -1))
 
         for key in ('start', 'stop'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onEntry, key=key))
@@ -287,6 +308,9 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         def txt(label, size=100):
             return wx.StaticText(panel, label=label, size=(size, -1), style=labstyle)
+        
+        def lin(len=30, wid=2, style=wx.LI_HORIZONTAL):
+            return wx.StaticLine(panel, size=(len, wid), style=style)
 
         sizer.Add(txt(' '),                 (0, 0), (1, 1), labstyle)
         sizer.Add(txt('Image Mode '),       (1, 0), (1, 1), labstyle)
@@ -317,6 +341,44 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         sizer.Add(self.wids['fullsize'],    (12, 0), (1, 3), labstyle)
         sizer.Add(self.wids['zoomsize'],    (13, 0), (1, 3), labstyle)
+
+        sizer.Add(lin(75),                 (15, 0), (1, 3), labstyle)
+
+        ir = 16
+        sizer.Add(txt('Overlay 1:'),        (ir+0, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o1shape'],     (ir+0, 1), (1, 2), ctrlstyle)        
+        sizer.Add(txt('Name:'),             (ir+1, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o1name'],      (ir+1, 1), (1, 2), ctrlstyle)        
+
+        sizer.Add(txt('Position '),         (ir+2, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o1posx'],      (ir+2, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['o1posy'],      (ir+2, 2), (1, 1), ctrlstyle)
+        sizer.Add(txt('Size '),             (ir+3, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o1sizx'],      (ir+3, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['o1sizy'],      (ir+3, 2), (1, 1), ctrlstyle)
+        sizer.Add(txt('Color '),            (ir+4, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o1color'],     (ir+4, 1), (1, 2), ctrlstyle)
+        sizer.Add(lin(75),                 (ir+5, 0), (1, 3), labstyle)
+
+        ir = ir + 6
+        sizer.Add(txt('Overlay 2:'),        (ir+0, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2shape'],     (ir+0, 1), (1, 2), ctrlstyle)        
+
+        sizer.Add(txt('Name:'),             (ir+1, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2name'],      (ir+1, 1), (1, 2), ctrlstyle)        
+
+        sizer.Add(txt('Position '),         (ir+2, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2posx'],      (ir+2, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['o2posy'],      (ir+2, 2), (1, 1), ctrlstyle)
+        sizer.Add(txt('Size '),             (ir+3, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2sizx'],      (ir+3, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['o2sizy'],      (ir+3, 2), (1, 1), ctrlstyle)
+        sizer.Add(txt('Color '),            (ir+4, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2color'],     (ir+4, 1), (1, 2), ctrlstyle)
+        sizer.Add(lin(75),                 (ir+5, 0), (1, 3), labstyle)
+
+
+        
 
         self.image = ImageView(self, size=(1360, 1024), onzoom=self.onZoom,
                                onprofile=self.onProfile, onshow=self.onShowXY)
@@ -394,6 +456,14 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         self.RefreshImage()
         self.image.Refresh()
+
+    @EpicsFunction
+    def onColor(self, event=None, item=None):
+        color = event.GetValue()
+        over = self.ad_overlays[item-1]
+        over.Red = color[0]
+        over.Green = color[1]
+        over.Blue = color[2]
         
     @EpicsFunction
     def showZoomsize(self):
@@ -612,7 +682,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
                                    attrs=self.img_attrs)
         self.ad_cam = epics.Device(self.prefix + ':cam1:', delim='',
                                    attrs=self.cam_attrs)
-
+        self.ad_overlays = []
+        for ix in (1, 2):
+            self.ad_overlays.append(AD_OverlayPlugin('%s:Over1:%i:' % (self.prefix, ix)))
+            
         time.sleep(0.010)
         if not self.ad_img.PV('UniqueId_RBV').connected:
             epics.poll()
@@ -631,6 +704,27 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.wids['numimages'].SetPV(self.ad_cam.PV('NumImages'))
         self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
         self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))
+
+
+        over = self.ad_overlays[0]
+        c1 = (over.Red, over.Green, over.Blue)
+        self.wids['o1color'].SetColour(hexcolor(c1))
+        self.wids['o1posx'].SetPV(over.PV('PositionX'))
+        self.wids['o1posy'].SetPV(over.PV('PositionY'))
+        self.wids['o1sizx'].SetPV(over.PV('SizeX'))
+        self.wids['o1sizy'].SetPV(over.PV('SizeY'))
+        self.wids['o1shape'].SetPV(over.PV('Shape'))
+        self.wids['o1name'].SetPV(over.PV('Name'))
+
+        over = self.ad_overlays[1]
+        c1 = (over.Red, over.Green, over.Blue)
+        self.wids['o2color'].SetColour # (hexcolor(c1))
+        self.wids['o2posx'].SetPV(over.PV('PositionX'))
+        self.wids['o2posy'].SetPV(over.PV('PositionY'))
+        self.wids['o2sizx'].SetPV(over.PV('SizeX'))
+        self.wids['o2sizy'].SetPV(over.PV('SizeY'))
+        self.wids['o2shape'].SetPV(over.PV('Shape'))
+        self.wids['o2name'].SetPV(over.PV('Name'))
 
         sizelabel = 'Image Size: %i x %i pixels'
         try:
