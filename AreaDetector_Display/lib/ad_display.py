@@ -26,7 +26,7 @@ class Empty:
 
 import epics
 from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
-                      PVEnumChoice, PVFloatCtrl, PVFloatSpin, PVTextCtrl)
+                      PVEnumChoice, PVFloatCtrl, PVSpinCtrl, PVTextCtrl)
 from epics.wx.utils import add_menu
 
 from epics.devices.ad_overlay import AD_OverlayPlugin
@@ -274,7 +274,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.wids['period']    = PVFloatCtrl(panel, pv=None, size=(100, -1))
         self.wids['numimages'] = PVFloatCtrl(panel, pv=None, size=(100, -1))
         self.wids['gain']      = PVFloatCtrl(panel, pv=None, size=(100, -1),
-                                             minval=0, maxval=20, precision=1)
+                                             minval=0, maxval=20)
         
         self.wids['imagemode']   = PVEnumChoice(panel, pv=None, size=(100, -1))
         self.wids['triggermode'] = PVEnumChoice(panel, pv=None, size=(100, -1))
@@ -284,20 +284,22 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         self.wids['o1color']  = csel.ColourSelect(panel,  -1, "", '#FEFEFE', size=(60, 25))
         self.wids['o1color'].Bind(csel.EVT_COLOURSELECT, Closure(self.onColor, item=1))
-        self.wids['o1posx']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
-        self.wids['o1posy']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
-        self.wids['o1sizx']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
-        self.wids['o1sizy']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
+        self.wids['o1posx']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
+        self.wids['o1posy']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
+        self.wids['o1sizx']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
+        self.wids['o1sizy']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
         self.wids['o1shape']  = PVEnumChoice(panel, pv=None, size=(100, -1))
+        self.wids['o1use']    = PVEnumChoice(panel, pv=None, size=(50, -1))
         self.wids['o1name']  = PVTextCtrl(panel, pv=None, size=(100, -1))
         
         self.wids['o2color']  = csel.ColourSelect(panel,  -1, "", '#FEFEFE', size=(60, 25))
         self.wids['o2color'].Bind(csel.EVT_COLOURSELECT, Closure(self.onColor, item=2))
-        self.wids['o2posx']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
-        self.wids['o2posy']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
-        self.wids['o2sizx']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
-        self.wids['o2sizy']  = PVFloatCtrl(panel, pv=None, size=(50, -1))
+        self.wids['o2posx']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
+        self.wids['o2posy']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
+        self.wids['o2sizx']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
+        self.wids['o2sizy']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
         self.wids['o2shape']  = PVEnumChoice(panel, pv=None, size=(100, -1))
+        self.wids['o2use']    = PVEnumChoice(panel, pv=None, size=(50, -1))        
         self.wids['o2name']  = PVTextCtrl(panel, pv=None, size=(100, -1))
 
         for key in ('start', 'stop'):
@@ -346,36 +348,39 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         ir = 16
         sizer.Add(txt('Overlay 1:'),        (ir+0, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['o1shape'],     (ir+0, 1), (1, 2), ctrlstyle)        
-        sizer.Add(txt('Name:'),             (ir+1, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['o1name'],      (ir+1, 1), (1, 2), ctrlstyle)        
+        sizer.Add(self.wids['o1use'],       (ir+0, 1), (1, 2), ctrlstyle)        
+        sizer.Add(txt('Shape:'),            (ir+1, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o1shape'],     (ir+1, 1), (1, 2), ctrlstyle)        
+        sizer.Add(txt('Name:'),             (ir+2, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o1name'],      (ir+2, 1), (1, 2), ctrlstyle)        
 
-        sizer.Add(txt('Position '),         (ir+2, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['o1posx'],      (ir+2, 1), (1, 1), ctrlstyle)
-        sizer.Add(self.wids['o1posy'],      (ir+2, 2), (1, 1), ctrlstyle)
-        sizer.Add(txt('Size '),             (ir+3, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['o1sizx'],      (ir+3, 1), (1, 1), ctrlstyle)
-        sizer.Add(self.wids['o1sizy'],      (ir+3, 2), (1, 1), ctrlstyle)
-        sizer.Add(txt('Color '),            (ir+4, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['o1color'],     (ir+4, 1), (1, 2), ctrlstyle)
-        sizer.Add(lin(75),                 (ir+5, 0), (1, 3), labstyle)
+        sizer.Add(txt('Position '),         (ir+3, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o1posx'],      (ir+3, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['o1posy'],      (ir+3, 2), (1, 1), ctrlstyle)
+        sizer.Add(txt('Size '),             (ir+4, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o1sizx'],      (ir+4, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['o1sizy'],      (ir+4, 2), (1, 1), ctrlstyle)
+        sizer.Add(txt('Color '),            (ir+5, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o1color'],     (ir+5, 1), (1, 2), ctrlstyle)
+        sizer.Add(lin(75),                  (ir+6, 0), (1, 3), labstyle)
 
-        ir = ir + 6
-        sizer.Add(txt('Overlay 2:'),        (ir+0, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['o2shape'],     (ir+0, 1), (1, 2), ctrlstyle)        
+        ir = ir + 7
+        sizer.Add(txt('Overlay 1:'),        (ir+0, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2use'],       (ir+0, 1), (1, 2), ctrlstyle)        
+        sizer.Add(txt('Shape:'),            (ir+1, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2shape'],     (ir+1, 1), (1, 2), ctrlstyle)        
+        sizer.Add(txt('Name:'),             (ir+2, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2name'],      (ir+2, 1), (1, 2), ctrlstyle)                
 
-        sizer.Add(txt('Name:'),             (ir+1, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['o2name'],      (ir+1, 1), (1, 2), ctrlstyle)        
-
-        sizer.Add(txt('Position '),         (ir+2, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['o2posx'],      (ir+2, 1), (1, 1), ctrlstyle)
-        sizer.Add(self.wids['o2posy'],      (ir+2, 2), (1, 1), ctrlstyle)
-        sizer.Add(txt('Size '),             (ir+3, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['o2sizx'],      (ir+3, 1), (1, 1), ctrlstyle)
-        sizer.Add(self.wids['o2sizy'],      (ir+3, 2), (1, 1), ctrlstyle)
-        sizer.Add(txt('Color '),            (ir+4, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['o2color'],     (ir+4, 1), (1, 2), ctrlstyle)
-        sizer.Add(lin(75),                 (ir+5, 0), (1, 3), labstyle)
+        sizer.Add(txt('Position '),         (ir+3, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2posx'],      (ir+3, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['o2posy'],      (ir+3, 2), (1, 1), ctrlstyle)
+        sizer.Add(txt('Size '),             (ir+4, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2sizx'],      (ir+4, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['o2sizy'],      (ir+4, 2), (1, 1), ctrlstyle)
+        sizer.Add(txt('Color '),            (ir+5, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['o2color'],     (ir+5, 1), (1, 2), ctrlstyle)
+        sizer.Add(lin(75),                  (ir+6, 0), (1, 3), labstyle)
 
 
         
@@ -704,32 +709,44 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.wids['numimages'].SetPV(self.ad_cam.PV('NumImages'))
         self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
         self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))
-
+        
+        sizex = self.ad_cam.MaxSizeX_RBV
+        sizey = self.ad_cam.MaxSizeY_RBV
 
         over = self.ad_overlays[0]
         c1 = (over.Red, over.Green, over.Blue)
         self.wids['o1color'].SetColour(hexcolor(c1))
         self.wids['o1posx'].SetPV(over.PV('PositionX'))
+        self.wids['o1posx'].SetMax(sizex)
         self.wids['o1posy'].SetPV(over.PV('PositionY'))
+        self.wids['o1posy'].SetMax(sizey)        
         self.wids['o1sizx'].SetPV(over.PV('SizeX'))
+        self.wids['o1sizx'].SetMax(sizex)
         self.wids['o1sizy'].SetPV(over.PV('SizeY'))
+        self.wids['o1sizy'].SetMax(sizey)
         self.wids['o1shape'].SetPV(over.PV('Shape'))
         self.wids['o1name'].SetPV(over.PV('Name'))
+        self.wids['o1use'].SetPV(over.PV('Use'))
 
         over = self.ad_overlays[1]
         c1 = (over.Red, over.Green, over.Blue)
-        self.wids['o2color'].SetColour # (hexcolor(c1))
+        self.wids['o2color'].SetColour(hexcolor(c1))
         self.wids['o2posx'].SetPV(over.PV('PositionX'))
+        self.wids['o2posx'].SetMax(sizex)
         self.wids['o2posy'].SetPV(over.PV('PositionY'))
+        self.wids['o2posy'].SetMax(sizey)        
         self.wids['o2sizx'].SetPV(over.PV('SizeX'))
+        self.wids['o2sizx'].SetMax(sizex)
         self.wids['o2sizy'].SetPV(over.PV('SizeY'))
+        self.wids['o2sizy'].SetMax(sizey)
         self.wids['o2shape'].SetPV(over.PV('Shape'))
         self.wids['o2name'].SetPV(over.PV('Name'))
+        self.wids['o2use'].SetPV(over.PV('Use'))
+
 
         sizelabel = 'Image Size: %i x %i pixels'
         try:
-            sizelabel = sizelabel  % (self.ad_cam.MaxSizeX_RBV,
-                                      self.ad_cam.MaxSizeY_RBV)
+            sizelabel = sizelabel  % (sizex, sizey)
         except:
             sizelabel = sizelabel  % (0, 0)
 
