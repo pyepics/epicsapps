@@ -18,7 +18,6 @@ from wxmplot.colors import hexcolor
 from wxmplot.utils import LabelEntry
 
 ICON_FILE = 'stripchart.ico'
-
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
 BGCOL  = (250, 250, 240)
@@ -113,7 +112,6 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvchoices = [None]
         self.colorsels = []
         self.plots_drawn = [False]*10
-        self.needs_refresh = False
         self.needs_refresh = False
         self.paused = False
 
@@ -236,7 +234,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.time_choice.Bind(wx.EVT_CHOICE,   self.onTimeChoice)
 
         self.time_ctrl  = FloatCtrl(panel, value=-self.tmin, precision=2,
-                                    size=(90, -1), action=self.onTimeVal)
+                                    size=(90, -1), action=self.onDisplayTimeVal)
 
         btnsizer.Add(self.pause_btn,   0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
         btnsizer.Add(self.resume_btn,  0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
@@ -412,13 +410,22 @@ Matt Newville <newville@cars.uchicago.edu>
     def onPVwid(self, event=None, row=None, **kws):
         self.needs_refresh = True
 
-    def onTimeVal(self, event=None, value=None, **kws):
+    def onDisplayTimeVal(self, event=None, value=None, **kws):
         new  = -abs(value)
         if abs(new) < 0.1:
             new = -0.1
         if abs(new - self.tmin) > 1.e-3*max(new, self.tmin):
-            self.tmin = new
-            self.needs_refresh = True
+            new = new
+
+        self.tmin = new 
+        self.plotpanel.axes.set_xlim(self.tmin, 0)
+        try:
+            for axes in self.plotpanel.fig.get_axes():
+                self.plotpanel.user_limits[axes][0] = self.tmin
+                self.plotpanel.user_limits[axes][1] = 0
+        except:
+            pass
+        self.needs_refresh = True
 
     def onTimeChoice(self, event=None, **kws):
         newval = event.GetString()
@@ -438,6 +445,7 @@ Matt Newville <newville@cars.uchicago.edu>
             self.time_ctrl.SetValue(timeval * denom/num)
             self.plotpanel.set_xlabel('Elapsed Time (%s)' % self.timelabel)
         self.needs_refresh = True
+        
 
     def onPause(self, event=None):
         if self.paused:
@@ -620,9 +628,10 @@ Matt Newville <newville@cars.uchicago.edu>
                         update_failed = True
                 else:
                     try:
-                        self.plotpanel.update_line(itrace, tdat, ydat, draw=False)
-                        self.plotpanel.set_xylims((self.tmin, 0, ymin, ymax),
-                                                  side=side, autoscale=False)
+                        self.plotpanel.update_line(itrace, tdat, ydat, draw=False, update_limits=True)
+                        # self.plotpanel.plot(tdat, ydat, draw=False, update_limits=True)                        
+                        #self.plotpanel.set_xylims((self.tmin, 0, ymin, ymax),
+                        #                          side=side, autoscale=False)
                         did_update = True
                     except:
                         update_failed = True
