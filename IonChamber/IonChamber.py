@@ -13,7 +13,6 @@ from epics import Device, caget
 from  Mucal import mucal
 
 PIDFILE = '/tmp/ionchamber.pid'
-TIMEPV = "13XRM:ION:TimeStamp"
 
 class IonChamber(Device):
     """Epics Device for Ion Chamber Flux Calculation"""
@@ -76,20 +75,19 @@ class IonChamber(Device):
     def run(self):
         while True:
             self.calculate()
-            time.sleep(0.50)
+            time.sleep(0.25)
 
-
-def start():    
+def start_ionchamber(prefix='13XRM:ION:'):    
     """ save pid for later killing """
     fpid = open(PIDFILE, 'w')
     fpid.write("%d\n" % os.getpid() )
     fpid.close()
 
-    ion = IonChamber()
+    ion = IonChamber(prefix=prefix)
     ion.run()
-
-def get_lastupdate():
-    xtime = caget(TIMEPV)
+ 
+def get_lastupdate(prefix='13XRM:ION:'):
+    xtime = caget("%sTimeStamp" % prefix)
     xtime = xtime.strip()
     if len(xtime) > 1:
         try:
@@ -104,7 +102,6 @@ def get_lastupdate():
         except:
             pass
     return time.time() - 100000.
-
 
 def kill_old_process():
     try:
