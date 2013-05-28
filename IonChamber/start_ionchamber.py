@@ -1,13 +1,20 @@
 #!/usr/bin/python
 
-import IonChamber
+import sys
+sys.path.insert('/Users/epics/Codes/epicsapps/IonChamber')
+
+from ionchamber import start_ionchamber, get_lastupdate, kill_old_process
+
 import time
 
-last_time = IonChamber.get_lastupdate()
+PREFIX = '13XRM:ION:'
+if len(sys.argv) > 1:
+    prefix = sys.argv[1]
+last_time = get_lastupdate(prefix=prefix)
 if abs(time.time() - last_time) > 5.0:
-    IonChamber.kill_old_process()
+    kill_old_process()
     time.sleep(1.0)
-    IonChamber.start()
+    start_ionchamber(prefix=prefix)
 else:
     print 'IonChamber running OK at ', time.ctime()
 
