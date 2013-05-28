@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 import sys
-sys.path.insert('/Users/epics/Codes/epicsapps/IonChamber')
+sys.path.insert(0, '/Users/epics/Codes/epicsapps/IonChamber')
 
 from ionchamber import start_ionchamber, get_lastupdate, kill_old_process
 
