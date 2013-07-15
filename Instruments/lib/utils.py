@@ -163,9 +163,9 @@ class ConnectDialog(wx.Dialog):
 
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title)
 
-        panel = wx.Panel(self)
+        #panel = wx.Panel(self)
         self.colors = GUIColors()
-        panel.SetBackgroundColour(self.colors.bg)
+        self.SetBackgroundColour(self.colors.bg)
         if parent is not None:
             self.SetFont(parent.GetFont())
 
@@ -174,7 +174,7 @@ class ConnectDialog(wx.Dialog):
             if os.path.exists(fname):
                 flist.append(fname)
 
-        self.filebrowser = FileBrowser(panel, size=(600, -1))
+        self.filebrowser = FileBrowser(self, size=(600, -1))
         self.filebrowser.SetHistory(flist)
         self.filebrowser.SetLabel('File:')
         self.filebrowser.fileMask = EIN_WILDCARD
@@ -183,13 +183,33 @@ class ConnectDialog(wx.Dialog):
             self.filebrowser.SetValue(filelist[0])
         
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(wx.StaticText(panel, label=self.msg),
-                  0, wx.ALIGN_CENTER|wx.ALL|wx.GROW, 1)
+
         sizer.Add(self.filebrowser, 1, wx.ALIGN_CENTER|wx.ALL|wx.GROW, 1)
-        sizer.Add(self.CreateButtonSizer(wx.OK| wx.CANCEL),
-                 1, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 1)
-        pack(panel, sizer)
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(panel, 0, 0, 0)
-        pack(self, sizer)
+
+        #sizer.Add(self.CreateButtonSizer(wx.OK| wx.CANCEL),
+        #         1, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 1)
+
+
+        line = wx.StaticLine(self, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
+        sizer.Add(line, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.TOP, 5)
+
+        btnsizer = wx.StdDialogButtonSizer()
         
+        if wx.Platform != "__WXMSW__":
+            btn = wx.ContextHelpButton(self)
+            btnsizer.AddButton(btn)
+        
+        btn = wx.Button(self, wx.ID_OK)
+        btn.SetHelpText("Use this Instruments File")
+        btn.SetDefault()
+        btnsizer.AddButton(btn)
+
+        btn = wx.Button(self, wx.ID_CANCEL)
+        btnsizer.AddButton(btn)
+        btnsizer.Realize()
+
+        sizer.Add(btnsizer, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5)
+
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+
