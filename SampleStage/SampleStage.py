@@ -842,6 +842,10 @@ class StageApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         return True
 
 if __name__ == '__main__':
+    import epics
+    epics.ca.initialize_libca()
+    time.sleep(0.001)
+    
     app = StageApp()
     app.MainLoop()
 
