@@ -3,6 +3,7 @@
 *~
 *#
 *.dat
+*.bak
 doc/_build
 doc/*.pdf
 tests/.coverage*
