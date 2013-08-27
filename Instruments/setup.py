@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-from distutils.core import setup, setup_keywords
+from distutils.core import setup
 
 deps = ('wx', 'epics', 'sqlalchemy')
-setup(name = 'epicsapp_instruments',
+setup(name = 'epicsapp.instruments',
       version = '0.2',
       author = 'Matthew Newville',
       author_email = 'newville@cars.uchicago.edu',
