@@ -4,11 +4,11 @@ import time
 sys.path += ['.']
 
 import epics
-import SampleStage
-from StageConf import StageConfig
+from epicsapps.samplestage import SampleStage, StageConfig
 
 epics.ca.DEFAULT_CONNECTION_TIMEOUT = 2.0
 epics.ca.initialize_libca()
+
 ## read default config file to pre-connect epics motors
 ## before the GUI is really going.
 ## this speeds up loading and can avoid unconnected PVs

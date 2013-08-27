@@ -2,19 +2,19 @@
 
 from distutils.core import setup, setup_keywords
 
-deps = ('wx', 'epics', 'sqlalchemy')
-setup(name = 'epicsapp_instruments',
+deps = ('wx', 'epics', 'sqlalchemy', 'numpy', 'Image')
+setup(name = 'epicsapp_samplestage',
       version = '0.2',
       author = 'Matthew Newville',
       author_email = 'newville@cars.uchicago.edu',
       license = 'BSD',
-      description = 'Epics Instruments configuration and management',
-      package_dir = {'epicsapps.instruments': 'lib', 'epicsapps': 'base'},
-      packages = ['epicsapps', 'epicsapps.instruments'],
-      data_files  = [('bin', ['pyepics_instruments.py'])])
+      description = 'Epics SampleStage Control', 
+      package_dir = {'epicsapps.samplestage': 'lib', 'epicsapps': 'base'},
+      packages = ['epicsapps', 'epicsapps.samplestage'],
+      data_files  = [('bin', ['pyepics_samplestage.py'])])
 
 
-errmsg = 'WARNING: pyepics_instruments requires Python module "%s"'
+errmsg = 'WARNING: pyepics_samplestage requires Python module "%s"'
 
 for mod in deps:
     try:
