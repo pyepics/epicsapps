@@ -389,8 +389,14 @@ arguments
             return name
         out = self.query(PV).filter(PV.name==name).all()
         ret = None_or_one(out, 'get_pv expected 1 or None PV')
+        # print 'instrument.get_pv ',name, out, ret
         if ret is None and name.endswith('.VAL'):
-            out = self.query(PV).filter(PV.name==name[:-4]).all()
+            name = name[:-4]
+            out = self.query(PV).filter(PV.name==name).all()
+            if out is not None:
+                # update pv name to end in '.VAL' here!
+                idx = out[0].id
+                self.tables['pv'].update(whereclause="id=%i" % idx).execute(name="%s.VAL" % name)
             ret = None_or_one(out, 'get_pv expected 1 or None PV')
         return ret
 

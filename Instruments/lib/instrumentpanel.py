@@ -12,8 +12,8 @@ from epics.wx.ordereddict import OrderedDict
 
 from utils import ALL_EXP , GUIColors, get_pvtypes, get_pvdesc
 
-MOTOR_FIELDS = ('SET', 'disabled', 'LLM', 'HLM',  'LVIO', 'TWV',
-                'HLS', 'LLS', 'SPMG', 'DESC')
+MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
+                '.HLS', '.LLS', '.SPMG', '.DESC')
 
 def normalize_pvname(pvname):
     pvname = str(pvname)
@@ -120,18 +120,27 @@ class MoveToDialog(wx.Dialog):
                   (1, 0), (1, 4), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
 
         self.checkboxes = {}
-
+        # print 'PVNAMES ', thispos, thispos.pvs
         for irow, pvpos in enumerate(thispos.pvs):
-            pvname = normalize_pvname(pvpos.pv.name)
+            # pvname = normalize_pvname(pvpos.pv.name)
+            pvname = pvpos.pv.name
             desc = get_pvdesc(pvname)
             if desc != pvname:
                 desc = "%s (%s)" % (desc, pvname)
             curr_val = None
+
             if pvname in self.pvs:
                 curr_val = self.pvs[pvname].get(as_string=True)
+            elif pvname.endswith('.VAL') and pvname[:4] in self.pvs:
+                # pvname = pvname[:-4]
+                curr_val = self.pvs[pvname[:-4]].get(as_string=True)
+            elif pvname+'.VAL' in self.pvs:
+                #pvname = pvname + '.VAL'
+                curr_val = self.pvs[pvname+'.VAL'].get(as_string=True)
 
             if curr_val is None:
                 curr_val = 'Unknown'
+
             save_val = pvpos.value
 
             label = SimpleText(panel, desc, style=tstyle,
@@ -203,7 +212,6 @@ class InstrumentPanel(wx.Panel):
         splitter.SetMinimumPaneSize(225)
 
         toprow = wx.Panel(self.leftpanel)
-
         self.inst_title = SimpleText(toprow,  ' %s ' % inst.name,
                                      font=titlefont,
                                      colour=colors.title,
@@ -283,7 +291,7 @@ class InstrumentPanel(wx.Panel):
             self.pv_components.pop(pvname)
             self.redraw_leftpanel()
 
-        # @EpicsFunction
+    @EpicsFunction
     def redraw_leftpanel(self, force=False):
         """ redraws the left panel """
         if (time.time() - self.last_draw) < 0.5:
@@ -293,11 +301,11 @@ class InstrumentPanel(wx.Panel):
         self.Hide()
         self.leftsizer.Clear()
 
-        # print 'redraw left 1 ', time.ctime()
         self.leftsizer.Add(self.toprow, 0, wx.ALIGN_LEFT|wx.TOP, 2)
 
         current_comps = [self.toprow]
         pvcomps = list(self.pv_components.items())
+        # print 'redraw leftpanel: ', time.ctime(), pvcomps
 
         skip = []
         for icomp, val in enumerate(pvcomps):
@@ -307,12 +315,9 @@ class InstrumentPanel(wx.Panel):
             panel = None
             if pvtype == 'motor':
                 try:
-                    #print 'MotorPanel create ', self.inst.name, pvname
                     t0 = time.time()
                     panel = MotorPanel(self.leftpanel, pvname)
-                    #print 'MotorPanel done ', time.time()-t0
                 except PyDeadObjectError:
-                    #print 'Error making motorpanel'
                     pass
             elif pv is not None and hasattr(pv, 'pvname') and pv.pvname not in skip:
                 panel = wx.Panel(self.leftpanel)
@@ -381,15 +386,18 @@ class InstrumentPanel(wx.Panel):
     def add_pv(self, pvname):
         """add a PV to the left panel"""
         pvname = normalize_pvname(pvname)
-        # print 'add pv ', pvname, self.inst.name
         self.pv_components[pvname] = (False, None, None)
         db_pv = self.db.get_pv(pvname)
+        # print 'Add PV ', pvname , db_pv 
+        if db_pv.pvtype is None:
+            print 'Return because no pvtype?' , pvname, db_pv
+            return
         if db_pv.pvtype.name == 'motor':
             idot = pvname.find('.')
+            
             for ext in MOTOR_FIELDS:
-                self.pvlist.connect_pv('%s.%s' % (pvname[:idot], ext))
-        # self.PV_Panel(pvname)
-
+                self.pvlist.connect_pv('%s%s' % (pvname[:idot], ext))
+        self.PV_Panel(pvname)
 
     def write(self, msg, status='normal'):
         if self.write_message is None:
