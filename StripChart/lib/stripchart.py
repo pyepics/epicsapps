@@ -134,7 +134,6 @@ Matt Newville <newville@cars.uchicago.edu>
         self.build_statusbar()
 
         self.plotpanel = PlotPanel(self, trace_color_callback=self.onTraceColor)
-        self.plotpanel.BuildPanel()
         self.plotpanel.messenger = self.write_message
 
         self.build_pvpanel()
@@ -630,7 +629,7 @@ Matt Newville <newville@cars.uchicago.edu>
                     try:
                         self.plotpanel.update_line(itrace, tdat, ydat, draw=False, update_limits=True)
                         # self.plotpanel.plot(tdat, ydat, draw=False, update_limits=True)                        
-                        #self.plotpanel.set_xylims((self.tmin, 0, ymin, ymax),
+                        # self.plotpanel.set_xylims((self.tmin, 0, ymin, ymax),
                         #                          side=side, autoscale=False)
                         did_update = True
                     except:
@@ -642,7 +641,6 @@ Matt Newville <newville@cars.uchicago.edu>
                     axes.set_yscale('log', basey=10)
                 else:
                     axes.set_yscale('linear')
-                    
                     
         self.plotpanel.set_title(time.strftime("%Y-%b-%d %H:%M:%S", time.localtime()))
         if did_update:
