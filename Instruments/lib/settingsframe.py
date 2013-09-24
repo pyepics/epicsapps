@@ -35,7 +35,7 @@ class SettingsFrame(wx.Frame) :
         self.colors = GUIColors()
         panel.SetBackgroundColour(self.colors.bg)
 
-        title = SimpleText(panel, 'Positions Settings',
+        title = SimpleText(panel, 'Positions Settings:',
                            font=titlefont,
                            minsize=(130, -1),
                            colour=self.colors.title, style=tstyle)
@@ -81,10 +81,9 @@ class SettingsFrame(wx.Frame) :
 
         title = SimpleText(panel, 'Show Instruments:',
                            font=titlefont,
-                           minsize=(130, -1),
                            colour=self.colors.title, style=tstyle)
         irow += 1
-        sizer.Add(title, (irow, 0), (1, 2), labstyle|wx.ALL, 3)
+        sizer.Add(title, (irow, 0), (1, 4), labstyle|wx.ALL, 3)
         self.hideframes = {}
         strlen = 24
         for inst in self.db.get_all_instruments():
