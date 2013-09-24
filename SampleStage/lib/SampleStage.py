@@ -838,7 +838,7 @@ class StageApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         frame = SampleStage(configfile=self.configfile)
         frame.Show()
         self.SetTopWindow(frame)
-        time.sleep(3.5)
+        time.sleep(0.5)
         return True
 
 if __name__ == '__main__':
