@@ -238,14 +238,13 @@ class InstrumentPanel(wx.Panel):
 
         # start a timer to check for when to fill in PV panels
         timer_id = wx.NewId()
-        # self.etimer = wx.Timer(self)
-        self.etimer2 = wx.Timer(self)
+        self.conn_timer = wx.Timer(self)
         self.puttimer = wx.Timer(self)
         self.etimer_count = 0
         self.etimer_poll = 25
 
         # self.Bind(wx.EVT_TIMER, self.OnConnectTimer, self.etimer)
-        self.Bind(wx.EVT_TIMER, self.OnEtimer2, self.etimer2)
+        self.Bind(wx.EVT_TIMER, self.OnConn_Timer, self.conn_timer)
 
         self.Bind(wx.EVT_TIMER, self.OnPutTimer, self.puttimer)
 
@@ -282,8 +281,8 @@ class InstrumentPanel(wx.Panel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(splitter, 1, wx.GROW|wx.ALL, 0)
         pack(self, sizer)
-        self.etimer2_t0 = time.time()        
-        self.etimer2.Start(1)
+        self.conn_timer_t0 = time.time()        
+        self.conn_timer.Start(1)
 
     def undisplay_pv(self, pvname):
         "remove pv from display"
@@ -294,6 +293,7 @@ class InstrumentPanel(wx.Panel):
     @EpicsFunction
     def redraw_leftpanel(self, force=False):
         """ redraws the left panel """
+        # print 'redraw leftpanel ', self.inst, (time.time() - self.last_draw)
         if (time.time() - self.last_draw) < 0.5:
             return
 
@@ -305,6 +305,7 @@ class InstrumentPanel(wx.Panel):
 
         current_comps = [self.toprow]
         pvcomps = list(self.pv_components.items())
+
         # print 'redraw leftpanel: ', time.ctime(), pvcomps
 
         skip = []
@@ -386,18 +387,21 @@ class InstrumentPanel(wx.Panel):
     def add_pv(self, pvname):
         """add a PV to the left panel"""
         pvname = normalize_pvname(pvname)
+        # print 'Panel AddPV ', pvname
         self.pv_components[pvname] = (False, None, None)
         db_pv = self.db.get_pv(pvname)
-        # print 'Add PV ', pvname , db_pv 
+        # print 'Instrument Panel Add PV ', pvname , db_pv , db_pv.pvtype
         if db_pv.pvtype is None:
             print 'Return because no pvtype?' , pvname, db_pv
             return
         if db_pv.pvtype.name == 'motor':
             idot = pvname.find('.')
-            
             for ext in MOTOR_FIELDS:
                 self.pvlist.connect_pv('%s%s' % (pvname[:idot], ext))
         self.PV_Panel(pvname)
+        self.conn_timer_t0 = time.time()        
+        self.last_draw = 0.0
+        self.conn_timer.Start(0.5)
 
     def write(self, msg, status='normal'):
         if self.write_message is None:
@@ -415,23 +419,23 @@ class InstrumentPanel(wx.Panel):
         """
         if all([comp[0] for comp in self.pv_components.values()]): # "all connected"
             # self.etimer.Stop()
-            self.etimer2.Stop()
+            self.conn_timer.Stop()
             self.redraw_leftpanel()
             # return
         # if we've done 20 rounds, there are probably
         # really unconnected PVs -- let's slow down.
-        if (time.time() - self.etimer2_t0) > 15:
-            self.etimer2.Stop()
+        if (time.time() - self.conn_timer_t0) > 15:
+            self.conn_timer.Stop()
             
-    def OnEtimer2(self, evt=None):
+    def OnConn_Timer(self, evt=None):
         for pvname in self.pv_components:
             self.PV_Panel(pvname)
 
         if (all([comp[0] for comp in self.pv_components.values()]) or # "all connected"
-            (time.time() - self.etimer2_t0) > 15):  # timeout
+            (time.time() - self.conn_timer_t0) > 15):  # timeout
             self.redraw_leftpanel()
-            self.etimer2.Stop()
-
+            self.last_draw = 0
+            self.conn_timer.Stop()
 
     def PV_Panel(self, pvname): # , panel, sizer, current_wid=None):
         """ try to create a PV Panel for the given pv

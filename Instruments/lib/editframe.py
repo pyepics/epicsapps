@@ -419,7 +419,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                 if len(pvname) > 0:
                     pvtype = str(entry['type'].GetStringSelection())
                     new_pvs[entry['index']] = (pvname, pvtype)
-
+        # print 'Edit Instrument Done: ADD PV ! ', new_pvs
         for newpvs in new_pvs:
             if newpvs is not None:
                 pvname, pvtype = newpvs

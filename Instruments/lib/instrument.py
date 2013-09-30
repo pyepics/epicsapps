@@ -369,9 +369,12 @@ arguments
 
     def set_pvtype(self, name, pvtype):
         """ set a pv type"""
+        # print 'Set_pvtype: ', name, pvtype
         pv = self.get_pv(name)
+        # print ' = pv = ', pv
         out = self.query(PVType).all()
         _pvtypes = dict([(t.name, t.id) for t in out])
+        # print ' = known types = ', _pvtypes
         if pvtype  in _pvtypes:
             pv.pvtype_id = _pvtypes[pvtype]
         else:
@@ -380,6 +383,7 @@ arguments
             _pvtypes = dict([(t.name, t.id) for t in out])
             if pvtype  in _pvtypes:
                 pv.pvtype_id = _pvtypes[pvtype]
+        # print ' set pv type to %s ' % repr( pv.pvtype_id)
         self.commit()
 
     def get_pv(self, name):
@@ -387,6 +391,7 @@ arguments
         """
         if isinstance(name, PV):
             return name
+        name = normalize_pvname(name)
         out = self.query(PV).filter(PV.name==name).all()
         ret = None_or_one(out, 'get_pv expected 1 or None PV')
         # print 'instrument.get_pv ',name, out, ret
