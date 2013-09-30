@@ -2,13 +2,13 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 [Setup]
-AppName=Epics Applications
-AppVersion=0.1
+AppName=Epics Python Applications
+AppVersion=0.2
 AppPublisher=Matthew Newville, GSECARS,  The University of Chicago
 AppPublisherURL=http://pyepics.github.com/epicsapps/
 AppSupportURL=http://pyepics.github.com/epicsapps/
 AppUpdatesURL=http://pyepics.github.com/epicsapps/
-AppCopyright=Copyright (C) 2012 Matthew Newville
+AppCopyright=Copyright (C) 2013 Matthew Newville
 DefaultDirName={pf}\Epics Applications
 DefaultGroupName=Epics Applications
 AlwaysRestart=no
