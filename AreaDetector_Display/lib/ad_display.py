@@ -16,7 +16,7 @@ import Image
 from wxmplot.plotframe import PlotFrame
 from wxmplot.colors import hexcolor
 
-ICON_FILE = '/Users/epics/bin/camera.ico'
+ICON_FILE = 'camera.ico'
 
 from debugtime import debugtime
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '16777216'
