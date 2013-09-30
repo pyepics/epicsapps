@@ -472,8 +472,7 @@ arguments
             self.pvs[name] = epics.PV(name)
             self.pvs[name].get()
             pvtype = get_pvtypes(self.pvs[name])[0]
-            self.set_pvtype(name, pvtype)
-
+        self.set_pvtype(name, pvtype)
         self.session.add(row)
         self.commit()
         return row
