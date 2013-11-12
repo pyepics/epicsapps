@@ -593,14 +593,14 @@ arguments
         self.restoring_pvs = []
         if exclude_pvs is None:
             exclude_pvs = []
-        epics_pvs = {}
+        _pvs = {}
         for pvname in pvvals:
             if pvname not in exclude_pvs:
-                epics_pvs[pvname] =  epics.PV(pvname)
+                _pvs[pvname] =  epics.PV(pvname)
 
         for pvname, value in pvvals.items():
             if pvname not in exclude_pvs:
-                thispv = epics_pvs[pvname]
+                thispv = _pvs[pvname]
                 self.restoring_pvs.append(thispv)
                 if not thispv.connected:
                     thispv.wait_for_connection()
