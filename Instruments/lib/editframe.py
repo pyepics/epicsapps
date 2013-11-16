@@ -180,11 +180,9 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
 class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
     """ Edit / Add Instrument"""
     def __init__(self, parent=None, pos=(-1, -1),
-                 inst=None, db=None, epics_pvs=None):
+                 inst=None, db=None):
 
-        self.epics_pvs = epics_pvs
-        if self.epics_pvs is None:
-            self.epics_pvs = {}
+        self.epics_pvs = {}
 
         title = 'Add New Instrument'
         if inst is not None:
@@ -256,10 +254,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
             for instpvs in self.db.get_ordered_instpvs(inst):
                 pv = instpvs.pv
                 irow += 1
-                if pv.name in self.epics_pvs:
-                    pvchoices = get_pvtypes(self.epics_pvs[pv.name], instrument)
-                else:
-                    pvchoices = get_pvtypes(pv, instrument)
+                pvchoices = get_pvtypes(pv, instrument)
 
                 label= SimpleText(panel, pv.name,  minsize=(175, -1),
                                   style=LSTY)

@@ -178,7 +178,7 @@ class MoveToDialog(wx.Dialog):
 class InstrumentPanel(wx.Panel):
     """ create Panel for an instrument"""
     def __init__(self, parent, inst, db=None, writer=None,
-                 pvlist = None, size=(-1, -1)):
+                 pvlist=None, size=(-1, -1)):
         self.last_draw = 0
         self.inst = inst
         self.pvlist = pvlist

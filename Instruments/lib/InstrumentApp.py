@@ -23,7 +23,7 @@ from instrument import isInstrumentDB, InstrumentDB
 from utils import GUIColors, ConnectDialog, set_font_with_children, EIN_WILDCARD
 from instrumentpanel import InstrumentPanel
 
-from settingsframe import SettingsFrame
+from settingsframe import SettingsFrame, InstSelectionFrame
 from editframe import EditInstrumentFrame, NewPositionFrame
 from epics_server import EpicsInstrumentServer
 
@@ -52,7 +52,6 @@ class InstrumentFrame(wx.Frame):
         if self.db is None:
             return
 
-        self.epics_pvs = {}
         self.connected = {}
         self.panels = {}
         self.epics_server = None
@@ -209,9 +208,14 @@ class InstrumentFrame(wx.Frame):
                  "Permanently Remove Current Instrument",
                  action=self.onRemoveInstrument)
 
-        add_menu(self, opts_menu, "&Settings",
-                 "Change Settings for GUI behavior",
+        add_menu(self, opts_menu, "&Select Instruments to Show",
+                 "Change Which Instruments are Shown", 
+                 action=self.onSelectInstruments)
+
+        add_menu(self, opts_menu, "&General Settings",
+                 "Change Settings for GUI behavior, Epics Connection",
                  action=self.onSettings)
+
 
         add_menu(self, opts_menu,
                  "Change &Font", "Select Font",
@@ -315,19 +319,17 @@ class InstrumentFrame(wx.Frame):
         inst = self.db.add_instrument(newname)
 
         panel = InstrumentPanel(self, inst, db=self.db,
+                                pvlist=self.pvlist,
                                 size=(925, -1),
                                 writer = self.write_message)
 
         self.nb.AddPage(panel, inst.name, True)
-        EditInstrumentFrame(parent=self, db=self.db, inst=inst,
-                            epics_pvs=self.epics_pvs)
+        EditInstrumentFrame(parent=self, db=self.db, inst=inst)
 
     def onEditInstrument(self, event=None):
         "edit the current instrument"
         inst = self.nb.GetCurrentPage().inst
-        EditInstrumentFrame(parent=self, db=self.db, inst=inst,
-                            epics_pvs=self.epics_pvs)
-
+        EditInstrumentFrame(parent=self, db=self.db, inst=inst)
 
     def onEnterPosition(self, event=None):
         "enter a new position for the current instrument"
@@ -362,12 +364,18 @@ class InstrumentFrame(wx.Frame):
         except:
             self.settting_frame = SettingsFrame(parent=self, db=self.db)
 
+    def onSelectInstruments(self, event=None):
+        try:
+            self.instsel_frame.Raise()
+        except:
+            self.instsel_frame = InstSelectionFrame(parent=self, db=self.db)
+
     def onAbout(self, event=None):
         # First we create and fill the info object
         info = wx.AboutDialogInfo()
         info.Name = "Epics Instruments"
-        info.Version = "0.3"
-        info.Copyright = "2011, Matt Newville, University of Chicago"
+        info.Version = "0.4"
+        info.Copyright = "2013, Matt Newville, University of Chicago"
         info.Description = """
         Epics Instruments is an application to manage Epics PVs.
         An Instrument is defined as a collection of Epics PV.
