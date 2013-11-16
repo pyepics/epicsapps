@@ -573,7 +573,6 @@ arguments
                          exclude_pvs=None):
         """restore named position for instrument
         """
-
         inst = self.get_instrument(inst)
         if inst is None:
             raise InstrumentDBException(
@@ -585,25 +584,30 @@ arguments
             raise InstrumentDBException(
                 "restore_postion  position '%s' not found" % posname)
 
-        pvvals = {}
-        for pvpos in pos.pvs:
-            pvvals[pvpos.pv.name] = str(pvpos.value)
-
-
-        self.restoring_pvs = []
         if exclude_pvs is None:
             exclude_pvs = []
-        epics_pvs = {}
-        for pvname in pvvals:
-            if pvname not in exclude_pvs:
-                epics_pvs[pvname] =  epics.PV(pvname)
 
-        for pvname, value in pvvals.items():
+        pv_vals = []
+        for pvpos in pos.pvs:
+            pvname = pvpos.pv.name
             if pvname not in exclude_pvs:
-                thispv = epics_pvs[pvname]
-                self.restoring_pvs.append(thispv)
-                if not thispv.connected:
-                    thispv.wait_for_connection()
-                    thispv.get_ctrlvars()
-                thispv.put(value, use_complete=True)
+                thispv = epics.PV(pvname)
+                pv_vals.append((thispv, str(pvpos.value)))
+
+        epics.ca.poll()
+        # put values without waiting
+        for thispv, val in pv_vals:
+            if not thispv.connected:
+                thispv.wait_for_connection(timeout=timeout)
+            try:
+                thispv.put(val)
+            except:
+                pass
+
+        if wait:
+            for thispv, val in pv_vals:
+                try:
+                    thispv.put(val, wait=True)
+                except:
+                    pass
 
