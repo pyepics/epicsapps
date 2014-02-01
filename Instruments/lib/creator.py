@@ -19,7 +19,7 @@ def PointerCol(name, other=None, keyid='id', **kws):
         other = name
     return Column("%s_%s" % (name, keyid), None,
                   ForeignKey('%s.%s' % (other, keyid), **kws))
-    
+
 def StrCol(name, size=None, **kws):
     if size is None:
         return Column(name, Text, **kws)
@@ -27,10 +27,11 @@ def StrCol(name, size=None, **kws):
         return Column(name, String(size), **kws)
 
 def NamedTable(tablename, metadata, keyid='id', nameid='name',
-               name=True, notes=True, attributes=True, cols=None):
+               name=True, name_unique=True,
+               notes=True, attributes=True, cols=None):
     args  = [Column(keyid, Integer, primary_key=True)]
     if name:
-        args.append(StrCol(nameid, nullable=False, unique=True))
+        args.append(StrCol(nameid, nullable=False, unique=name_unique))
     if notes:
         args.append(StrCol('notes'))
     if attributes:
@@ -44,7 +45,7 @@ class InitialData:
                ["verify_erase", "1"],
                ["verify_move",   "1"],
                ["verify_overwrite",  "1"],
-               ["epics_prefix",   ""],               
+               ["epics_prefix",   ""],
                ["create_date", '<now>'],
                ["modify_date", '<now>']]
 
@@ -56,7 +57,7 @@ class InitialData:
 def  make_newdb(dbname, server= 'sqlite'):
     engine  = create_engine('%s:///%s' % (server, dbname))
     metadata =  MetaData(engine)
-    
+
     instrument = NamedTable('instrument', metadata,
                             cols=[Column('show', Integer, default=1),
                                   Column('display_order', Integer, default=0)])
@@ -68,24 +69,27 @@ def  make_newdb(dbname, server= 'sqlite'):
                                   StrCol('output_name')])
 
     position  = NamedTable('position', metadata,
+                           name_unique=False,
                            cols=[Column('date', DateTime),
                                  PointerCol('instrument')])
-    
+
     instrument_precommand = NamedTable('instrument_precommand', metadata,
+                                       name_unique=False,
                                        cols=[Column('order', Integer),
                                              PointerCol('command'),
                                              PointerCol('instrument')])
-                                     
+
     instrument_postcommand = NamedTable('instrument_postcommand', metadata,
-                                        cols=[Column('order', Integer), 
+                                        name_unique=False,
+                                        cols=[Column('order', Integer),
                                               PointerCol('command'),
                                               PointerCol('instrument')])
 
     pvtype  = NamedTable('pvtype', metadata)
     pv      = NamedTable('pv', metadata, cols=[PointerCol('pvtype')])
-    
+
     instrument_pv = Table('instrument_pv', metadata,
-                          Column('id', Integer, primary_key=True), 
+                          Column('id', Integer, primary_key=True),
                           PointerCol('instrument'),
                           PointerCol('pv'),
                           Column('display_order', Integer, default=0))
@@ -93,13 +97,13 @@ def  make_newdb(dbname, server= 'sqlite'):
 
     position_pv = Table('position_pv', metadata,
                         Column('id', Integer, primary_key=True),
-                        StrCol('notes'),                        
+                        StrCol('notes'),
                         PointerCol('position'),
                         PointerCol('pv'),
                         StrCol('value'))
-    
+
     info       = Table('info', metadata,
-                       Column('key', Text, primary_key=True, unique=True), 
+                       Column('key', Text, primary_key=True, unique=True),
                        StrCol('value'))
 
     metadata.create_all()
@@ -115,9 +119,9 @@ def  make_newdb(dbname, server= 'sqlite'):
             value = now
         info.insert().execute(key=key, value=value)
 
-    session.commit()    
+    session.commit()
 
-    
+
 if __name__ == '__main__':
     dbname = 'Test.ein'
     backup_versions(dbname)
