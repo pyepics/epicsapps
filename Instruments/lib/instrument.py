@@ -20,7 +20,6 @@ from datetime import datetime
 from utils import backup_versions, save_backup, get_pvtypes, normalize_pvname
 from creator import make_newdb
 
-
 from sqlalchemy import MetaData, create_engine, and_
 from sqlalchemy.orm import sessionmaker,  mapper, clear_mappers, relationship
 from sqlalchemy.exc import IntegrityError
@@ -35,6 +34,9 @@ import sqlalchemy.dialects.sqlite
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 # logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
 
+import upgrades
+
+        
 def isInstrumentDB(dbname):
     """test if a file is a valid Instrument Library file:
        must be a sqlite db file, with tables named
@@ -187,6 +189,17 @@ class InstrumentDB(object):
             time.sleep(0.5)
             self.connect(dbname, backup=False)
 
+    def check_version(self):
+        conn = self.conn
+        qvers = "select value from info where key='version'"
+        version_string = conn.execute(qvers).fetchone()[0]
+        if version_string < '1.2':
+            print 'Upgrading Database to Version 1.2'
+            for statement in upgrades.sqlcode['1.2']:
+                conn.execute(statement)
+            conn.execute("update info set value='1.2' where key='version'")
+            self.session.commit()
+
     def connect(self, dbname, backup=True):
         "connect to an existing database"
         if not os.path.exists(dbname):
@@ -202,6 +215,7 @@ class InstrumentDB(object):
                                     poolclass = SingletonThreadPool)
         self.conn = self.engine.connect()
         self.session = sessionmaker(bind=self.engine)()
+        self.check_version()
 
         self.metadata =  MetaData(self.engine)
         self.metadata.reflect()
