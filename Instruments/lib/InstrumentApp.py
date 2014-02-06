@@ -173,10 +173,7 @@ class InstrumentFrame(wx.Frame):
         help_menu = wx.Menu()
 
         add_menu(self, file_menu,
-                 "&New File", "Create New Instruments File",
-                 action=self.onNew)
-        add_menu(self, file_menu,
-                 "&Open File", "Open Instruments File",
+                 "&Open File", "Open or Create Instruments File",
                  action=self.onOpen)
         add_menu(self, file_menu,
                  "&Save As", "Save Instruments File",
@@ -386,20 +383,33 @@ class InstrumentFrame(wx.Frame):
         wx.AboutBox(info)
 
     def onOpen(self, event=None):
-        fname = FileOpen(self, 'Open Instrument File',
+        dbname = FileOpen(self, 'Open Instrument File',
                          wildcard=EIN_WILDCARD,
                          default_file=self.dbname)
-        if fname is not None:
+        if dbname is not None:
+            self.db.set_hostpid(clear=True)
             self.db.close()
             time.sleep(1)
-            self.dbname = fname
-            self.config.set_current_db(fname)
+            self.db, self.dbname = self.connect_db(dbname)            
+            self.config.set_current_db(dbname)
+            self.db.set_hostpid(clear=False)
             self.config.write()
             self.create_nbpages()
 
-    def onNew(self, event=None):
-        self.connect_db(dbname=self.dbname, new=True)
-        self.create_nbpages()
+#     def onNew(self, event=None):
+#         fname = FileOpen(self, 'New Instrument File',
+#                          wildcard=EIN_WILDCARD,
+#                          default_file=self.dbname)
+# 
+#         self.db.close()
+#         time.sleep(1)
+#         self.dbname = fname
+# 
+#         self.connect_db(dbname=fname, new=True)
+#         self.config.set_current_db(fname)
+#         self.config.write()
+#         self.create_nbpages()
+# 
 
     def onSave(self, event=None):
         outfile = FileSave(self, 'Save Instrument File As',
