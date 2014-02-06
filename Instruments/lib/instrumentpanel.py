@@ -74,15 +74,18 @@ class RenameDialog(wx.Dialog):
 class MoveToDialog(wx.Dialog):
     """Full Query for Move To for a Position"""
     msg = '''Select Recent Instrument File, create a new one'''
-    def __init__(self, parent, posname, inst, db, pvs, **kws):
+    def __init__(self, parent, posname, inst, db, pvs, mode='move', **kws):
         self.posname = posname
         self.inst = inst
         self.pvs  = pvs
+        self.mode = mode
         thispos = db.get_position(posname, inst)
         if thispos is None:
             return
 
         title = "Move Instrument %s to Position '%s'?" % (inst.name, posname)
+        if mode == 'show':
+            title = "Instrument %s  / Position '%s'" % (inst.name, posname)
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title)
         self.build_dialog(parent, thispos)
 
@@ -104,8 +107,9 @@ class MoveToDialog(wx.Dialog):
         tstyle    = wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL
         # title row
         i = 0
-        for titleword in ('  PV ', 'Current Value',
-                          'Saved Value', 'Move?'):
+        col_labels = ['  PV ', 'Current Value', 'Saved Value']
+        if self.mode != 'show': col_labels.append('Move?')
+        for titleword in col_labels:
             txt =SimpleText(panel, titleword,
                             font=titlefont,
                             minsize=(100, -1),
@@ -120,7 +124,6 @@ class MoveToDialog(wx.Dialog):
                   (1, 0), (1, 4), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
 
         self.checkboxes = {}
-        # print 'PVNAMES ', thispos, thispos.pvs
         for irow, pvpos in enumerate(thispos.pvs):
             # pvname = normalize_pvname(pvpos.pv.name)
             pvname = pvpos.pv.name
@@ -147,14 +150,16 @@ class MoveToDialog(wx.Dialog):
                                colour=colors.pvname)
             curr  = SimpleText(panel, curr_val, style=tstyle)
             saved = SimpleText(panel, save_val, style=tstyle)
-            cbox  = wx.CheckBox(panel, -1, "Move")
-            cbox.SetValue(True)
-            self.checkboxes[pvname] = (cbox, save_val)
+            if self.mode != 'show':
+                cbox  = wx.CheckBox(panel, -1, "Move")
+                cbox.SetValue(True)
+                self.checkboxes[pvname] = (cbox, save_val)
 
             sizer.Add(label, (irow+2, 0), (1, 1), labstyle,  2)
             sizer.Add(curr,  (irow+2, 1), (1, 1), rlabstyle, 2)
             sizer.Add(saved, (irow+2, 2), (1, 1), rlabstyle, 2)
-            sizer.Add(cbox,  (irow+2, 3), (1, 1), rlabstyle, 2)
+            if self.mode != 'show':
+                sizer.Add(cbox,  (irow+2, 3), (1, 1), rlabstyle, 2)
 
         sizer.Add(wx.StaticLine(panel, size=(150, -1),
                                 style=wx.LI_HORIZONTAL),
@@ -164,7 +169,8 @@ class MoveToDialog(wx.Dialog):
         btn = wx.Button(panel, wx.ID_OK)
         btn.SetDefault()
         btnsizer.AddButton(btn)
-        btnsizer.AddButton(wx.Button(panel, wx.ID_CANCEL))
+        if self.mode != 'show':
+            btnsizer.AddButton(wx.Button(panel, wx.ID_CANCEL))
 
         btnsizer.Realize()
         sizer.Add(btnsizer, (irow+4, 2), (1, 2),
@@ -251,11 +257,14 @@ class InstrumentPanel(wx.Panel):
         rsizer = wx.BoxSizer(wx.VERTICAL)
         btn_goto = add_button(rpanel, "Go To", size=(70, -1),
                               action=self.OnMove)
+        btn_show = add_button(rpanel, "Show", size=(70, -1),
+                              action=self.OnShowPos)
         btn_erase = add_button(rpanel, "Erase",  size=(70, -1),
                                action=self.onErase)
 
         brow = wx.BoxSizer(wx.HORIZONTAL)
         brow.Add(btn_goto,   0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        brow.Add(btn_show,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_erase,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
 
         self.pos_list  = wx.ListBox(rpanel, size=(225, -1))
@@ -537,6 +546,19 @@ class InstrumentPanel(wx.Panel):
             else:
                 return
             dlg.Destroy()
+
+    def OnShowPos(self, evt=None):
+        """ on Show Position """
+        posname = self.pos_list.GetStringSelection()
+        thispos = self.db.get_position(posname, self.inst)
+        if thispos is None:
+            return
+        dlg = MoveToDialog(self, posname, self.inst, self.db, self.pvs,
+                           mode='show')
+        dlg.Raise()
+        if dlg.ShowModal() == wx.ID_OK:
+            pass
+        dlg.Destroy()
 
     def onPosSelect(self, evt=None):
         "  "
