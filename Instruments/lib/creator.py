@@ -9,8 +9,9 @@ import os
 from datetime import datetime
 
 from sqlalchemy.orm import sessionmaker, create_session
-from sqlalchemy import MetaData, create_engine, \
-     Table, Column, Integer, Float, String, Text, DateTime, ForeignKey
+from sqlalchemy import (MetaData, create_engine, Table, Column,
+                        Integer, Float, String, Text, DateTime,
+                        ForeignKey, UniqueConstraint)
 
 from utils import dumpsql, backup_versions
 
@@ -41,7 +42,7 @@ def NamedTable(tablename, metadata, keyid='id', nameid='name',
     return Table(tablename, metadata, *args)
 
 class InitialData:
-    info    = [["version", "1.1"],
+    info    = [["version", "1.2"],
                ["verify_erase", "1"],
                ["verify_move",   "1"],
                ["verify_overwrite",  "1"],
@@ -68,19 +69,22 @@ def  make_newdb(dbname, server= 'sqlite'):
                                   StrCol('output_value'),
                                   StrCol('output_name')])
 
-    position  = NamedTable('position', metadata,
-                           name_unique=False,
-                           cols=[Column('date', DateTime),
-                                 PointerCol('instrument')])
+
+    position  = Table('position', metadata,
+                      Column('id', Integer, primary_key=True),
+                      StrCol('name', nullable=False),
+                      StrCol('notes'),
+                      StrCol('attributes'), 
+                      Column('date', DateTime),
+                      Column("instrument_id",  ForeignKey('instrument.id')),
+                      UniqueConstraint('name', 'instrument_id'))    
 
     instrument_precommand = NamedTable('instrument_precommand', metadata,
-                                       name_unique=False,
                                        cols=[Column('order', Integer),
                                              PointerCol('command'),
                                              PointerCol('instrument')])
 
     instrument_postcommand = NamedTable('instrument_postcommand', metadata,
-                                        name_unique=False,
                                         cols=[Column('order', Integer),
                                               PointerCol('command'),
                                               PointerCol('instrument')])
