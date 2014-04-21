@@ -32,7 +32,7 @@ CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
 # IMG_W, IMG_H = 280, 210
-IMG_W, IMG_H = 352, 240
+IMG_W, IMG_H = 510, 384
 CONFIG_DIR  = '//cars5/Data/xas_user/config/SampleStage/'
 WORKDIR_FILE = os.path.join(CONFIG_DIR, 'workdir.txt')
 ICON_FILE = os.path.join(CONFIG_DIR, 'micro.ico')
@@ -385,8 +385,8 @@ class SampleStage(wx.Frame):
 
         imglabel  = "Select a position...\n  "
         self.info = wx.StaticText(panel,  label=imglabel)
-        self.img  = wx.StaticBitmap(panel, -1,
-                                    empty_bitmap(IMG_W, IMG_H, value=200))
+        self.img  = wx.StaticBitmap(panel, -1, 
+                                    empty_bitmap(IMG_W, IMG_H, value=128))
         self.info.SetSize((IMG_W, 36))
         savebox = wx.BoxSizer(wx.HORIZONTAL)
         savebox.Add(wlabel,        1, LEFT_CEN, 1)
@@ -826,6 +826,10 @@ class SampleStage(wx.Frame):
         if panel.IsExpanded():
             txt = 'Hide'
         panel.SetLabel('%s %s' % (txt, label))
+        # panel.Refresh()
+        size = self.GetSize()
+        self.SetSize((size[0]+1, size[1]))
+        self.SetSize(size)
         self.Refresh()
 
 class StageApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
@@ -838,7 +842,7 @@ class StageApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         frame = SampleStage(configfile=self.configfile)
         frame.Show()
         self.SetTopWindow(frame)
-        time.sleep(0.5)
+        time.sleep(0.25)
         return True
 
 if __name__ == '__main__':
