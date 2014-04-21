@@ -728,11 +728,11 @@ class SampleStage(wx.Frame):
                 self.write_message('saved image to %s' % fname)
         else: # areaDetector
             cname = "%s%s1:"% (self.cam_adpref, self.cam_adform.upper())
-            caput("%sFileName" % cname, fname)
-            time.sleep(0.001)
-            caput("%sWriteFile" % cname, 1)
+            caput("%sFileName" % cname, fname, wait=True)
+            time.sleep(0.03)
+            caput("%sWriteFile" % cname, 1, wait=True)
             self.write_message('saved image to %s' % fname)
-            time.sleep(0.50)
+            time.sleep(0.03)
         self.waiting_for_imagefile = False
         return fname
 
@@ -794,28 +794,30 @@ class SampleStage(wx.Frame):
         "display raw jpeg image as wx bitmap"
         bmp = empty_bitmap(IMG_W, IMG_H, value=200)
         t0 = time.time()
+        time.sleep(0.03)
         while self.waiting_for_imagefile and time.time() < t0 + 5.0:
-            time.sleep(0.1)
+            time.sleep(0.03)
         if fname is not None:
-            if not os.path.exists(fname):  time.sleep(0.25)
+            if not os.path.exists(fname):  
+                time.sleep(0.25)
             if os.path.exists(fname):
                 try:
                     stream = StringIO(open(fname, "rb").read())
                     bmp = wx.BitmapFromImage( wx.ImageFromStream(
                         (stream)).Rescale(IMG_W, IMG_H))
                 except:
-                    time.sleep(0.25)
+                    time.sleep(0.1)
                     try:
                         stream = StringIO(open(fname, "rb").read())
                         bmp = wx.BitmapFromImage( wx.ImageFromStream(
                             (stream)).Rescale(IMG_W, IMG_H))
                     except:
                         pass
-
+        
         self.img.SetBitmap(bmp)
-        if tstamp != '':
-            tstamp = 'Saved:     %s\n' % tstamp
-        self.info.SetLabel("%s\n%s" % (name, tstamp))
+        #if tstamp != '':
+        #    tstamp = '%s\n' % tstamp
+        self.info.SetLabel("%s: %s" % (name, tstamp))
         self.info.SetSize((IMG_W, 36))
 
     def onCollapse(self, event=None, panel=None, label=''):
