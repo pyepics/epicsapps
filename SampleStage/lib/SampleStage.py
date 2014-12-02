@@ -12,7 +12,7 @@ import wx.lib.mixins.inspection
 from  cStringIO import StringIO
 from  urllib import urlopen
 
-from epics import Motor, PV, caput
+from epics import Motor, caput
 from epics.wx import finalize_epics, MotorPanel
 from epics.wx import EpicsFunction
 
@@ -189,6 +189,7 @@ class SampleStage(wx.Frame):
         self.connect_motors()
         self.set_position_list()
 
+    @EpicsFunction
     def connect_motors(self):
         "connect to epics motors"
         self.motors = {}
@@ -849,8 +850,8 @@ class StageApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
 
 if __name__ == '__main__':
     import epics
-    epics.ca.initialize_libca()
-    time.sleep(0.001)
+    # epics.ca.initialize_libca()
+    # time.sleep(0.001)
     
     app = StageApp()
     app.MainLoop()
