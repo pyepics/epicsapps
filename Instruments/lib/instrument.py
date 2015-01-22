@@ -400,6 +400,9 @@ arguments
         # print ' set pv type to %s ' % repr( pv.pvtype_id)
         self.commit()
 
+    def get_allpvs(self):
+        return self.query(PV).all()
+    
     def get_pv(self, name):
         """return pv by name
         """
