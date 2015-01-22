@@ -47,6 +47,7 @@ Would you like this application to use this instrument file?
 class InstrumentFrame(wx.Frame):
     def __init__(self, parent=None, conf=None, dbname=None, **kwds):
 
+
         self.config = InstrumentConfig(name=conf)
         self.db, self.dbname = self.connect_db(dbname)
         if self.db is None:
@@ -61,6 +62,8 @@ class InstrumentFrame(wx.Frame):
                           size=(925, -1), **kwds)
 
         self.pvlist = EpicsPVList(self)
+        for pv in self.db.get_allpvs():
+            self.pvlist.connect_pv(pv.name)
 
         self.colors = GUIColors()
         self.SetBackgroundColour(self.colors.bg)
@@ -70,6 +73,7 @@ class InstrumentFrame(wx.Frame):
         self.create_Menus()
         self.create_Frame()
         self.enable_epics_server()
+
 
     def connect_db(self, dbname=None, new=False):
         """connects to a db, possibly creating a new one"""
@@ -124,7 +128,9 @@ class InstrumentFrame(wx.Frame):
         sizer.Add(self.nb, 1, wx.EXPAND)
 
         self.create_nbpages()
-        self.SetMinSize((850, 350))
+
+        self.SetSize((876,    351))
+        self.SetMinSize((875, 350))
 
         pack(self, sizer)
         try:
@@ -148,7 +154,6 @@ class InstrumentFrame(wx.Frame):
                                 size=(925, -1),
                                 pvlist = self.pvlist,
                                 writer = self.write_message)
-
         for pv in inst.pvs:
             panel.add_pv(pv.name)
 
@@ -158,10 +163,7 @@ class InstrumentFrame(wx.Frame):
 
     def connect_pvs(self, inst, wait_time=0.10):
         """connect to PVs for an instrument.."""
-
         panel = self.panels[inst.name]
-
-
         return
 
     def create_Menus(self):
