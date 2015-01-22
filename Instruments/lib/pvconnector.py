@@ -77,7 +77,7 @@ class EpicsPVList(object):
         if pvname in self.pvs:
             return
         if pvname not in self.in_progress:
-            self.pvs[pvname] = epics.PV(pvname)
+            self.pvs[pvname] = epics.get_pv(pvname)
             self.in_progress[pvname] = (wid, action, time.time())
 
     @EpicsFunction
@@ -92,7 +92,7 @@ class EpicsPVList(object):
         """if a new epics PV has connected, run the requested action"""
         # print ' __connect!! ', pvname
         if pvname not in self.pvs:
-            self.pvs[pvname] = epics.PV(pvname)
+            self.pvs[pvname] = epics.get_pv(pvname)
         pv = self.pvs[pvname]
         time.sleep(0.002)
 
