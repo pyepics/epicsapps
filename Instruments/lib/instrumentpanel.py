@@ -268,7 +268,7 @@ class InstrumentPanel(wx.Panel):
         brow.Add(btn_erase,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
 
         self.pos_list  = wx.ListBox(rpanel, size=(225, -1))
-        self.pos_list.SetBackgroundColour(wx.WHITE)
+        self.pos_list.SetBackgroundColour((230, 230, 230))
         self.pos_list.Bind(wx.EVT_RIGHT_DOWN, self.onRightClick)
         self.pos_list.Bind(wx.EVT_LISTBOX, self.onPosSelect)
         self.pos_list.Bind(wx.EVT_LEFT_DCLICK, self.OnMove)
@@ -280,7 +280,7 @@ class InstrumentPanel(wx.Panel):
         rsizer.Add(brow,          0, wx.ALIGN_LEFT|wx.ALL)
         rsizer.Add(self.pos_list, 1, wx.EXPAND|wx.ALIGN_CENTER, 1)
         pack(rpanel, rsizer)
-
+        self.pos_list.Disable()
 
         splitter.SplitVertically(self.leftpanel, rpanel, -150)
 
@@ -315,7 +315,7 @@ class InstrumentPanel(wx.Panel):
         current_comps = [self.toprow]
         pvcomps = list(self.pv_components.items())
 
-        # print 'redraw leftpanel: ', time.ctime(), pvcomps
+        # print 'redraw leftpanel: ', time.ctime() #, pvcomps
 
         skip = []
         for icomp, val in enumerate(pvcomps):
@@ -375,7 +375,6 @@ class InstrumentPanel(wx.Panel):
                 current_comps.append(panel)
                 self.leftsizer.Add(panel, 0,  wx.ALIGN_LEFT|wx.TOP|wx.ALL|wx.GROW, 1)
 
-
         pack(self.leftpanel, self.leftsizer)
 
         for wid in self.leftpanel.Children:
@@ -390,7 +389,8 @@ class InstrumentPanel(wx.Panel):
         self.Layout()
         self.Thaw()
         self.Show()
-        # print 'redraw left End ', time.ctime()
+        self.pos_list.SetBackgroundColour(wx.WHITE)
+        self.pos_list.Enable()
         self.last_draw = time.time()
 
     def add_pv(self, pvname):
