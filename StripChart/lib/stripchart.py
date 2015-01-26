@@ -9,7 +9,7 @@ from numpy import array, where
 import wx
 import wx.lib.colourselect  as csel
 
-from epics import PV
+from epics import get_pv
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 from epics.wx.utils import  SimpleText, Closure, FloatCtrl
 
@@ -110,6 +110,8 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvlist = [' -- ']
         self.pvwids = [None]
         self.pvchoices = [None]
+        self.pvlabels  = [None]
+        self.pv_desc   = {}
         self.colorsels = []
         self.plots_drawn = [False]*10
         self.needs_refresh = False
@@ -193,17 +195,21 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.SetBackgroundColour(wx.Colour(*BGCOL))
         sizer = self.pvsizer = wx.GridBagSizer(4, 5)
 
-        name = SimpleText(panel, ' PV:  ',       minsize=(75, -1), style=LSTY)
+        name = SimpleText(panel, ' PV:  ',       minsize=(65, -1), style=LSTY)
         colr = SimpleText(panel, ' Color ',      minsize=(50, -1), style=LSTY)
-        logs = SimpleText(panel, ' Log Scale?',  minsize=(85, -1), style=LSTY)
+        logs = SimpleText(panel, ' Log? ',       minsize=(50, -1), style=LSTY)
         ymin = SimpleText(panel, ' Y Minimum ',  minsize=(85, -1), style=LSTY)
         ymax = SimpleText(panel, ' Y Maximum ',  minsize=(85, -1), style=LSTY)
+        desc = SimpleText(panel, ' Label ',      minsize=(85, -1), style=LSTY)
+        side = SimpleText(panel, ' Side  ',      minsize=(85, -1), style=LSTY)
 
         sizer.Add(name, (0, 0), (1, 1), LSTY|wx.EXPAND, 2)
         sizer.Add(colr, (0, 1), (1, 1), LSTY, 1)
         sizer.Add(logs, (0, 2), (1, 1), LSTY, 1)
         sizer.Add(ymin, (0, 3), (1, 1), LSTY, 1)
         sizer.Add(ymax, (0, 4), (1, 1), LSTY, 1)
+        sizer.Add(desc, (0, 5), (1, 1), LSTY, 1)
+        sizer.Add(side, (0, 6), (1, 1), LSTY, 1)
 
         self.npv_rows = 0
         for i in range(4):
@@ -298,16 +304,22 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel = self.pvpanel
         sizer = self.pvsizer
-        pvchoice = MyChoice(panel, choices=self.pvlist, size=(200, -1))
+        pvchoice = MyChoice(panel, choices=self.pvlist, size=(150, -1))
         pvchoice.SetSelection(0)
-        logs = MyChoice(panel)
+        logs = MyChoice(panel, size=(50, -1))
         logs.SetSelection(0)
         ymin = wx.TextCtrl(panel, -1, '', size=(75, -1))
         ymax = wx.TextCtrl(panel, -1, '', size=(75, -1))
+        desc = wx.TextCtrl(panel, -1, '', size=(150, -1))
+        side = MyChoice(panel, choices=('left', 'right'), size=(80, -1))
+        side.SetSelection((i-1)%2)
+
         if i > 2:
             logs.Disable()
             ymin.Disable()
             ymax.Disable()
+            desc.Disable()
+            side.Disable()
 
         colval = (0, 0, 0)
         if i < len(self.default_colors):
@@ -320,6 +332,8 @@ Matt Newville <newville@cars.uchicago.edu>
         sizer.Add(logs,     (i, 2), (1, 1), CSTY, 3)
         sizer.Add(ymin,     (i, 3), (1, 1), CSTY, 3)
         sizer.Add(ymax,     (i, 4), (1, 1), CSTY, 3)
+        sizer.Add(desc,     (i, 5), (1, 1), CSTY, 3)
+        sizer.Add(side,     (i, 6), (1, 1), CSTY, 3)
 
         pvchoice.Bind(wx.EVT_CHOICE,     Closure(self.onPVchoice, row=i))
         colr.Bind(csel.EVT_COLOURSELECT, Closure(self.onPVcolor, row=i))
@@ -328,7 +342,8 @@ Matt Newville <newville@cars.uchicago.edu>
         ymax.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
 
         self.pvchoices.append(pvchoice)
-        self.pvwids.append((logs, colr, ymin, ymax))
+        self.pvlabels.append(desc)
+        self.pvwids.append((logs, colr, ymin, ymax, desc, side))
 
     def onTraceColor(self, trace, color, **kws):
         irow = self.get_current_traces()[trace][0] - 1
@@ -351,7 +366,8 @@ Matt Newville <newville@cars.uchicago.edu>
     @EpicsFunction
     def addPV(self, name):
         if name is not None and name not in self.pvlist:
-            pv = PV(str(name), callback=self.onPVChange)
+            basename = str(name)
+            pv = get_pv(basename, callback=self.onPVChange)
             pv.get()
             conn = False
             if pv is not None:
@@ -367,10 +383,19 @@ Matt Newville <newville@cars.uchicago.edu>
                 return
             self.pvlist.append(name)
             self.pvdata[name] = [(time.time(), pv.get())]
+            if basename.endswith('.VAL'):
+                basename = basename[:-4]
+            descname = basename + '.DESC'
+            descpv = get_pv(descname)
+            desc =  descpv.get(timeout=1.0)
+            if desc is None or len(desc) < 1:
+                desc = basename
 
+            self.pv_desc[basename] = desc
+            
             i_new = len(self.pvdata)
             new_shown = False
-            for choice in self.pvchoices:
+            for ix, choice in enumerate(self.pvchoices):
                 if choice is None:
                     continue
                 cur = choice.GetSelection()
@@ -379,6 +404,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 choice.SetSelection(cur)
                 if cur == 0 and not new_shown:
                     choice.SetSelection(i_new)
+                    self.pvlabels[ix].SetValue(desc)
                     new_shown = True
             self.needs_refresh = True
 
@@ -391,6 +417,9 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def onPVchoice(self, event=None, row=None, **kws):
         self.needs_refresh = True
+        pvname = self.pvchoices[row].GetStringSelection()
+        if pvname in self.pv_desc:
+            self.pvlabels[row].SetValue(self.pv_desc[pvname])
         for i in range(len(self.pvlist)+1):
             try:
                 trace = self.plotpanel.conf.get_mpl_line(row-1)
@@ -534,7 +563,9 @@ Matt Newville <newville@cars.uchicago.edu>
                     color = self.pvwids[irow][1].GetColour()
                     ymin  = get_bound(self.pvwids[irow][2].GetValue())
                     ymax  = get_bound(self.pvwids[irow][3].GetValue())
-                    traces.append((irow, name, logs, color, ymin, ymax))
+                    desc  = self.pvwids[irow][4].GetValue()
+                    side  = self.pvwids[irow][5].GetSelection()
+                    traces.append((irow, name, logs, color, ymin, ymax, desc, side))
         return traces
 
     def onUpdatePlot(self, event=None):
@@ -559,14 +590,17 @@ Matt Newville <newville@cars.uchicago.edu>
         left_axes = self.plotpanel.axes
         right_axes = self.plotpanel.get_right_axes()
 
-        for irow, pname, uselog, color, ymin, ymax in self.get_current_traces():
+        for tracedata in self.get_current_traces():
+            irow, pname, uselog, color, ymin, ymax, desc, xside = tracedata
+            if len(desc.strip() ) < 1:
+                desc = pname
             if pname not in self.pvdata:
                 continue
             itrace += 1
             if len(self.plots_drawn) < itrace:
                 self.plots_drawn.extend([False]*3)
             side = 'left'
-            if itrace == 1:
+            if xside == 1:
                 side = 'right'
             data = self.pvdata[pname][:]
             if len(data)  < 2:
@@ -609,9 +643,9 @@ Matt Newville <newville@cars.uchicago.edu>
             
             if self.needs_refresh:
                 if itrace == 0:
-                    self.plotpanel.set_ylabel(pname)
+                    self.plotpanel.set_ylabel(desc)
                 elif itrace == 1:
-                    self.plotpanel.set_y2label(pname)
+                    self.plotpanel.set_y2label(desc)
                 if not self.plots_drawn[itrace]:
                     plot = self.plotpanel.oplot
                     if itrace == 0:
@@ -621,7 +655,7 @@ Matt Newville <newville@cars.uchicago.edu>
                              drawstyle='steps-post', side=side,
                              ylog_scale=uselog, color=color,
                              xmin=self.tmin, xmax=0,
-                             xlabel=xlabel, label=pname, autoscale=False)
+                             xlabel=xlabel, label=desc, autoscale=False)
                         self.plots_drawn[itrace] = True
                     except:
                         update_failed = True
