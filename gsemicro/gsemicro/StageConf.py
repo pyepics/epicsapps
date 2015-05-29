@@ -81,6 +81,21 @@ class StageConfig(object):
             self.filename = fname
             self._process_data()
 
+            stage_names = self.config['stages']
+            image_folder = self.config['camera']['image_folder']
+            pos = OrderedDict()
+            for key, dat in self.config['positions'].items():
+                img_fname = dat['image']
+                image = {'type': 'filename', 
+                         'data': os.path.join(image_folder, img_fname)}
+                
+                poslist = dat['position']
+                posdict = {}
+                for name, val in zip(stage_names, poslist):
+                    posdict[name] = val
+                pos[key] = dict(image=image, position=posdict)
+            self.config['positions'] = pos
+
     def _process_data(self):
         for sect, opts in conf_sects.items():
             if not self.cp.has_section(sect):
