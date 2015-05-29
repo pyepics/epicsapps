@@ -39,23 +39,23 @@ ICON_FILE = os.path.join(CONFIG_DIR, 'micro.ico')
 
 AUTOSAVE_DIR = "//cars5/Data/xas_user"
 AUTOSAVE_TMP = os.path.join(AUTOSAVE_DIR, '_tmp_.jpg')
-AUTOSAVE_FILE = os.path.join(AUTOSAVE_DIR, 'ide_microscope.jpg')
+AUTOSAVE_FILE = "%s/%s" % (AUTOSAVE_DIR, 'IDEuscope_Live.jpg')
 
 IMG_W, IMG_H  = 1928, 1448
 
 class ImageDisplayFrame(wx.Frame):
-    iw, ih = 482, 362
+    iw, ih = 723, 543
     def __init__(self, **kwds):
         kwds["style"] = wx.DEFAULT_FRAME_STYLE
-        wx.Frame.__init__(self, None, -1, size=(500, 400),  **kwds)
+        wx.Frame.__init__(self, None, -1, size=(725, 550),  **kwds)
         self.img  = wx.StaticBitmap(self, -1,
                                     empty_bitmap(self.iw, self.ih,
                                                  value=128))
-
         self.wximage = None
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.img, 1, wx.ALL|wx.GROW, 1)
         self.Bind(wx.EVT_SIZE, self.onSize)
+        self.Bind(wx.EVT_CLOSE, self.onClose)
         pack(self, sizer)
         self.Layout()
         self.Show()
@@ -79,22 +79,21 @@ class ImageDisplayFrame(wx.Frame):
             self.Refresh()
         evt.Skip()
 
+    def onClose(self, event=None):
+        self.Destroy()
 
 
 class ImagePanel(wx.Panel):
     def __init__(self, parent, camera, update_rate=1.0):
-        super(ImagePanel, self).__init__(parent,  -1)
-        self.SetMinSize((650, 550))
+        super(ImagePanel, self).__init__(parent,  -1, size=(990, 745))
         self.camera = camera
-        print 'Camera ', camera
         self.parent = parent
         self.info  = {}
         self.cam_name = '-'
         self.update_rate = update_rate
         self.count = 0
         self.fps = 0.0
-        self.scale = 0.32
-        self.SetSize((int(self.scale*IMG_W), int(self.scale*IMG_H)))
+        self.scale = 0.60
         self.SetBackgroundColour("#EEEEEE")
         self.starttime = time.clock()
         self.last_autosave = 0
@@ -108,7 +107,7 @@ class ImagePanel(wx.Panel):
     def onSize(self, evt):
         # self.DrawImage(size=event.GetSize())
         frame_w, frame_h = evt.GetSize()
-        self.scale = min(frame_w*1.0/IMG_W, frame_h*1.0/IMG_H)
+        self.scale = min(frame_w*1.01/IMG_W, frame_h*1.01/IMG_H)
         self.Refresh()
         evt.Skip()
 
@@ -125,7 +124,7 @@ class ImagePanel(wx.Panel):
             self.starttime = now
             self.count = 0
         if self.scale < 0.2: self.scale=0.2
-        self.image = self.camera.GrabRGBWxImage(scale=self.scale)
+        self.image = self.camera.GrabWxImage(scale=self.scale, rgb=True)
         bitmap = wx.BitmapFromImage(self.image)
 
         img_w, img_h =  bitmap.GetSize()
@@ -142,11 +141,12 @@ class ImagePanel(wx.Panel):
 
         now = time.clock()
         if (now - self.last_autosave)  > 1.0:
-            self.image.SaveFile(AUTOSAVE_TMP, wx.BITMAP_TYPE_JPEG)
-            self.last_autosave = now
-            shutil.copy(AUTOSAVE_TMP, AUTOSAVE_FILE)
-            # print 'wrote ', AUTOSAVE_FILE, os.stat(AUTOSAVE_FILE).st_size
-
+            try:
+                self.image.SaveFile(AUTOSAVE_TMP, wx.BITMAP_TYPE_JPEG)
+                self.last_autosave = now
+                shutil.copy(AUTOSAVE_TMP, AUTOSAVE_FILE)
+            except:
+                pass
             if self.cam_name == '-':
                 self.cam_name = self.info.get('modelName', '-')
 
@@ -166,7 +166,7 @@ class ControlPanel(wx.Panel):
         self.tweaks = {}
         self.tweaklist = {}
         self.motorwids = {}
-        self.SetMinSize((280, 280))
+        self.SetMinSize((280, 500))
         self.get_tweakvalues()
 
         sizer =  wx.BoxSizer(wx.VERTICAL)
@@ -346,7 +346,7 @@ class PositionPanel(wx.Panel):
     def __init__(self, parent, size=(175, 200)):
         wx.Panel.__init__(self, parent, -1, size=size)
 
-        self.SetMinSize((300, 250))
+        self.SetMinSize((285, 500))
         self.parent = parent
         self.image_display = None
 
@@ -356,11 +356,14 @@ class PositionPanel(wx.Panel):
 
         tlabel = wx.StaticText(self, label="Save Position: ")
 
+        btn_save  = add_button(self, "Save",  size=(70, -1), 
+                               action=Closure(self.onSavePosition, from_wid=True))
         btn_goto  = add_button(self, "Go To", size=(70, -1), action=self.onGo)
         btn_erase = add_button(self, "Erase", size=(70, -1), action=self.onErasePosition)
         btn_show  = add_button(self, "Show",  size=(70, -1), action=self.onShowPosition)
 
         brow = wx.BoxSizer(wx.HORIZONTAL)
+        brow.Add(btn_save,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_goto,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_erase, 0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_show,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
@@ -379,9 +382,13 @@ class PositionPanel(wx.Panel):
         pack(self, sizer)
         self.SetAutoLayout(1)
 
-    def onSavePosition(self, event):
+    def onSavePosition(self, event, from_wid=False):
         name = event.GetString().strip()
+        if from_wid:
+            name = self.pos_name.GetValue().strip()
 
+        if len(name) < 1:
+            return
         if self.parent.v_replace and name in self.positions:
             ret = popup(self, "Overwrite Position %s?" %name,
                         "Veriry Overwrite Position",
@@ -397,8 +404,6 @@ class PositionPanel(wx.Panel):
         tmp_pos = []
         motors = self.parent.ctrlpanel.motors
         for v in self.parent.config['stages'].values():
-            print 'SAVE POS ', v
-
             tmp_pos.append(float(motors[v['label']].VAL))
 
         self.positions[name] = {'image': imgfile,
@@ -432,17 +437,18 @@ class PositionPanel(wx.Panel):
                 tstamp =  time.strftime('%b %d %H:%M:%S', img_time)
             except:
                 tstamp = ''
-        # self.display_imagefile(fname=imgfile, name=name, tstamp=tstamp)
         try:
+            self.image_display.Show()
             self.image_display.Raise()
         except:
-            self.image_display = None
-        print 'IMAGE ', self.image_display , imgfile, posname
+            del self.image_display
+            self.image_display =  None
+
         if self.image_display is None:
             self.image_display = ImageDisplayFrame()
+            self.image_display.Raise()
 
         self.image_display.showfile(imgfile, title=posname)
-        self.image_display.Raise()
 
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
@@ -545,6 +551,7 @@ class PositionPanel(wx.Panel):
         "set the list of position on the left-side panel"
 
         self.pos_list.Clear()
+
         self.positions = positions
         for name in self.positions:
             self.pos_list.Append(name)
@@ -563,7 +570,7 @@ class StageFrame(wx.Frame):
     def __init__(self, camera):
 
         super(StageFrame, self).__init__(None, wx.ID_ANY, 'IDE Microscope',
-                                    style=wx.DEFAULT_FRAME_STYLE , size=(1200, 700))
+                                    style=wx.DEFAULT_FRAME_STYLE , size=(1200, 750))
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
 
@@ -705,10 +712,15 @@ class StageFrame(wx.Frame):
             self.begin_htmllog()
         self.ConfigCamera()
 
+    def begin_htmllog(self):
+        "initialize log file"
+        fout = open(self.htmllog, 'w')
+        fout.write(self.html_header)
+        fout.close()
+
     @EpicsFunction
     def save_image(self, fname=None):
         "save image to file"
-        print 'Save Image ', fname, self.cam_type
         self.waiting_for_imagefile = True
         if self.cam_type.lower().startswith('fly'):
             self.imgpanel.image.SaveFile(fname, wx.BITMAP_TYPE_JPEG)
@@ -739,17 +751,18 @@ class StageFrame(wx.Frame):
         return fname
 
     def autosave(self):
-        print 'SAVE POSITION '
         self.cnf.Save('SampleStage_autosave.ini')
 
     def write_htmllog(self, name):
-        thispos = self.positions.get(name, None)
-        if thispos is None: return
+        thispos = self.config['positions'].get(name, None)
+        if thispos is None: 
+            return
         imgfile = thispos['image']
         tstamp  = thispos['timestamp']
         pos     = ', '.join([str(i) for i in thispos['position']])
         pvnames = ', '.join([i.strip() for i in self.stages.keys()])
         labels  = ', '.join([i['label'].strip() for i in self.stages.values()])
+
         fout = open(self.htmllog, 'a')
         fout.write("""<hr>
 <table><tr><td><a href='Sample_Images/%s'>
@@ -793,7 +806,6 @@ class StageFrame(wx.Frame):
 
 
     def set_image_size(self, size):
-        print 'Set Image Size ', self.GetClientSize(), size, self.imgsize
         if self.imgsize is None:
             self.imgsize = size
 
@@ -830,8 +842,9 @@ class StageFrame(wx.Frame):
         self.write_message('Read Configuration File %s' % fname)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, camera_id=0, **kws):
+    def __init__(self, camera_id=0, debug=True, **kws):
         self.camera_id = camera_id
+        self.debug = debug
         wx.App.__init__(self, **kws)
 
     def run(self):
@@ -847,6 +860,8 @@ class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
 
     def OnInit(self):
         self.createApp()
+        if self.debug:
+            self.ShowInspectionTool()
         return True
 
 if __name__ == '__main__':
