@@ -5,10 +5,13 @@ import sys
 import time
 import os
 import shutil
-import pyfly2
 
 from cStringIO import StringIO
 from threading import Thread
+from collections import OrderedDict
+import base64
+
+import pyfly2
 
 import larch
 from  larch_plugins.epics import ScanDB, InstrumentDB
@@ -65,13 +68,17 @@ class ImageDisplayFrame(wx.Frame):
         self.Raise()
 
     def showfile(self, fname, title=None):
+        self.show_image(StringIO(open(fname, "rb").read()), title=title)
+
+    def showb64img(self, data, title=None):
+        self.show_image(base64.b64decode(data), title=title)
+
+    def show_image(self, image, title=None):
         if title is not None:
             self.SetTitle(title)
-        stream = StringIO(open(fname, "rb").read())
-        self.wximage = wx.ImageFromStream(stream)
-        bmp = wx.BitmapFromImage(self.wximage.Rescale(self.iw, self.ih))
-        self.img.SetBitmap(bmp)
-
+        self.img.SetBitmap(wx.BitmapFromImage(
+                              wx.ImageFromStream(
+                                  image).Rescale(self.iw, self.ih)))
 
     def onSize(self, evt):
         # self.DrawImage(size=event.GetSize())
@@ -389,7 +396,6 @@ class PositionPanel(wx.Panel):
         pack(self, sizer)
         self.SetMinSize((200, 300))
 
-
     def onSavePosition(self, event, from_wid=False):
         name = event.GetString().strip()
         if from_wid:
@@ -436,15 +442,6 @@ class PositionPanel(wx.Panel):
         ipos  =  self.pos_list.GetSelection()
         if posname is None or len(posname) < 1:
             return
-        thispos = self.positions[posname]
-        imgfile = "%s/%s" % (self.parent.imgdir, thispos['image'])
-        tstamp =  thispos.get('timestamp', None)
-        if tstamp is None:
-            try:
-                img_time = time.localtime(os.stat(imgfile).st_mtime)
-                tstamp =  time.strftime('%b %d %H:%M:%S', img_time)
-            except:
-                tstamp = ''
         try:
             self.image_display.Show()
             self.image_display.Raise()
@@ -456,7 +453,12 @@ class PositionPanel(wx.Panel):
             self.image_display = ImageDisplayFrame()
             self.image_display.Raise()
 
-        self.image_display.showfile(imgfile, title=posname)
+        thispos = self.positions[posname]
+        thisimage = thispos['image']
+        if thisimage['type'] == 'filename':
+            self.image_display.showfile(thisimage['data'], title=posname)
+        elif thisimage['type'] == 'b46encode':
+            self.image_displaysh.showb64img(thisimage['data'], title=posname)
 
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
@@ -561,8 +563,26 @@ class PositionPanel(wx.Panel):
         self.pos_list.Clear()
 
         self.positions = positions
-        for name in self.positions:
+        for name, val in self.positions.items():
             self.pos_list.Append(name)
+            
+    def set_positions_instdb(self):
+        if self.instdb is None:
+            print 'No instdb?'
+            return
+        positions = OrderedDict()
+        iname = INSTRUMENT_NAME
+        posnames =  self.instdb.get_positionlist(iname)
+        for pname in posnames:
+            thispos = self.instdb.get_position(iname, pname)
+            image = {'type': 'b64encode', 'data':''}
+            if thispos.image is not None:
+                image['data'] = thispos.image
+            pdat = {}            
+            for pvpos in thispos.pvs:
+                pdat[pvpos.pv.name] =  pvpos.value
+            positions[pname] = dict(position=pdat, image=image)
+        self.set_positions(positions)
 
 
 class StageFrame(wx.Frame):
@@ -583,6 +603,7 @@ class StageFrame(wx.Frame):
         self.camera = camera
         self.motors = None
         self.dbconn = dbconn
+        self.instdb = None
         self.initdb_thread = Thread(target=self.init_larchdb)
         self.initdb_thread.start()
 
@@ -591,13 +612,17 @@ class StageFrame(wx.Frame):
 
         self.create_frame()
         self.ctrlpanel.connect_motors()
-        self.pospanel.set_positions(self.config['positions'])
 
         # wait for all wx stuff to successfully init, then turn on the camera
         self.camera.Connect()
         self.imgpanel.info = self.camera.info
         self.camera.StartCapture()
         self.initdb_thread.join()
+        if self.instdb is not None:
+            self.pospanel.instdb = self.instdb
+            self.pospanel.set_positions_instdb()
+        else:
+            self.pospanel.set_positions(self.config['positions'])
 
     def init_larchdb(self):
         if self.dbconn is not None:
