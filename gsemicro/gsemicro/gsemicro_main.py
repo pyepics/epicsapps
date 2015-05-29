@@ -225,8 +225,10 @@ class ControlPanel(wx.Panel):
 
         panel  = wx.Panel(self)
 
+        init_tweaks = dict(fine=6, coarse=6, focus=5, theta=8)
+
         self.tweaks[group] = NumericCombo(panel, self.tweaklist[group],
-                                          precision=precision, init=3)
+                                          precision=precision, init=init_tweaks[group])
 
         slabel = wx.BoxSizer(wx.HORIZONTAL)
         slabel.Add(wx.StaticText(panel, label=" %s: " % label, size=(120,-1)),
@@ -292,8 +294,8 @@ class ControlPanel(wx.Panel):
     def onZeroFineMotors(self, event=None):
         "event handler for Zero Fine Motors"
         mot = self.motors
-        mot['X'].VAL +=  self.parent.finex_dir * mot['fineX'].VAL
-        mot['Y'].VAL +=  self.parent.finey_dir * mot['fineY'].VAL
+        mot['X'].VAL +=  self.sign['fineX'] * mot['fineX'].VAL
+        mot['Y'].VAL +=  self.sign['fineY'] * mot['fineY'].VAL
         time.sleep(0.1)
         mot['fineX'].VAL = 0
         mot['fineY'].VAL = 0
@@ -325,6 +327,7 @@ class ControlPanel(wx.Panel):
         xsign = {'e':1, 'w':-1}.get(name[1], 0)
 
         x, y = self.motorgroups[group]
+        # print ' MOVE   ', x, xsign, self.sign[x],  y, ysign, self.sign[y]
 
         xsign = xsign * self.sign[x]
         val = float(self.motorwids[x].drive.GetValue())
