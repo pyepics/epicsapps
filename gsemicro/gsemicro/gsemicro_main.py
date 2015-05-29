@@ -413,7 +413,7 @@ class PositionPanel(wx.Panel):
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
         fname =  "%s/%s" % (self.parent.imgdir, imgfile)
 
-        self.parent.save_image(fname=fname)
+        imgdata = self.parent.save_image(fname=fname)
 
         tmp_pos = []
         motors = self.parent.ctrlpanel.motors
@@ -761,11 +761,14 @@ class StageFrame(wx.Frame):
     def save_image(self, fname=None):
         "save image to file"
         self.waiting_for_imagefile = True
+        imagedata = None
         if self.cam_type.lower().startswith('fly'):
             self.imgpanel.image.SaveFile(fname, wx.BITMAP_TYPE_JPEG)
+            imgdata = base64.b4encode(self.imgpanel.image.GetData())
+            
         elif self.cam_type.lower().startswith('web'):
             try:
-                img = urlopen(self.cam_weburl).read()
+                imgdata = urlopen(self.cam_weburl).read()
             except:
                 self.write_message('could not open camera: %s' % self.cam_weburl)
                 return
@@ -775,19 +778,33 @@ class StageFrame(wx.Frame):
                                  wildcard='JPEG (*.jpg)|*.jpg|All files (*.*)|*.*',
                                  default_file='sample.jpg')
             if img is not None and fname is not None:
-                out = open(fname,"wb")
-                out.write(img)
+                out = open(fname, "wb")
+                out.write(imgdata)
                 out.close()
                 self.write_message('saved image to %s' % fname)
+                imgdata = base64.b64encode(imgdata)
         else: # areaDetector
             cname = "%s%s1:"% (self.cam_adpref, self.cam_adform.upper())
             caput("%sFileName" % cname, fname, wait=True)
             time.sleep(0.03)
             caput("%sWriteFile" % cname, 1, wait=True)
             self.write_message('saved image to %s' % fname)
-            time.sleep(0.03)
+            time.sleep(0.05)
+            img_ok = False
+            t0 = time.time()
+            while not img_ok:
+                if time.time()-t0 > 15: 
+                    break
+                try:
+                    out = open(fname, "rb")
+                    imgdata = base64.b64encode(out.read())
+                    out.close()
+                    img_ok = True
+                except:
+                    pass
+                time.sleep(0.05)
         self.waiting_for_imagefile = False
-        return fname
+        return imgdata
 
     def autosave(self):
         self.cnf.Save('SampleStage_autosave.ini')
