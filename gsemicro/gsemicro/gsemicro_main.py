@@ -8,8 +8,10 @@ import shutil
 import pyfly2
 
 from cStringIO import StringIO
+from threading import Thread
 
-from functools import partial
+import larch
+from  larch_plugins.epics import ScanDB, InstrumentDB
 
 import wx.lib.agw.pycollapsiblepane as CP
 import wx.lib.mixins.inspection
@@ -40,6 +42,7 @@ ICON_FILE = os.path.join(CONFIG_DIR, 'micro.ico')
 AUTOSAVE_DIR = "//cars5/Data/xas_user"
 AUTOSAVE_TMP = os.path.join(AUTOSAVE_DIR, '_tmp_.jpg')
 AUTOSAVE_FILE = "%s/%s" % (AUTOSAVE_DIR, 'IDEuscope_Live.jpg')
+INSTRUMENT_NAME = 'IDE_SampleStage'
 
 IMG_W, IMG_H  = 1928, 1448
 
@@ -346,10 +349,10 @@ class ControlPanel(wx.Panel):
 
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
-    def __init__(self, parent, size=(175, 200)):
-        wx.Panel.__init__(self, parent, -1, size=size)
+    def __init__(self, parent): # , size=(175, 200)):
+        wx.Panel.__init__(self, parent, -1, size=(300, 500))
 
-        self.SetMinSize((285, 500))
+        self.SetSize((300, 500))
         self.parent = parent
         self.image_display = None
 
@@ -358,12 +361,13 @@ class PositionPanel(wx.Panel):
         self.pos_name.Bind(wx.EVT_TEXT_ENTER, self.onSavePosition)
 
         tlabel = wx.StaticText(self, label="Save Position: ")
-
-        btn_save  = add_button(self, "Save",  size=(70, -1), 
+        
+        bsize = (60, -1)
+        btn_save  = add_button(self, "Save",  size=bsize, 
                                action=Closure(self.onSavePosition, from_wid=True))
-        btn_goto  = add_button(self, "Go To", size=(70, -1), action=self.onGo)
-        btn_erase = add_button(self, "Erase", size=(70, -1), action=self.onErasePosition)
-        btn_show  = add_button(self, "Show",  size=(70, -1), action=self.onShowPosition)
+        btn_goto  = add_button(self, "Go To", size=bsize, action=self.onGo)
+        btn_erase = add_button(self, "Erase", size=bsize, action=self.onErasePosition)
+        btn_show  = add_button(self, "Show",  size=bsize, action=self.onShowPosition)
 
         brow = wx.BoxSizer(wx.HORIZONTAL)
         brow.Add(btn_save,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
@@ -383,7 +387,8 @@ class PositionPanel(wx.Panel):
         sizer.Add(self.pos_list,  1, ALL_EXP|wx.ALIGN_CENTER, 3)
 
         pack(self, sizer)
-        self.SetAutoLayout(1)
+        self.SetMinSize((200, 300))
+
 
     def onSavePosition(self, event, from_wid=False):
         name = event.GetString().strip()
@@ -560,8 +565,6 @@ class PositionPanel(wx.Panel):
             self.pos_list.Append(name)
 
 
-
-
 class StageFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
     html_header = """<html><head><title>Sample Stage Log</title></head>
@@ -570,7 +573,7 @@ class StageFrame(wx.Frame):
 <body>
     """
 
-    def __init__(self, camera):
+    def __init__(self, camera, dbconn=None):
 
         super(StageFrame, self).__init__(None, wx.ID_ANY, 'IDE Microscope',
                                     style=wx.DEFAULT_FRAME_STYLE , size=(1200, 750))
@@ -579,8 +582,11 @@ class StageFrame(wx.Frame):
 
         self.camera = camera
         self.motors = None
-        self.SetTitle("XRM Sample Stage")
+        self.dbconn = dbconn
+        self.initdb_thread = Thread(target=self.init_larchdb)
+        self.initdb_thread.start()
 
+        self.SetTitle("XRM Sample Stage")
         self.read_config(configfile='SampleStage_autosave.ini', get_dir=True)
 
         self.create_frame()
@@ -591,6 +597,13 @@ class StageFrame(wx.Frame):
         self.camera.Connect()
         self.imgpanel.info = self.camera.info
         self.camera.StartCapture()
+        self.initdb_thread.join()
+
+    def init_larchdb(self):
+        if self.dbconn is not None:
+            scandb = ScanDB(**self.dbconn)
+            self.instdb = InstrumentDB(scandb)
+            print self.instdb.get_instrument(INSTRUMENT_NAME)
 
     def create_frame(self):
         "build main frame"
@@ -607,11 +620,9 @@ class StageFrame(wx.Frame):
         self.pospanel  = PositionPanel(self)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.AddMany([
-            (self.ctrlpanel, 0, ALL_EXP|wx.ALIGN_LEFT, 1),
-            (self.imgpanel,  1, ALL_EXP|LEFT_CEN,  1),
-            (self.pospanel,  0, ALL_EXP|wx.ALIGN_RIGHT, 1)
-        ])
+        sizer.AddMany([(self.ctrlpanel, 0, ALL_EXP|LEFT_CEN, 1),
+                       (self.imgpanel,  2, ALL_EXP|LEFT_CEN, 1),
+                       (self.pospanel,  1, ALL_EXP|LEFT_CEN, 1)])
 
         pack(self, sizer)
         icon = wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO)
@@ -845,9 +856,10 @@ class StageFrame(wx.Frame):
         self.write_message('Read Configuration File %s' % fname)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, camera_id=0, debug=True, **kws):
+    def __init__(self, camera_id=0, dbconn=None, debug=True, **kws):
         self.camera_id = camera_id
         self.debug = debug
+        self.dbconn = dbconn
         wx.App.__init__(self, **kws)
 
     def run(self):
@@ -856,8 +868,7 @@ class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
     def createApp(self):
         self.context = pyfly2.Context()
         self.camera = self.context.get_camera(self.camera_id)
-
-        frame = StageFrame(self.camera)
+        frame = StageFrame(self.camera, dbconn=self.dbconn)
         frame.Show()
         self.SetTopWindow(frame)
 
