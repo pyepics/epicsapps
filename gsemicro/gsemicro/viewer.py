@@ -60,6 +60,7 @@ class ImagePanel(wx.Panel):
         self.update_rate = update_rate
         self.count = 0
         self.fps = 0.0
+        self.has_scalebar = False
         self.scale = 0.60
         self.SetBackgroundColour("#EEEEEE")
         self.starttime = time.clock()
