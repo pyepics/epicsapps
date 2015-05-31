@@ -11,16 +11,14 @@ from threading import Thread
 from collections import OrderedDict
 import base64
 
-import pyfly2
-
 import larch
 from  larch_plugins.epics import ScanDB, InstrumentDB
 
 import wx.lib.agw.pycollapsiblepane as CP
 import wx.lib.mixins.inspection
 
-from epics import Motor, caput
-from epics.wx import MotorPanel, EpicsFunction
+from epics import caput
+from epics.wx import EpicsFunction
 
 from epics.wx.utils import (add_button, add_menu, popup, pack, Closure ,
                             NumericCombo, SimpleText, FileSave, FileOpen,
@@ -29,6 +27,8 @@ from epics.wx.utils import (add_button, add_menu, popup, pack, Closure ,
 from .configfile import StageConfig
 from .icons import bitmaps
 from .imageframe import ImageDisplayFrame
+from .controlpanel import ControlPanel
+from .imagepanel_fly2 import ImagePanel
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
@@ -43,253 +43,8 @@ CONFIG_DIR  = '//cars5/Data/xas_user/config/SampleStage/'
 WORKDIR_FILE = os.path.join(CONFIG_DIR, 'workdir.txt')
 ICON_FILE = os.path.join(CONFIG_DIR, 'micro.ico')
 
-AUTOSAVE_DIR = "//cars5/Data/xas_user"
-AUTOSAVE_TMP = os.path.join(AUTOSAVE_DIR, '_tmp_.jpg')
-AUTOSAVE_FILE = "%s/%s" % (AUTOSAVE_DIR, 'IDEuscope_Live.jpg')
+
 INSTRUMENT_NAME = 'IDE_SampleStage'
-
-IMG_W, IMG_H  = 1928, 1448
-
-class ImagePanel(wx.Panel):
-    def __init__(self, parent, camera, update_rate=1.0):
-        super(ImagePanel, self).__init__(parent,  -1, size=(990, 745))
-        self.camera = camera
-        self.parent = parent
-        self.info  = {}
-        self.cam_name = '-'
-        self.update_rate = update_rate
-        self.count = 0
-        self.fps = 0.0
-        self.has_scalebar = False
-        self.scale = 0.60
-        self.SetBackgroundColour("#EEEEEE")
-        self.starttime = time.clock()
-        self.last_autosave = 0
-        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
-        self.timer = wx.Timer(self)
-        self.Bind(wx.EVT_SIZE, self.onSize)
-        self.Bind(wx.EVT_PAINT, self.onPaint)
-        self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
-        self.timer.Start(50)
-
-    def onSize(self, evt):
-        frame_w, frame_h = evt.GetSize()
-        self.scale = min(frame_w*1.01/IMG_W, frame_h*1.01/IMG_H)
-        self.Refresh()
-        evt.Skip()
-
-    def onTimer(self, event=None):
-        self.Refresh()
-
-    def onPaint(self, event):
-        self.count += 1
-        now = time.clock()
-        elapsed = now - self.starttime
-        if elapsed >= self.update_rate:
-            self.fps = self.count / elapsed
-            self.parent.write_framerate(" %.2f fps\n" % (self.fps))
-            self.starttime = now
-            self.count = 0
-        if self.scale < 0.2: self.scale=0.2
-        self.image = self.camera.GrabWxImage(scale=self.scale, rgb=True)
-        bitmap = wx.BitmapFromImage(self.image)
-
-        img_w, img_h =  bitmap.GetSize()
-        pan_w, pan_h =  self.GetSize()
-        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
-
-        dc = wx.AutoBufferedPaintDC(self)
-        dc.Clear()
-        dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
-        dc.SetPen(wx.Pen('Red', 1.5, wx.SOLID))
-        dc.BeginDrawing()
-        if self.has_scalebar:
-            dc.DrawLine(img_w-20, img_h-60, img_w-200, img_h-60)
-        dc.EndDrawing()
-
-        now = time.clock()
-        if (now - self.last_autosave)  > 1.0:
-            try:
-                self.image.SaveFile(AUTOSAVE_TMP, wx.BITMAP_TYPE_JPEG)
-                self.last_autosave = now
-                shutil.copy(AUTOSAVE_TMP, AUTOSAVE_FILE)
-            except:
-                pass
-            if self.cam_name == '-':
-                self.cam_name = self.info.get('modelName', '-')
-
-
-class ControlPanel(wx.Panel):
-    motorgroups = {'fine': ('fineX', 'fineY'),
-                   'coarse': ('X', 'Y'),
-                   'focus': ('Z', None),
-                   'theta': ('theta', None)}
-
-    def __init__(self, parent):
-        wx.Panel.__init__(self, parent, -1)
-
-        self.parent = parent
-        self.tweaks = {}
-        self.tweaklist = {}
-        self.motorwids = {}
-        self.SetMinSize((280, 500))
-        self.get_tweakvalues()
-
-        fine_p = self.group_panel(label='Fine Stages', group='fine',
-                                      precision=4,
-                                      buttons=[('Zero Fine Motors',
-                                                self.onZeroFineMotors)])
-
-        coarse_p = self.group_panel(label='Coarse Stages', group='coarse')
-        focus_p = self.group_panel(label='Focus', group='focus')
-        theta_p = self.group_panel(label='Theta', group='theta')
-
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        for panel in (fine_p, coarse_p, focus_p, theta_p):
-            sizer.Add((3, 3))
-            sizer.Add(panel,   0, ALL_EXP|LEFT_TOP)
-            sizer.Add((3, 3))
-            sizer.Add(wx.StaticLine(self, size=(290, 3)), 0, CEN_TOP)
-        pack(self, sizer)
-
-    @EpicsFunction
-    def connect_motors(self):
-        "connect to epics motors"
-        self.motors = {}
-        self.sign = {None: 1}
-        for pvname, val in self.parent.config['stages'].items():
-            pvname = pvname.strip()
-            label = val['label']
-            self.motors[label] = Motor(name=pvname)
-            self.sign[label] = val['sign']
-
-        for mname in self.motorwids:
-            self.motorwids[mname].SelectMotor(self.motors[mname])
-
-    def group_panel(self, label='Fine Stages', group='fine',
-                    precision=3, buttons=None):
-        """make motor group panel """
-        motors = self.motorgroups[group]
-
-        is_xy = motors[1] is not None
-        panel  = wx.Panel(self)
-
-        init_tweaks = dict(fine=6, coarse=6, focus=5, theta=8)
-
-        self.tweaks[group] = NumericCombo(panel, self.tweaklist[group],
-                                          precision=precision, init=init_tweaks[group])
-
-        slabel = wx.BoxSizer(wx.HORIZONTAL)
-        slabel.Add(wx.StaticText(panel, label=" %s: " % label, size=(120,-1)),
-                   1,  wx.EXPAND|LEFT_BOT)
-        slabel.Add(self.tweaks[group], 0,  ALL_EXP|LEFT_TOP)
-
-        smotor = wx.BoxSizer(wx.VERTICAL)
-        smotor.Add(slabel, 0, ALL_EXP)
-
-        for mnam in motors:
-            if mnam is None: continue
-            self.motorwids[mnam] = MotorPanel(panel, label=mnam, psize='small')
-            self.motorwids[mnam].desc.SetLabel(mnam)
-            smotor.Add(self.motorwids[mnam], 0, ALL_EXP|LEFT_TOP)
-
-        if buttons is not None:
-            for label, action in buttons:
-                smotor.Add(add_button(panel, label, action=action))
-
-        btnbox = self.make_button_panel(panel, full=is_xy, group=group)
-        btnbox_style = CEN_BOT
-        if is_xy:
-            btnbox_style = CEN_TOP
-
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(smotor, 0, ALL_EXP|LEFT_TOP)
-        sizer.Add(btnbox, 0, btnbox_style, 1)
-
-        pack(panel, sizer)
-        return panel
-
-    def make_button_panel(self, parent, group='', full=True):
-        panel = wx.Panel(parent)
-        if full:
-            sizer = wx.GridSizer(3, 3, 1, 1)
-        else:
-            sizer = wx.GridSizer(1, 3)
-        def _btn(name):
-            btn = wx.BitmapButton(panel, -1, bitmaps[name],
-                                  style = wx.NO_BORDER)
-            btn.Bind(wx.EVT_BUTTON, Closure(self.onMove,
-                                            group=group, name=name))
-            return btn
-        if full:
-            sizer.Add(_btn('nw'),     0, wx.ALL|wx.EXPAND)
-            sizer.Add(_btn('nn'),     0, wx.ALL|wx.EXPAND)
-            sizer.Add(_btn('ne'),     0, wx.ALL|wx.EXPAND)
-            sizer.Add(_btn('ww'),     0, wx.ALL|wx.EXPAND)
-            sizer.Add((2, 2))
-            sizer.Add(_btn('ee'),     0, wx.ALL|wx.EXPAND)
-            sizer.Add(_btn('sw'),     0, wx.ALL|wx.EXPAND)
-            sizer.Add(_btn('ss'),     0, wx.ALL|wx.EXPAND)
-            sizer.Add(_btn('se'),     0, wx.ALL|wx.EXPAND)
-        else:
-            sizer.Add(_btn('ww'),     0, wx.ALL|wx.EXPAND)
-            sizer.Add((2, 2))
-            sizer.Add(_btn('ee'),     0, wx.ALL|wx.EXPAND)
-
-        pack(panel, sizer)
-        return panel
-
-    def onZeroFineMotors(self, event=None):
-        "event handler for Zero Fine Motors"
-        mot = self.motors
-        mot['X'].VAL +=  self.sign['fineX'] * mot['fineX'].VAL
-        mot['Y'].VAL +=  self.sign['fineY'] * mot['fineY'].VAL
-        time.sleep(0.1)
-        mot['fineX'].VAL = 0
-        mot['fineY'].VAL = 0
-
-    def get_tweakvalues(self):
-        "get settings for tweak values for combo boxes"
-        def maketweak(prec=3, tmin=0, tmax=10,
-                      decades=7, steps=(1,2,5)):
-            steplist = []
-            for i in range(decades):
-                for step in (j* 10**(i - prec) for j in steps):
-                    if (step <= tmax and step > 0.98*tmin):
-                        steplist.append(step)
-            return steplist
-
-        self.tweaklist['fine']   = maketweak(prec=4, tmax=2.0)
-        self.tweaklist['coarse'] = maketweak(tmax=70.0)
-        self.tweaklist['focus']  = maketweak(tmax=70.0)
-        self.tweaklist['theta']  = maketweak(tmax=9.0)
-        self.tweaklist['theta'].extend([10, 20, 30, 45, 90, 180])
-
-
-    def onMove(self, event, name=None, group=None):
-        if name == 'camera':
-            return self.save_image()
-
-        twkval = float(self.tweaks[group].GetStringSelection())
-        ysign = {'n':1, 's':-1}.get(name[0], 0)
-        xsign = {'e':1, 'w':-1}.get(name[1], 0)
-
-        x, y = self.motorgroups[group]
-        # print ' MOVE   ', x, xsign, self.sign[x],  y, ysign, self.sign[y]
-
-        xsign = xsign * self.sign[x]
-        val = float(self.motorwids[x].drive.GetValue())
-        self.motorwids[x].drive.SetValue("%f" % (val + xsign*twkval))
-        if y is not None:
-            val = float(self.motorwids[y].drive.GetValue())
-            ysign = ysign * self.sign[y]
-            self.motorwids[y].drive.SetValue("%f" % (val + ysign*twkval))
-        try:
-            self.motors[x].TWV = twkval
-            if y is not None:
-                self.motors[y].TWV = twkval
-        except:
-            pass
 
 
 class PositionPanel(wx.Panel):
@@ -352,11 +107,7 @@ class PositionPanel(wx.Panel):
         fname =  "%s/%s" % (self.parent.imgdir, imgfile)
 
         imgdata = self.parent.save_image(fname=fname)
-
-        tmp_pos = []
-        motors = self.parent.ctrlpanel.motors
-        for v in self.parent.config['stages'].values():
-            tmp_pos.append(float(motors[v['label']].VAL))
+        tmp_pos = self.parent.ctrlpanel.read_position()
 
         self.positions[name] = {'image': imgfile,
                                 'timestamp': time.strftime('%b %d %H:%M:%S'),
@@ -415,7 +166,7 @@ class PositionPanel(wx.Panel):
                         style=wx.YES_NO|wx.ICON_QUESTION)
             if ret != wx.ID_YES:
                 return
-        motorwids = self.parent.ctrlpanel.motorwids
+        motorwids = self.parent.ctrlpanel.motor_wids
         for name, val in zip(stage_names, pos_vals):
             motorwids[name['label']].drive.SetValue("%f" % val)
         self.parent.write_message('moved to %s' % posname)
@@ -531,30 +282,24 @@ class StageFrame(wx.Frame):
 <body>
     """
 
-    def __init__(self, camera, dbconn=None):
+    def __init__(self, dbconn=None, camera_id=0):
 
         super(StageFrame, self).__init__(None, wx.ID_ANY, 'IDE Microscope',
                                     style=wx.DEFAULT_FRAME_STYLE , size=(1200, 750))
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
 
-        self.camera = camera
+        self.camera_id = camera_id
         self.motors = None
         self.dbconn = dbconn
         self.instdb = None
-        self.initdb_thread = Thread(target=self.init_larchdb)
+        self.initdb_thread = Thread(target=self.init_scandb)
         self.initdb_thread.start()
 
         self.SetTitle("XRM Sample Stage")
         self.read_config(configfile='SampleStage_autosave.ini', get_dir=True)
 
         self.create_frame()
-        self.ctrlpanel.connect_motors()
-
-        # wait for all wx stuff to successfully init, then turn on the camera
-        self.camera.Connect()
-        self.imgpanel.info = self.camera.info
-        self.camera.StartCapture()
 
         self.initdb_thread.join()
         if self.instdb is not None:
@@ -563,11 +308,11 @@ class StageFrame(wx.Frame):
         else:
             self.pospanel.set_positions(self.config['positions'])
 
-    def init_larchdb(self):
+    def init_scandb(self):
         if self.dbconn is not None:
             scandb = ScanDB(**self.dbconn)
             self.instdb = InstrumentDB(scandb)
-            print self.instdb.get_instrument(INSTRUMENT_NAME)
+            # print self.instdb.get_instrument(INSTRUMENT_NAME)
 
     def create_frame(self):
         "build main frame"
@@ -578,9 +323,8 @@ class StageFrame(wx.Frame):
         for index in range(2):
             self.statusbar.SetStatusText('', index)
 
-
-        self.imgpanel  = ImagePanel(self, self.camera)
-        self.ctrlpanel = ControlPanel(self)
+        self.ctrlpanel = ControlPanel(self, config=self.config['stages'])
+        self.imgpanel  = ImagePanel(self, self.camera_id)
         self.pospanel  = PositionPanel(self)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -696,53 +440,13 @@ class StageFrame(wx.Frame):
         fout.write(self.html_header)
         fout.close()
 
-    @EpicsFunction
     def save_image(self, fname=None):
         "save image to file"
-        self.waiting_for_imagefile = True
-        imagedata = None
-        if self.cam_type.lower().startswith('fly'):
-            self.imgpanel.image.SaveFile(fname, wx.BITMAP_TYPE_JPEG)
-            imgdata = base64.b4encode(self.imgpanel.image.GetData())
-
-        elif self.cam_type.lower().startswith('web'):
-            try:
-                imgdata = urlopen(self.cam_weburl).read()
-            except:
-                self.write_message('could not open camera: %s' % self.cam_weburl)
-                return
-
-            if fname is None:
-                fname = FileSave(self, 'Save Image File',
-                                 wildcard='JPEG (*.jpg)|*.jpg|All files (*.*)|*.*',
-                                 default_file='sample.jpg')
-            if img is not None and fname is not None:
-                out = open(fname, "wb")
-                out.write(imgdata)
-                out.close()
-                self.write_message('saved image to %s' % fname)
-                imgdata = base64.b64encode(imgdata)
-        else: # areaDetector
-            cname = "%s%s1:"% (self.cam_adpref, self.cam_adform.upper())
-            caput("%sFileName" % cname, fname, wait=True)
-            time.sleep(0.03)
-            caput("%sWriteFile" % cname, 1, wait=True)
+        imgdata = self.imgpanel.SaveImage(fname)
+        if imgdata is None:
+            self.write_message('could not save image to %s' % fname)
+        else:
             self.write_message('saved image to %s' % fname)
-            time.sleep(0.05)
-            img_ok = False
-            t0 = time.time()
-            while not img_ok:
-                if time.time()-t0 > 15:
-                    break
-                try:
-                    out = open(fname, "rb")
-                    imgdata = base64.b64encode(out.read())
-                    out.close()
-                    img_ok = True
-                except:
-                    pass
-                time.sleep(0.05)
-        self.waiting_for_imagefile = False
         return imgdata
 
     def autosave(self):
@@ -809,7 +513,7 @@ class StageFrame(wx.Frame):
             self.Center()
 
     def onClose(self, event):
-        self.camera.StopCapture()
+        self.imgpanel.Stop()
         self.imgpanel.Destroy()
         self.Destroy()
 
@@ -837,19 +541,14 @@ class StageFrame(wx.Frame):
         self.write_message('Read Configuration File %s' % fname)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, camera_id=0, dbconn=None, debug=True, **kws):
+    def __init__(self, camera_id=0, dbconn=None, debug=False, **kws):
         self.camera_id = camera_id
-        self.debug = debug
         self.dbconn = dbconn
+        self.debug = debug
         wx.App.__init__(self, **kws)
 
-    def run(self):
-        self.MainLoop()
-
     def createApp(self):
-        self.context = pyfly2.Context()
-        self.camera = self.context.get_camera(self.camera_id)
-        frame = StageFrame(self.camera, dbconn=self.dbconn)
+        frame = StageFrame(dbconn=self.dbconn, camera_id=self.camera_id)
         frame.Show()
         self.SetTopWindow(frame)
 
@@ -860,4 +559,5 @@ class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         return True
 
 if __name__ == '__main__':
-    ViewerApp().run()
+    app = ViewerApp(debug=True)
+    app.MainLoop()
