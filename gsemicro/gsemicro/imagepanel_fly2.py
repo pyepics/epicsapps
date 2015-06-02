@@ -22,9 +22,8 @@ class ImagePanel_Fly2(wx.Panel):
     def __init__(self, parent,  camera_id=0, imagesize=(1928, 1448), 
                  writer=None, **kws):
         
-        super(ImagePanel_Fly2, self).__init__(parent,  -1, size=(990, 745))
+        super(ImagePanel_Fly2, self).__init__(parent,  -1, size=(1100, 830))
 
-        print(" Camera ", camera_id)
         self.context = pyfly2.Context()
         self.camera = self.context.get_camera(camera_id)
 
@@ -37,8 +36,8 @@ class ImagePanel_Fly2(wx.Panel):
         self.last_size = 0
         self.autosave = True
         self.last_autosave = 0
-        self.scalebar = False
-        self.circle  = False
+        self.scalebar = None
+        self.circle  = None
         self.SetBackgroundColour("#EEEEEE")
         self.starttime = time.clock()
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
