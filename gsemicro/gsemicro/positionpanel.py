@@ -44,16 +44,15 @@ class PositionPanel(wx.Panel):
         self.pos_list.Bind(wx.EVT_LISTBOX, self.onSelect)
         self.pos_list.Bind(wx.EVT_RIGHT_DOWN, self.onRightClick)
 
-        self.SetMinSize((200, 300))
 
-        self.SetSize(self.size)
+        # self.SetSize(self.size)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(tlabel,         0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(self.pos_name,  0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(brow,           0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(self.pos_list,  1, ALL_EXP|wx.ALIGN_CENTER, 3)
-        print(" Position Panel ", self.GetSize(), self.size)
+        # print(" Position Panel ", self.GetSize(), self.size)
 
         pack(self, sizer)
 

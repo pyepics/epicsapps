@@ -22,7 +22,7 @@ from epics.wx.utils import (add_menu, pack, Closure ,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from .configfile import StageConfig
-from .icons import bitmaps
+from .icons import icons
 from .controlpanel import ControlPanel
 from .positionpanel import PositionPanel
 
@@ -41,8 +41,6 @@ CONFIG_DIR  = '//cars5/Data/xas_user/config/SampleStage/'
 WORKDIR_FILE = os.path.join(CONFIG_DIR, 'workdir.txt')
 ICON_FILE = os.path.join(CONFIG_DIR, 'micro.ico')
 
-
-INSTRUMENT_NAME = 'IDE_SampleStage'
 
 
 class StageFrame(wx.Frame):
@@ -96,19 +94,17 @@ class StageFrame(wx.Frame):
             self.statusbar.SetStatusText('', index)
 
         self.ctrlpanel = ControlPanel(self, station=station)
-        self.pospanel  = PositionPanel(self)
         self.imgpanel  = ImagePanel_Fly2(self, camera_id=self.cam_fly2id)
-
+        self.pospanel  = PositionPanel(self)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.AddMany([(self.ctrlpanel, 0, ALL_EXP|LEFT_CEN, 1),
-                       (self.imgpanel,  2, ALL_EXP|LEFT_CEN, 1),
+                       (self.imgpanel,  5, ALL_EXP|LEFT_CEN, 1),
                        (self.pospanel,  1, ALL_EXP|LEFT_CEN, 1)])
 
         pack(self, sizer)
         icon = wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO)
         self.SetIcon(icon)
         self.Bind(wx.EVT_CLOSE, self.onClose)
-
 
     def create_menus(self):
         "Create the menubar"
