@@ -16,15 +16,14 @@ DEFAULT_CONF = """
 verify_move = 1
 verify_erase = 1
 verify_overwrite = 1
-finex_dir = 1
-finey_dir = 1
 #--------------------------#
 [camera]
-type = areadetector
-image_folder = Sample_Images
-ad_prefix    = 13IDEPS1:
-ad_format    = JPEG
+type       = areadetector
+fly2_id    = 0
+ad_prefix  = 13IDEPS1:
+ad_format  = JPEG
 web_url = http://164.54.160.115/jpg/4/image.jpg
+image_folder = Sample_Images
 #--------------------------#
 [stages]
 # index =  Motor ||  name ||  description   ||   sign
@@ -39,15 +38,14 @@ web_url = http://164.54.160.115/jpg/4/image.jpg
 # index = xxxxname      || imagefile     || finex, finey, theta, coarsex, coarsez, coarsey
 001 =   p1 || p1.jpg ||  0, 0, 0, 90, 70, 350
 """
-conf_sects = {'setup':{'bools': ('verify_move','verify_erase', 'verify_overwrite'),
-                       'ints': ('finex_dir', 'finey_dir')},
+conf_sects = {'setup':{'bools': ('verify_move','verify_erase', 'verify_overwrite')},
               'camera': {'ordered':False},
               'stages': {'ordered':True},
               'positions': {'ordered':True} }
 
-conf_objs = OrderedDict( (('setup', ('verify_move', 'verify_erase', 'verify_overwrite',
-                                      'finex_dir', 'finey_dir')),
-                          ('camera', ('type', 'image_folder', 'ad_prefix', 'ad_format', 'web_url')),
+conf_objs = OrderedDict( (('setup', ('verify_move', 'verify_erase', 'verify_overwrite')),
+                          ('camera', ('type', 'image_folder', 'fly2_id',
+                                      'ad_prefix', 'ad_format', 'web_url')),
                           ('stages', None),
                           ('positions', None)) )
 
@@ -86,9 +84,9 @@ class StageConfig(object):
             pos = OrderedDict()
             for key, dat in self.config['positions'].items():
                 img_fname = dat['image']
-                image = {'type': 'filename', 
+                image = {'type': 'filename',
                          'data': os.path.join(image_folder, img_fname)}
-                
+
                 poslist = dat['position']
                 posdict = {}
                 for name, val in zip(stage_names, poslist):
