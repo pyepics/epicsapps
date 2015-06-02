@@ -1,5 +1,5 @@
 import wx
-
+from collections import OrderedDict
 from epics.wx.utils import add_button, add_menu, popup, pack, Closure
 
 ALL_EXP  = wx.ALL|wx.EXPAND
@@ -12,11 +12,13 @@ CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
 from .imageframe import ImageDisplayFrame
 
+INSTRUMENT_NAME = 'IDE_SampleStage'
+
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
     def __init__(self, parent):
         wx.Panel.__init__(self, parent, -1, size=(300, 500))
-
+        self.size = (300, 500)
         self.parent = parent
         self.image_display = None
         self.pos_name =  wx.TextCtrl(self, value="", size=(285, 25),
@@ -25,7 +27,7 @@ class PositionPanel(wx.Panel):
 
         tlabel = wx.StaticText(self, label="Save Position: ")
 
-        bkws = dict(bsize=(60, -1))
+        bkws = dict(size=(60, -1))
         btn_save  = add_button(self, "Save",  action=self.onSave2, **bkws)
         btn_goto  = add_button(self, "Go To", action=self.onGo,    **bkws)
         btn_erase = add_button(self, "Erase", action=self.onErase, **bkws)
@@ -43,13 +45,16 @@ class PositionPanel(wx.Panel):
         self.pos_list.Bind(wx.EVT_RIGHT_DOWN, self.onRightClick)
 
         self.SetMinSize((200, 300))
-        self.SetSize(size)
+
+        self.SetSize(self.size)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(tlabel,         0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(self.pos_name,  0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(brow,           0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(self.pos_list,  1, ALL_EXP|wx.ALIGN_CENTER, 3)
+        print(" Position Panel ", self.GetSize(), self.size)
+
         pack(self, sizer)
 
     def onSave1(self, event):
