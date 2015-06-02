@@ -13,7 +13,7 @@ class ImageDisplayFrame(wx.Frame):
         self.wximage = None
         self.bitmap = wx.StaticBitmap(self, -1,
                           wx.BitmapFromBuffer(self.iw, self.ih,
-                             array.array('B', [220]*3*self.iw*self.ih))
+                             array.array('B', [220]*3*self.iw*self.ih)))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.img, 1, wx.ALL|wx.GROW, 1)
