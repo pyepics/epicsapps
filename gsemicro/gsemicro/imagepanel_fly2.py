@@ -22,7 +22,7 @@ class ImagePanel_Fly2(wx.Panel):
     def __init__(self, parent,  camera_id=0, imagesize=(1928, 1448), 
                  writer=None, **kws):
         
-        super(ImagePanel_Fly2, self).__init__(parent,  -1, size=(1100, 830))
+        super(ImagePanel_Fly2, self).__init__(parent,  -1, size=(964, 724))
 
         self.context = pyfly2.Context()
         self.camera = self.context.get_camera(camera_id)

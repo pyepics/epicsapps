@@ -94,7 +94,9 @@ class StageFrame(wx.Frame):
             self.statusbar.SetStatusText('', index)
 
         self.ctrlpanel = ControlPanel(self, station=station)
-        self.imgpanel  = ImagePanel_Fly2(self, camera_id=self.cam_fly2id)
+        self.imgpanel  = ImagePanel_Fly2(self, camera_id=self.cam_fly2id, 
+                                         writer=self.write_framerate)
+
         self.pospanel  = PositionPanel(self)
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.AddMany([(self.ctrlpanel, 0, ALL_EXP|LEFT_CEN, 1),

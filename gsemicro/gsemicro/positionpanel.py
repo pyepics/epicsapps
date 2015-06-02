@@ -1,4 +1,5 @@
 import wx
+import time
 from collections import OrderedDict
 from epics.wx.utils import add_button, add_menu, popup, pack, Closure
 
