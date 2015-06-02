@@ -7,7 +7,7 @@ import time
 import os
 import shutil
 import math
-
+from threading import Thread
 from cStringIO import StringIO
 import base64
 
@@ -19,9 +19,12 @@ AUTOSAVE_FILE = os.path.join(AUTOSAVE_DIR, 'IDEuscope_Live.jpg')
 
 class ImagePanel_Fly2(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
-    def __init__(self, camera_id=0, imagesize=(1928, 1448), writer=None):
+    def __init__(self, parent,  camera_id=0, imagesize=(1928, 1448), 
+                 writer=None, **kws):
+        
         super(ImagePanel_Fly2, self).__init__(parent,  -1, size=(990, 745))
 
+        print(" Camera ", camera_id)
         self.context = pyfly2.Context()
         self.camera = self.context.get_camera(camera_id)
 
