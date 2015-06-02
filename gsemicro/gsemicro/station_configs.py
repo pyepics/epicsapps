@@ -4,7 +4,7 @@ station_configs = {}
 #
 #  group label,  prec, max_step, motorlist: [[pvname, desc, direction], ...]
 #
-statiosn_configs['MICROSCOPE_13IDE'] = '''
+station_configs['MICROSCOPE_13IDE'] = '''
 [["XY Stages",  3, 50,  [["13IDE:m1", "x", 1], ["13IDE:m2", "y", 1]]],
  ["Focus",      3, 10,  [["13IDE:m3", "z", 1]]],
 ]
