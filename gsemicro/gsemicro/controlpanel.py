@@ -9,7 +9,7 @@ from epics.wx.utils import (add_button, add_menu, popup, pack, Closure ,
                             NumericCombo, SimpleText, FileSave, FileOpen,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
-from .icons import bitmaps
+from .icons import icons
 from .station_configs import station_configs
 
 ALL_EXP  = wx.ALL|wx.EXPAND|wx.ALIGN_LEFT|wx.ALIGN_TOP
@@ -17,21 +17,21 @@ LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
-def make_steps(precision=3, min_step=0, max_steps=10, decades=7, steps=(1,2,5)):
+def make_steps(precision=3, min_step=0, max_step=10, decades=7, steps=(1,2,5)):
     """automatically create list of step sizes, generally going as
         1, 2, 5, 10, 20, 50, 100, 200, 500
     using precision,
     """
-    steps = []
+    out = []
     for i in range(decades):
         for step in (j* 10**(i-precision) for j in steps):
             if (step <= max_step and step > 0.98*min_step):
-                steps.append(step)
-    return steps
+                out.append(step)
+    return out
 
 class ControlPanel(wx.Panel):
-    def __init__(self, parent):
-        wx.Panel.__init__(self, parent, -1, station='Station_13IDE')
+    def __init__(self, parent, station='Station_13IDE'):
+        wx.Panel.__init__(self, parent, -1)
 
         self.config = json.loads(station_configs[station.upper()])
         self.tweak_wids  = {}   # tweak Combobox widgets per group
@@ -43,13 +43,14 @@ class ControlPanel(wx.Panel):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         for group, precision, max_step, motorlist in self.config:
+            print 'Config ', group, precision, max_step, motorlist
             self.groupmotors[group] = []
             for pvname, desc, dsign in motorlist:
                 self.groupmotors[group].append(desc)
 
             kws = {'motorlist': motorlist, 'max_step': max_step*1.02,
                    'precision': precision}
-            if label.lower().startswith('fine'):
+            if group.lower().startswith('fine'):
                 kws['buttons'] = [('Zero Fine Motors', self.onZeroFineMotors)]
             sizer.Add((3, 3))
             sizer.Add(self.group_panel(group=group, **kws),   0, ALL_EXP)
@@ -58,15 +59,15 @@ class ControlPanel(wx.Panel):
         pack(self, sizer)
         self.connect_motors()
 
-        @EpicsFunction
-        def connect_motors(self):
-            "connect to epics motors"
-            for group, precision, tmax, motorlist in self.config:
-                for pvname, desc, dsign in motorlist:
-                    self.motors[desc] = Motor(name=pvname)
-                    self.sign[desc] = dsign
-            for mname in self.motor_wids:
-                self.motor_wids[mname].SelectMotor(self.motors[mname])
+    @EpicsFunction
+    def connect_motors(self):
+        "connect to epics motors"
+        for group, precision, tmax, motorlist in self.config:
+            for pvname, desc, dsign in motorlist:
+                self.motors[desc] = Motor(name=pvname)
+                self.sign[desc] = dsign
+        for mname in self.motor_wids:
+            self.motor_wids[mname].SelectMotor(self.motors[mname])
 
     def group_panel(self, group='Fine Stages', motorlist=None,
                     precision=3, max_step=5.01, buttons=None):
@@ -74,7 +75,10 @@ class ControlPanel(wx.Panel):
         panel  = wx.Panel(self)
 
         tweaklist = make_steps(precision=precision, max_step=max_step)
-        if group.lower().startwith('theta'):
+        print 'Group Panel ', group, precision, max_step
+        print ' Group ',  tweaklist
+
+        if group.lower().startswith('theta'):
             tweaklist.extend([10, 20, 30, 45, 90, 180])
 
         init_tweak = {'Focus': 5, 'Theta': 8}.get(group, 6)
@@ -84,7 +88,7 @@ class ControlPanel(wx.Panel):
                                               init=init_tweak)
 
         slabel = wx.BoxSizer(wx.HORIZONTAL)
-        slabel.Add(wx.StaticText(panel, label=" %s: " % label, size=(120,-1)),
+        slabel.Add(wx.StaticText(panel, label=" %s: " % group, size=(120,-1)),
                    1,  wx.EXPAND|LEFT_BOT)
         slabel.Add(self.tweak_wids[group], 0,  ALL_EXP)
 
@@ -92,7 +96,7 @@ class ControlPanel(wx.Panel):
         msizer.Add(slabel, 0, ALL_EXP)
 
         for pvname, desc, dsign in motorlist:
-            self.motor_wids[desc] = MotorPanel(panel, label=mlabel, psize='small')
+            self.motor_wids[desc] = MotorPanel(panel, label=desc, psize='small')
             msizer.Add(self.motor_wids[desc], 0, ALL_EXP)
 
         if buttons is not None:
@@ -100,7 +104,7 @@ class ControlPanel(wx.Panel):
                 msizer.Add(add_button(panel, blabel, action=action))
 
         dim=len(motorlist)
-        btnbox = self.make_button_panel(panel, group=label, dim=dim)
+        btnbox = self.make_button_panel(panel, group=group, dim=dim)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(msizer, 0, ALL_EXP)
@@ -113,13 +117,14 @@ class ControlPanel(wx.Panel):
 
     def arrow(self, panel, group, name):
         "bitmap button"
-        b = wx.BitmapButton(panel, -1, bitmaps[name], style=wx.NO_BORDER)
+        bitmap = wx.BitmapFromImage(icons[name].GetImage())
+        b = wx.BitmapButton(panel, -1, bitmap, style=wx.NO_BORDER)
         b.Bind(wx.EVT_BUTTON, Closure(self.onMove, group=group, name=name))
         return b
 
     def make_button_panel(self, parent, group='', dim=2):
         panel = wx.Panel(parent)
-        if dim=2:
+        if dim==2:
             sizer = wx.GridSizer(3, 3, 1, 1)
             sizer.Add(self.arrow(panel, group, 'nw'), 0, ALL_EXP)
             sizer.Add(self.arrow(panel, group, 'nn'), 0, ALL_EXP)
