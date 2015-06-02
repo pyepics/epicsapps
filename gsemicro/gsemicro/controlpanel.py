@@ -43,7 +43,6 @@ class ControlPanel(wx.Panel):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         for group, precision, max_step, motorlist in self.config:
-            print 'Config ', group, precision, max_step, motorlist
             self.groupmotors[group] = []
             for pvname, desc, dsign in motorlist:
                 self.groupmotors[group].append(desc)
@@ -75,9 +74,6 @@ class ControlPanel(wx.Panel):
         panel  = wx.Panel(self)
 
         tweaklist = make_steps(precision=precision, max_step=max_step)
-        print 'Group Panel ', group, precision, max_step
-        print ' Group ',  tweaklist
-
         if group.lower().startswith('theta'):
             tweaklist.extend([10, 20, 30, 45, 90, 180])
 
@@ -161,7 +157,7 @@ class ControlPanel(wx.Panel):
         y = None
         mdesc = self.groupmotors[group]
         x = mdesc[0]
-        if len(mots) == 2:
+        if len(mdesc) == 2:
             y = mdesc[1]
 
         delta = twkval * xsign * self.sign[x]
