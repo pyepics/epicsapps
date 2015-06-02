@@ -3,6 +3,7 @@
 from setuptools import setup, Extension
 
 from Cython.Distutils import build_ext
+import os
 
 deps = ('wx', 'epics', 'sqlalchemy', 'numpy', 'Image')
 
@@ -12,12 +13,17 @@ if os.path.exists('C:/Program Files (x86)/Point Grey Research/FlyCapture2'):
 else:
     fc2_sdk = 'C:/Program Files/Point Grey Research/FlyCapture2'
 
-if os.path.exists(os.path.join(fc2_sdk, '/lib/C')):
-    fc2_lib = '/lib/C'
-elif os.path.exists(os.path.join(fc2_sdk, '/lib64/C')):
-    fc2_lib = '/lib64/C'
+
+if os.path.exists(os.path.join(fc2_sdk, 'lib/C')):
+    fc2_lib = os.path.join(fc2_sdk, 'lib/C')
+elif os.path.exists(os.path.join(fc2_sdk, 'lib64/C')):
+    fc2_lib = os.path.join(fc2_sdk, 'lib64/C')
 
 fc2_inc = os.path.join(fc2_sdk, 'include')
+
+print fc2_sdk
+print fc2_lib
+print fc2_inc
 
 setup(name = 'epicsapp.gsemicro',
       version = '0.1',
@@ -34,7 +40,7 @@ setup(name = 'epicsapp.gsemicro',
                                extra_compile_args = [],
                                extra_link_args = [],
                                libraries = ['FlyCapture2_Cd_v90'],
-                               library_dirs = [f2c_lib])],
+                               library_dirs = [fc2_lib])],
 
       data_files = ['FlyCapture2_Cd_v90.dll', 'FlyCapture2d_v90.dll',
                     'libiomp5md.dll'],
