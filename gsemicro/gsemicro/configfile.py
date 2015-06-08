@@ -6,13 +6,14 @@ from epics.wx.ordereddict import OrderedDict
 import os
 import time
 
-STAGE_LEGEND = '# index =  Motor ||  name ||  description  ||   sign'
-POS_LEGEND   = '# index = name   || imagefile     || fineX, fineY, theta, coarsex, coarsez, coarsey'
+STAGE_LEGEND = '# index =  moto  || group      ||desc || scale || prec || maxstep'
+POS_LEGEND   = '# index = name   || imagefile  || position'
 
 DEFAULT_CONF = """
 ## Sample Stage Configuration
 #--------------------------#
-[setup]
+[gui]
+title = IDE Microscope
 verify_move = 1
 verify_erase = 1
 verify_overwrite = 1
@@ -22,30 +23,38 @@ type       = areadetector
 fly2_id    = 0
 ad_prefix  = 13IDEPS1:
 ad_format  = JPEG
-web_url = http://164.54.160.115/jpg/4/image.jpg
+web_url    = http://164.54.160.115/jpg/2/image.jpg
 image_folder = Sample_Images
 #--------------------------#
+[scandb]
+instrument = microscope
+engine = sqlite3
+dbname = microscope.db
+host =
+user =
+password =
+port =
+#--------------------------#
 [stages]
-# index =  Motor ||  name ||  description   ||   sign
-1   = 13XRM:m1   || fineX || Fine X         ||    1
-2   = 13XRM:m2   || fineY || Fine Y         ||    1
-3   = 13XRM:m3   || theta || Theta          ||    1
-4   = 13XRM:m4   ||   X   || Stage X        ||    1
-5   = 13XRM:m5   ||   Z   || Stage Z (focus)||    1
-6   = 13XRM:m6   ||   Y   || Stage Y (vert) ||    1
+# index =  motor || group   ||desc || scale || prec || maxstep 
+1 = 13IDE:m1 || XY Stages   ||     ||  1    || 3    ||
+2 = 13IDE:m2 || XY Stages   ||     || -1    || 3    ||
+3 = 13IDE:m3 || Focus       ||     ||       || 3    || 7.1
 #--------------------------#
 [positions]
-# index = xxxxname      || imagefile     || finex, finey, theta, coarsex, coarsez, coarsey
+# index = name   || imagefile  || position
 001 =   p1 || p1.jpg ||  0, 0, 0, 90, 70, 350
 """
-conf_sects = {'setup':{'bools': ('verify_move','verify_erase', 'verify_overwrite')},
+conf_sects = {'gui':{'bools': ('verify_move','verify_erase', 'verify_overwrite')},
               'camera': {'ordered':False},
               'stages': {'ordered':True},
               'positions': {'ordered':True} }
 
-conf_objs = OrderedDict( (('setup', ('verify_move', 'verify_erase', 'verify_overwrite')),
+conf_objs = OrderedDict( (('gui', ('verify_move', 'verify_erase', 'verify_overwrite')),
                           ('camera', ('type', 'image_folder', 'fly2_id',
                                       'ad_prefix', 'ad_format', 'web_url')),
+                          ('scandb', ('instrument', 'engine', 'dbname', 
+                                      'host', 'user', 'password', 'port')),
                           ('stages', None),
                           ('positions', None)) )
 
@@ -82,6 +91,8 @@ class StageConfig(object):
             stage_names = self.config['stages']
             image_folder = self.config['camera']['image_folder']
             pos = OrderedDict()
+            if 'positions' not in self.config:
+                self.config['positions'] = {}
             for key, dat in self.config['positions'].items():
                 img_fname = dat['image']
                 image = {'type': 'filename',
@@ -137,14 +148,38 @@ class StageConfig(object):
 
         if 'stages' in self.config:
             out = OrderedDict()
+            groups = []
+
             skeys = list(self.config['stages'].keys())
             skeys.sort()
             for key in skeys:
                 name, val = self.config['stages'][key]
                 name = name.strip()
-                label, desc, sign = val.split('||')
-                out[name] = dict(label=label.strip(), desc=desc.strip(), sign=int(sign))
+                words = [w.strip() for w in val.split('||')]
+                group = words[0]
+                
+                desc  = words[1]
+                if len(desc) == 0:
+                    desc = None
+                    
+                scale = 1.0
+                if len(words) > 1 and len(words[2]) > 0:
+                    scale = float(words[2])
+
+                prec = None
+                if len(words) > 2 and len(words[3]) > 0:
+                    prec = int(words[3])
+                    
+                maxstep = None
+                if len(words) > 3 and len(words[4]) > 0:
+                    maxstep = float(words[4])
+
+                out[name] = dict(label=name, group=group, desc=desc, scale=scale,
+                                 prec=prec, maxstep=maxstep)
+                if group not in groups:
+                    groups.append(group)
             self.config['stages'] = out
+            self.config['stage_groups'] = groups
             self.nstages = len(out)
 
     def Save(self, fname=None):
