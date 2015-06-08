@@ -63,6 +63,7 @@ class StageFrame(wx.Frame):
         self.instdb = None
 
         self.read_config(configfile=inifile, get_dir=True)
+        print(" READ Config!! ")
         
         self.initdb_thread = Thread(target=self.init_scandb)
         self.initdb_thread.start()
@@ -94,7 +95,7 @@ class StageFrame(wx.Frame):
         for index in range(2):
             self.statusbar.SetStatusText('', index)
 
-        self.ctrlpanel = ControlPanel(self, station=station)
+        self.ctrlpanel = ControlPanel(self, station=self.config['stages'])
         self.imgpanel  = ImagePanel_Fly2(self, camera_id=self.cam_fly2id, 
                                          writer=self.write_framerate)
 

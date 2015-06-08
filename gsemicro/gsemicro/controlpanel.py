@@ -30,10 +30,10 @@ def make_steps(precision=3, min_step=0, max_step=10, decades=7, steps=(1,2,5)):
     return out
 
 class ControlPanel(wx.Panel):
-    def __init__(self, parent, station='Station_13IDE'):
+    def __init__(self, parent, config):
         wx.Panel.__init__(self, parent, -1)
 
-        self.config = json.loads(station_configs[station.upper()])
+        self.config = config #  json.loads(station_configs[station.upper()])
         self.tweak_wids  = {}   # tweak Combobox widgets per group
         self.groupmotors = {}   # motorlist per group
         self.motor_wids  = {}   # motor panel widgets, key=desc
