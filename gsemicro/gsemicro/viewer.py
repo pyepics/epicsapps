@@ -51,25 +51,26 @@ class StageFrame(wx.Frame):
 <body>
     """
 
-    def __init__(self, dbconn=None, station='Station_13IDE'):
-
-        super(StageFrame, self).__init__(None, wx.ID_ANY, 'IDE Microscope',
-                                    style=wx.DEFAULT_FRAME_STYLE , size=(1200, 750))
+    def __init__(self, inifile='SampleStage_autosave.ini'):
+        super(StageFrame, self).__init__(None, wx.ID_ANY, 
+                                         style=wx.DEFAULT_FRAME_STYLE,
+                                         size=(1200, 750))
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
 
         self.motors = None
-        self.dbconn = dbconn
+        self.dbconn = None
         self.instdb = None
+
+        self.read_config(configfile=inifile, get_dir=True)
+        
         self.initdb_thread = Thread(target=self.init_scandb)
         self.initdb_thread.start()
 
-        self.SetTitle("XRM Sample Stage")
-        self.read_config(configfile='SampleStage_autosave.ini', get_dir=True)
-
-        self.create_frame(station=station)
+        self.create_frame()
 
         self.initdb_thread.join()
+
         if self.instdb is not None:
             self.pospanel.instdb = self.instdb
             self.pospanel.set_positions_instdb()
@@ -169,21 +170,21 @@ class StageFrame(wx.Frame):
 
         self.cnf = StageConfig(configfile)
         self.config = self.cnf.config
+        gui = self.config['gui']
+        self.v_move    = gui.get('verify_move', True)
+        self.v_erase   = gui.get('verify_erase', True)
+        self.v_replace = gui.get('verify_overwrite', True)
+        self.SetTitle(gui.get('title', 'Microscope'))
+        
         self.stages    = self.config['stages']
-        self.v_move    = self.config['setup']['verify_move']
-        self.v_erase   = self.config['setup']['verify_erase']
-        self.v_replace = self.config['setup']['verify_overwrite']
 
         cam = self.config['camera']
         self.imgdir     = cam.get('image_folder', 'Sample_Images')
         self.cam_type   = cam.get('type', 'fly2')
         self.cam_fly2id = cam.get('fly2_id', 0)
-
         self.cam_adpref = cam.get('ad_prefix', '')
         self.cam_adform = cam.get('ad_format', 'JPEG')
-
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
-
 
         if not os.path.exists(self.imgdir):
             os.makedirs(self.imgdir)
@@ -286,13 +287,13 @@ class StageFrame(wx.Frame):
         self.write_message('Read Configuration File %s' % fname)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, dbconn=None, debug=False, **kws):
-        self.dbconn = dbconn
+    def __init__(self, inifile=None, debug=False, **kws):
+        self.inifile = inifile
         self.debug = debug
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        frame = StageFrame(dbconn=self.dbconn)
+        frame = StageFrame(inifile=self.inifile)
         frame.Show()
         self.SetTopWindow(frame)
 
@@ -303,5 +304,5 @@ class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         return True
 
 if __name__ == '__main__':
-    app = ViewerApp(debug=True)
+    app = ViewerApp(inifile=None, debug=True)
     app.MainLoop()
