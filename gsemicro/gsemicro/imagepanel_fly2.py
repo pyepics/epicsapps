@@ -11,7 +11,12 @@ from threading import Thread
 from cStringIO import StringIO
 import base64
 
-import pyfly2
+HAS_FLY2 = False
+try:
+    import pyfly2
+    HAS_FLY2 = True
+except ImportError:
+    pass
 
 AUTOSAVE_DIR  = "//cars5/Data/xas_user"
 AUTOSAVE_TMP  = os.path.join(AUTOSAVE_DIR, '_tmp_.jpg')
