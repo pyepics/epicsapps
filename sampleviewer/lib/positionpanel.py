@@ -1,3 +1,4 @@
+import os
 import wx
 import time
 from collections import OrderedDict
@@ -13,14 +14,16 @@ CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
 from .imageframe import ImageDisplayFrame
 
-INSTRUMENT_NAME = 'IDE_SampleStage'
+import larch
+from  larch_plugins.epics import ScanDB, InstrumentDB
 
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
-    def __init__(self, parent):
+    def __init__(self, parent, config=None):
         wx.Panel.__init__(self, parent, -1, size=(300, 500))
         self.size = (300, 500)
         self.parent = parent
+        self.config = config
         self.image_display = None
         self.pos_name =  wx.TextCtrl(self, value="", size=(285, 25),
                                      style= wx.TE_PROCESS_ENTER)
@@ -45,9 +48,6 @@ class PositionPanel(wx.Panel):
         self.pos_list.Bind(wx.EVT_LISTBOX, self.onSelect)
         self.pos_list.Bind(wx.EVT_RIGHT_DOWN, self.onRightClick)
 
-
-        # self.SetSize(self.size)
-
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(tlabel,         0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(self.pos_name,  0, wx.ALIGN_LEFT|wx.ALL)
@@ -56,6 +56,17 @@ class PositionPanel(wx.Panel):
         # print(" Position Panel ", self.GetSize(), self.size)
 
         pack(self, sizer)
+        self.init_scandb()
+        self.set_positions_instdb()
+
+    def init_scandb(self):
+        dbconn = self.config
+        if dbconn is not None:
+            self.instname = dbconn.get('instrument', 'microscope_stages')
+            scandb = ScanDB(**dbconn)
+            self.instdb = InstrumentDB(scandb)
+            if self.instdb.get_instrument(self.instname) is None:
+                self.instdb.add_instrument(self.instname)
 
     def onSave1(self, event):
         "save from text enter"
@@ -76,24 +87,28 @@ class PositionPanel(wx.Panel):
                 return
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
         imgfile = os.path.join(self.parent.imgdir, imgfile)
-
-        imgdata = self.parent.save_image(fname=imgfile)
+        
+        print 'SAVE Image: ', name, imgfile
+        imgdata = self.parent.save_image(imgfile)
         tmp_pos = self.parent.ctrlpanel.read_position()
+        
+        print 'SAVE Position: ', tmp_pos, imgfile
 
         self.positions[name] = {'image': imgfile,
                                 'timestamp': time.strftime('%b %d %H:%M:%S'),
                                 'position': tmp_pos}
-
+        
         if name not in self.pos_list.GetItems():
             self.pos_list.Append(name)
+        print "--> Add Position to DB ", name, tmp_pos
+        self.instdb.save_position(self.instname, name, tmp_pos, image=imgdata['data'])
 
-        self.pos_name.Clear()
+        # self.pos_name.Clear()
         self.pos_list.SetStringSelection(name)
         # auto-save file
-        self.parent.config['positions'] = self.positions
-        self.parent.autosave()
+        self.parent.autosave(positions=self.positions)
         self.parent.write_htmllog(name)
-        self.parent.write_message("Saved Position '%s', image in %s" % (name, fname))
+        self.parent.write_message("Saved Position '%s', image in %s" % (name, imgfile))
         wx.CallAfter(Closure(self.onSelect, event=None, name=name))
 
     def onShow(self, event):
@@ -202,7 +217,7 @@ class PositionPanel(wx.Panel):
         for name in namelist:
             newpos[name]  = stmp[name]
         self.init_positions(newpos)
-        self.autosave()
+        self.parent.autosave(positions=self.positions)
 
     def set_positions(self, positions):
         "set the list of position on the left-side panel"
@@ -218,14 +233,14 @@ class PositionPanel(wx.Panel):
             print 'No instdb?'
             return
         positions = OrderedDict()
-        iname = INSTRUMENT_NAME
+        iname = self.instname
         posnames =  self.instdb.get_positionlist(iname)
         for pname in posnames:
             thispos = self.instdb.get_position(iname, pname)
-            image = {'type': 'b64encode', 'data':''}
+            image = ''
             if thispos.image is not None:
-                image['data'] = thispos.image
-            pdat = {}
+                image = 'b64encode: %s' % thispos.image
+            pdat = OrderedDict()
             for pvpos in thispos.pvs:
                 pdat[pvpos.pv.name] =  pvpos.value
             positions[pname] = dict(position=pdat, image=image)
