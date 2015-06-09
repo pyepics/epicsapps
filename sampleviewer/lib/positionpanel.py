@@ -88,20 +88,28 @@ class PositionPanel(wx.Panel):
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
         imgfile = os.path.join(self.parent.imgdir, imgfile)
         
-        print 'SAVE Image: ', name, imgfile
-        imgdata = self.parent.save_image(imgfile)
         tmp_pos = self.parent.ctrlpanel.read_position()
+
+        imgdata = self.parent.save_image(imgfile)
         
-        print 'SAVE Position: ', tmp_pos, imgfile
+        print 'SAVE Position: ', name, imgfile, tmp_pos
+        image_notes = 'image_size=(%i, %i), image_format:%s,  data_format=%s' 
+        image_notes = image_notes % (imgdata['image_size'], 
+                                     imgdata['image_format'],
+                                     imgdata['data_format'])
 
         self.positions[name] = {'image': imgfile,
                                 'timestamp': time.strftime('%b %d %H:%M:%S'),
-                                'position': tmp_pos}
+                                'position': tmp_pos,
+                                'image_size': imgdata['image_size']
+                                'image_format': imgdata['image_format'],
+                                'data_forma': imgdata['data_format']}
         
         if name not in self.pos_list.GetItems():
             self.pos_list.Append(name)
-        print "--> Add Position to DB ", name, tmp_pos
-        self.instdb.save_position(self.instname, name, tmp_pos, image=imgdata['data'])
+        self.instdb.save_position(self.instname, name, tmp_pos, 
+                                  notes=image_notes, 
+                                  image=imgdata['data'])
 
         # self.pos_name.Clear()
         self.pos_list.SetStringSelection(name)
