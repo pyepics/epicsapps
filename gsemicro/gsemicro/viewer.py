@@ -52,19 +52,18 @@ class StageFrame(wx.Frame):
     """
 
     def __init__(self, inifile='SampleStage_autosave.ini'):
-        super(StageFrame, self).__init__(None, wx.ID_ANY, 
+        super(StageFrame, self).__init__(None, wx.ID_ANY,
                                          style=wx.DEFAULT_FRAME_STYLE,
                                          size=(1200, 750))
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
 
         self.motors = None
-        self.dbconn = None
         self.instdb = None
 
         self.read_config(configfile=inifile, get_dir=True)
         print(" READ Config!! ")
-        
+
         self.initdb_thread = Thread(target=self.init_scandb)
         self.initdb_thread.start()
 
@@ -82,11 +81,13 @@ class StageFrame(wx.Frame):
         self.imgpanel.Start()
 
     def init_scandb(self):
-        if self.dbconn is not None:
-            scandb = ScanDB(**self.dbconn)
+        dbconn = self.config.get('scandb', None)
+        if dbconn is not None:
+            self.instrument = dbconn.pop('instrument', 'microscope_stages')
+            scandb = ScanDB(**dbconn)
             self.instdb = InstrumentDB(scandb)
 
-    def create_frame(self, station='13IDE_Station'):
+    def create_frame(self):
         "build main frame"
         self.create_menus()
         self.statusbar = self.CreateStatusBar(2, wx.CAPTION|wx.THICK_FRAME)
@@ -95,8 +96,8 @@ class StageFrame(wx.Frame):
         for index in range(2):
             self.statusbar.SetStatusText('', index)
 
-        self.ctrlpanel = ControlPanel(self, station=self.config['stages'])
-        self.imgpanel  = ImagePanel_Fly2(self, camera_id=self.cam_fly2id, 
+        self.ctrlpanel = ControlPanel(self, stages=self.config['stages'])
+        self.imgpanel  = ImagePanel_Fly2(self, camera_id=self.cam_fly2id,
                                          writer=self.write_framerate)
 
         self.pospanel  = PositionPanel(self)
@@ -176,7 +177,7 @@ class StageFrame(wx.Frame):
         self.v_erase   = gui.get('verify_erase', True)
         self.v_replace = gui.get('verify_overwrite', True)
         self.SetTitle(gui.get('title', 'Microscope'))
-        
+
         self.stages    = self.config['stages']
 
         cam = self.config['camera']
