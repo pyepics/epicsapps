@@ -7,7 +7,7 @@ import os
 import time
 
 STAGE_LEGEND = '# index =  moto  || group      ||desc || scale || prec || maxstep'
-POS_LEGEND   = '# index = name   || imagefile  || position'
+POS_LEGEND   = '# index = name   || position   ||imagefile'
 
 DEFAULT_CONF = """
 ## Sample Stage Configuration
@@ -28,7 +28,7 @@ image_folder = Sample_Images
 #--------------------------#
 [scandb]
 instrument = microscope
-engine = sqlite3
+server = sqlite3
 dbname = microscope.db
 host =
 user =
@@ -42,8 +42,8 @@ port =
 3 = 13IDE:m3 || Focus       ||     ||       || 3    || 7.1
 #--------------------------#
 [positions]
-# index = name   || imagefile  || position
-001 =   p1 || p1.jpg ||  0, 0, 0, 90, 70, 350
+# index = name  || position || imagefile 
+001 =   p1 || 0, 0, 0, 90, 70, 350 || 
 """
 conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite')},
               'camera': {'ordered':False},
@@ -51,10 +51,12 @@ conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite'
               'scandb': {'ordered':True},
               'positions': {'ordered':True} }
 
-conf_objs = OrderedDict( (('gui', ('verify_move', 'verify_erase', 'verify_overwrite')),
+conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
+                                   'verify_move', 'verify_erase', 
+                                   'verify_overwrite')),
                           ('camera', ('type', 'image_folder', 'fly2_id',
                                       'ad_prefix', 'ad_format', 'web_url')),
-                          ('scandb', ('instrument', 'engine', 'dbname',
+                          ('scandb', ('instrument', 'dbname', 'server',
                                       'host', 'user', 'password', 'port')),
                           ('stages', None),
                           ('positions', None)) )
@@ -142,7 +144,7 @@ class StageConfig(object):
             for key in poskeys:
                 name, val = self.config['positions'][key]
                 name = name.strip()
-                img, posval = val.strip().split('||')
+                posval, img = val.strip().split('||')
                 pos = [float(i) for i in posval.split(',')]
                 out[name] = dict(image=img.strip(), position= pos)
             self.config['positions'] = out
@@ -183,35 +185,40 @@ class StageConfig(object):
             self.config['stage_groups'] = groups
             self.nstages = len(out)
 
-    def Save(self, fname=None):
+    def Save(self, fname=None, positions=None):
         o = []
         cnf = self.config
         if fname is not None:
             self.filename = fname
         o.append('## Sample Stage Configuration (saved: %s)'  % (time.ctime()))
+        if positions is None:
+            positions = cnf['positions']
         for sect, optlist in conf_objs.items():
             o.append('#--------------------------#\n[%s]'%sect)
-            if sect == 'positions':
+            if sect == 'positions' and positions is not None:
                 o.append(POS_LEGEND)
-                fmt =  "%3.3i = %s || %s || %s"
+                fmt =  "%3.3i = %s || %s "
                 pfmt =  ', '.join(['%f' for i in range(self.nstages)])
                 idx = 1
-                for name, val in cnf['positions'].items():
-                    img = val['image']
-                    pos = pfmt % tuple(val['position'])
-                    o.append(fmt % (idx, name, img, pos))
+                for name, val in positions.items():
+                    pos = tuple([float(p) for p in val['position'].values()])
+                    pos = pfmt % pos
+                    o.append(fmt % (idx, name, pos))
                     idx = idx + 1
             elif sect == 'stages':
                 o.append(STAGE_LEGEND)
-                fmt =  "%i = %s || %s || %s || %i"
+                fmt =  "%i = %s || %s || %s || %s || %s || %s"
                 idx = 1
-                for name, val in cnf['stages'].items():
-                    label = val['label']
-                    desc  = val['desc']
-                    sign  = val['sign']
-                    o.append(fmt % (idx, name, label, desc, sign))
+                for name, dat in cnf['stages'].items():
+                    # print 'Save STAGE ', name, dat
+                    # index =  motor || group   ||desc || scale || prec || maxstep
+                    group = dat['group']
+                    desc  = dat['desc']
+                    scale  = str(dat['scale'])
+                    prec   = str(dat['prec'])
+                    maxstep  = "%.3f" % (dat['maxstep'])
+                    o.append(fmt % (idx, name, group, desc, scale, prec, maxstep))
                     idx = idx + 1
-
             if optlist is not None:
                 for opt in optlist:
                     try:
