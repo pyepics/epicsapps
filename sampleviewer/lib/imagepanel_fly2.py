@@ -144,9 +144,13 @@ class ImagePanel_Fly2(wx.Panel):
             ftype = wx.BITMAP_TYPE_PNG
         elif filetype.lower() in ('tiff', 'tif'):
             ftype = wx.BITMAP_TYPE_TIFF
-        self.image.SaveFile(fname, ftype)
-        return self.GrabImage()
+        tmpimage = self.camera.GrabWxImage(scale=1, rgb=True)
+        tmpimage.SaveFile(fname, ftype)
+        return {'size': tmpimage.GetSize(), 'format': 'RGB', 
+                'data': base64.b64encode(tmpimage.GetData())}
 
     def GrabImage(self):
         """return base64 encoded image data"""
-        return base64.b4encode(self.image.GetData())
+        tmpimage = self.camera.GrabWxImage(scale=1, rgb=True)
+        return {'size': tmpimage.GetSize(), 'format': 'RGB', 
+                'data': base64.b64encode(tmpimage.GetData())}
