@@ -36,7 +36,7 @@ password =
 port =
 #--------------------------#
 [stages]
-# index =  motor || group   ||desc || scale || prec || maxstep 
+# index =  motor || group   ||desc || scale || prec || maxstep
 1 = 13IDE:m1 || XY Stages   ||     ||  1    || 3    ||
 2 = 13IDE:m2 || XY Stages   ||     || -1    || 3    ||
 3 = 13IDE:m3 || Focus       ||     ||       || 3    || 7.1
@@ -45,15 +45,16 @@ port =
 # index = name   || imagefile  || position
 001 =   p1 || p1.jpg ||  0, 0, 0, 90, 70, 350
 """
-conf_sects = {'gui':{'bools': ('verify_move','verify_erase', 'verify_overwrite')},
+conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite')},
               'camera': {'ordered':False},
               'stages': {'ordered':True},
+              'scandb': {'ordered':True},
               'positions': {'ordered':True} }
 
 conf_objs = OrderedDict( (('gui', ('verify_move', 'verify_erase', 'verify_overwrite')),
                           ('camera', ('type', 'image_folder', 'fly2_id',
                                       'ad_prefix', 'ad_format', 'web_url')),
-                          ('scandb', ('instrument', 'engine', 'dbname', 
+                          ('scandb', ('instrument', 'engine', 'dbname',
                                       'host', 'user', 'password', 'port')),
                           ('stages', None),
                           ('positions', None)) )
@@ -157,11 +158,11 @@ class StageConfig(object):
                 name = name.strip()
                 words = [w.strip() for w in val.split('||')]
                 group = words[0]
-                
+
                 desc  = words[1]
                 if len(desc) == 0:
                     desc = None
-                    
+
                 scale = 1.0
                 if len(words) > 1 and len(words[2]) > 0:
                     scale = float(words[2])
@@ -169,7 +170,7 @@ class StageConfig(object):
                 prec = None
                 if len(words) > 2 and len(words[3]) > 0:
                     prec = int(words[3])
-                    
+
                 maxstep = None
                 if len(words) > 3 and len(words[4]) > 0:
                     maxstep = float(words[4])
