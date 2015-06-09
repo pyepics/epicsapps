@@ -10,7 +10,6 @@ from epics.wx.utils import (add_button, add_menu, popup, pack, Closure ,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from .icons import icons
-from .station_configs import station_configs
 
 ALL_EXP  = wx.ALL|wx.EXPAND|wx.ALIGN_LEFT|wx.ALIGN_TOP
 LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
