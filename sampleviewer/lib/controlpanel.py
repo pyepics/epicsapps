@@ -1,7 +1,7 @@
 import wx
 import time
 import json
-
+from collections import OrderedDict
 from epics import Motor
 from epics.wx import MotorPanel, EpicsFunction
 
@@ -15,6 +15,12 @@ ALL_EXP  = wx.ALL|wx.EXPAND|wx.ALIGN_LEFT|wx.ALIGN_TOP
 LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
+
+def normalize_pvname(pvname):
+    pvname = str(pvname)
+    if '.' not in pvname:
+        pvname = '%s.VAL' % pvname
+    return pvname
 
 def make_steps(precision=3, minstep=0, maxstep=10, decades=7, steps=(1,2,5)):
     """automatically create list of step sizes, generally going as
@@ -32,26 +38,30 @@ class ControlPanel(wx.Panel):
     def __init__(self, parent, groups=None, config={}):
         wx.Panel.__init__(self, parent, -1)
 
-        self.groupg = groups
+        self.groups = groups
         self.config = config #  json.loads(station_configs[station.upper()])
         self.tweak_wids  = {}   # tweak Combobox widgets per group
         self.groupmotors = {}   # motorlist per group
         self.motor_wids  = {}   # motor panel widgets, key=desc
         self.motors      = {}   # epics motor,         key=desc
-        self.sign        = {}   # motor sign for ZFM,  key=desc
+        self.scale       = {}   # motor sign for ZFM,  key=desc
         self.SetMinSize((280, 500))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         for group in groups:
             self.groupmotors[group] = []
             motorlist = []
+            maxstep = 5000
+            prec = 7
             for name, data in config.items():
+                name = normalize_pvname(name)
                 if data['group'] == group:
                     self.groupmotors[group].append(data['desc'])
-                    motorlist.append(name)
-
-                    kws = {'motorlist': motorlist, 'maxstep':data['maxstep']
-                           'precision': data['prec']}
+                    motorlist.append((name, data['desc']))
+                    maxstep = min(maxstep, data['maxstep'])
+                    prec    = min(prec, data['prec'])
+            kws = {'motorlist': motorlist, 'maxstep':maxstep, 
+                   'precision': prec}
             if group.lower().startswith('fine'):
                 kws['buttons'] = [('Zero Fine Motors', self.onZeroFineMotors)]
             sizer.Add((3, 3))
@@ -64,17 +74,28 @@ class ControlPanel(wx.Panel):
     @EpicsFunction
     def connect_motors(self):
         "connect to epics motors"
-        for group, precision, tmax, motorlist in self.config:
-            for pvname, desc, dsign in motorlist:
-                self.motors[desc] = Motor(name=pvname)
-                self.sign[desc] = dsign
-        for mname in self.motor_wids:
-            self.motor_wids[mname].SelectMotor(self.motors[mname])
+        for name, data in self.config.items():
+            name = normalize_pvname(name)
+            desc = data['desc']
+            self.motors[desc] = Motor(name=name)
+            self.scale[desc] = data['scale']
+
+        #for desc in self.motor_wids:
+        #    self.motor_wids[desc].SelectMotor(self.motors[desc])
+
+    def read_position(self):
+        out = OrderedDict()
+        for name, data in self.config.items():
+            name = normalize_pvname(name)
+            out[name] = self.motors[data['desc']].VAL
+        return out
 
     def group_panel(self, group='Fine Stages', motorlist=None,
                     precision=3, maxstep=5.01, buttons=None):
         """make motor group panel """
         panel  = wx.Panel(self)
+
+        # print 'Group Panel ', group, motorlist, precision, maxstep
 
         tweaklist = make_steps(precision=precision, maxstep=maxstep)
         if group.lower().startswith('theta'):
@@ -94,8 +115,10 @@ class ControlPanel(wx.Panel):
         msizer = wx.BoxSizer(wx.VERTICAL)
         msizer.Add(slabel, 0, ALL_EXP)
 
-        for pvname, desc, dsign in motorlist:
-            self.motor_wids[desc] = MotorPanel(panel, label=desc, psize='small')
+        for pvname, desc in motorlist:
+            pvname = normalize_pvname(pvname)
+            self.motor_wids[desc] = MotorPanel(panel, pvname, 
+                                               label=desc, psize='small')
             msizer.Add(self.motor_wids[desc], 0, ALL_EXP)
 
         if buttons is not None:
@@ -109,8 +132,6 @@ class ControlPanel(wx.Panel):
         sizer.Add(msizer, 0, ALL_EXP)
         sizer.Add(btnbox, 0, CEN_TOP, 1)
 
-        #for mname in self.motor_wids:
-        #    self.motor_wids[mname].SelectMotor(self.motors[mname])
         pack(panel, sizer)
         return panel
 
@@ -146,8 +167,8 @@ class ControlPanel(wx.Panel):
     def onZeroFineMotors(self, event=None):
         "event handler for Zero Fine Motors"
         mot = self.motors
-        mot['x'].VAL +=  self.sign['finex'] * mot['finex'].VAL
-        mot['y'].VAL +=  self.sign['finey'] * mot['finey'].VAL
+        mot['x'].VAL +=  self.scale['finex'] * mot['finex'].VAL
+        mot['y'].VAL +=  self.scale['finey'] * mot['finey'].VAL
         time.sleep(0.05)
         mot['finex'].VAL = 0
         mot['finey'].VAL = 0
@@ -163,11 +184,11 @@ class ControlPanel(wx.Panel):
         if len(mdesc) == 2:
             y = mdesc[1]
 
-        delta = twkval * xsign * self.sign[x]
+        delta = twkval * xsign * self.scale[x]
         val   = delta + float(self.motor_wids[x].drive.GetValue())
         self.motor_wids[x].drive.SetValue("%f" % val)
         if y is not None:
-            delta = twkval * ysign * self.sign[y]
+            delta = twkval * ysign * self.scale[y]
             val   = delta + float(self.motor_wids[y].drive.GetValue())
             self.motor_wids[y].drive.SetValue("%f" % val)
         try:
