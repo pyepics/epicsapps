@@ -16,7 +16,7 @@ LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
-def make_steps(precision=3, min_step=0, max_step=10, decades=7, steps=(1,2,5)):
+def make_steps(precision=3, minstep=0, maxstep=10, decades=7, steps=(1,2,5)):
     """automatically create list of step sizes, generally going as
         1, 2, 5, 10, 20, 50, 100, 200, 500
     using precision,
@@ -24,14 +24,15 @@ def make_steps(precision=3, min_step=0, max_step=10, decades=7, steps=(1,2,5)):
     out = []
     for i in range(decades):
         for step in (j* 10**(i-precision) for j in steps):
-            if (step <= max_step and step > 0.98*min_step):
+            if (step <= maxstep and step > 0.98*minstep):
                 out.append(step)
     return out
 
 class ControlPanel(wx.Panel):
-    def __init__(self, parent, config):
+    def __init__(self, parent, groups=None, config={}):
         wx.Panel.__init__(self, parent, -1)
 
+        self.groupg = groups
         self.config = config #  json.loads(station_configs[station.upper()])
         self.tweak_wids  = {}   # tweak Combobox widgets per group
         self.groupmotors = {}   # motorlist per group
@@ -41,13 +42,16 @@ class ControlPanel(wx.Panel):
         self.SetMinSize((280, 500))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        for group, precision, max_step, motorlist in self.config:
+        for group in groups:
             self.groupmotors[group] = []
-            for pvname, desc, dsign in motorlist:
-                self.groupmotors[group].append(desc)
+            motorlist = []
+            for name, data in config.items():
+                if data['group'] == group:
+                    self.groupmotors[group].append(data['desc'])
+                    motorlist.append(name)
 
-            kws = {'motorlist': motorlist, 'max_step': max_step*1.02,
-                   'precision': precision}
+                    kws = {'motorlist': motorlist, 'maxstep':data['maxstep']
+                           'precision': data['prec']}
             if group.lower().startswith('fine'):
                 kws['buttons'] = [('Zero Fine Motors', self.onZeroFineMotors)]
             sizer.Add((3, 3))
@@ -68,11 +72,11 @@ class ControlPanel(wx.Panel):
             self.motor_wids[mname].SelectMotor(self.motors[mname])
 
     def group_panel(self, group='Fine Stages', motorlist=None,
-                    precision=3, max_step=5.01, buttons=None):
+                    precision=3, maxstep=5.01, buttons=None):
         """make motor group panel """
         panel  = wx.Panel(self)
 
-        tweaklist = make_steps(precision=precision, max_step=max_step)
+        tweaklist = make_steps(precision=precision, maxstep=maxstep)
         if group.lower().startswith('theta'):
             tweaklist.extend([10, 20, 30, 45, 90, 180])
 

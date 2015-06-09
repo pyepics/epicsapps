@@ -83,9 +83,12 @@ class StageFrame(wx.Frame):
     def init_scandb(self):
         dbconn = self.config.get('scandb', None)
         if dbconn is not None:
-            self.instrument = dbconn.pop('instrument', 'microscope_stages')
+            self.instname = dbconn.pop('instrument', 'microscope_stages')
             scandb = ScanDB(**dbconn)
             self.instdb = InstrumentDB(scandb)
+            if self.instdb.get_instrument(self.instname) is None:
+                self.instdb.add_instrument(instname)
+
 
     def create_frame(self):
         "build main frame"
@@ -95,8 +98,10 @@ class StageFrame(wx.Frame):
 
         for index in range(2):
             self.statusbar.SetStatusText('', index)
+        config = self.config
 
-        self.ctrlpanel = ControlPanel(self, stages=self.config['stages'])
+        self.ctrlpanel = ControlPanel(self, groups=config.get('stage_groups', None),
+                                      stages=config.get('stages', {}))
         self.imgpanel  = ImagePanel_Fly2(self, camera_id=self.cam_fly2id,
                                          writer=self.write_framerate)
 
@@ -178,7 +183,7 @@ class StageFrame(wx.Frame):
         self.v_replace = gui.get('verify_overwrite', True)
         self.SetTitle(gui.get('title', 'Microscope'))
 
-        self.stages    = self.config['stages']
+
 
         cam = self.config['camera']
         self.imgdir     = cam.get('image_folder', 'Sample_Images')
@@ -193,6 +198,20 @@ class StageFrame(wx.Frame):
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
         self.ConfigCamera()
+
+        self.config = self.cnf.config
+        self.stages = OrderedDict()
+        for mname, data in self.config.get('stages', {}).items():
+            mot = Motor(name=pvname)
+            if data['prec'] is None:
+                data['prec'] = mot.precision
+            if data['desc'] is None:
+                data['desc'] = mot.description
+            if data['maxstep'] is None:
+                data['maxstep'] = (mot.high_limit - mot.low_limit)/2.50
+
+            self.stages[mname] = data
+
 
     def begin_htmllog(self):
         "initialize log file"
