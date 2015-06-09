@@ -1,5 +1,6 @@
-from gsemicro import ViewerApp
-configfile = 'ide_station.ini'
+from lib import ViewerApp
+inifile = 'ide_station.ini'
+inifile = 'gsecars_ide.ini'
 
-app = ViewerApp(debug=True, inifile=configfile)
+app = ViewerApp(debug=True, inifile=inifile)
 app.MainLoop()
