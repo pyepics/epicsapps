@@ -174,6 +174,7 @@ class PositionPanel(wx.Panel):
                                   'Verify Erase',
                                   style=wx.YES_NO|wx.ICON_QUESTION):
                 return
+        self.instdb.remove_position(self.instname, posname)
         self.positions.pop(posname)
         self.pos_list.Delete(ipos)
         self.pos_name.Clear()
