@@ -112,6 +112,7 @@ class ImagePanel_EpicsAD(wx.Panel):
 
         self.scale = max(self.scale, 0.05)
 
+        ### should abstract to a GrabWxImage() method
         if self.ad_img is None or self.ad_cam is None:
             return
 
@@ -162,6 +163,8 @@ class ImagePanel_EpicsAD(wx.Panel):
             self.image = wx.ImageFromData(width, height, rawdata)
         self.image = self.image.Scale(int(self.scale*width), int(self.scale*height))
 
+        ### self.image = self.GrabWxImage(scale=self.scale, rgb=True)
+        
         bitmap = wx.BitmapFromImage(self.image)
         img_w, img_h = self.bitmap_size = bitmap.GetSize()
         pan_w, pan_h = self.panel_size = self.GetSize()
@@ -223,8 +226,8 @@ class ImagePanel_EpicsAD(wx.Panel):
             ftype = wx.BITMAP_TYPE_PNG
         elif filetype.lower() in ('tiff', 'tif'):
             ftype = wx.BITMAP_TYPE_TIFF
-        tmpimage = self.camera.GrabWxImage(scale=1, rgb=True)
-        tmpimage.SaveFile(fname, ftype)
+        ## tmpimage = self.GrabWxImage(scale=self.scale, rgb=True)
+        ## tmpimage.SaveFile(fname, ftype)
         return {'image_size': tmpimage.GetSize(), 
                 'image_format': 'RGB', 
                 'data_format': 'base64',
@@ -237,7 +240,6 @@ class ImagePanel_EpicsAD(wx.Panel):
                 'image_format': 'RGB', 
                 'data_format': 'base64',
                 'data': base64.b64encode(tmpimage.GetData())}
-
 
     def GetImageSize(self):
         self.arrsize = [1,1,1]
