@@ -11,13 +11,10 @@ from threading import Thread
 from collections import OrderedDict
 import base64
 
-import larch
-from  larch_plugins.epics import ScanDB, InstrumentDB
-
-from epics import caput
+from epics import caput, Motor
 from epics.wx import EpicsFunction
 
-from epics.wx.utils import (add_menu, pack, Closure ,
+from epics.wx.utils import (add_menu, pack, Closure, popup,
                             NumericCombo, SimpleText, FileSave, FileOpen,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
@@ -37,11 +34,6 @@ CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
 
-CONFIG_DIR  = '//cars5/Data/xas_user/config/SampleStage/'
-WORKDIR_FILE = os.path.join(CONFIG_DIR, 'workdir.txt')
-ICON_FILE = os.path.join(CONFIG_DIR, 'micro.ico')
-
-
 
 class StageFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
@@ -51,40 +43,17 @@ class StageFrame(wx.Frame):
 <body>
     """
 
-    def __init__(self, dbconn=None, station='Station_13IDE'):
-
-        super(StageFrame, self).__init__(None, wx.ID_ANY, 'IDE Microscope',
-                                    style=wx.DEFAULT_FRAME_STYLE , size=(1200, 750))
+    def __init__(self, inifile='SampleStage_autosave.ini', size=(1600, 800)):
+        super(StageFrame, self).__init__(None, wx.ID_ANY,
+                                         style=wx.DEFAULT_FRAME_STYLE,
+                                         size=size)
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
-
-        self.motors = None
-        self.dbconn = dbconn
-        self.instdb = None
-        self.initdb_thread = Thread(target=self.init_scandb)
-        self.initdb_thread.start()
-
-        self.SetTitle("XRM Sample Stage")
-        self.read_config(configfile='SampleStage_autosave.ini', get_dir=True)
-
-        self.create_frame(station=station)
-
-        self.initdb_thread.join()
-        if self.instdb is not None:
-            self.pospanel.instdb = self.instdb
-            self.pospanel.set_positions_instdb()
-        else:
-            self.pospanel.set_positions(self.config['positions'])
-
-        # finally, start camera
+        self.read_config(configfile=inifile, get_dir=True)
+        self.create_frame(size=size)
         self.imgpanel.Start()
 
-    def init_scandb(self):
-        if self.dbconn is not None:
-            scandb = ScanDB(**self.dbconn)
-            self.instdb = InstrumentDB(scandb)
-
-    def create_frame(self, station='13IDE_Station'):
+    def create_frame(self, size=(1600, 800)):
         "build main frame"
         self.create_menus()
         self.statusbar = self.CreateStatusBar(2, wx.CAPTION|wx.THICK_FRAME)
@@ -92,20 +61,24 @@ class StageFrame(wx.Frame):
 
         for index in range(2):
             self.statusbar.SetStatusText('', index)
+        config = self.config
+        self.ctrlpanel = ControlPanel(self, 
+                                      groups=config.get('stage_groups', None),
+                                      config=config.get('stages', {}))
 
-        self.ctrlpanel = ControlPanel(self, station=station)
-        self.imgpanel  = ImagePanel_Fly2(self, camera_id=self.cam_fly2id, 
+        self.imgpanel  = ImagePanel_Fly2(self, camera_id=int(self.cam_fly2id),
                                          writer=self.write_framerate)
 
-        self.pospanel  = PositionPanel(self)
+        self.pospanel  = PositionPanel(self, config=self.config.get('scandb', None))
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.AddMany([(self.ctrlpanel, 0, ALL_EXP|LEFT_CEN, 1),
-                       (self.imgpanel,  5, ALL_EXP|LEFT_CEN, 1),
+                       (self.imgpanel,  3, ALL_EXP|LEFT_CEN, 1),
                        (self.pospanel,  1, ALL_EXP|LEFT_CEN, 1)])
 
         pack(self, sizer)
-        icon = wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO)
-        self.SetIcon(icon)
+        self.SetSize(size)
+        if len(self.iconfile) > 0:
+            self.SetIcon(wx.Icon(self.iconfile, wx.BITMAP_TYPE_ICO))
         self.Bind(wx.EVT_CLOSE, self.onClose)
 
     def create_menus(self):
@@ -156,34 +129,34 @@ class StageFrame(wx.Frame):
 
     def read_config(self, configfile=None, get_dir=False):
         "open/read ini config file"
-        if get_dir:
-            try:
-                workdir = open(WORKDIR_FILE, 'r').readline()[:-1]
-                os.chdir(workdir)
-            except:
-                pass
-            ret = SelectWorkdir(self)
-            if ret is None:
-                self.Destroy()
-            os.chdir(ret)
 
         self.cnf = StageConfig(configfile)
         self.config = self.cnf.config
-        self.stages    = self.config['stages']
-        self.v_move    = self.config['setup']['verify_move']
-        self.v_erase   = self.config['setup']['verify_erase']
-        self.v_replace = self.config['setup']['verify_overwrite']
+        gui = self.config['gui']
+        self.workdir_file   = gui.get('workdir_file', 'sampleviewer_workdir.txt')
+        self.iconfile  = gui.get('icon_file', None)
+        self.v_move    = gui.get('verify_move', True)
+        self.v_erase   = gui.get('verify_erase', True)
+        self.v_replace = gui.get('verify_overwrite', True)
+        self.SetTitle(gui.get('title', 'Microscope'))
 
         cam = self.config['camera']
         self.imgdir     = cam.get('image_folder', 'Sample_Images')
         self.cam_type   = cam.get('type', 'fly2')
         self.cam_fly2id = cam.get('fly2_id', 0)
-
         self.cam_adpref = cam.get('ad_prefix', '')
         self.cam_adform = cam.get('ad_format', 'JPEG')
-
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
+        
+        try:
+            workdir = open(self.workdir_file, 'r').readline()[:-1]
+            os.chdir(workdir)
+        except:
+            pass
 
+        if get_dir:
+            ret = SelectWorkdir(self)
+            os.chdir(ret)
 
         if not os.path.exists(self.imgdir):
             os.makedirs(self.imgdir)
@@ -191,13 +164,25 @@ class StageFrame(wx.Frame):
             self.begin_htmllog()
         self.ConfigCamera()
 
+        self.config = self.cnf.config
+        self.stages = OrderedDict()
+        for mname, data in self.config.get('stages', {}).items():
+            mot = Motor(name=mname)
+            if data['prec'] is None:
+                data['prec'] = mot.precision
+            if data['desc'] is None:
+                data['desc'] = mot.description
+            if data['maxstep'] is None:
+                data['maxstep'] = (mot.high_limit - mot.low_limit)/2.10
+            self.stages[mname] = data
+
     def begin_htmllog(self):
         "initialize log file"
         fout = open(self.htmllog, 'w')
         fout.write(self.html_header)
         fout.close()
 
-    def save_image(self, fname=None):
+    def save_image(self, fname):
         "save image to file"
         imgdata = self.imgpanel.SaveImage(fname)
         if imgdata is None:
@@ -206,8 +191,8 @@ class StageFrame(wx.Frame):
             self.write_message('saved image to %s' % fname)
         return imgdata
 
-    def autosave(self):
-        self.cnf.Save('SampleStage_autosave.ini')
+    def autosave(self, positions=None):
+        self.cnf.Save('SampleStage_autosave.ini', positions=positions)
 
     def write_htmllog(self, name):
         thispos = self.config['positions'].get(name, None)
@@ -261,10 +246,15 @@ class StageFrame(wx.Frame):
         self.statusbar.SetStatusText(msg, 1)
 
 
-    def onClose(self, event):
-        self.imgpanel.Stop()
-        self.imgpanel.Destroy()
-        self.Destroy()
+    def onClose(self, event=None):
+        if wx.ID_YES == popup(self, "Really Quit?", "Exit Sample Stage?",
+                              style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION):
+
+            fout = open(self.workdir_file, 'w')
+            fout.write("%s\n" % os.path.abspath(os.curdir))
+            fout.close()
+            self.imgpanel.Stop()
+            self.Destroy()
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',
@@ -286,13 +276,13 @@ class StageFrame(wx.Frame):
         self.write_message('Read Configuration File %s' % fname)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, dbconn=None, debug=False, **kws):
-        self.dbconn = dbconn
+    def __init__(self, inifile=None, debug=False, **kws):
+        self.inifile = inifile
         self.debug = debug
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        frame = StageFrame(dbconn=self.dbconn)
+        frame = StageFrame(inifile=self.inifile)
         frame.Show()
         self.SetTopWindow(frame)
 
@@ -303,5 +293,5 @@ class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         return True
 
 if __name__ == '__main__':
-    app = ViewerApp(debug=True)
+    app = ViewerApp(inifile=None, debug=True)
     app.MainLoop()

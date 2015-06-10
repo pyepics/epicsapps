@@ -19,7 +19,8 @@ from wxmplot.colors import hexcolor
 ICON_FILE = 'camera.ico'
 
 from debugtime import debugtime
-os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '16777216'
+os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '78777216'
+os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '55577700'
 
 class Empty:
     pass
@@ -29,6 +30,9 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
                       PVEnumChoice, PVFloatCtrl, PVTextCtrl)
 
 from epics.wx.utils import add_menu
+
+IMG_SIZE = (1360, 1024)
+IMG_SIZE = (1928, 1448)
 
 HAS_OVERLAY_DEVICE = False
 try:
@@ -93,7 +97,7 @@ class AD_Display(wx.Frame):
 
         self.img_w = 0
         self.img_h = 0
-        self.wximage = wx.EmptyImage(1024, 1360) # 1360, 1024) # approx_height, 1.5*approx_height)
+        self.wximage = wx.EmptyImage(3, 3)
         self.buildMenus()
         self.buildFrame()
 
@@ -120,7 +124,7 @@ class AD_Display(wx.Frame):
         dlg.Destroy()
 
     def ConnectToPV(self, event=None, name=None):
-        print 'Connect To PV ', name , event
+        # print 'Connect To PV ', name , event
         if name is None:
             name = ''
         dlg = wx.TextEntryDialog(self, 'Enter PV for Area Detector',
@@ -390,7 +394,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             sizer.Add(self.wids['o2color'],     (ir+5, 1), (1, 2), ctrlstyle)
             sizer.Add(lin(75),                  (ir+6, 0), (1, 3), labstyle)
 
-        self.image = ImageView(self, size=(1360, 1024), onzoom=self.onZoom,
+        self.image = ImageView(self, size=IMG_SIZE, onzoom=self.onZoom,
                                onprofile=self.onProfile, onshow=self.onShowXY)
 
         panel.SetSizer(sizer)
@@ -522,37 +526,38 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def DatatoImage(self):  #,  data, size, mode):
         """convert raw data to image"""
-        #x = debugtime()
-
+        x = debugtime()
+        
         width, height = self.im_size
         d_size = (int(width*self.scale), int(height*self.scale))
         data = self.data.flatten()
-        #x.add('flatten')
+        # x.add('flatten %i' % len(data))
         if self.imbuff is None or d_size != self.d_size or self.im_mode == 'L':
             try:
                 self.imbuff =  Image.frombuffer(self.im_mode, self.im_size, data,
                                                 'raw',  self.im_mode, 0, 1)
-                #x.add('made image')
+                # x.add('made image')
             except:
                 return
         self.d_size = d_size = (int(width*self.scale), int(height*self.scale))
         if self.imbuff.size != d_size:
             self.imbuff = self.imbuff.resize(d_size)
-            #x.add('resized imbuff')
+            # x.add('resized imbuff')
 
         if self.wximage.GetSize() != self.imbuff.size:
             self.wximage = wx.EmptyImage(d_size[0], d_size[1])
-        #x.add('created wximage %s  ' % (repr(self.wximage.GetSize())))
+        # x.add('created wximage %s  ' % (repr(self.wximage.GetSize())))
+        # print "IMAGE MODE ", self.im_mode, len(data), data.shape
         if self.im_mode == 'L':
             self.wximage.SetData(self.imbuff.convert('RGB').tostring())
         elif self.im_mode == 'RGB':
             data.shape = (3, width, height)
+            
             self.wximage = wx.ImageFromData(width, height, data)
-        #x.add('set wx image wximage : %i, %i ' % d_size)
+        # x.add('set wx image wximage : %i, %i ' % d_size)
         self.image.SetValue(self.wximage)
-        #x.add('set image value')
-        #x.show()
-
+        # x.add('set image value')
+        # x.show()
 
     def onProfile(self, x0, y0, x1, y1):
         width  = self.ad_cam.SizeX
@@ -672,6 +677,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     @EpicsFunction
     def connect_pvs(self, verbose=True):
+        # print "Connect PVS"
         if self.prefix is None or len(self.prefix) < 2:
             return
 
@@ -789,8 +795,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.arrsize[1] = self.ad_img.ArraySize1_RBV
         self.arrsize[2] = self.ad_img.ArraySize2_RBV
         self.colormode = self.ad_img.ColorMode_RBV
-
-
         self.img_w = self.arrsize[1]
         self.img_h = self.arrsize[0]
         if self.colormode == 2:
@@ -832,12 +836,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if (imgcount == self.imgcount or abs(now - self.last_update) < 0.025):
             self.drawing = False
             return
-        d.add('refresh img start')
+        # d.add('refresh img start')
         self.imgcount = imgcount
         self.drawing = True
         self.n_drawn += 1
         self.n_img = imgcount - self.imgcount_start
-        #print 'ImgCount, n_drawn: ', imgcount, self.n_img, self.n_drawn
+        # print 'ImgCount, n_drawn: ', imgcount, self.n_img, self.n_drawn
 
         self.last_update = time.time()
         self.image.can_resize = False
@@ -854,9 +858,9 @@ Matt Newville <newville@cars.uchicago.edu>"""
             self.drawing = False
             return
 
-        d.add('refresh img before raw get %i' % arraysize)
-        rawdata = self.ad_img.PV('ArrayData').get(count=arraysize)
-        d.add('refresh img after raw get')
+        # d.add('refresh img before raw get %i' % arraysize)
+        rawdata = self.ad_img.PV('ArrayData').get(count=arraysize).astype('uint8')
+        # d.add('refresh img after raw get')
         im_mode = 'L'
         im_size = (self.arrsize[0], self.arrsize[1])
 
@@ -868,17 +872,17 @@ Matt Newville <newville@cars.uchicago.edu>"""
             im_mode = 'I'
             rawdata = rawdata.astype(np.uint32)
 
-        d.add('refresh img before msg')
+        # d.add('refresh img before msg')
         self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
-        d.add('refresh img before get image size')
+        # d.add('refresh img before get image size')
         self.GetImageSize()
 
         self.im_size = im_size
         self.im_mode = im_mode
         self.data = rawdata
-        d.add('refresh img before data to image')
+        # d.add('refresh img before data to image')
         self.DatatoImage()
-        d.add('refresh img after data to image')
+        # d.add('refresh img after data to image')
         self.image.can_resize = True
         nmissed = max(0, self.n_img-self.n_drawn)
 
@@ -888,7 +892,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.messag(smsg, panel=0)
 
         self.drawing = False
-        d.add('refresh img done')
+        # d.add('refresh img done')
         #d.show()
 
 #         imbuff =  Image.frombuffer(im_mode, im_size, rawdata,

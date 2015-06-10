@@ -11,7 +11,12 @@ from threading import Thread
 from cStringIO import StringIO
 import base64
 
-import pyfly2
+HAS_FLY2 = False
+try:
+    import pyfly2
+    HAS_FLY2 = True
+except ImportError:
+    pass
 
 AUTOSAVE_DIR  = "//cars5/Data/xas_user"
 AUTOSAVE_TMP  = os.path.join(AUTOSAVE_DIR, '_tmp_.jpg')
@@ -139,9 +144,17 @@ class ImagePanel_Fly2(wx.Panel):
             ftype = wx.BITMAP_TYPE_PNG
         elif filetype.lower() in ('tiff', 'tif'):
             ftype = wx.BITMAP_TYPE_TIFF
-        self.image.SaveFile(fname, ftype)
-        return self.GrabImage()
+        tmpimage = self.camera.GrabWxImage(scale=1, rgb=True)
+        tmpimage.SaveFile(fname, ftype)
+        return {'image_size': tmpimage.GetSize(), 
+                'image_format': 'RGB', 
+                'data_format': 'base64',
+                'data': base64.b64encode(tmpimage.GetData())}
 
     def GrabImage(self):
         """return base64 encoded image data"""
-        return base64.b4encode(self.image.GetData())
+        tmpimage = self.camera.GrabWxImage(scale=1, rgb=True)
+        return {'image_size': tmpimage.GetSize(), 
+                'image_format': 'RGB', 
+                'data_format': 'base64',
+                'data': base64.b64encode(tmpimage.GetData())}
