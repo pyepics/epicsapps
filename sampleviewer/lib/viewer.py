@@ -24,6 +24,8 @@ from .controlpanel import ControlPanel
 from .positionpanel import PositionPanel
 
 from .imagepanel_fly2 import ImagePanel_Fly2
+from .imagepanel_epicsAD import ImagePanel_EpicsAD
+# from .imagepanel_webcam import ImagePanel_EpicsAD
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
@@ -49,7 +51,7 @@ class StageFrame(wx.Frame):
                                          size=size)
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
-        self.read_config(configfile=inifile, get_dir=True)
+        self.read_config(configfile=inifile) # , get_dir=True)
         self.create_frame(size=size)
         self.imgpanel.Start()
 
@@ -62,14 +64,25 @@ class StageFrame(wx.Frame):
         for index in range(2):
             self.statusbar.SetStatusText('', index)
         config = self.config
+        
         self.ctrlpanel = ControlPanel(self, 
                                       groups=config.get('stage_groups', None),
                                       config=config.get('stages', {}))
-
-        self.imgpanel  = ImagePanel_Fly2(self, camera_id=int(self.cam_fly2id),
-                                         writer=self.write_framerate)
-
-        self.pospanel  = PositionPanel(self, config=self.config.get('scandb', None))
+        print 'Camera ', self.cam_type
+        if self.cam_type.startswith('fly2'):
+            self.imgpanel  = ImagePanel_Fly2(self,
+                                             camera_id=int(self.cam_fly2id),
+                                             writer=self.write_framerate)
+        elif self.cam_type.startswith('area'):
+            self.imgpanel  = ImagePanel_EpicsAD(self, prefix=self.cam_adpref,
+                                                writer=self.write_framerate)
+        elif self.cam_type.startswith('webcam'):
+            self.imgpanel  = ImagePanel_EpicsAD(self, url=self.cam_weburl,
+                                               writer=self.write_framerate)
+            
+           
+        self.pospanel  = PositionPanel(self,
+                                       config=config.get('scandb', None))
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.AddMany([(self.ctrlpanel, 0, ALL_EXP|LEFT_CEN, 1),
                        (self.imgpanel,  3, ALL_EXP|LEFT_CEN, 1),
@@ -133,8 +146,9 @@ class StageFrame(wx.Frame):
         self.cnf = StageConfig(configfile)
         self.config = self.cnf.config
         gui = self.config['gui']
-        self.workdir_file   = gui.get('workdir_file', 'sampleviewer_workdir.txt')
-        self.iconfile  = gui.get('icon_file', None)
+        self.workdir_file  = gui.get('workdir_file', 'sampleviewer_workdir.txt')
+        self.iconfile      = gui.get('icon_file', '')
+        self.autosave_file = gui.get('autosave_file', None)
         self.v_move    = gui.get('verify_move', True)
         self.v_erase   = gui.get('verify_erase', True)
         self.v_replace = gui.get('verify_overwrite', True)
@@ -142,7 +156,7 @@ class StageFrame(wx.Frame):
 
         cam = self.config['camera']
         self.imgdir     = cam.get('image_folder', 'Sample_Images')
-        self.cam_type   = cam.get('type', 'fly2')
+        self.cam_type   = cam.get('type', 'fly2').lower()
         self.cam_fly2id = cam.get('fly2_id', 0)
         self.cam_adpref = cam.get('ad_prefix', '')
         self.cam_adform = cam.get('ad_format', 'JPEG')
@@ -221,7 +235,7 @@ class StageFrame(wx.Frame):
 
     @EpicsFunction
     def ConfigCamera(self):
-        if self.cam_type.lower().startswith('area'):
+        if self.cam_type.startswith('area'):
             if not self.cam_adpref.endswith(':'):
                 self.cam_adpref = "%s:" % self.cam_adpref
             cname = "%s%s1:"% (self.cam_adpref, self.cam_adform.upper())
