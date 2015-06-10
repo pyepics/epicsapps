@@ -18,29 +18,27 @@ try:
 except ImportError:
     pass
 
-AUTOSAVE_DIR  = "//cars5/Data/xas_user"
-AUTOSAVE_TMP  = os.path.join(AUTOSAVE_DIR, '_tmp_.jpg')
-AUTOSAVE_FILE = os.path.join(AUTOSAVE_DIR, 'IDEuscope_Live.jpg')
-
 class ImagePanel_Fly2(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
-    def __init__(self, parent,  camera_id=0, imagesize=(1928, 1448), 
-                 writer=None, **kws):
-        
-        super(ImagePanel_Fly2, self).__init__(parent,  -1, size=(964, 724))
+    def __init__(self, parent,  camera_id=0, writer=None,
+                 autosave_file=None, **kws):
+        super(ImagePanel_Fly2, self).__init__(parent, -1, size=(800, 600))
+        # 964, 724))
 
         self.context = pyfly2.Context()
         self.camera = self.context.get_camera(camera_id)
+        width, height = self.camera.GetSize()
 
-        self.IMG_W = float(imagesize[0]+0.5)
-        self.IMG_H = float(imagesize[1]+0.5)
+        self.img_w = float(width+0.5)
+        self.img_h = float(height+0.5)
         self.writer = writer
         self.cam_name = '-'
+
+        
         self.scale = 0.60
         self.count = 0
         self.last_size = 0
-        self.autosave = True
-        self.last_autosave = 0
+
         self.scalebar = None
         self.circle  = None
         self.SetBackgroundColour("#EEEEEE")
@@ -51,15 +49,23 @@ class ImagePanel_Fly2(wx.Panel):
         self.Bind(wx.EVT_PAINT, self.onPaint)
         self.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
 
-        self.autosave_thread = Thread(target=self.onAutosave)
-        self.autosave_thread.daemon = True
+        self.autosave = True
+        self.last_autosave = 0
+        self.autosave_tmpf = None
+        self.autosave_file = None
+        if autosave_file is not None:
+            path, tmp = os.path.split(autosave_file)
+            self.autosave_file = autosave_file
+            self.autosave_tmpf = os.path.join(path, '_tmp_.jpg')
+            self.autosave_thread = Thread(target=self.onAutosave)
+            self.autosave_thread.daemon = True
 
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
 
     def onSize(self, evt):
         frame_w, frame_h = self.last_size = evt.GetSize()
-        self.scale = min(frame_w/self.IMG_W, frame_h/self.IMG_H)
+        self.scale = min(frame_w/self.img_w, frame_h/self.img_h)
         self.Refresh()
         evt.Skip()
 
@@ -129,8 +135,10 @@ class ImagePanel_Fly2(wx.Panel):
             if tint != self.last_autosave:
                 self.last_autosave = tint
                 try:
-                    self.image.SaveFile(AUTOSAVE_TMP, wx.BITMAP_TYPE_JPEG)
-                    shutil.copy(AUTOSAVE_TMP, AUTOSAVE_FILE)
+                    self.image.SaveFile(self.autosave_tmpf,
+                                        wx.BITMAP_TYPE_JPEG)
+                    shutil.copy(self.autosave_tmpf,
+                                self.autosave_file)
                 except:
                     pass
                 tfrac, tint = math.modf(time.time())
