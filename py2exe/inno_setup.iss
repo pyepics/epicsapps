@@ -3,12 +3,12 @@
 
 [Setup]
 AppName=Epics Python Applications
-AppVersion=0.2
+AppVersion=0.5
 AppPublisher=Matthew Newville, GSECARS,  The University of Chicago
 AppPublisherURL=http://pyepics.github.com/epicsapps/
 AppSupportURL=http://pyepics.github.com/epicsapps/
 AppUpdatesURL=http://pyepics.github.com/epicsapps/
-AppCopyright=Copyright (C) 2013 Matthew Newville
+AppCopyright=Copyright (C) 2014 Matthew Newville
 DefaultDirName={pf}\Epics Applications
 DefaultGroupName=Epics Applications
 AlwaysRestart=no
