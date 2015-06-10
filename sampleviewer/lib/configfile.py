@@ -13,7 +13,10 @@ DEFAULT_CONF = """
 ## Sample Stage Configuration
 #--------------------------#
 [gui]
-title = IDE Microscope
+workdir_file = /tmp/workdir.dat
+autosave_file = /tmp/micro_live.jpg
+icon_file = 
+title = Microscope
 verify_move = 1
 verify_erase = 1
 verify_overwrite = 1
@@ -52,8 +55,8 @@ conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite'
               'positions': {'ordered':True} }
 
 conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
-                                   'verify_move', 'verify_erase', 
-                                   'verify_overwrite')),
+                                   'autosave_file', 'verify_move',
+                                   'verify_erase', 'verify_overwrite')),
                           ('camera', ('type', 'image_folder', 'fly2_id',
                                       'ad_prefix', 'ad_format', 'web_url')),
                           ('scandb', ('instrument', 'dbname', 'server',
