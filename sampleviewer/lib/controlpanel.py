@@ -45,7 +45,7 @@ class ControlPanel(wx.Panel):
         self.motor_wids  = {}   # motor panel widgets, key=desc
         self.motors      = {}   # epics motor,         key=desc
         self.scale       = {}   # motor sign for ZFM,  key=desc
-        self.SetMinSize((280, 500))
+        self.SetMinSize((320, 500))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         for group in groups:
@@ -67,7 +67,7 @@ class ControlPanel(wx.Panel):
             sizer.Add((3, 3))
             sizer.Add(self.group_panel(group=group, **kws),   0, ALL_EXP)
             sizer.Add((3, 3))
-            sizer.Add(wx.StaticLine(self, size=(290, 3)), 0, CEN_TOP)
+            sizer.Add(wx.StaticLine(self, size=(305, 3)), 0, CEN_TOP)
         pack(self, sizer)
         self.connect_motors()
 
