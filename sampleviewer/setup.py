@@ -12,7 +12,7 @@ setup(name = 'epicsapp.sampleviewer',
       author_email = 'newville@cars.uchicago.edu',
       license = 'BSD',
       description = 'Epics Microscope/SampleStage Control',
-      package_dir = {'epicsapps.sampleviewer': 'lib', 'epicsapps': 'base'},
+      package_dir = {'epicsapps.sampleviewer': 'lib'},
       packages = ['epicsapps', 'epicsapps.sampleviewer']
 
 
