@@ -87,28 +87,28 @@ class PositionPanel(wx.Panel):
                 return
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
         imgfile = os.path.join(self.parent.imgdir, imgfile)
-        
+
         tmp_pos = self.parent.ctrlpanel.read_position()
 
         imgdata = self.parent.save_image(imgfile)
-        
+
         print 'SAVE Position: ', name, imgfile, tmp_pos
-        image_notes = 'image_size=(%i, %i), image_format:%s,  data_format=%s' 
-        image_notes = image_notes % (imgdata['image_size'], 
+        image_notes = 'image_size=(%i, %i), image_format:%s,  data_format=%s'
+        image_notes = image_notes % (imgdata['image_size'],
                                      imgdata['image_format'],
                                      imgdata['data_format'])
 
         self.positions[name] = {'image': imgfile,
                                 'timestamp': time.strftime('%b %d %H:%M:%S'),
                                 'position': tmp_pos,
-                                'image_size': imgdata['image_size']
+                                'image_size': imgdata['image_size'],
                                 'image_format': imgdata['image_format'],
                                 'data_forma': imgdata['data_format']}
-        
+
         if name not in self.pos_list.GetItems():
             self.pos_list.Append(name)
-        self.instdb.save_position(self.instname, name, tmp_pos, 
-                                  notes=image_notes, 
+        self.instdb.save_position(self.instname, name, tmp_pos,
+                                  notes=image_notes,
                                   image=imgdata['data'])
 
         # self.pos_name.Clear()
