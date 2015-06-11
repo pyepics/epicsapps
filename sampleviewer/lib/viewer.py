@@ -176,7 +176,6 @@ class StageFrame(wx.Frame):
             os.makedirs(self.imgdir)
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
-        self.ConfigCamera()
 
         self.config = self.cnf.config
         self.stages = OrderedDict()
@@ -230,26 +229,6 @@ class StageFrame(wx.Frame):
     </table></td></tr>
 </table>""" % (imgfile, imgfile, name, tstamp, labels, pvnames, pos))
         fout.close()
-
-
-
-    @EpicsFunction
-    def ConfigCamera(self):
-        if self.cam_type.startswith('area'):
-            if not self.cam_adpref.endswith(':'):
-                self.cam_adpref = "%s:" % self.cam_adpref
-            cname = "%s%s1:"% (self.cam_adpref, self.cam_adform.upper())
-            caput("%sEnableCallbacks" % cname, 1)
-            thisdir = os.path.abspath(os.getcwd())
-            thisdir = thisdir.replace('\\', '/').replace('T:/', '/Volumes/Data/')
-
-            caput("%sFilePath" % cname, thisdir)
-            caput("%sAutoSave" % cname, 0)
-            caput("%sAutoIncrement" % cname, 0)
-            caput("%sFileTemplate" % cname, "%s%s")
-            if self.cam_adform.upper() == 'JPEG':
-                caput("%sJPEGQuality" % cname, 90)
-
 
     def write_message(self, msg='', index=0):
         "write to status bar"
