@@ -6,11 +6,12 @@ import time
 import os
 import shutil
 import math
+import numpy as np
 from threading import Thread
 from cStringIO import StringIO
 import base64
 
-from epics import PV, Device
+from epics import PV, Device, caput
 from epics.wx import EpicsFunction
 
 import Image
@@ -43,7 +44,8 @@ class ImagePanel_EpicsAD(wx.Panel):
                                    attrs=self.img_attrs)
         self.ad_cam = Device(prefix + ':cam1:', delim='',
                                    attrs=self.cam_attrs)
-        self.prefix = prefix
+
+        self.config_filesaver(prefix, format)
 
         width = self.ad_cam.ArraySizeX_RBV
         height = self.ad_cam.ArraySizeY_RBV
@@ -85,6 +87,22 @@ class ImagePanel_EpicsAD(wx.Panel):
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
 
+
+    def config_filesaver(self, prefix, format):
+        if not prefix.endswith(':'):  prefix = "%s:" % prefix
+        if not format.endswith('1'):  format = "%s1" % format
+        if not format.endswith('1:'): format = "%s:" % format
+            
+        cname = "%s%s"% (prefix, format)
+        caput("%sEnableCallbacks" % cname, 1)
+        thisdir = os.path.abspath(os.getcwd()).replace('\\', '/')
+        # caput("%sFilePath" % cname, thisdir)
+        caput("%sAutoSave" % cname, 0)
+        caput("%sAutoIncrement" % cname, 0)
+        caput("%sFileTemplate" % cname, "%s%s")
+        if format.upper() == 'JPEG1:':
+            caput("%sJPEGQuality" % cname, 90)
+
     def onSize(self, evt):
         frame_w, frame_h = self.last_size = evt.GetSize()
         self.scale = min(frame_w/self.img_w, frame_h/self.img_h)
@@ -112,59 +130,10 @@ class ImagePanel_EpicsAD(wx.Panel):
 
         self.scale = max(self.scale, 0.05)
 
-        ### should abstract to a GrabWxImage() method
-        if self.ad_img is None or self.ad_cam is None:
+        img =  self.GrabWxImage(scale=self.scale, rgb=True)
+        if img is None:
             return
-
-        imgdim   = self.ad_img.NDimensions_RBV
-        width    = self.ad_cam.SizeX
-        height   = self.ad_cam.SizeY
-        
-        imgcount = self.ad_cam.ArrayCounter_RBV
-        now = time.time()
-        if (imgcount == self.imgcount or abs(now - self.last_update) < 0.025):
-            return
-        self.imgcount = imgcount
-        self.last_update = time.time()
-
-        arrsize = [1,1,1]
-        arrsize[0] = self.ad_img.ArraySize0_RBV
-        arrsize[1] = self.ad_img.ArraySize1_RBV
-        arrsize[2] = self.ad_img.ArraySize2_RBV
-
-        colormode = self.ad_img.ColorMode_RBV
-
-        im_mode = 'L'
-        self.im_size = (arrsize[0], arrsize[1])
-        if colormode == 2:
-            im_mode = 'RGB'
-            self.im_size = (arrsize[1], arrsize[2])
-
-        
-        dcount = arrsize[0] * arrsize[1]
-        if imgdim == 3:
-            dcount *= arrsize[2]
-
-        rawdata = self.ad_img.PV('ArrayData').get(count=dcount).astype('uint8')
-        
-        if (colormode == 0 and isinstance(rawdata, np.ndarray) and
-            rawdata.dtype != np.uint8):
-            im_mode = 'I'
-            rawdata = rawdata.astype(np.uint32)
-
-        if im_mode == 'L':
-            self.image = wx.EmptyImage(width, height)
-            imbuff = Image.frombuffer(im_mode, self.im_size, rawdata,
-                                      'raw',  self.im_mode, 0, 1)
-            self.image.SetData(imbuff.convert('RGB').tostring())
-
-        elif im_mode == 'RGB':
-            rawdata.shape = (3, width, height)
-            self.image = wx.ImageFromData(width, height, rawdata)
-        self.image = self.image.Scale(int(self.scale*width), int(self.scale*height))
-
-        ### self.image = self.GrabWxImage(scale=self.scale, rgb=True)
-        
+        self.image = img
         bitmap = wx.BitmapFromImage(self.image)
         img_w, img_h = self.bitmap_size = bitmap.GetSize()
         pan_w, pan_h = self.panel_size = self.GetSize()
@@ -252,6 +221,59 @@ class ImagePanel_EpicsAD(wx.Panel):
         if self.colormode == 2:
             self.img_w = float(self.arrsize[1]+0.5)
             self.img_h = float(self.arrsize[2]+0.5)
+
+    def GrabWxImage(self, scale=1, rgb=True):
+        if self.ad_img is None or self.ad_cam is None:
+            return
+
+        imgdim   = self.ad_img.NDimensions_RBV
+        width    = self.ad_cam.SizeX
+        height   = self.ad_cam.SizeY
+      
+        imgcount = self.ad_cam.ArrayCounter_RBV
+        now = time.time()
+        if (imgcount == self.imgcount or abs(now - self.last_update) < 0.025):
+            return None
+        self.imgcount = imgcount
+        self.last_update = time.time()
+
+        arrsize = [1,1,1]
+        arrsize[0] = self.ad_img.ArraySize0_RBV
+        arrsize[1] = self.ad_img.ArraySize1_RBV
+        arrsize[2] = self.ad_img.ArraySize2_RBV
+
+        colormode = self.ad_img.ColorMode_RBV
+        im_mode = 'L'
+        self.im_size = (arrsize[0], arrsize[1])
+        if colormode == 2:
+            im_mode = 'RGB'
+            self.im_size = (arrsize[1], arrsize[2])
+        
+        dcount = arrsize[0] * arrsize[1]
+        if imgdim == 3:
+            dcount *= arrsize[2]
+
+        rawdata = self.ad_img.PV('ArrayData').get(count=dcount)
+        
+        print "==== GrabImage ", im_mode, colormode, width, height, rawdata.dtype
+
+        if (colormode == 0 and isinstance(rawdata, np.ndarray) and
+            rawdata.dtype != np.uint8):
+            im_mode = 'I'
+            rawdata = rawdata.astype(np.uint32)
+
+        print "==== GrabImage ", im_mode, width, height, rawdata[:4]
+        if im_mode in ('L', 'I'):
+            image = wx.EmptyImage(width, height)
+            imbuff = Image.frombuffer(im_mode, self.im_size, rawdata,
+                                      'raw',  im_mode, 0, 1)
+            image.SetData(imbuff.convert('RGB').tostring())
+
+        elif im_mode == 'RGB':
+            rawdata.shape = (3, width, height)
+            image = wx.ImageFromData(width, height, rawdata)
+
+        return image.Scale(int(self.scale*width), int(self.scale*height))
 
 
 xx = """
