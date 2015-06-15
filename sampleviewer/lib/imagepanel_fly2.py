@@ -27,10 +27,8 @@ class ImagePanel_Fly2(wx.Panel):
 
         self.context = pyfly2.Context()
         self.camera = self.context.get_camera(camera_id)
-        width, height = self.camera.GetSize()
-
-        self.img_w = float(width+0.5)
-        self.img_h = float(height+0.5)
+        self.img_w = 800.5
+        self.img_h = 600.5
         self.writer = writer
         self.cam_name = '-'
 
@@ -53,6 +51,8 @@ class ImagePanel_Fly2(wx.Panel):
         self.last_autosave = 0
         self.autosave_tmpf = None
         self.autosave_file = None
+        self.autosave_thread = None
+
         if autosave_file is not None:
             path, tmp = os.path.split(autosave_file)
             self.autosave_file = autosave_file
@@ -115,17 +115,26 @@ class ImagePanel_Fly2(wx.Panel):
     def Start(self):
         "turn camera on"
         self.camera.Connect()
+
         self.cam_name = self.camera.info['modelName']
         self.camera.StartCapture()
+
+        width, height = self.camera.GetSize()
+        print 'Start Camera, IMAGE SIZE ', self.camera, width, height
+        self.img_w = float(width+0.5)
+        self.img_h = float(height+0.5)
+
         self.timer.Start(50)
-        self.autosave_thread.start()
+        if self.autosave_thread is not None:
+            self.autosave_thread.start()
 
     def Stop(self):
         "turn camera off"
         self.timer.Stop()
         self.autosave = False
         self.camera.StopCapture()
-        self.autosave_thread.join()
+        if self.autosave_thread is not None:
+            self.autosave_thread.join()
 
     def onAutosave(self):
         "autosave process, run in separate thread"
