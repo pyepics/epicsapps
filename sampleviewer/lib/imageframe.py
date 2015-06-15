@@ -1,6 +1,7 @@
 import wx
 from cStringIO import StringIO
 import base64
+import array
 
 class ImageDisplayFrame(wx.Frame):
     """ basic frame for displaying image
@@ -16,7 +17,7 @@ class ImageDisplayFrame(wx.Frame):
                              array.array('B', [220]*3*self.iw*self.ih)))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.img, 1, wx.ALL|wx.GROW, 1)
+        sizer.Add(self.bitmap, 1, wx.ALL|wx.GROW, 1)
         self.Bind(wx.EVT_SIZE,  self.onSize)
         self.Bind(wx.EVT_CLOSE, self.onClose)
 
