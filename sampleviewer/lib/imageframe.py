@@ -27,16 +27,22 @@ class ImageDisplayFrame(wx.Frame):
         self.Raise()
 
     def showfile(self, fname, title=None):
-        self.show_image(StringIO(open(fname, "rb").read()), title=title)
-
-    def showb64img(self, data, title=None):
-        self.show_image(base64.b64decode(data), title=title)
-
-    def show_image(self, image, title=None):
+        imdata = StringIO(open(fname, "rb").read())
         if title is not None:
             self.SetTitle(title)
-        self.wximage = wx.ImageFromStream(image).Rescale(self.iw, self.ih)
-        self.bitmap.SetBitmap(wx.BitmapFromImage(self.wximage))
+        wximage = wx.ImageFromStream(imdata).Rescale(self.iw, self.ih)
+        self.bitmap.SetBitmap(wx.BitmapFromImage(wximage))
+
+
+    def showb64img(self, data, size=(800, 600), title=None):
+        imdata = base64.b64decode(data)
+        if title is not None:
+            self.SetTitle(title)
+        wximage = wx.EmptyImage(size[0], size[1])
+        wximage.SetData(imdata)
+        wximage = wximage.Scale(self.iw, self.ih)
+        self.bitmap.SetBitmap(wx.BitmapFromImage(wximage))
+
 
     def onSize(self, evt):
         self.iw, self.ih = evt.GetSize()
