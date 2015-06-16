@@ -91,28 +91,21 @@ class PositionPanel(wx.Panel):
         tmp_pos = self.parent.ctrlpanel.read_position()
 
         imgdata = self.parent.save_image(imgfile)
+        imgdata.pop('data')
+        notes = json.dumps(imgdata)
 
-        print 'SAVE Position: ', name, imgfile, tmp_pos, os.getcwd(), self.parent.imgdir
-        image_notes = 'image_size=(%i, %i), image_format=%s,  data_format=%s'
-        image_notes = json.dumps(dict(image_size=(imgdata['image_size'][0],
-                                                  imgdata['image_size'][1]),
-                                      image_format=imgdata['image_format'],
-                                      data_format=imgdata['data_format']))
+        fullpath = os.path.join(os.getcwd(), imgfile)
 
-
-        self.positions[name] = {'image': imgfile,
+        self.positions[name] = {'image': fullpath,
                                 'timestamp': time.strftime('%b %d %H:%M:%S'),
                                 'position': tmp_pos,
-                                'notes':  image_notes}
+                                'notes':  notes}
 
         if name not in self.pos_list.GetItems():
             self.pos_list.Append(name)
-        print '-> Save Position ', self.instname, name, image_notes, len(imgdata['data'])
         self.instdb.save_position(self.instname, name, tmp_pos,
-                                  notes=image_notes,
-                                  image=imgdata['data'])
+                                  notes=notes, image=fullpath) 
 
-        # self.pos_name.Clear()
         self.pos_list.SetStringSelection(name)
         # auto-save file
         self.parent.autosave(positions=self.positions)
@@ -137,14 +130,18 @@ class PositionPanel(wx.Panel):
             self.image_display.Raise()
 
         thispos = self.positions[posname]
-        img_notes = json.loads(thispos['notes'])
-        img_data  = thispos['image']
-        print len(img_notes)
-        print len(img_data)
-        if img_notes['image_format'] == 'filename':
-            self.image_display.showfile(img_data, title=posname)
-        elif img_notes['image_format'] == 'b46encode':
-            self.image_display.showb64img(img_data, title=posname)
+        try:
+            notes = json.loads(thispos['notes'])
+        except:
+            notes = {'data_format': ''}
+        data  = thispos['image']
+        if str(notes['data_format']) == 'file':
+            self.image_display.showfile(data, title=posname)
+        elif str(notes['data_format']) == 'base64':
+            size = notes.get('image_size', (800, 600))
+            self.image_display.showb64img(data, size=size, title=posname)
+        else:
+            print 'Cannot show image for %s' % posname
 
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
@@ -251,10 +248,13 @@ class PositionPanel(wx.Panel):
         for pname in posnames:
             thispos = self.instdb.get_position(iname, pname)
             image = ''
+            notes = {}
             if thispos.image is not None:
-                image = 'b64encode: %s' % thispos.image
+                image = thispos.image
+            if thispos.notes is not None:
+                notes = thispos.notes
             pdat = OrderedDict()
             for pvpos in thispos.pvs:
                 pdat[pvpos.pv.name] =  pvpos.value
-            positions[pname] = dict(position=pdat, image=image)
+            positions[pname] = dict(position=pdat, image=image, notes=notes)
         self.set_positions(positions)
