@@ -147,13 +147,13 @@ class PositionPanel(wx.Panel):
         posname = self.pos_list.GetStringSelection()
         if posname is None or len(posname) < 1:
             return
-        pos_vals = self.positions[posname]['position']
         stage_names = self.parent.config['stages'].values()
+        pos_vals = self.positions[posname]['position']
         postext = []
-        for name, val in zip(stage_names, pos_vals):
-            postext.append('  %s\t= %.4f' % (name['label'], val))
+        for stage, pvname in zip(stage_names, pos_vals):
+            val = pos_vals[pvname]
+            postext.append('  %s (%s)\t= %s' % (stage['desc'], pvname, val))
         postext = '\n'.join(postext)
-
         if self.parent.v_move:
             ret = popup(self, "Move to %s?: \n%s" % (posname, postext),
                         'Verify Move',
@@ -161,8 +161,12 @@ class PositionPanel(wx.Panel):
             if ret != wx.ID_YES:
                 return
         motorwids = self.parent.ctrlpanel.motor_wids
-        for name, val in zip(stage_names, pos_vals):
-            motorwids[name['label']].drive.SetValue("%f" % val)
+        print motorwids.keys()
+        print 'CHECK MOTORS !! '
+        for stage, pos in zip(stage_names, pos_vals):
+            value = pos_vals[pos]
+            print 'onGO  ', stage, pos, value
+            # motorwids[stage['desc']].drive.SetValue(value)
         self.parent.write_message('moved to %s' % posname)
 
     def onErase(self, event):
