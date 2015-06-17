@@ -148,4 +148,4 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
             rawdata.shape = (3, width, height)
             image = wx.ImageFromData(width, height, rawdata)
 
-        return image.Scale(int(self.scale*width), int(self.scale*height))
+        return image.Scale(int(scale*width), int(scale*height))

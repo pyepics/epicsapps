@@ -88,7 +88,10 @@ class ImagePanel_Base(wx.Panel):
 
         self.scale = max(self.scale, 0.05)
         self.image = self.GrabWxImage(scale=self.scale, rgb=True)
-        bitmap = wx.BitmapFromImage(self.image)
+        try:
+            bitmap = wx.BitmapFromImage(self.image)
+        except ValueError:
+            return
 
         img_w, img_h = self.bitmap_size = bitmap.GetSize()
         pan_w, pan_h = self.panel_size = self.GetSize()
