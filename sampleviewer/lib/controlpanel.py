@@ -10,17 +10,12 @@ from epics.wx.utils import (add_button, add_menu, popup, pack, Closure ,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from .icons import icons
+from .utils import normalize_pvname
 
 ALL_EXP  = wx.ALL|wx.EXPAND|wx.ALIGN_LEFT|wx.ALIGN_TOP
 LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
-
-def normalize_pvname(pvname):
-    pvname = str(pvname)
-    if '.' not in pvname:
-        pvname = '%s.VAL' % pvname
-    return pvname
 
 def make_steps(precision=3, minstep=0, maxstep=10, decades=7, steps=(1,2,5)):
     """automatically create list of step sizes, generally going as
@@ -94,8 +89,6 @@ class ControlPanel(wx.Panel):
                     precision=3, maxstep=5.01, buttons=None):
         """make motor group panel """
         panel  = wx.Panel(self)
-
-        # print 'Group Panel ', group, motorlist, precision, maxstep
 
         tweaklist = make_steps(precision=precision, maxstep=maxstep)
         if group.lower().startswith('theta'):
