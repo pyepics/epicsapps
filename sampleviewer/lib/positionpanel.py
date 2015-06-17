@@ -3,6 +3,7 @@ import wx
 import json
 import time
 from collections import OrderedDict
+from epics import caput
 from epics.wx.utils import add_button, add_menu, popup, pack, Closure
 
 ALL_EXP  = wx.ALL|wx.EXPAND
@@ -84,16 +85,21 @@ class PositionPanel(wx.Panel):
             ret = popup(self, "Overwrite Position %s?" % name,
                         "Veriry Overwrite Position",
                         style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
-            if ret != wx.ID_YES:
+            if ret == wx.ID_YES:
+                self.instdb.remove_position(self.instname, name)
+                self.positions.pop(name)
+                self.pos_name.Clear()
+            else:
                 return
+
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
         imgfile = os.path.join(self.parent.imgdir, imgfile)
         tmp_pos = self.parent.ctrlpanel.read_position()
 
         imgdata = self.parent.save_image(imgfile)
+        imgdata['data_format'] = 'file'
         imgdata.pop('data')
         notes = json.dumps(imgdata)
-
         fullpath = os.path.join(os.getcwd(), imgfile)
 
         self.positions[name] = {'image': fullpath,
@@ -105,7 +111,6 @@ class PositionPanel(wx.Panel):
             self.pos_list.Append(name)
         self.instdb.save_position(self.instname, name, tmp_pos,
                                   notes=notes, image=fullpath) 
-
         self.pos_list.SetStringSelection(name)
         # auto-save file
         self.parent.autosave(positions=self.positions)
@@ -147,12 +152,17 @@ class PositionPanel(wx.Panel):
         posname = self.pos_list.GetStringSelection()
         if posname is None or len(posname) < 1:
             return
-        stage_names = self.parent.config['stages'].values()
-        pos_vals = self.positions[posname]['position']
+        stages  = self.parent.config['stages']
+        posvals = self.positions[posname]['position']
         postext = []
-        for stage, pvname in zip(stage_names, pos_vals):
-            val = pos_vals[pvname]
-            postext.append('  %s (%s)\t= %s' % (stage['desc'], pvname, val))
+        for pvname, value in posvals.items():
+            txt = '  %s\t= %s' % (pvname, value)
+            desc = pvname
+            stage = stages.get(pvname, {})
+            desc = stage.get('desc', None)
+            if desc is not None:
+                txt = '  %s (%s)\t= %s' % (desc, pvname, value)
+            postext.append(txt)
         postext = '\n'.join(postext)
         if self.parent.v_move:
             ret = popup(self, "Move to %s?: \n%s" % (posname, postext),
@@ -160,13 +170,8 @@ class PositionPanel(wx.Panel):
                         style=wx.YES_NO|wx.ICON_QUESTION)
             if ret != wx.ID_YES:
                 return
-        motorwids = self.parent.ctrlpanel.motor_wids
-        print motorwids.keys()
-        print 'CHECK MOTORS !! '
-        for stage, pos in zip(stage_names, pos_vals):
-            value = pos_vals[pos]
-            print 'onGO  ', stage, pos, value
-            # motorwids[stage['desc']].drive.SetValue(value)
+        for pvname, value in posvals.items():
+            caput(pvname, value)
         self.parent.write_message('moved to %s' % posname)
 
     def onErase(self, event):
