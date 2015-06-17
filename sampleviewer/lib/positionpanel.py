@@ -114,7 +114,7 @@ class PositionPanel(wx.Panel):
         self.pos_list.SetStringSelection(name)
         # auto-save file
         self.parent.autosave(positions=self.positions)
-        self.parent.write_htmllog(name)
+        self.parent.write_htmllog(name, self.positions[name])
         self.parent.write_message("Saved Position '%s', image in %s" % (name, imgfile))
         wx.CallAfter(Closure(self.onSelect, event=None, name=name))
 

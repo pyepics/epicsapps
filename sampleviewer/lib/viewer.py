@@ -68,7 +68,7 @@ class StageFrame(wx.Frame):
         self.ctrlpanel = ControlPanel(self, 
                                       groups=config.get('stage_groups', None),
                                       config=config.get('stages', {}))
-        print 'Camera ', self.cam_type
+
         if self.cam_type.startswith('fly2'):
             self.imgpanel  = ImagePanel_Fly2(self,
                                              camera_id=int(self.cam_fly2id),
@@ -207,27 +207,31 @@ class StageFrame(wx.Frame):
     def autosave(self, positions=None):
         self.cnf.Save('SampleStage_autosave.ini', positions=positions)
 
-    def write_htmllog(self, name):
-        thispos = self.config['positions'].get(name, None)
-        if thispos is None:
-            return
-        imgfile = thispos['image']
-        tstamp  = thispos['timestamp']
-        pos     = ', '.join([str(i) for i in thispos['position']])
-        pvnames = ', '.join([i.strip() for i in self.stages.keys()])
-        labels  = ', '.join([i['label'].strip() for i in self.stages.values()])
+    def write_htmllog(self, name, thispos):
+        stages  = self.config['stages']
+        img_folder = self.config['camera']['image_folder']
+        junk, img_file = os.path.split(thispos['image'])
 
+        imgfile = os.path.join(img_folder, img_file)
+        tstamp  = thispos['timestamp']
+        txt = []
+        html_fmt ="""<hr>
+    <table><tr><td><a href='%s'> <img src='%s' width=350></a></td>
+    <td><table><tr><td>Position:</td><td>%s</td><td>%s</td></tr>
+    <tr><td>Motor Name</td><td>Position</td><td>PV Name</td></tr>
+    %s
+    </table></td></tr></table>"""  
+        pos_fmt ="    <tr><td>%s</td><td>%f</td><td>%s</td></tr>" 
+        for pvname, value in thispos['position'].items():
+            try:
+                desc = stages[pvname]['desc']
+            except:
+                desc = 'Unknown'
+            txt.append(pos_fmt % (desc, value, pvname))
+       
         fout = open(self.htmllog, 'a')
-        fout.write("""<hr>
-<table><tr><td><a href='Sample_Images/%s'>
-    <img src='Sample_Images/%s' width=200></a></td>
-    <td><table><tr><td>Position:</td><td>%s</td></tr>
-    <tr><td>Saved:</td><td>%s</td></tr>
-    <tr><td>Motor Names:</td><td>%s</td></tr>
-    <tr><td>Motor PVs:</td><td>%s</td></tr>
-    <tr><td>Motor Values:</td><td>%s</td></tr>
-    </table></td></tr>
-</table>""" % (imgfile, imgfile, name, tstamp, labels, pvnames, pos))
+        fout.write(html_fmt % (imgfile, imgfile, 
+                                  name, tstamp,  '\n'.join(txt)))
         fout.close()
 
     def write_message(self, msg='', index=0):
