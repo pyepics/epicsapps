@@ -211,27 +211,22 @@ class StageFrame(wx.Frame):
         stages  = self.config['stages']
         img_folder = self.config['camera']['image_folder']
         junk, img_file = os.path.split(thispos['image'])
-
         imgfile = os.path.join(img_folder, img_file)
-        tstamp  = thispos['timestamp']
+
         txt = []
         html_fmt ="""<hr>
     <table><tr><td><a href='%s'> <img src='%s' width=350></a></td>
     <td><table><tr><td>Position:</td><td>%s</td><td>%s</td></tr>
-    <tr><td>Motor Name</td><td>Position</td><td>PV Name</td></tr>
+    <tr><td>Motor Name</td><td>PV Name</td><td>Value</td></tr>
     %s
     </table></td></tr></table>"""  
-        pos_fmt ="    <tr><td>%s</td><td>%f</td><td>%s</td></tr>" 
+        pos_fmt ="    <tr><td> %s </td><td> %s </td><td>   %f</td></tr>" 
         for pvname, value in thispos['position'].items():
-            try:
-                desc = stages[pvname]['desc']
-            except:
-                desc = 'Unknown'
-            txt.append(pos_fmt % (desc, value, pvname))
+            txt.append(pos_fmt % (stages[pvname]['desc'], pvname, value))
        
         fout = open(self.htmllog, 'a')
-        fout.write(html_fmt % (imgfile, imgfile, 
-                                  name, tstamp,  '\n'.join(txt)))
+        fout.write(html_fmt % (imgfile, imgfile, name, 
+                               thispos['timestamp'],  '\n'.join(txt)))
         fout.close()
 
     def write_message(self, msg='', index=0):
