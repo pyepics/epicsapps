@@ -6,6 +6,9 @@ from epics.wx.ordereddict import OrderedDict
 import os
 import time
 
+from .utils import normalize_pvname
+
+
 STAGE_LEGEND = '# index =  moto  || group      ||desc || scale || prec || maxstep'
 POS_LEGEND   = '# index = name   || position   ||imagefile'
 
@@ -160,7 +163,7 @@ class StageConfig(object):
             skeys.sort()
             for key in skeys:
                 name, val = self.config['stages'][key]
-                name = name.strip()
+                name = normalize_pvname(name.strip())
                 words = [w.strip() for w in val.split('||')]
                 group = words[0]
 
