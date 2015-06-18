@@ -11,7 +11,8 @@ from epics.wx import EpicsFunction
 
 import Image
 from .imagepanel_base import ImagePanel_Base
-
+from epics.wx.utils import  pack
+                            
 class ImagePanel_EpicsAD(ImagePanel_Base):
     img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
                  'ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
@@ -27,7 +28,10 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
     """Image Panel for FlyCapture2 camera"""
     def __init__(self, parent, prefix=None, format='JPEG',
                  writer=None, autosave_file=None, **kws):
-        super(ImagePanel_EpicsAD, self).__init__(parent, -1, size=(800, 600))
+        super(ImagePanel_EpicsAD, self).__init__(parent, -1,
+                                                 size=(800, 600),
+                                                 writer=writer,
+                                                 autosave_file=autosave_file)
 
         if prefix.endswith(':'):
             prefix = prefix[:-1]
@@ -41,7 +45,6 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         self.ad_cam = Device(prefix + ':cam1:', delim='',
                                    attrs=self.cam_attrs)
 
-        self.writer = writer
         self.config_filesaver(prefix, format)
 
         width = self.ad_cam.ArraySizeX_RBV
@@ -148,3 +151,16 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
             image = wx.ImageFromData(width, height, rawdata)
 
         return image.Scale(int(scale*width), int(scale*height))
+
+class ConfPanel_EpicsAD(wx.Panel):
+    def __init__(self, parent, prefix=None, **kws):
+        super(ConfPanel_EpicsAD, self).__init__(parent, -1, size=(280, 300))
+        self.SetBackgroundColour('#EEDDEE')
+        
+
+        title =  wx.StaticText(self, label="Eics AD Config", size=(285, 25))
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(title,     0, wx.ALIGN_LEFT|wx.ALL)
+        pack(self, sizer)
+        

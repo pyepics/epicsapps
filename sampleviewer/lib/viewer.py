@@ -23,9 +23,9 @@ from .icons import icons
 from .controlpanel import ControlPanel
 from .positionpanel import PositionPanel
 
-from .imagepanel_fly2 import ImagePanel_Fly2
-from .imagepanel_epicsAD import ImagePanel_EpicsAD
-from .imagepanel_weburl import ImagePanel_URL
+from .imagepanel_fly2 import ImagePanel_Fly2, ConfPanel_Fly2
+from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
+from .imagepanel_weburl import ImagePanel_URL, ConfPanel_URL
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
@@ -34,7 +34,6 @@ LEFT_TOP = wx.ALIGN_LEFT|wx.ALIGN_TOP
 LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
-
 
 
 class StageFrame(wx.Frame):
@@ -65,26 +64,39 @@ class StageFrame(wx.Frame):
             self.statusbar.SetStatusText('', index)
         config = self.config
         
-        self.ctrlpanel = ControlPanel(self, 
-                                      groups=config.get('stage_groups', None),
-                                      config=config.get('stages', {}))
 
+        opts = dict(writer=self.write_framerate,
+                    autosave_file=self.autosave_file)
         if self.cam_type.startswith('fly2'):
-            self.imgpanel  = ImagePanel_Fly2(self,
-                                             camera_id=int(self.cam_fly2id),
-                                             writer=self.write_framerate)
+            opts['camera_id'] = int(self.cam_fly2id)
+            ImagePanel, ConfPanel = ImagePanel_Fly2, ConfPanel_Fly2
         elif self.cam_type.startswith('area'):
-            self.imgpanel  = ImagePanel_EpicsAD(self, prefix=self.cam_adpref,
-                                                writer=self.write_framerate)
+            opts['prefix'] = self.cam_adpref
+            ImagePanel, ConfPanel = ImagePanel_EpicsAD, ConfPanel_EpicsAD
         elif self.cam_type.startswith('webcam'):
-            self.imgpanel  = ImagePanel_URL(self, url=self.cam_weburl,
-                                            writer=self.write_framerate)
-            
-           
-        self.pospanel  = PositionPanel(self,
-                                       config=config.get('scandb', None))
+            opts['url'] = self.cam_weburl
+            ImagePanel, ConfPanel = ImagePanel_URL, ConfPanel_URL
+
+        self.pospanel  = PositionPanel(self, config=config['scandb'])
+        self.imgpanel  = ImagePanel(self, **opts)
+
+        self.pospanel.SetMinSize((285, 250))
+        self.imgpanel.SetMinSize((285, 250))
+
+        leftpanel = wx.Panel(self)
+        self.confpanel = ConfPanel(leftpanel, **opts)
+        self.ctrlpanel = ControlPanel(leftpanel,
+                                      groups=config['stage_groups'],
+                                      config=config['stages'])
+
+        leftsizer = wx.BoxSizer(wx.VERTICAL)
+        leftsizer.AddMany([(self.ctrlpanel, 1, ALL_EXP|LEFT_CEN, 1),
+                           (self.confpanel, 1, ALL_EXP|LEFT_CEN, 1)])
+                           
+        pack(leftpanel, leftsizer)
+        
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.AddMany([(self.ctrlpanel, 0, ALL_EXP|LEFT_CEN, 1),
+        sizer.AddMany([(leftpanel,      0, ALL_EXP|LEFT_CEN, 1),
                        (self.imgpanel,  3, ALL_EXP|LEFT_CEN, 1),
                        (self.pospanel,  1, ALL_EXP|LEFT_CEN, 1)])
 

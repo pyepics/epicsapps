@@ -6,6 +6,7 @@ import wx
 import time
 
 from .imagepanel_base import ImagePanel_Base
+from epics.wx.utils import  pack
 
 HAS_FLY2 = False
 try:
@@ -18,8 +19,10 @@ class ImagePanel_Fly2(ImagePanel_Base):
     """Image Panel for FlyCapture2 camera"""
     def __init__(self, parent,  camera_id=0, writer=None,
                  autosave_file=None, **kws):
-        super(ImagePanel_Fly2, self).__init__(parent, -1, size=(800, 600))
-        # 964, 724))
+        super(ImagePanel_Fly2, self).__init__(parent, -1,
+                                              size=(800, 600),
+                                              writer=writer,
+                                              autosave_file=autosave_file)
 
         self.context = pyfly2.Context()
         self.camera = self.context.get_camera(camera_id)
@@ -56,3 +59,15 @@ class ImagePanel_Fly2(ImagePanel_Base):
     def GrabWxImage(self, scale=1, rgb=True):
         return self.camera.GrabWxImage(scale=scale, rgb=rgb)
 
+
+class ConfPanel_Fly2(wx.Panel):
+    def __init__(self, parent, url=None, **kws):
+        super(ConfPanel_Fly2, self).__init__(parent, -1, size=(280, 300))
+        self.SetBackgroundColour('#EEDDEE')
+        
+        title =  wx.StaticText(self, "Fly2 Config", size=(285, 25))
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(title,         0, wx.ALIGN_LEFT|wx.ALL)
+        pack(self, sizer)
+        

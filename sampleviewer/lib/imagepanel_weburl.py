@@ -11,18 +11,21 @@ from  urllib import urlopen
 
 import Image
 from .imagepanel_base import ImagePanel_Base
+from epics.wx.utils import  pack
 
 class ImagePanel_URL(ImagePanel_Base):
     """Image Panel for webcam"""
     def __init__(self, parent, url, writer=None, autosave_file=None, **kws):
-        super(ImagePanel_URL, self).__init__(parent, -1, size=(800, 600))
+        super(ImagePanel_URL, self).__init__(parent, -1,
+                                             size=(800, 600),
+                                             writer=writer,
+                                             autosave_file=autosave_file)
 
         self.url = url
         stream  = StringIO(urlopen(self.url).read())
         pil_image = Image.open(stream)
         width, height = pil_image.size
 
-        self.writer = writer
         self.img_w = float(width+0.5)
         self.img_h = float(height+0.5)
         self.cam_name = url
@@ -50,3 +53,16 @@ class ImagePanel_URL(ImagePanel_Base):
         stream  = StringIO(urlopen(self.url).read())
         wximage = wx.ImageFromStream(stream)
         return wximage.Scale(int(scale*self.img_w), int(scale*self.img_h))
+
+class ConfPanel_URL(wx.Panel):
+    def __init__(self, parent, url=None, **kws):
+        super(ConfPanel_URL, self).__init__(parent, -1, size=(280, 300))
+        self.SetBackgroundColour('#EEDDEE')
+        
+
+        title =  wx.StaticText(self, label="WebURL Config", size=(285, 25))
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(title,         0, wx.ALIGN_LEFT|wx.ALL)
+        pack(self, sizer)
+        
