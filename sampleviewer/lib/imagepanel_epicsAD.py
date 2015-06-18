@@ -5,7 +5,6 @@ import wx
 import time
 import os
 import numpy as np
-from threading import Thread
 
 from epics import PV, Device, caput
 from epics.wx import EpicsFunction
