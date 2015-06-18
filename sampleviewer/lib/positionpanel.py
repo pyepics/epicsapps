@@ -59,7 +59,7 @@ class PositionPanel(wx.Panel):
 
         pack(self, sizer)
         self.init_scandb()
-        self.set_positions_instdb()
+        self.get_positions_from_db()
 
     def init_scandb(self):
         dbconn = self.config
@@ -68,7 +68,9 @@ class PositionPanel(wx.Panel):
             scandb = ScanDB(**dbconn)
             self.instdb = InstrumentDB(scandb)
             if self.instdb.get_instrument(self.instname) is None:
-                self.instdb.add_instrument(self.instname)
+                pvs = self.parent.config['stages'].keys()
+                self.instdb.add_instrument(self.instname, pvs=pvs)
+                
 
     def onSave1(self, event):
         "save from text enter"
@@ -79,6 +81,10 @@ class PositionPanel(wx.Panel):
         self.onSave(self.pos_name.GetValue().strip())
 
     def onSave(self, name):
+        #print 'onSAVE ', name
+        #for nx, pos in self.positions.items():
+        #    print nx, pos
+        #print '========='
         if len(name) < 1:
             return
         if name in self.positions and self.parent.v_replace:
@@ -240,14 +246,12 @@ class PositionPanel(wx.Panel):
 
     def set_positions(self, positions):
         "set the list of position on the left-side panel"
-
         self.pos_list.Clear()
-
         self.positions = positions
         for name, val in self.positions.items():
             self.pos_list.Append(name)
 
-    def set_positions_instdb(self):
+    def get_positions_from_db(self):
         if self.instdb is None:
             print 'No instdb?'
             return
@@ -263,6 +267,7 @@ class PositionPanel(wx.Panel):
             if thispos.notes is not None:
                 notes = thispos.notes
             pdat = OrderedDict()
+            #print pname, thispos, thispos.pvs
             for pvpos in thispos.pvs:
                 pdat[pvpos.pv.name] =  pvpos.value
             positions[pname] = dict(position=pdat, image=image, notes=notes)
