@@ -25,7 +25,7 @@ from .positionpanel import PositionPanel
 
 from .imagepanel_fly2 import ImagePanel_Fly2
 from .imagepanel_epicsAD import ImagePanel_EpicsAD
-# from .imagepanel_webcam import ImagePanel_EpicsAD
+from .imagepanel_weburl import ImagePanel_URL
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
@@ -77,8 +77,8 @@ class StageFrame(wx.Frame):
             self.imgpanel  = ImagePanel_EpicsAD(self, prefix=self.cam_adpref,
                                                 writer=self.write_framerate)
         elif self.cam_type.startswith('webcam'):
-            self.imgpanel  = ImagePanel_EpicsAD(self, url=self.cam_weburl,
-                                               writer=self.write_framerate)
+            self.imgpanel  = ImagePanel_URL(self, url=self.cam_weburl,
+                                            writer=self.write_framerate)
             
            
         self.pospanel  = PositionPanel(self,
