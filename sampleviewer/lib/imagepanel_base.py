@@ -36,7 +36,6 @@ class ImagePanel_Base(wx.Panel):
         self.cam_name = '-'
         self.scale = 0.60
         self.count = 0
-        self.last_size = 0
 
         self.scalebar = None
         self.circle  = None
@@ -53,7 +52,7 @@ class ImagePanel_Base(wx.Panel):
         self.autosave_tmpf = None
         self.autosave_file = None
         self.autosave_thread = None
-
+        self.full_size = None
         if autosave_file is not None:
             path, tmp = os.path.split(autosave_file)
             self.autosave_file = autosave_file
@@ -62,7 +61,7 @@ class ImagePanel_Base(wx.Panel):
             self.autosave_thread.daemon = True
 
     def onSize(self, evt):
-        frame_w, frame_h = self.last_size = evt.GetSize()
+        frame_w, frame_h = evt.GetSize()
         self.scale = min(frame_w/self.img_w, frame_h/self.img_h)
         self.Refresh()
         evt.Skip()
@@ -71,11 +70,21 @@ class ImagePanel_Base(wx.Panel):
         self.Refresh()
 
     def onLeftDown(self, evt=None):
-        print 'Left Down Event: ', evt.GetX(), evt.GetY()
-        print 'Left Down Panel Size:  ', self.panel_size
-        print 'Left Down Last Size:   ', self.last_size
-        print 'Left Down Bitmap Size: ', self.bitmap_size
-        print 'Left Down Image Scale: ', self.scale
+        """
+        report left down events within image
+        """
+        evt_x, evt_y = evt.GetX(), evt.GetY()
+        max_x, max_y = self.full_size
+        img_w, img_h = self.bitmap_size
+        pan_w, pan_h = self.panel_size
+        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
+
+        x = int(0.5 + (evt_x - pad_w)/self.scale)
+        y = int(0.5 + (evt_y - pad_h)/self.scale)
+        fmt  = 'LeftDown at Pixel (%i, %i) of (%i, %i)'
+        if x > 0 and x < max_x and y > 0 and y < max_y:
+            print fmt % (x, y, max_x, max_y)
+        return (x, y)
 
     def onPaint(self, event):
         self.count += 1
@@ -88,6 +97,10 @@ class ImagePanel_Base(wx.Panel):
 
         self.scale = max(self.scale, 0.05)
         self.image = self.GrabWxImage(scale=self.scale, rgb=True)
+        if self.full_size is None:
+            img = self.GrabWxImage(scale=1.0, rgb=True)            
+            self.full_size = img.GetSize()
+            
         try:
             bitmap = wx.BitmapFromImage(self.image)
         except ValueError:
