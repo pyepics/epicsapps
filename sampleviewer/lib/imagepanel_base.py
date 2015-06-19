@@ -28,7 +28,7 @@ class ImagePanel_Base(wx.Panel):
 
 
     def __init__(self, parent,  camera_id=0, writer=None,
-                 autosave_file=None, **kws):
+                 autosave_file=None, draw_objects=None, **kws):
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
         self.img_w = 800.5
         self.img_h = 600.5
@@ -36,10 +36,8 @@ class ImagePanel_Base(wx.Panel):
         self.cam_name = '-'
         self.scale = 0.60
         self.count = 0
-
-        self.scalebar = None
-        self.circle  = None
-        self.SetBackgroundColour("#EEEEEE")
+        self.draw_objects = None
+        self.SetBackgroundColour("#F4F4F4")
         self.starttime = time.clock()
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
@@ -107,24 +105,40 @@ class ImagePanel_Base(wx.Panel):
             return
 
         img_w, img_h = self.bitmap_size = bitmap.GetSize()
-        pan_w, pan_h = self.panel_size = self.GetSize()
+        pan_w, pan_h = self.panel_size  = self.GetSize()
         pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
-
         dc = wx.AutoBufferedPaintDC(self)
         dc.Clear()
         dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
-        dc.BeginDrawing()
-        if self.scalebar is not None:
-            x0, x1, y0, y1, color, width = self.scalebar
-            # x0, y0, x1, y1 = img_w-20, img_h-60, img_w-200, img_h-60
-            # color = 'Red', width=1.5
-            dc.SetPen(wx.Pen('Red', 1.5, wx.SOLID))
-            dc.DrawLine(x0, y0, x1, y1)
-        if self.circle is not None:
-            x0, y0, rad, color, width = self.circle
-            dc.SetPen(wx.Pen(color, width, wx.SOLID))
-            dc.DrawCircle(x0, y0, rad)
-        dc.EndDrawing()
+        self.__draw_objects(dc, img_w, img_h, pad_w, pad_h)
+        
+    def __draw_objects(self, dc, img_w, img_h, pad_w, pad_h):
+        dc.SetBrush(wx.Brush('Black', wx.BRUSHSTYLE_TRANSPARENT))
+        if self.draw_objects is not None:
+            for obj in self.draw_objects:
+                shape = obj.get('shape', None)
+                color = obj.get('color', None)
+                if color is None:
+                    color = obj.get('colour', 'Black')
+                color = wx.Colour(*color)
+                width = obj.get('width', 1.0)
+                style = obj.get('style', wx.SOLID)
+                args  = obj.get('args', [])
+                kws   = obj.get('kws', {})
+                
+                method = getattr(dc, 'Draw%s' % (shape.title()), None)
+                if shape.title() == 'Line':
+                    args = [pad_w + args[0]*img_w,
+                            pad_h + args[1]*img_h,
+                            pad_w + args[2]*img_w,
+                            pad_h + args[3]*img_h]
+                elif shape.title() == 'Circle':
+                    args = [pad_w + args[0]*img_w,
+                            pad_h + args[1]*img_h,  args[2]*img_w]
+                            
+                if method is not None:
+                    dc.SetPen(wx.Pen(color, width, style))
+                    method(*args, **kws)
 
     def onAutosave(self):
         "autosave process, run in separate thread"
@@ -153,9 +167,28 @@ class ImagePanel_Base(wx.Panel):
             ftype = wx.BITMAP_TYPE_PNG
         elif filetype.lower() in ('tiff', 'tif'):
             ftype = wx.BITMAP_TYPE_TIFF
-        tmpimage = self.GrabWxImage(scale=1, rgb=True)
-        tmpimage.SaveFile(fname, ftype)
-        return self.image2dict(tmpimage)
+            
+        image = self.GrabWxImage(scale=1, rgb=True)
+        width, height = image.GetSize()
+
+        # make two device contexts -- copy bitamp to one,
+        # use other for image+overlays
+        dc_bitmap = wx.MemoryDC()
+        dc_bitmap.SelectObject(wx.BitmapFromImage(image))
+
+        dc_output = wx.MemoryDC()
+
+        out = wx.EmptyBitmap(width, height)
+        dc_output.SelectObject(out)
+        # draw image bitmap to output
+        dc_output.Blit(0, 0, width, height, dc_bitmap, 0, 0)
+        # draw overlays to output
+        self.__draw_objects(dc_output, width, height, 0, 0)
+        # save to image file
+        out.ConvertToImage().SaveFile(fname, ftype)
+        
+        # image.SaveFile(fname, ftype)
+        return self.image2dict(image)
 
     def image2dict(self, img=None):
         "return dictionary of image data, suitable for serialization"
