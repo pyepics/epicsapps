@@ -104,6 +104,14 @@ class StageFrame(wx.Frame):
         self.SetSize(size)
         if len(self.iconfile) > 0:
             self.SetIcon(wx.Icon(self.iconfile, wx.BITMAP_TYPE_ICO))
+
+        ex  = [{'shape':'circle', 'color': (255, 0, 0),
+                'width': 1.5, 'args': (0.5, 0.5, 0.007)},
+               {'shape':'line', 'color': (200, 100, 0),
+                'width': 2.0, 'args': (0.7, 0.97, 0.97, 0.97)}]
+        
+        self.imgpanel.draw_objects = ex
+            
         self.Bind(wx.EVT_CLOSE, self.onClose)
 
     def create_menus(self):
