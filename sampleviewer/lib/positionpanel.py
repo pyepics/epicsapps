@@ -59,7 +59,11 @@ class PositionPanel(wx.Panel):
 
         pack(self, sizer)
         self.init_scandb()
+        self.last_refresh = 0
         self.get_positions_from_db()
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
+        self.timer.Start(3000)
 
     def init_scandb(self):
         dbconn = self.config
@@ -81,27 +85,19 @@ class PositionPanel(wx.Panel):
         self.onSave(self.pos_name.GetValue().strip())
 
     def onSave(self, name):
-        #print 'onSAVE ', name
-        #for nx, pos in self.positions.items():
-        #    print nx, pos
-        #print '========='
         if len(name) < 1:
             return
+
         if name in self.positions and self.parent.v_replace:
             ret = popup(self, "Overwrite Position %s?" % name,
                         "Veriry Overwrite Position",
                         style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
-            if ret == wx.ID_YES:
-                self.instdb.remove_position(self.instname, name)
-                self.positions.pop(name)
-                self.pos_name.Clear()
-            else:
+            if ret != wx.ID_YES:
                 return
 
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
         imgfile = os.path.join(self.parent.imgdir, imgfile)
         tmp_pos = self.parent.ctrlpanel.read_position()
-
         imgdata = self.parent.save_image(imgfile)
         imgdata['data_format'] = 'file'
         imgdata.pop('data')
@@ -115,12 +111,15 @@ class PositionPanel(wx.Panel):
 
         if name not in self.pos_list.GetItems():
             self.pos_list.Append(name)
+
         self.instdb.save_position(self.instname, name, tmp_pos,
-                                  notes=notes, image=fullpath) 
+                                  notes=notes, image=fullpath)
+            
         self.pos_list.SetStringSelection(name)
         # auto-save file
         self.parent.autosave(positions=self.positions)
         self.parent.write_htmllog(name, self.positions[name])
+        
         self.parent.write_message("Saved Position '%s', image in %s" % (name, imgfile))
         wx.CallAfter(Closure(self.onSelect, event=None, name=name))
 
@@ -250,14 +249,21 @@ class PositionPanel(wx.Panel):
         self.positions = positions
         for name, val in self.positions.items():
             self.pos_list.Append(name)
+        self.last_refresh = time.time()
+
+    def onTimer(self, evt=None):
+        posnames =  self.instdb.get_positionlist(self.instname)
+        if (len(posnames) != len(self.posnames) or
+            (time.time() - self.last_refresh) > 30.0):
+            self.get_positions_from_db()
 
     def get_positions_from_db(self):
         if self.instdb is None:
-            print 'No instdb?'
             return
         positions = OrderedDict()
         iname = self.instname
         posnames =  self.instdb.get_positionlist(iname)
+        self.posnames = posnames
         for pname in posnames:
             thispos = self.instdb.get_position(iname, pname)
             image = ''
@@ -267,7 +273,6 @@ class PositionPanel(wx.Panel):
             if thispos.notes is not None:
                 notes = thispos.notes
             pdat = OrderedDict()
-            #print pname, thispos, thispos.pvs
             for pvpos in thispos.pvs:
                 pdat[pvpos.pv.name] =  pvpos.value
             positions[pname] = dict(position=pdat, image=image, notes=notes)
