@@ -57,10 +57,8 @@ class ImagePanel_URL(ImagePanel_Base):
 class ConfPanel_URL(wx.Panel):
     def __init__(self, parent, url=None, **kws):
         super(ConfPanel_URL, self).__init__(parent, -1, size=(280, 300))
-        self.SetBackgroundColour('#EEDDEE')
-        
 
-        title =  wx.StaticText(self, label="WebURL Config", size=(285, 25))
+        title =  wx.StaticText(self, label="Webcam Config", size=(285, 25))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(title,         0, wx.ALIGN_LEFT|wx.ALL)
