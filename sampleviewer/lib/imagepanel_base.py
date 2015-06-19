@@ -54,7 +54,7 @@ class ImagePanel_Base(wx.Panel):
         if autosave_file is not None:
             path, tmp = os.path.split(autosave_file)
             self.autosave_file = autosave_file
-            self.autosave_tmpf = os.path.join(path, '_tmp_.jpg')
+            self.autosave_tmpf = autosave_file + '_tmp'
             self.autosave_thread = Thread(target=self.onAutosave)
             self.autosave_thread.daemon = True
 
@@ -97,7 +97,8 @@ class ImagePanel_Base(wx.Panel):
         self.image = self.GrabWxImage(scale=self.scale, rgb=True)
         if self.full_size is None:
             img = self.GrabWxImage(scale=1.0, rgb=True)            
-            self.full_size = img.GetSize()
+            if img is not None:
+                self.full_size = img.GetSize()
             
         try:
             bitmap = wx.BitmapFromImage(self.image)
@@ -157,7 +158,6 @@ class ImagePanel_Base(wx.Panel):
             # sleep for most of the remaining second
             time.sleep(max(0.05, 0.75*(1.0-tfrac)))
 
-
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
         return dictionary of image data, suitable for serialization
@@ -169,25 +169,28 @@ class ImagePanel_Base(wx.Panel):
             ftype = wx.BITMAP_TYPE_TIFF
             
         image = self.GrabWxImage(scale=1, rgb=True)
+        if image is None:
+            return
+
         width, height = image.GetSize()
 
         # make two device contexts -- copy bitamp to one,
         # use other for image+overlays
         dc_bitmap = wx.MemoryDC()
         dc_bitmap.SelectObject(wx.BitmapFromImage(image))
-
         dc_output = wx.MemoryDC()
 
         out = wx.EmptyBitmap(width, height)
         dc_output.SelectObject(out)
+
         # draw image bitmap to output
         dc_output.Blit(0, 0, width, height, dc_bitmap, 0, 0)
         # draw overlays to output
         self.__draw_objects(dc_output, width, height, 0, 0)
         # save to image file
         out.ConvertToImage().SaveFile(fname, ftype)
-        
-        # image.SaveFile(fname, ftype)
+
+        # image.SaveFile(fname, ftype)        
         return self.image2dict(image)
 
     def image2dict(self, img=None):
