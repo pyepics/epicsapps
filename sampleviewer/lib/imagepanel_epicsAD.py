@@ -134,6 +134,8 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
             dcount *= arrsize[2]
 
         rawdata = self.ad_img.PV('ArrayData').get(count=dcount)
+        if rawdata is None:
+            return
         
         if (colormode == 0 and isinstance(rawdata, np.ndarray) and
             rawdata.dtype != np.uint8):
