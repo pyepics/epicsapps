@@ -8,7 +8,6 @@ import numpy as np
 from  cStringIO import StringIO
 from  urllib import urlopen
 
-
 import Image
 from .imagepanel_base import ImagePanel_Base
 from epics.wx.utils import  pack
@@ -38,22 +37,24 @@ class ImagePanel_URL(ImagePanel_Base):
     def Start(self):
         "turn camera on"
         self.timer.Start(50)
-        if self.autosave_thread is not None:
-            self.autosave_thread.start()
+        #if self.autosave_thread is not None:
+        #    self.autosave_thread.start()
 
     def Stop(self):
         "turn camera off"
         self.timer.Stop()
         self.autosave = False
-        if self.autosave_thread is not None:
-            self.autosave_thread.join()
+        #if self.autosave_thread is not None:
+        #    self.autosave_thread.join()
 
 
     def GrabWxImage(self, scale=1, rgb=True):
-        stream  = StringIO(urlopen(self.url).read())
-        wximage = wx.ImageFromStream(stream)
-        return wximage.Scale(int(scale*self.img_w), int(scale*self.img_h))
-
+        try:
+            wximage = wx.ImageFromStream(StringIO(urlopen(self.url).read()))
+            return wximage.Scale(int(scale*self.img_w), int(scale*self.img_h))
+        except:
+            pass
+        
 class ConfPanel_URL(wx.Panel):
     def __init__(self, parent, url=None, **kws):
         super(ConfPanel_URL, self).__init__(parent, -1, size=(280, 300))
