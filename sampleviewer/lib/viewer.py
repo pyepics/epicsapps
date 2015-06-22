@@ -84,7 +84,7 @@ class StageFrame(wx.Frame):
         self.imgpanel.SetMinSize((285, 250))
 
         leftpanel = wx.Panel(self)
-        self.confpanel = ConfPanel(leftpanel, **opts)
+        self.confpanel = ConfPanel(leftpanel, image_panel=self.imgpanel, **opts)
         self.ctrlpanel = ControlPanel(leftpanel,
                                       groups=config['stage_groups'],
                                       config=config['stages'])
