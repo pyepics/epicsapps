@@ -169,7 +169,7 @@ class ConfPanel_EpicsAD(wx.Panel):
                  'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
                  'SizeX', 'SizeY', 'MinX', 'MinY')
     
-    def __init__(self, parent, prefix=None, **kws):
+    def __init__(self, parent, image_panel=None, prefix=None, **kws):
         super(ConfPanel_EpicsAD, self).__init__(parent, -1, size=(280, 300))
 
         self.wids = {}
@@ -192,17 +192,17 @@ class ConfPanel_EpicsAD(wx.Panel):
                                label="Epics AreaDetector: %s" % prefix)
 
         for key in ('imagemode', 'triggermode', 'color'):
-            self.wids[key]   = PVEnumChoice(self, pv=None, size=(100, -1))
+            self.wids[key]   = PVEnumChoice(self, pv=None, size=(135, -1))
         for key in ('exptime', 'period', 'numimages', 'gain'):
-            self.wids[key]   = PVFloatCtrl(self, pv=None, size=(100, -1), minval=0)
+            self.wids[key]   = PVFloatCtrl(self, pv=None, size=(135, -1), minval=0)
         self.wids['gain'].SetMax(20)
 
         for key in ('start', 'stop'):
-            self.wids[key] = wx.Button(self, -1, label=key.title(), size=(50, -1))
+            self.wids[key] = wx.Button(self, -1, label=key.title(), size=(65, -1))
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onButton, key=key))
         
-        labstyle  = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND
-        ctrlstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
+        labstyle  = wx.ALIGN_LEFT|wx.EXPAND|wx.ALIGN_BOTTOM
+        ctrlstyle = wx.ALIGN_LEFT #  |wx.ALIGN_BOTTOM
         rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
         txtstyle  = wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
@@ -216,6 +216,9 @@ class ConfPanel_EpicsAD(wx.Panel):
             return wx.StaticLine(self, size=(len, wid), style=style)
 
         sizer = wx.GridBagSizer(10, 4)
+        sizer.SetVGap(5)
+        sizer.SetHGap(5)
+        
         sizer.Add(title,                    (0, 0), (1, 3), labstyle)
         sizer.Add(self.wids['fullsize'],    (1, 0), (1, 3), labstyle)
         sizer.Add(txt('Acquire '),          (2, 0), (1, 1), labstyle)
