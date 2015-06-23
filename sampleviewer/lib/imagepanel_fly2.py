@@ -6,7 +6,7 @@ import wx
 import time
 
 from .imagepanel_base import ImagePanel_Base
-from epics.wx.utils import  pack, FloatCtrl, Closure
+from epics.wx.utils import  pack, FloatCtrl, Closure, add_button
 
 HAS_FLY2 = False
 try:
@@ -46,8 +46,6 @@ class ImagePanel_Fly2(ImagePanel_Base):
         except:
             pass
 
-
-
         self.timer.Start(50)
         if self.autosave_thread is not None:
             self.autosave_thread.start()
@@ -75,15 +73,14 @@ class ConfPanel_Fly2(wx.Panel):
                                  style=wx.ALIGN_LEFT|wx.EXPAND)
 
         self.wids = wids = {}
-        
         sizer = wx.GridBagSizer(10, 4)
         sizer.SetVGap(5)
         sizer.SetHGap(5)
 
         self.title = txt("Fly2Capture: ", size=285)
-        
+      
         sizer.Add(self.title, (0, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)        
-        
+       
         self.__initializing = True
         i = 2
         #('Sharpness', '%', 100), ('Hue', 'deg', 100), ('Saturation', '%', 100), 
@@ -128,15 +125,32 @@ class ConfPanel_Fly2(wx.Panel):
                 wids[akey].SetValue(0)
                 wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
                 sizer.Add(wids[akey], (i, 2), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
-            i = i + 1
+            i += 1
             
+        #  show last pixel position, move to center
+        i += 1
+        sizer.Add(txt("Last Pixel Position:", size=285),
+                  (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
+
+        i += 1
+        self.pixel_coord = txt("   ", size=285)
+        sizer.Add(self.pixel_coord, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
+      
+        self.goto_button = add_button(self, "Bring to Center", 
+                                      action=self.onBringToCenter, size=(120, -1))
+
+        i += 1
+        sizer.Add(self.goto_button, (i, 0), (1, 2), wx.ALIGN_LEFT)
+
         pack(self, sizer)
         self.__initializing = False
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
-
         wx.CallAfter(self.onConnect)
         
+    def onBringToCenter(self, event=None,  **kws):
+        print 'Bring To Center '
+
     def onConnect(self, **kws):
         for key in ('shutter', 'gain', 'brightness', 'gamma'):
             props = self.camera.GetProperty(key)
