@@ -22,6 +22,7 @@ from .configfile import StageConfig
 from .icons import icons
 from .controlpanel import ControlPanel
 from .positionpanel import PositionPanel
+from .overlayframe import OverlayFrame
 
 from .imagepanel_fly2 import ImagePanel_Fly2, ConfPanel_Fly2
 from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
@@ -51,6 +52,7 @@ class StageFrame(wx.Frame):
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
         self.read_config(configfile=inifile) # , get_dir=True)
+        self.overlay_frame = None
         self.create_frame(size=size)
         self.imgpanel.Start()
 
@@ -58,7 +60,7 @@ class StageFrame(wx.Frame):
         "build main frame"
         self.create_menus()
         self.statusbar = self.CreateStatusBar(2, wx.CAPTION|wx.THICK_FRAME)
-        self.statusbar.SetStatusWidths([-3, -1])
+        self.statusbar.SetStatusWidths([-4, -1])
 
         for index in range(2):
             self.statusbar.SetStatusText('', index)
@@ -119,14 +121,18 @@ class StageFrame(wx.Frame):
         mbar  = wx.MenuBar()
         fmenu = wx.Menu()
         omenu = wx.Menu()
-        add_menu(self, fmenu, label="&Save", text="Save Configuration",
-                 action = self.onSaveConfig)
-        add_menu(self, fmenu, label="&Read", text="Read Configuration",
+        add_menu(self, fmenu, label="&Read Config", text="Read Configuration",
                  action = self.onReadConfig)
+
+        add_menu(self, fmenu, label="&Save Config", text="Save Configuration",
+                 action = self.onSaveConfig)
 
         fmenu.AppendSeparator()
         add_menu(self, fmenu, label="E&xit",  text="Quit Program",
                  action = self.onClose)
+
+        add_menu(self, omenu, label="Image Overlays", text="Setup Image Overlays",
+                 action = self.onConfigOverlays)
 
         vmove  = wx.NewId()
         verase = wx.NewId()
@@ -150,10 +156,24 @@ class StageFrame(wx.Frame):
         mitem.Check()
         self.Bind(wx.EVT_MENU, self.onMenuOption, mitem)
 
+
+
         omenu.AppendSeparator()
         mbar.Append(fmenu, '&File')
         mbar.Append(omenu, '&Options')
         self.SetMenuBar(mbar)
+
+    def onConfigOverlays(self, evt=None, **kws):
+        shown = False
+        if self.overlay_frame is not None:
+            try:
+                self.overlay_frame.Raise()
+                shown = True
+            except:
+                del self.overlay_frame
+        if not shown:
+            self.overlayframe = OverlayFrame(image_panel=self.imgpanel)
+
 
 
     def onMenuOption(self, evt=None):
