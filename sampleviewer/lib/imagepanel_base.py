@@ -32,6 +32,7 @@ class ImagePanel_Base(wx.Panel):
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
         self.img_w = 800.5
         self.img_h = 600.5
+        self.pixel_size = 1.0
         self.writer = writer
         self.cam_name = '-'
         self.scale = 0.60
@@ -89,7 +90,7 @@ class ImagePanel_Base(wx.Panel):
         now = time.clock()
         elapsed = now - self.starttime
         if elapsed >= 2.0 and self.writer is not None:
-            self.writer(" %.2f fps\n" % (self.count/elapsed))
+            self.writer("  %.2f fps" % (self.count/elapsed))
             self.starttime = now
             self.count = 0
 
