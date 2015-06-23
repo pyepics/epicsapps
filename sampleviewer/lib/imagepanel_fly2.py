@@ -69,7 +69,7 @@ class ConfPanel_Fly2(wx.Panel):
         super(ConfPanel_Fly2, self).__init__(parent, -1, size=(280, 300))
         self.image_panel = image_panel
         self.camera_id   = camera_id
-
+        self.camera = self.image_panel.camera
         def txt(label, size=150):
             return wx.StaticText(self, label=label, size=(size, -1),
                                  style=wx.ALIGN_LEFT|wx.EXPAND)
@@ -83,49 +83,116 @@ class ConfPanel_Fly2(wx.Panel):
         self.title = txt("Fly2Capture: ", size=285)
         
         sizer.Add(self.title, (0, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)        
-
-        sizer.Add(txt('Property'), (1, 0), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
-        sizer.Add(txt('Value', size=75),    (1, 1), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
-        sizer.Add(txt('Auto', size=35),     (1, 2), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
-
-        sizer.Add(wx.StaticLine(self, size=(3-5, 3), style=wx.ALIGN_CENTER|wx.EXPAND),
-                  (2, 0), (1, 3), wx.ALIGN_CENTER|wx.EXPAND)
         
-        
-        i = 3
-        for dat in (('Shutter speed (ms)', 60), ('Gain', 20),
-                    ('Brightness', 100), ('Sharpness', 100), ('Hue', 100),
-                    ('Saturation', 100), ('Gamma', 100),
-                    ('White Balance (blue)', 1000),
-                    ('White Balance (red)', 1000)):
+        self.__initializing = True
+        i = 2
+        #('Sharpness', '%', 100), ('Hue', 'deg', 100), ('Saturation', '%', 100), 
+        for dat in (('shutter', 'ms', 70),  
+                    ('gain', 'dB', 24),
+                    ('brightness', '%', 6), 
+                    ('gamma', '', 5)):
             
-            key, maxval = dat
-            akey = 'auto_%s' % key
+            key, units, maxval = dat
             wids[key] = FloatCtrl(self, value=0, maxval=maxval,
                                   precision=1,
                                   action=self.onValue,
                                   act_on_losefocus=True,
-                                  action_kw={'property': key}, size=(35, -1))
-            wids[akey] =  wx.CheckBox(self, -1, label='')
-            wids[akey].SetValue(0)
-            
-            wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, properyy=key))
-
-            sizer.Add(txt(key),   (i, 0), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+                                  action_kw={'prop': key}, size=(55, -1))
+            label = '%s' % (key.title())
+            if len(units)> 0:
+                label = '%s (%s)' % (key.title(), units)
+            sizer.Add(txt(label), (i, 0), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
             sizer.Add(wids[key],  (i, 1), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+
+            akey = '%s_auto' % key
+            wids[akey] =  wx.CheckBox(self, -1, label='auto')
+            wids[akey].SetValue(0)
+            wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
             sizer.Add(wids[akey], (i, 2), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+            i = i + 1
+
+        for color in ('blue', 'red'):
+            key = 'wb_%s' % color
+            wids[key] = FloatCtrl(self, value=0, maxval=1024,
+                                  precision=0,
+                                  action=self.onValue,
+                                  act_on_losefocus=True,
+                                  action_kw={'prop': key}, size=(55, -1))
+            label = 'White Balance (%s)' % (color)
+            sizer.Add(txt(label), (i, 0), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+            sizer.Add(wids[key],  (i, 1), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+
+            if color == 'blue':
+                akey = 'wb_auto'
+                wids[akey] =  wx.CheckBox(self, -1, label='auto')
+                wids[akey].SetValue(0)
+                wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
+                sizer.Add(wids[akey], (i, 2), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
             i = i + 1
             
         pack(self, sizer)
+        self.__initializing = False
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
 
         wx.CallAfter(self.onConnect)
         
     def onConnect(self, **kws):
-        print 'Connect Camera ', kws
+        for key in ('shutter', 'gain', 'brightness', 'gamma'):
+            props = self.camera.GetProperty(key)
+            self.wids[key].SetValue(props['absValue'])
+            akey = '%s_auto' % key
+            self.wids[akey].SetValue({False: 0, True: 1}[props['autoManualMode']])
 
-    def onAuto(self, evt=None, property=None, **kws):
-        print 'onAuto ', property, evt
+        props = self.camera.GetProperty('white_balance')
+        self.wids['wb_red'].SetValue(props['valueA'])
+        self.wids['wb_blue'].SetValue(props['valueB'])
+        self.wids['wb_auto'].SetValue({False: 0, True: 1}[props['autoManualMode']])
+        self.timer.Start(1000)
+        self.title.SetLabel("Fly2Capture: %s" % self.image_panel.cam_name)
 
-    def onValue(self, evt=None, property=None, **kws):
-        print 'onValue ', property, evt
-        
+    def onTimer(self, evt=None, **kws):
+        for prop in ('shutter', 'gain', 'brightness', 'gamma', 'white_balance'):
+            pdict = self.camera.GetProperty(prop)
+            if pdict['autoManualMode']:
+                if  prop == 'white_balance':
+                    self.wids['wb_red'].SetValue(pdict['valueA'])
+                    self.wids['wb_blue'].SetValue(pdict['valueB'])
+                else:
+                    self.wids[prop].SetValue(pdict['absValue'])
+
+    def onAuto(self, evt=None, prop=None, **kws):
+        if not evt.IsChecked():
+            return
+        if prop in ('wb_red', 'wb_blue', 'wb_auto'):
+            prop = 'white_balance'
+        if prop in ('shutter', 'gain', 'brightness', 'gamma'):
+            pdict = self.camera.GetProperty(prop)
+            self.camera.SetPropertyValue(prop, pdict['absValue'], auto=True)
+            time.sleep(0.5)
+            pdict = self.camera.GetProperty(prop)
+            self.wids[prop].SetValue(pdict['absValue'])
+        elif prop == 'white_balance':
+            red =  self.wids['wb_red'].GetValue()
+            blue = self.wids['wb_blue'].GetValue()
+            self.camera.SetPropertyValue(prop, (red, blue), auto=True)
+            time.sleep(0.5)
+            pdict = self.camera.GetProperty(prop)            
+            self.wids['wb_red'].SetValue(pdict['valueA'])
+            self.wids['wb_blue'].SetValue(pdict['valueB'])
+
+    def onValue(self, prop=None, value=None,  **kws):
+        if self.__initializing:
+            return
+        if prop in ('wb_red', 'wb_blue', 'wb_auto'):
+            prop = 'white_balance'
+        if prop in ('shutter', 'gain', 'brightness', 'gamma'):
+            auto = self.wids['%s_auto' % prop].GetValue()
+            self.camera.SetPropertyValue(prop, float(value), auto=auto)
+        elif prop == 'white_balance':
+            red =  self.wids['wb_red'].GetValue()
+            blue = self.wids['wb_blue'].GetValue()
+            auto = self.wids['wb_auto'].GetValue()
+            self.camera.SetPropertyValue(prop, (red, blue), auto=auto)
+
+
