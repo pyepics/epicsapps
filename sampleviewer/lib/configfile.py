@@ -10,7 +10,7 @@ from .utils import normalize_pvname
 
 
 STAGE_LEGEND = '# index =  moto  || group      ||desc || scale || prec || maxstep'
-POS_LEGEND   = '# index = name   || position   ||imagefile'
+POS_LEGEND   = '# index = name   || imagefile || position '
 
 DEFAULT_CONF = """
 ## Sample Stage Configuration
@@ -150,7 +150,7 @@ class StageConfig(object):
             for key in poskeys:
                 name, val = self.config['positions'][key]
                 name = name.strip()
-                posval, img = val.strip().split('||')
+                img, posval = val.strip().split('||')
                 pos = [float(i) for i in posval.split(',')]
                 out[name] = dict(image=img.strip(), position= pos)
             self.config['positions'] = out
@@ -193,6 +193,8 @@ class StageConfig(object):
 
     def Save(self, fname=None, positions=None):
         o = []
+        print 'CONFIG FILE SAVE ', fname, os.getcwd()
+        print positions
         cnf = self.config
         if fname is not None:
             self.filename = fname
@@ -203,13 +205,15 @@ class StageConfig(object):
             o.append('#--------------------------#\n[%s]'%sect)
             if sect == 'positions' and positions is not None:
                 o.append(POS_LEGEND)
-                fmt =  "%3.3i = %s || %s "
+                fmt =  "%3.3i = %s || %s || %s "
                 pfmt =  ', '.join(['%f' for i in range(self.nstages)])
                 idx = 1
                 for name, val in positions.items():
                     pos = tuple([float(p) for p in val['position'].values()])
                     pos = pfmt % pos
-                    o.append(fmt % (idx, name, pos))
+                    tmpdir, imgfile = os.path.split(val['image'])
+                    
+                    o.append(fmt % (idx, name, imgfile, pos))
                     idx = idx + 1
             elif sect == 'stages':
                 o.append(STAGE_LEGEND)
