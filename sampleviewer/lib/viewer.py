@@ -51,7 +51,7 @@ class StageFrame(wx.Frame):
                                          size=size)
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
-        self.read_config(configfile=inifile) # , get_dir=True)
+        self.read_config(configfile=inifile, get_dir=True)
         self.overlay_frame = None
         self.create_frame(size=size)
         self.imgpanel.Start()
@@ -112,7 +112,7 @@ class StageFrame(wx.Frame):
                {'shape':'line', 'color': (200, 100, 0),
                 'width': 2.0, 'args': (0.7, 0.97, 0.97, 0.97)}]
         
-        self.imgpanel.draw_objects = ex
+        # self.imgpanel.draw_objects = ex
             
         self.Bind(wx.EVT_CLOSE, self.onClose)
 
@@ -182,7 +182,12 @@ class StageFrame(wx.Frame):
 
     def read_config(self, configfile=None, get_dir=False):
         "open/read ini config file"
-
+        if get_dir:
+            ret = SelectWorkdir(self)
+            if ret is None:
+                self.Destroy()
+            os.chdir(ret)            
+        
         self.cnf = StageConfig(configfile)
         self.config = self.cnf.config
         gui = self.config['gui']
@@ -204,13 +209,10 @@ class StageFrame(wx.Frame):
         
         try:
             workdir = open(self.workdir_file, 'r').readline()[:-1]
+            workdir = open(self.workdir_file, 'r').readline()[:-1]
             os.chdir(workdir)
         except:
             pass
-
-        if get_dir:
-            ret = SelectWorkdir(self)
-            os.chdir(ret)
 
         if not os.path.exists(self.imgdir):
             os.makedirs(self.imgdir)
