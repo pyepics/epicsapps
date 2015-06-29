@@ -186,8 +186,7 @@ class StageFrame(wx.Frame):
             ret = SelectWorkdir(self)
             if ret is None:
                 self.Destroy()
-            os.chdir(ret)            
-        
+            os.chdir(ret)
         self.cnf = StageConfig(configfile)
         self.config = self.cnf.config
         gui = self.config['gui']
@@ -208,7 +207,6 @@ class StageFrame(wx.Frame):
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
         
         try:
-            workdir = open(self.workdir_file, 'r').readline()[:-1]
             workdir = open(self.workdir_file, 'r').readline()[:-1]
             os.chdir(workdir)
         except:
@@ -247,6 +245,7 @@ class StageFrame(wx.Frame):
         return imgdata
 
     def autosave(self, positions=None):
+        print 'Autosave position ', os.getcwd()
         self.cnf.Save('SampleStage_autosave.ini', positions=positions)
 
     def write_htmllog(self, name, thispos):
