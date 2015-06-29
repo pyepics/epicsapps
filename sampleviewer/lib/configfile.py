@@ -193,8 +193,8 @@ class StageConfig(object):
 
     def Save(self, fname=None, positions=None):
         o = []
-        print 'CONFIG FILE SAVE ', fname, os.getcwd()
-        print positions
+        # print 'Save CONFIG FILE:', fname, os.getcwd()
+        # print positions.keys()
         cnf = self.config
         if fname is not None:
             self.filename = fname
