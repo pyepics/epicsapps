@@ -34,6 +34,10 @@ image_folder = Sample_Images
 calib_x    = 0.001
 calib_y    = 0.001
 #--------------------------#
+[overlays]
+scalebar  = 100.0 0.85 0.97 2.0 255 128 0
+circle    = 7.0   0.50 0.50 2.0 0 255 0
+#------------------------------#
 [scandb]
 instrument = microscope
 server = sqlite3
@@ -56,6 +60,7 @@ port =
 conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite')},
               'camera': {'ordered':False},
               'stages': {'ordered':True},
+              'overlays': {'ordered':True},
               'scandb': {'ordered':True},
               'positions': {'ordered':True} }
 
@@ -67,6 +72,7 @@ conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
                                       'calib_x', 'calib_y')),
                           ('scandb', ('instrument', 'dbname', 'server',
                                       'host', 'user', 'password', 'port')),
+                          ('overlays', ('circle', 'scalebar')), 
                           ('stages', None),
                           ('positions', None)) )
 
