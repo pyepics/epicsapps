@@ -47,7 +47,7 @@ class ControlPanel(wx.Panel):
             self.groupmotors[group] = []
             motorlist = []
             maxstep = 5000
-            prec = 7
+            prec = 4
             for name, data in config.items():
                 name = normalize_pvname(name)
                 if data['group'] == group:
