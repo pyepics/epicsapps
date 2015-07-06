@@ -205,9 +205,11 @@ class StageConfig(object):
         # print 'Save CONFIG FILE:', fname, os.getcwd()
         # print positions.keys()
         cnf = self.config
+
         if fname is not None:
             self.filename = fname
         o.append('## Sample Stage Configuration (saved: %s)'  % (time.ctime()))
+        
         if positions is None:
             positions = cnf['positions']
         for sect, optlist in conf_objs.items():
@@ -218,8 +220,10 @@ class StageConfig(object):
                 pfmt =  ', '.join(['%f' for i in range(self.nstages)])
                 idx = 1
                 for name, val in positions.items():
-                    pos = tuple([float(p) for p in val['position'].values()])
-                    pos = pfmt % pos
+                    pos = []
+                    for pvname in cnf['stages']:
+                        pos.append(float(val['position'][pvname]))
+                    pos = pfmt % tuple(pos)
                     tmpdir, imgfile = os.path.split(val['image'])
                     
                     o.append(fmt % (idx, name, imgfile, pos))
