@@ -53,6 +53,7 @@ class StageFrame(wx.Frame):
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
         self.read_config(configfile=inifile, get_dir=True)
         self.overlay_frame = None
+        self.last_pixel = None
         self.create_frame(size=size)
         self.imgpanel.Start()
 
@@ -66,8 +67,9 @@ class StageFrame(wx.Frame):
             self.statusbar.SetStatusText('', index)
         config = self.config
         
-
         opts = dict(writer=self.write_framerate,
+                    leftdown_cb=self.onSelectPixel,
+                    center_cb=self.onMoveToCenter,
                     autosave_file=self.autosave_file)
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
@@ -205,6 +207,8 @@ class StageFrame(wx.Frame):
         self.cam_adpref = cam.get('ad_prefix', '')
         self.cam_adform = cam.get('ad_format', 'JPEG')
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
+        self.cam_calibx = float(cam.get('calib_x', 0.001))
+        self.cam_caliby = float(cam.get('calib_y', 0.001))
         
         try:
             workdir = open(self.workdir_file, 'r').readline()[:-1]
@@ -278,6 +282,31 @@ class StageFrame(wx.Frame):
         "write to status bar"
         self.statusbar.SetStatusText(msg, 1)
 
+    def onMoveToCenter(self, event=None, **kws):
+        "bring last pixel to image center"
+        p = self.last_pixel
+        if p is None: 
+            return
+        dx = 0.001*self.cam_calibx*(p['x']-p['xmax']/2.0)
+        dy = 0.001*self.cam_caliby*(p['y']-p['ymax']/2.0)
+
+        self.ctrlpanel.motors['x'].VAL += dx
+        self.ctrlpanel.motors['y'].VAL += dy
+
+        self.onSelectPixel(p['xmax']/2.0, p['ymax']/2.0,
+                           xmax=p['xmax'], ymax=p['ymax'])
+
+
+    def onSelectPixel(self, x, y, xmax=100, ymax=100):
+        " select a pixel from image "
+        fmt  = '    (%i, %i) of (%i, %i)'
+        if x > 0 and x < xmax and y > 0 and y < ymax:
+            pix_msg = fmt % (x, y, xmax, ymax)
+            if hasattr(self.confpanel, 'pixel_coord'):
+                self.confpanel.pixel_coord.SetLabel(pix_msg)
+            self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
+
+
 
     def onClose(self, event=None):
         if wx.ID_YES == popup(self, "Really Quit?", "Exit Sample Stage?",
@@ -288,6 +317,12 @@ class StageFrame(wx.Frame):
             fout.close()
             self.imgpanel.Stop()
             self.Destroy()
+            for child in self.GetChildren():
+                try:
+                    child.Destroy()
+                except:
+                    pass
+
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',
