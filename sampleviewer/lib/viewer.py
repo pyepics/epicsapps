@@ -117,6 +117,39 @@ class StageFrame(wx.Frame):
         # self.imgpanel.draw_objects = ex
             
         self.Bind(wx.EVT_CLOSE, self.onClose)
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
+        self.timer.Start(1000)
+
+    def onTimer(self, event=None, **kws):
+        if self.imgpanel.full_size is not None:
+            if 'overlays' in self.config:
+                olays = self.config['overlays']
+                sbar = [float(x) for x in olays['scalebar'].split()]
+                circ = [float(x) for x in olays['circle'].split()]
+
+                img_x, img_y = self.imgpanel.full_size
+                pix_x = float(self.config['camera']['calib_x'])
+                iscale = 0.5/abs(pix_x * img_x)
+
+                ssiz, sx, sy, swid, scolr, scolg, scolb = sbar
+                csiz, cx, cy, cwid, ccolr, ccolg, ccolb = circ
+
+                cargs = [cx, cy, csiz*iscale]
+                sargs = [sx - ssiz*iscale, sy, sx + ssiz*iscale, sy]
+
+                scol = wx.Colour(int(scolr), int(scolg), int(scolb))
+                ccol = wx.Colour(int(ccolr), int(ccolg), int(ccolb))
+                
+                dobjs = [dict(shape='Line', width=swid, 
+                              style=wx.SOLID, color=scol, args=sargs),
+                         dict(shape='Circle', width=cwid, 
+                              style=wx.SOLID, color=ccol, args=cargs)]
+        
+                self.imgpanel.draw_objects = dobjs
+            self.timer.Stop()
+
+
 
     def create_menus(self):
         "Create the menubar"
@@ -133,7 +166,8 @@ class StageFrame(wx.Frame):
         add_menu(self, fmenu, label="E&xit",  text="Quit Program",
                  action = self.onClose)
 
-        add_menu(self, omenu, label="Image Overlays", text="Setup Image Overlays",
+        add_menu(self, omenu, label="Image Overlays", 
+                 text="Setup Image Overlays",
                  action = self.onConfigOverlays)
 
         vmove  = wx.NewId()
@@ -159,7 +193,6 @@ class StageFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onMenuOption, mitem)
 
 
-
         omenu.AppendSeparator()
         mbar.Append(fmenu, '&File')
         mbar.Append(omenu, '&Options')
@@ -174,9 +207,8 @@ class StageFrame(wx.Frame):
             except:
                 del self.overlay_frame
         if not shown:
-            self.overlayframe = OverlayFrame(image_panel=self.imgpanel)
-
-
+            self.overlayframe = OverlayFrame(image_panel=self.imgpanel,
+                                             config=self.config)
 
     def onMenuOption(self, evt=None):
         """events for options menu: move, erase, overwrite """
@@ -210,12 +242,6 @@ class StageFrame(wx.Frame):
         self.cam_calibx = float(cam.get('calib_x', 0.001))
         self.cam_caliby = float(cam.get('calib_y', 0.001))
         
-        try:
-            workdir = open(self.workdir_file, 'r').readline()[:-1]
-            os.chdir(workdir)
-        except:
-            pass
-
         if not os.path.exists(self.imgdir):
             os.makedirs(self.imgdir)
         if not os.path.exists(self.htmllog):
@@ -249,7 +275,6 @@ class StageFrame(wx.Frame):
         return imgdata
 
     def autosave(self, positions=None):
-        print 'Autosave position ', os.getcwd()
         self.cnf.Save('SampleStage_autosave.ini', positions=positions)
 
     def write_htmllog(self, name, thispos):
@@ -306,8 +331,6 @@ class StageFrame(wx.Frame):
                 self.confpanel.pixel_coord.SetLabel(pix_msg)
             self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
 
-
-
     def onClose(self, event=None):
         if wx.ID_YES == popup(self, "Really Quit?", "Exit Sample Stage?",
                               style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION):
@@ -317,12 +340,15 @@ class StageFrame(wx.Frame):
             fout.close()
             self.imgpanel.Stop()
             self.Destroy()
+            try:
+                self.overlay_frame.Destroy()
+            except:
+                pass
             for child in self.GetChildren():
                 try:
                     child.Destroy()
                 except:
                     pass
-
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',
