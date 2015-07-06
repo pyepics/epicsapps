@@ -19,6 +19,9 @@ class ImagePanel_Fly2(ImagePanel_Base):
     """Image Panel for FlyCapture2 camera"""
     def __init__(self, parent,  camera_id=0, writer=None,
                  autosave_file=None, **kws):
+        if not HAS_FLY2:
+            raise ValueError("Fly2 library not available")
+
         super(ImagePanel_Fly2, self).__init__(parent, -1,
                                               size=(800, 600),
                                               writer=writer,
@@ -59,7 +62,10 @@ class ImagePanel_Fly2(ImagePanel_Base):
             self.autosave_thread.join()
 
     def GrabWxImage(self, scale=1, rgb=True):
-        return self.camera.GrabWxImage(scale=scale, rgb=rgb)
+        try:
+            return self.camera.GrabWxImage(scale=scale, rgb=rgb)
+        except pyfly2.FC2Error:
+            raise ValueError("could not grab camera image")
 
 
 class ConfPanel_Fly2(wx.Panel):

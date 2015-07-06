@@ -95,7 +95,10 @@ class ImagePanel_Base(wx.Panel):
             self.count = 0
 
         self.scale = max(self.scale, 0.05)
-        self.image = self.GrabWxImage(scale=self.scale, rgb=True)
+        try:
+            self.image = self.GrabWxImage(scale=self.scale, rgb=True)
+        except ValueError:
+            return
         if self.full_size is None:
             img = self.GrabWxImage(scale=1.0, rgb=True)            
             if img is not None:
