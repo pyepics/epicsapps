@@ -31,6 +31,8 @@ ad_prefix  = 13IDEPS1:
 ad_format  = JPEG
 web_url    = http://164.54.160.115/jpg/2/image.jpg
 image_folder = Sample_Images
+calib_x    = 0.001
+calib_y    = 0.001
 #--------------------------#
 [scandb]
 instrument = microscope
@@ -61,7 +63,8 @@ conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
                                    'autosave_file', 'verify_move',
                                    'verify_erase', 'verify_overwrite')),
                           ('camera', ('type', 'image_folder', 'fly2_id',
-                                      'ad_prefix', 'ad_format', 'web_url')),
+                                      'ad_prefix', 'ad_format', 'web_url', 
+                                      'calib_x', 'calib_y')),
                           ('scandb', ('instrument', 'dbname', 'server',
                                       'host', 'user', 'password', 'port')),
                           ('stages', None),
