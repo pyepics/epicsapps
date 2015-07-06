@@ -27,13 +27,13 @@ class ImagePanel_Base(wx.Panel):
         raise NotImplementedError('must provide GrabWxImage()')
 
 
-    def __init__(self, parent,  camera_id=0, writer=None,
+    def __init__(self, parent,  camera_id=0, writer=None, leftdown_cb=None,
                  autosave_file=None, draw_objects=None, **kws):
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
         self.img_w = 800.5
         self.img_h = 600.5
-        self.pixel_size = 1.0
         self.writer = writer
+        self.leftdown_cb = leftdown_cb
         self.cam_name = '-'
         self.scale = 0.60
         self.count = 0
@@ -80,10 +80,8 @@ class ImagePanel_Base(wx.Panel):
 
         x = int(0.5 + (evt_x - pad_w)/self.scale)
         y = int(0.5 + (evt_y - pad_h)/self.scale)
-        fmt  = 'LeftDown at Pixel (%i, %i) of (%i, %i)'
-        if x > 0 and x < max_x and y > 0 and y < max_y:
-            print fmt % (x, y, max_x, max_y)
-        return (x, y)
+        if self.leftdown_cb is not None:
+            self.leftdown_cb(x, y, xmax=max_x, ymax=max_y)
 
     def onPaint(self, event):
         self.count += 1

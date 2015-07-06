@@ -25,7 +25,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
         super(ImagePanel_Fly2, self).__init__(parent, -1,
                                               size=(800, 600),
                                               writer=writer,
-                                              autosave_file=autosave_file)
+                                              autosave_file=autosave_file, **kws)
 
         self.context = pyfly2.Context()
         self.camera = self.context.get_camera(camera_id)
@@ -69,10 +69,12 @@ class ImagePanel_Fly2(ImagePanel_Base):
 
 
 class ConfPanel_Fly2(wx.Panel):
-    def __init__(self, parent, image_panel=None, camera_id=0, **kws):
+    def __init__(self, parent, image_panel=None, camera_id=0, 
+                 center_cb=None, **kws):
         super(ConfPanel_Fly2, self).__init__(parent, -1, size=(280, 300))
         self.image_panel = image_panel
-        self.camera_id   = camera_id
+        self.center_cb = center_cb
+        self.camera_id = camera_id
         self.camera = self.image_panel.camera
         def txt(label, size=150):
             return wx.StaticText(self, label=label, size=(size, -1),
@@ -139,14 +141,14 @@ class ConfPanel_Fly2(wx.Panel):
                   (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
 
         i += 1
-        self.pixel_coord = txt("   ", size=285)
+        self.pixel_coord = txt(" --- ", size=285)
         sizer.Add(self.pixel_coord, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
       
-        self.goto_button = add_button(self, "Bring to Center", 
-                                      action=self.onBringToCenter, size=(120, -1))
+        center_button = add_button(self, "Bring to Center", 
+                                   action=self.onBringToCenter, size=(120, -1))
 
         i += 1
-        sizer.Add(self.goto_button, (i, 0), (1, 2), wx.ALIGN_LEFT)
+        sizer.Add(center_button, (i, 0), (1, 2), wx.ALIGN_LEFT)
 
         pack(self, sizer)
         self.__initializing = False
@@ -155,7 +157,8 @@ class ConfPanel_Fly2(wx.Panel):
         wx.CallAfter(self.onConnect)
         
     def onBringToCenter(self, event=None,  **kws):
-        print 'Bring To Center '
+        if self.center_cb is not None:
+            self.center_cb(event=event, **kws)
 
     def onConnect(self, **kws):
         for key in ('shutter', 'gain', 'brightness', 'gamma'):
