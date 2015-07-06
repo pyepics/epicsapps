@@ -69,6 +69,8 @@ class PositionPanel(wx.Panel):
         dbconn = self.config
         if dbconn is not None:
             self.instname = dbconn.get('instrument', 'microscope_stages')
+            if dbconn['port'] in ('', 'None', None):
+                dbconn.pop('port')
             scandb = ScanDB(**dbconn)
             self.instdb = InstrumentDB(scandb)
             if self.instdb.get_instrument(self.instname) is None:
@@ -144,12 +146,26 @@ class PositionPanel(wx.Panel):
             notes = json.loads(thispos['notes'])
         except:
             notes = {'data_format': ''}
+        label = []
+        stages  = self.parent.config['stages']
+        posvals = self.positions[posname]['position']
+        for pvname, value in posvals.items():
+            value = thispos['position'][pvname]
+            desc = stages.get(pvname, {}).get('desc', None)
+            if desc is None:
+                desc = pvname
+            label.append("%s=%.4f" % (desc, float(value)))
+        label = ', '.join(label)
+        label = '%s: %s' % (posname, label)
+
         data  = thispos['image']
         if str(notes['data_format']) == 'file':
-            self.image_display.showfile(data, title=posname)
+            self.image_display.showfile(data, title=posname,
+                                        label=label)
         elif str(notes['data_format']) == 'base64':
             size = notes.get('image_size', (800, 600))
-            self.image_display.showb64img(data, size=size, title=posname)
+            self.image_display.showb64img(data, size=size, 
+                                          title=posname, label=label)
         else:
             print 'Cannot show image for %s' % posname
 
@@ -161,13 +177,11 @@ class PositionPanel(wx.Panel):
         posvals = self.positions[posname]['position']
         postext = []
         for pvname, value in posvals.items():
-            txt = '  %s\t= %s' % (pvname, value)
-            desc = pvname
-            stage = stages.get(pvname, {})
-            desc = stage.get('desc', None)
+            label = pvname
+            desc = stages.get(pvname, {}).get('desc', None)
             if desc is not None:
-                txt = '  %s (%s)\t= %s' % (desc, pvname, value)
-            postext.append(txt)
+                label = '%s (%s)' % (desc, pvname)
+            postext.append('  %s\t= %.4f' % (label, float(value)))
         postext = '\n'.join(postext)
         if self.parent.v_move:
             ret = popup(self, "Move to %s?: \n%s" % (posname, postext),
@@ -245,16 +259,19 @@ class PositionPanel(wx.Panel):
 
     def set_positions(self, positions):
         "set the list of position on the left-side panel"
+        cur_sel = self.pos_list.GetStringSelection()
         self.pos_list.Clear()
         self.positions = positions
         for name, val in self.positions.items():
             self.pos_list.Append(name)
+        if cur_sel in self.positions:
+            self.pos_list.SetStringSelection(cur_sel)
         self.last_refresh = time.time()
 
     def onTimer(self, evt=None):
         posnames =  self.instdb.get_positionlist(self.instname)
         if (len(posnames) != len(self.posnames) or
-            (time.time() - self.last_refresh) > 60.0):
+            (time.time() - self.last_refresh) > 15.0):
             self.get_positions_from_db()
 
     def get_positions_from_db(self):
