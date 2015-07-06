@@ -254,7 +254,7 @@ class PositionPanel(wx.Panel):
     def onTimer(self, evt=None):
         posnames =  self.instdb.get_positionlist(self.instname)
         if (len(posnames) != len(self.posnames) or
-            (time.time() - self.last_refresh) > 30.0):
+            (time.time() - self.last_refresh) > 60.0):
             self.get_positions_from_db()
 
     def get_positions_from_db(self):
