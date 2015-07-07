@@ -339,16 +339,11 @@ class StageFrame(wx.Frame):
             fout.write("%s\n" % os.path.abspath(os.curdir))
             fout.close()
             self.imgpanel.Stop()
-            self.Destroy()
             try:
                 self.overlay_frame.Destroy()
             except:
                 pass
-            for child in self.GetChildren():
-                try:
-                    child.Destroy()
-                except:
-                    pass
+            self.Destroy()
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',
