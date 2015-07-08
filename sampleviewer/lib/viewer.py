@@ -173,8 +173,10 @@ class StageFrame(wx.Frame):
         vmove  = wx.NewId()
         verase = wx.NewId()
         vreplace = wx.NewId()
+        cenfine = wx.NewId()
         self.menu_opts = {vmove: 'v_move', verase: 'v_erase',
-                          vreplace: 'v_replace'}
+                          vreplace: 'v_replace', 
+                          cenfine: 'center_with_fine_stages'}
 
         mitem = omenu.Append(vmove, "Verify Go To ",
                              "Prompt to Verify Moving with 'Go To'",
@@ -192,6 +194,10 @@ class StageFrame(wx.Frame):
         mitem.Check()
         self.Bind(wx.EVT_MENU, self.onMenuOption, mitem)
 
+        mitem = omenu.Append(cenfine, "Center With Fine Stages",
+                     "Bring to Center will move the Fine Stages", wx.ITEM_CHECK)
+        mitem.Check()
+        self.Bind(wx.EVT_MENU, self.onMenuOption, mitem)
 
         omenu.AppendSeparator()
         mbar.Append(fmenu, '&File')
@@ -230,6 +236,7 @@ class StageFrame(wx.Frame):
         self.v_move    = gui.get('verify_move', True)
         self.v_erase   = gui.get('verify_erase', True)
         self.v_replace = gui.get('verify_overwrite', True)
+        self.center_with_fine_stages = gui.get('center_with_fine_stages', True)
         self.SetTitle(gui.get('title', 'Microscope'))
 
         cam = self.config['camera']
@@ -314,19 +321,34 @@ class StageFrame(wx.Frame):
             return
         dx = 0.001*self.cam_calibx*(p['x']-p['xmax']/2.0)
         dy = 0.001*self.cam_caliby*(p['y']-p['ymax']/2.0)
+        
+        mots = self.ctrlpanel.motors
 
-        self.ctrlpanel.motors['x'].VAL += dx
-        self.ctrlpanel.motors['y'].VAL += dy
+        xmotor, ymotor = 'x', 'y'
+        if self.center_with_fine_stages and 'finex' in mots:
+            xmotor, ymotor = 'finex', 'finey'
 
+        xscale, yscale = 1.0, 1.0
+        for stage_info in self.stages.values():
+            if stage_info['desc'].lower() == xmotor:
+                xscale = stage_info['scale']
+            if stage_info['desc'].lower() == ymotor:
+                yscale = stage_info['scale']
+
+        mots[xmotor].VAL += dx*xscale
+        mots[ymotor].VAL += dy*yscale
         self.onSelectPixel(p['xmax']/2.0, p['ymax']/2.0,
                            xmax=p['xmax'], ymax=p['ymax'])
 
 
     def onSelectPixel(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "
-        fmt  = '    (%i, %i) of (%i, %i)'
+        fmt  = """  (%i, %i) of (%i, %i) 
+  (%.0f, %.0f) microns from center"""
         if x > 0 and x < xmax and y > 0 and y < ymax:
-            pix_msg = fmt % (x, y, xmax, ymax)
+            dx = abs(self.cam_calibx*(x-xmax/2.0))
+            dy = abs(self.cam_caliby*(y-ymax/2.0))
+            pix_msg = fmt % (x, y, xmax, ymax, dx, dy)
             if hasattr(self.confpanel, 'pixel_coord'):
                 self.confpanel.pixel_coord.SetLabel(pix_msg)
             self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)

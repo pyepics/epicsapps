@@ -23,6 +23,7 @@ title = Microscope
 verify_move = 1
 verify_erase = 1
 verify_overwrite = 1
+center_with_fine_stages = 1
 #--------------------------#
 [camera]
 type       = areadetector
@@ -57,7 +58,8 @@ port =
 # index = name  || position || imagefile 
 001 =   p1 || 0, 0, 0, 90, 70, 350 || 
 """
-conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite')},
+conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite',
+                                'center_with_fine_stages')},
               'camera': {'ordered':False},
               'stages': {'ordered':True},
               'overlays': {'ordered':True},
@@ -66,7 +68,8 @@ conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite'
 
 conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
                                    'autosave_file', 'verify_move',
-                                   'verify_erase', 'verify_overwrite')),
+                                   'verify_erase', 'verify_overwrite',
+                                   'center_with_fine_stages')),
                           ('camera', ('type', 'image_folder', 'fly2_id',
                                       'ad_prefix', 'ad_format', 'web_url', 
                                       'calib_x', 'calib_y')),
