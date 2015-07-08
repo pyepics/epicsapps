@@ -49,8 +49,8 @@ class OverlayFrame(wx.Frame):
         self.pix_x = FloatCtrl(panel, value=pix_x, **popts)
         self.pix_y = FloatCtrl(panel, value=pix_y, **popts)
 
-        self.scalebar_col  = csel.ColourSelect(panel, -1, "", scol, size=(25, 25))
-        self.circle_col    = csel.ColourSelect(panel, -1, "", ccol, size=(25, 25))
+        self.scalebar_col  = csel.ColourSelect(panel, -1, "", scol, size=(75, 25))
+        self.circle_col    = csel.ColourSelect(panel, -1, "", ccol, size=(75, 25))
 
         self.scalebar_size = FloatCtrl(panel, value=ssiz, **sopts)
         self.scalebar_x   = FloatCtrl(panel,  value=sx, **opts)
@@ -70,26 +70,26 @@ class OverlayFrame(wx.Frame):
         def txt(label, size=-1):
             return SimpleText(panel, label, size=(size, -1))
 
-        sizer.Add(txt("Configure Image Overlays: "), (0, 0), (1, 4),  CEN, 3)
-        sizer.Add(txt("Pixel Size (um)  X, Y: "),    (1, 0), (1, 2),  LEFT, 2)
+        sizer.Add(txt(" Configure Image Overlays: "), (0, 0), (1, 4),  CEN, 3)
+        sizer.Add(txt(" Pixel Size (um)  X, Y: "),    (1, 0), (1, 2),  LEFT, 2)
         sizer.Add(self.pix_x,                        (1, 2), (1, 1),  CEN, 1)    
         sizer.Add(self.pix_y,                        (1, 3), (1, 1),  CEN, 1)    
 
-        sizer.Add(txt("Object"),       (2, 0), (1, 1),  LEFT, 2)
+        sizer.Add(txt(" Object "),     (2, 0), (1, 1),  LEFT, 2)
         sizer.Add(txt("Color"),        (2, 1), (1, 1),  LEFT, 2)
         sizer.Add(txt("Size (um)"),    (2, 2), (1, 1),  LEFT, 2)
         sizer.Add(txt("X (fraction)"), (2, 3), (1, 1),  LEFT, 2)
         sizer.Add(txt("Y (fraction)"), (2, 4), (1, 1),  LEFT, 2)
         sizer.Add(txt("Line width"),   (2, 5), (1, 1),  LEFT, 2)
 
-        sizer.Add(txt("Scalebar "),    (3, 0), (1, 1),  LEFT, 2)
+        sizer.Add(txt(" Scalebar "),   (3, 0), (1, 1),  LEFT, 2)
         sizer.Add(self.scalebar_col,   (3, 1), (1, 1),  CEN, 1)    
         sizer.Add(self.scalebar_size,  (3, 2), (1, 1),  CEN, 1)    
         sizer.Add(self.scalebar_x,     (3, 3), (1, 1),  CEN, 1)    
         sizer.Add(self.scalebar_y,     (3, 4), (1, 1),  CEN, 1)    
         sizer.Add(self.scalebar_wid,   (3, 5), (1, 1),  CEN, 1)    
 
-        sizer.Add(txt("Circle "),      (4, 0), (1, 1),  LEFT, 2)
+        sizer.Add(txt(" Target "),     (4, 0), (1, 1),  LEFT, 2)
         sizer.Add(self.circle_col,     (4, 1), (1, 1),  CEN, 1)    
         sizer.Add(self.circle_size,    (4, 2), (1, 1),  CEN, 1)    
         sizer.Add(self.circle_x,       (4, 3), (1, 1),  CEN, 1)    
