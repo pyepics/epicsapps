@@ -141,7 +141,11 @@ class ConfPanel_Fly2(wx.Panel):
                   (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
 
         i += 1
-        self.pixel_coord = txt(" --- ", size=285)
+        self.pixel_coord = wx.StaticText(self, label=' === \n === ', 
+                                         size=(285, 50), 
+                                         style=wx.ALIGN_LEFT|wx.EXPAND)
+
+
         sizer.Add(self.pixel_coord, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
       
         center_button = add_button(self, "Bring to Center", 
