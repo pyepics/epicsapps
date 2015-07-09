@@ -21,17 +21,18 @@ from .imageframe import ImageDisplayFrame
 import larch
 from  larch_plugins.epics import ScanDB, InstrumentDB
 
-class ErasePositionsDialog(wx.Dialog):
+class ErasePositionsDialog(wx.Frame):
     """ Erase all positions, with check boxes for all"""
-    def __init__(self, positions):
-
-        wx.Dialog.__init__(self, None, -1, title="Select Positions to Erase")
+    def __init__(self, positions, instname=None, instdb=None):
+        wx.Frame.__init__(self, None, -1, title="Select Positions to Erase")
+        self.instname = instname
+        self.instdb = instdb
         self.build_dialog(positions)
 
     def build_dialog(self, positions):
         self.positions = positions
-        # panel = scrolled.ScrolledPanel(self)
-        panel = wx.Panel(self)
+
+        panel = scrolled.ScrolledPanel(self)
         self.checkboxes = {}
         sizer = wx.GridBagSizer(len(positions)+2, 2)
         sizer.SetVGap(2)        
@@ -54,20 +55,33 @@ class ErasePositionsDialog(wx.Dialog):
 
         pack(panel, sizer)
         panel.SetMinSize((350, 300))
-        # panel.SetupScrolling()
+        panel.SetupScrolling()
+        bkws = dict(size=(55, -1))
+        btn_ok     = add_button(self, "OK",  action=self.onOK, **bkws)
+        btn_cancel = add_button(self, "Cancel", action=self.onCancel,  **bkws)
 
-        btnsizer = wx.StdDialogButtonSizer()
-        btn1 = wx.Button(self, wx.ID_OK)
-        btn2 = wx.Button(self, wx.ID_CANCEL)
-        btn1.SetDefault()
-        btnsizer.AddButton(btn1)
-        btnsizer.AddButton(btn2)
-        btnsizer.Realize()
+        brow = wx.BoxSizer(wx.HORIZONTAL)
+        brow.Add(btn_ok ,     0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        brow.Add(btn_cancel,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
 
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1, 2)
-        mainsizer.Add(btnsizer, 0, 2)
+        mainsizer.Add(wx.StaticLine(self, size=(300, 2)), 0, 2)
+        mainsizer.Add(brow, 0, 2)
         pack(self, mainsizer)
+        self.Raise()
+        self.Show()
+        
+    def onOK(self, event=None):
+        if self.instname is not None and self.instdb is not None:
+            for pname, cbox in self.checkboxes.items():
+                if cbox.IsChecked():
+                    print 'Would erase ', pname
+                    # self.instdb.remove_position(self.instname, pname)
+        self.Destroy()
+
+    def onCancel(self, event=None):
+        self.Destroy()
         
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
@@ -262,27 +276,10 @@ class PositionPanel(wx.Panel):
         self.parent.write_message('Erased Position %s' % posname)
 
     def onEraseMany(self, event=None):
-        if self.instdb is None:
-            return
-        dlg = ErasePositionsDialog(self.positions.keys())
-        print 'OnErase Many 1 ', dlg
-        dlg.Raise()
-        print 'OnErase Many 2 ', dlg
-
-        # out = dlg.ShowModal()
-        if wx.ID_OK == dlg.ShowModal():
-            for pname, cbox in dlg.checkboxes.items():
-                sys.stdout.write("%s %s\n" % (pname, repr(cbox.IsChecked())))
-                # if cbox.IsChecked():
-                    # print 'Would erase ', pname
-                    # self.instdb.remove_position(self.instname, pname)
-                    # self.positions.pop(pame)
-            # self.instdb.commit()
-            # self.get_positions_from_db()
-        dlg.Destroy()
-        event.Skip()
-        sys.stdout.flush()
-        print 'Done'
+        if self.instdb is not None:
+            ErasePositionsDialog(self.positions.keys(), 
+                                 instname=self.instname, 
+                                 instdb=self.instdb)
 
     def onSelect(self, event=None, name=None):
         "Event handler for selecting a named position"
