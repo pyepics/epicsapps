@@ -140,6 +140,7 @@ class StageConfig(object):
                 is_ordered = True
 
             for opt in self.cp.options(sect):
+                print 'PROCESS ', opt, sect
                 get = self.cp.get
                 if opt in bools:
                     get = self.cp.getboolean
@@ -147,7 +148,10 @@ class StageConfig(object):
                     get = self.cp.getfloat
                 elif opt in ints:
                     get = self.cp.getint
-                val = get(sect,opt)
+                try:
+                    val = get(sect, opt)
+                except ValueError:
+                    val = ''
                 if is_ordered and '||' in val:
                     nam, val = val.split('||', 1)
                     opt = opt.strip()
