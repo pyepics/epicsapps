@@ -140,7 +140,6 @@ class StageConfig(object):
                 is_ordered = True
 
             for opt in self.cp.options(sect):
-                print 'PROCESS ', opt, sect
                 get = self.cp.get
                 if opt in bools:
                     get = self.cp.getboolean
