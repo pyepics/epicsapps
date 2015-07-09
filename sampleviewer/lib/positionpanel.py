@@ -1,10 +1,12 @@
 import os
 import wx
+import wx.lib.scrolledpanel as scrolled
 import json
 import time
 from collections import OrderedDict
 from epics import caput
-from epics.wx.utils import add_button, add_menu, popup, pack, Closure
+from epics.wx.utils import (add_button, add_menu, popup, pack, Closure,
+                            SimpleText)
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
@@ -19,6 +21,54 @@ from .imageframe import ImageDisplayFrame
 import larch
 from  larch_plugins.epics import ScanDB, InstrumentDB
 
+class ErasePositionsDialog(wx.Dialog):
+    """ Erase all positions, with check boxes for all"""
+    def __init__(self, positions):
+
+        wx.Dialog.__init__(self, None, -1, title="Select Positions to Erase")
+        self.build_dialog(positions)
+
+    def build_dialog(self, positions):
+        self.positions = positions
+        # panel = scrolled.ScrolledPanel(self)
+        panel = wx.Panel(self)
+        self.checkboxes = {}
+        sizer = wx.GridBagSizer(len(positions)+2, 2)
+        sizer.SetVGap(2)        
+        sizer.SetHGap(3)        
+        sizer.Add(SimpleText(panel, ' Erase Positions?  Warning: CANNOT BE UNDONE!!',
+                            colour=wx.Colour(200, 0, 0)), (0, 0), (1, 2),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, ' Position Name'),  (1, 0), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, 'Erase?'),         (1, 1), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(wx.StaticLine(panel, size=(300, 2)), (2, 0), (1, 2),  LEFT_CEN, 2)
+        
+        irow = 2
+        for pname in positions:
+            irow += 1
+            cbox = self.checkboxes[pname] = wx.CheckBox(panel, -1, "")
+            cbox.SetValue(True)
+            sizer.Add(SimpleText(panel, "  %s  "%pname), (irow, 0), (1, 1),  LEFT_CEN, 2)
+            sizer.Add(cbox,                      (irow, 1), (1, 1),  LEFT_CEN, 2)
+        irow += 1
+        sizer.Add(wx.StaticLine(panel, size=(300, 2)), (irow, 0), (1, 2),  LEFT_CEN, 2)
+
+        pack(panel, sizer)
+        panel.SetMinSize((350, 300))
+        # panel.SetupScrolling()
+
+        btnsizer = wx.StdDialogButtonSizer()
+        btn1 = wx.Button(self, wx.ID_OK)
+        btn2 = wx.Button(self, wx.ID_CANCEL)
+        btn1.SetDefault()
+        btnsizer.AddButton(btn1)
+        btnsizer.AddButton(btn2)
+        btnsizer.Realize()
+
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
+        mainsizer.Add(panel, 1, 2)
+        mainsizer.Add(btnsizer, 0, 2)
+        pack(self, mainsizer)
+        
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
     def __init__(self, parent, config=None):
@@ -33,17 +83,19 @@ class PositionPanel(wx.Panel):
 
         tlabel = wx.StaticText(self, label="Save Position: ")
 
-        bkws = dict(size=(60, -1))
+        bkws = dict(size=(55, -1))
         btn_save  = add_button(self, "Save",  action=self.onSave2, **bkws)
         btn_goto  = add_button(self, "Go To", action=self.onGo,    **bkws)
         btn_erase = add_button(self, "Erase", action=self.onErase, **bkws)
         btn_show  = add_button(self, "Show",  action=self.onShow,  **bkws)
+        # btn_many  = add_button(self, "Erase Many",  action=self.onEraseMany,  **bkws)
 
         brow = wx.BoxSizer(wx.HORIZONTAL)
         brow.Add(btn_save,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_goto,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_erase, 0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_show,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        # brow.Add(btn_many,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
 
         self.pos_list  = wx.ListBox(self)
         self.pos_list.SetBackgroundColour(wx.Colour(253, 253, 250))
@@ -208,6 +260,29 @@ class PositionPanel(wx.Panel):
         self.pos_list.Delete(ipos)
         self.pos_name.Clear()
         self.parent.write_message('Erased Position %s' % posname)
+
+    def onEraseMany(self, event=None):
+        if self.instdb is None:
+            return
+        dlg = ErasePositionsDialog(self.positions.keys())
+        print 'OnErase Many 1 ', dlg
+        dlg.Raise()
+        print 'OnErase Many 2 ', dlg
+
+        # out = dlg.ShowModal()
+        if wx.ID_OK == dlg.ShowModal():
+            for pname, cbox in dlg.checkboxes.items():
+                sys.stdout.write("%s %s\n" % (pname, repr(cbox.IsChecked())))
+                # if cbox.IsChecked():
+                    # print 'Would erase ', pname
+                    # self.instdb.remove_position(self.instname, pname)
+                    # self.positions.pop(pame)
+            # self.instdb.commit()
+            # self.get_positions_from_db()
+        dlg.Destroy()
+        event.Skip()
+        sys.stdout.flush()
+        print 'Done'
 
     def onSelect(self, event=None, name=None):
         "Event handler for selecting a named position"

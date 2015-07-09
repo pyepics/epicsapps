@@ -170,6 +170,10 @@ class StageFrame(wx.Frame):
                  text="Setup Image Overlays",
                  action = self.onConfigOverlays)
 
+        add_menu(self, omenu, label="Erase Many Positions", 
+                 text="Select Multiple Positions to Erase",
+                 action = self.onEraseMany)
+
         vmove  = wx.NewId()
         verase = wx.NewId()
         vreplace = wx.NewId()
@@ -203,6 +207,10 @@ class StageFrame(wx.Frame):
         mbar.Append(fmenu, '&File')
         mbar.Append(omenu, '&Options')
         self.SetMenuBar(mbar)
+
+    def onEraseMany(self, evt=None, **kws):
+        self.pospanel.onEraseMany(event=evt)
+        evt.Skip()
 
     def onConfigOverlays(self, evt=None, **kws):
         shown = False
