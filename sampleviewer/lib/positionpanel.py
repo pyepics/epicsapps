@@ -76,8 +76,8 @@ class ErasePositionsDialog(wx.Frame):
         if self.instname is not None and self.instdb is not None:
             for pname, cbox in self.checkboxes.items():
                 if cbox.IsChecked():
-                    print 'Would erase ', pname
-                    # self.instdb.remove_position(self.instname, pname)
+                    print 'erasing: ', pname
+                    self.instdb.remove_position(self.instname, pname)
         self.Destroy()
 
     def onCancel(self, event=None):
