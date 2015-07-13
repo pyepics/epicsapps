@@ -2,6 +2,9 @@ import wx
 import time
 import json
 from collections import OrderedDict
+
+import wx.lib.agw.pycollapsiblepane as CP
+
 from epics import Motor
 from epics.wx import MotorPanel, EpicsFunction
 
@@ -32,7 +35,8 @@ def make_steps(precision=3, minstep=0, maxstep=10, decades=7, steps=(1,2,5)):
 class ControlPanel(wx.Panel):
     def __init__(self, parent, groups=None, config={}):
         wx.Panel.__init__(self, parent, -1)
-
+        self.subpanels = {}
+        
         self.groups = groups
         self.config = config #  json.loads(station_configs[station.upper()])
         self.tweak_wids  = {}   # tweak Combobox widgets per group
@@ -47,6 +51,7 @@ class ControlPanel(wx.Panel):
             self.groupmotors[group] = []
             motorlist = []
             maxstep = 5000
+            show = 0
             prec = 4
             for name, data in config.items():
                 name = normalize_pvname(name)
@@ -55,15 +60,18 @@ class ControlPanel(wx.Panel):
                     motorlist.append((name, data['desc']))
                     maxstep = min(maxstep, data['maxstep'])
                     prec    = min(prec, data['prec'])
+                    show    = show + data['show']
             kws = {'motorlist': motorlist, 'maxstep':maxstep, 
-                   'precision': prec}
+                   'precision': prec, 'show': show>0}
             if group.lower().startswith('fine'):
                 kws['buttons'] = [('Zero Fine Motors', self.onZeroFineMotors)]
             sizer.Add((3, 3))
             sizer.Add(self.group_panel(group=group, **kws),   0, ALL_EXP)
             sizer.Add((3, 3))
             sizer.Add(wx.StaticLine(self, size=(305, 3)), 0, CEN_TOP)
+
         pack(self, sizer)
+        
         self.connect_motors()
 
     @EpicsFunction
@@ -85,11 +93,29 @@ class ControlPanel(wx.Panel):
             out[name] = self.motors[data['desc']].VAL
         return out
 
+    def onCollapse(self, event=None, panel=None, group=''):
+        # change the group of 'Show/Hide'
+        # print ' onCollapse ', panel, group, event
+        if panel is None:
+            return
+        txt = 'Show'
+        if panel.IsExpanded():
+            txt = 'Hide'
+        panel.SetLabel('%s %s' % (txt, group))
+        # panel.Refresh()
+        size = self.GetSize()
+        # print 'on Collapse ', size
+        self.SetSize((size[0]+1, size[1]))
+        self.SetSize(size)
+        self.Refresh()
+
     def group_panel(self, group='Fine Stages', motorlist=None,
-                    precision=3, maxstep=5.01, buttons=None):
+                    precision=3, maxstep=5.01, buttons=None, show=True):
         """make motor group panel """
         panel  = wx.Panel(self)
-
+        self.subpanels[group] = panel
+        
+        # print 'Group Panel ', group, show
         tweaklist = make_steps(precision=precision, maxstep=maxstep)
         if group.lower().startswith('theta'):
             tweaklist.extend([10, 20, 30, 45, 90, 180])
@@ -124,7 +150,9 @@ class ControlPanel(wx.Panel):
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(msizer, 0, ALL_EXP)
         sizer.Add(btnbox, 0, CEN_TOP, 1)
-
+        if not show:
+            panel.Disable()
+            
         pack(panel, sizer)
         return panel
 

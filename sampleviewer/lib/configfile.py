@@ -49,7 +49,7 @@ password =
 port =
 #--------------------------#
 [stages]
-# index =  motor || group   ||desc || scale || prec || maxstep
+# index =  motor || group   ||desc || scale || prec || maxstep || show
 1 = 13IDE:m1 || XY Stages   ||     ||  1    || 3    ||
 2 = 13IDE:m2 || XY Stages   ||     || -1    || 3    ||
 3 = 13IDE:m3 || Focus       ||     ||       || 3    || 7.1
@@ -198,8 +198,12 @@ class StageConfig(object):
                 if len(words) > 3 and len(words[4]) > 0:
                     maxstep = float(words[4])
 
+                show = 1
+                if len(words) > 4 and len(words[5]) > 0:
+                    show = int(words[5])
+
                 out[name] = dict(label=name, group=group, desc=desc, scale=scale,
-                                 prec=prec, maxstep=maxstep)
+                                 prec=prec, maxstep=maxstep, show=show)
                 if group not in groups:
                     groups.append(group)
             self.config['stages'] = out
@@ -236,17 +240,18 @@ class StageConfig(object):
                     idx = idx + 1
             elif sect == 'stages':
                 o.append(STAGE_LEGEND)
-                fmt =  "%i = %s || %s || %s || %s || %s || %s"
+                fmt =  "%i = %s || %s || %s || %s || %s || %s | %s"
                 idx = 1
                 for name, dat in cnf['stages'].items():
                     # print 'Save STAGE ', name, dat
-                    # index =  motor || group   ||desc || scale || prec || maxstep
+                    # index =  motor || group   ||desc || scale || prec || maxstep || show
                     group = dat['group']
                     desc  = dat['desc']
+                    show  = str(dat['show'])
                     scale  = str(dat['scale'])
                     prec   = str(dat['prec'])
                     maxstep  = "%.3f" % (dat['maxstep'])
-                    o.append(fmt % (idx, name, group, desc, scale, prec, maxstep))
+                    o.append(fmt % (idx, name, group, desc, scale, prec, maxstep, show))
                     idx = idx + 1
             if optlist is not None:
                 for opt in optlist:

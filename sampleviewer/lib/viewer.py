@@ -59,14 +59,13 @@ class StageFrame(wx.Frame):
 
     def create_frame(self, size=(1600, 800)):
         "build main frame"
-        self.create_menus()
         self.statusbar = self.CreateStatusBar(2, wx.CAPTION|wx.THICK_FRAME)
         self.statusbar.SetStatusWidths([-4, -1])
 
         for index in range(2):
             self.statusbar.SetStatusText('', index)
         config = self.config
-        
+
         opts = dict(writer=self.write_framerate,
                     leftdown_cb=self.onSelectPixel,
                     center_cb=self.onMoveToCenter,
@@ -88,13 +87,14 @@ class StageFrame(wx.Frame):
         self.imgpanel.SetMinSize((285, 250))
 
         leftpanel = wx.Panel(self)
-        self.confpanel = ConfPanel(leftpanel, image_panel=self.imgpanel, **opts)
         self.ctrlpanel = ControlPanel(leftpanel,
                                       groups=config['stage_groups'],
                                       config=config['stages'])
 
+        self.confpanel = ConfPanel(leftpanel, image_panel=self.imgpanel, **opts)
+
         leftsizer = wx.BoxSizer(wx.VERTICAL)
-        leftsizer.AddMany([(self.ctrlpanel, 0, ALL_EXP|LEFT_CEN, 1),
+        leftsizer.AddMany([(self.ctrlpanel, 1, ALL_EXP|LEFT_CEN, 1),
                            (self.confpanel, 1, ALL_EXP|LEFT_CEN, 10)])
                            
         pack(leftpanel, leftsizer)
@@ -115,6 +115,9 @@ class StageFrame(wx.Frame):
                 'width': 2.0, 'args': (0.7, 0.97, 0.97, 0.97)}]
         
         # self.imgpanel.draw_objects = ex
+
+        self.create_menus()
+
             
         self.Bind(wx.EVT_CLOSE, self.onClose)
         self.timer = wx.Timer(self)
@@ -204,10 +207,36 @@ class StageFrame(wx.Frame):
         self.Bind(wx.EVT_MENU, self.onMenuOption, mitem)
 
         omenu.AppendSeparator()
+
+        # print 'Create Menus ',      self.ctrlpanel.subpanels
+        # for key, val in self.config['stages'].items():
+        #     print key, val
+            
+        for name, panel in self.ctrlpanel.subpanels.items():
+            show = 0
+            label = 'Enable %s' % name
+            mid = wx.NewId()
+            self.menu_opts[mid] = label
+            for mname, data in self.config['stages'].items():
+                if data['group'] == name:
+                    show = show + data['show']
+            mitem = omenu.Append(mid, label, label, wx.ITEM_CHECK)
+            if show > 0 :
+                mitem.Check()
+            self.Bind(wx.EVT_MENU, Closure(self.onShowHide, panel=panel), mitem)
+        
         mbar.Append(fmenu, '&File')
         mbar.Append(omenu, '&Options')
         self.SetMenuBar(mbar)
 
+    def onShowHide(self, event=None,  panel=None):# name=None, menu=None, panel=None):
+        # print 'Show Hide ', name, menu, panel
+        if event.Checked(): # menu.IsChecked():
+            panel.Enable()
+        else:
+            panel.Disable()
+            
+    
     def onEraseMany(self, evt=None, **kws):
         self.pospanel.onEraseMany(event=evt)
         evt.Skip()
