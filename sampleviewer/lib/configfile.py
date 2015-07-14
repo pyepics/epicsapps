@@ -179,9 +179,9 @@ class StageConfig(object):
             for key in skeys:
                 name, val = self.config['stages'][key]
                 name = normalize_pvname(name.strip())
-                words = [w.strip() for w in val.split('||')]
+                val = val.replace('||', ' | ')
+                words = [w.strip() for w in val.split('|')]
                 group = words[0]
-
                 desc  = words[1]
                 if len(desc) == 0:
                     desc = None
@@ -195,11 +195,11 @@ class StageConfig(object):
                     prec = int(words[3])
 
                 maxstep = None
-                if len(words) > 3 and len(words[4]) > 0:
+                if len(words) > 4 and len(words[4]) > 0:
                     maxstep = float(words[4])
 
                 show = 1
-                if len(words) > 4 and len(words[5]) > 0:
+                if len(words) > 5 and len(words[5]) > 0:
                     show = int(words[5])
 
                 out[name] = dict(label=name, group=group, desc=desc, scale=scale,
@@ -234,13 +234,16 @@ class StageConfig(object):
                     for pvname in cnf['stages']:
                         pos.append(float(val['position'][pvname]))
                     pos = pfmt % tuple(pos)
-                    tmpdir, imgfile = os.path.split(val['image'])
+                    try:
+                        tmpdir, imgfile = os.path.split(val['image'])
+                    except:
+                        tmpdir, imgfile = '', ''
                     
                     o.append(fmt % (idx, name, imgfile, pos))
                     idx = idx + 1
             elif sect == 'stages':
                 o.append(STAGE_LEGEND)
-                fmt =  "%i = %s || %s || %s || %s || %s || %s | %s"
+                fmt =  "%i = %s || %s || %s || %s || %s || %s || %s"
                 idx = 1
                 for name, dat in cnf['stages'].items():
                     # print 'Save STAGE ', name, dat

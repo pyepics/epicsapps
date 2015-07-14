@@ -223,19 +223,22 @@ class StageFrame(wx.Frame):
             mitem = omenu.Append(mid, label, label, wx.ITEM_CHECK)
             if show > 0 :
                 mitem.Check()
-            self.Bind(wx.EVT_MENU, Closure(self.onShowHide, panel=panel), mitem)
+            self.Bind(wx.EVT_MENU, Closure(self.onShowHide, name=name, panel=panel), mitem)
         
         mbar.Append(fmenu, '&File')
         mbar.Append(omenu, '&Options')
         self.SetMenuBar(mbar)
 
-    def onShowHide(self, event=None,  panel=None):# name=None, menu=None, panel=None):
-        # print 'Show Hide ', name, menu, panel
-        if event.Checked(): # menu.IsChecked():
+    def onShowHide(self, event=None, panel=None, name='---'):
+        showval = {True:1, False:0}[event.Checked()]
+        if showval:
             panel.Enable()
         else:
             panel.Disable()
-            
+
+        for mname, data in self.config['stages'].items():
+            if data['group'] == name:
+                data['show'] = showval
     
     def onEraseMany(self, evt=None, **kws):
         self.pospanel.onEraseMany(event=evt)
