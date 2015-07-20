@@ -4,12 +4,9 @@
 
 import wx
 import time
-import os
-import shutil
-import math
-from threading import Thread
-from cStringIO import StringIO
-import base64
+
+from .imagepanel_base import ImagePanel_Base
+from epics.wx.utils import  pack, FloatCtrl, Closure, add_button
 
 HAS_FLY2 = False
 try:
@@ -18,151 +15,218 @@ try:
 except ImportError:
     pass
 
-class ImagePanel_Fly2(wx.Panel):
+class ImagePanel_Fly2(ImagePanel_Base):
     """Image Panel for FlyCapture2 camera"""
     def __init__(self, parent,  camera_id=0, writer=None,
                  autosave_file=None, **kws):
-        super(ImagePanel_Fly2, self).__init__(parent, -1, size=(800, 600))
-        # 964, 724))
+        if not HAS_FLY2:
+            raise ValueError("Fly2 library not available")
+
+        super(ImagePanel_Fly2, self).__init__(parent, -1,
+                                              size=(800, 600),
+                                              writer=writer,
+                                              autosave_file=autosave_file, **kws)
 
         self.context = pyfly2.Context()
         self.camera = self.context.get_camera(camera_id)
-        width, height = self.camera.GetSize()
-
-        self.img_w = float(width+0.5)
-        self.img_h = float(height+0.5)
+        self.img_w = 800.5
+        self.img_h = 600.5
         self.writer = writer
         self.cam_name = '-'
 
-        
-        self.scale = 0.60
-        self.count = 0
-        self.last_size = 0
-
-        self.scalebar = None
-        self.circle  = None
-        self.SetBackgroundColour("#EEEEEE")
-        self.starttime = time.clock()
-        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
-
-        self.Bind(wx.EVT_SIZE, self.onSize)
-        self.Bind(wx.EVT_PAINT, self.onPaint)
-        self.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
-
-        self.autosave = True
-        self.last_autosave = 0
-        self.autosave_tmpf = None
-        self.autosave_file = None
-        if autosave_file is not None:
-            path, tmp = os.path.split(autosave_file)
-            self.autosave_file = autosave_file
-            self.autosave_tmpf = os.path.join(path, '_tmp_.jpg')
-            self.autosave_thread = Thread(target=self.onAutosave)
-            self.autosave_thread.daemon = True
-
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
-
-    def onSize(self, evt):
-        frame_w, frame_h = self.last_size = evt.GetSize()
-        self.scale = min(frame_w/self.img_w, frame_h/self.img_h)
-        self.Refresh()
-        evt.Skip()
-
-    def onTimer(self, evt=None):
-        self.Refresh()
-
-    def onLeftDown(self, evt=None):
-        print 'Left Down Event: ', evt.GetX(), evt.GetY()
-        print 'Left Down Panel Size:  ', self.panel_size
-        print 'Left Down Last Size:   ', self.last_size
-        print 'Left Down Bitmap Size: ', self.bitmap_size
-        print 'Left Down Image Scale: ', self.scale
-
-    def onPaint(self, event):
-        self.count += 1
-        now = time.clock()
-        elapsed = now - self.starttime
-        if elapsed >= 2.0 and self.writer is not None:
-            self.writer(" %.2f fps\n" % (self.count/elapsed))
-            self.starttime = now
-            self.count = 0
-
-        self.scale = max(self.scale, 0.05)
-        self.image = self.camera.GrabWxImage(scale=self.scale, rgb=True)
-        bitmap = wx.BitmapFromImage(self.image)
-
-        img_w, img_h = self.bitmap_size = bitmap.GetSize()
-        pan_w, pan_h = self.panel_size = self.GetSize()
-        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
-
-        dc = wx.AutoBufferedPaintDC(self)
-        dc.Clear()
-        dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
-        dc.BeginDrawing()
-        if self.scalebar is not None:
-            x0, x1, y0, y1, color, width = self.scalebar
-            # x0, y0, x1, y1 = img_w-20, img_h-60, img_w-200, img_h-60
-            # color = 'Red', width=1.5
-            dc.SetPen(wx.Pen('Red', 1.5, wx.SOLID))
-            dc.DrawLine(x0, y0, x1, y1)
-        if self.circle is not None:
-            x0, y0, rad, color, width = self.circle
-            dc.SetPen(wx.Pen(color, width, wx.SOLID))
-            dc.DrawCircle(x0, y0, rad)
-        dc.EndDrawing()
 
     def Start(self):
         "turn camera on"
         self.camera.Connect()
         self.cam_name = self.camera.info['modelName']
-        self.camera.StartCapture()
+        try:
+            self.camera.StartCapture()
+            width, height = self.camera.GetSize()
+            self.img_w = float(width+0.5)
+            self.img_h = float(height+0.5)
+        except:
+            pass
+
         self.timer.Start(50)
-        self.autosave_thread.start()
+        if self.autosave_thread is not None:
+            self.autosave_thread.start()
 
     def Stop(self):
         "turn camera off"
         self.timer.Stop()
         self.autosave = False
         self.camera.StopCapture()
-        self.autosave_thread.join()
+        if self.autosave_thread is not None:
+            self.autosave_thread.join()
 
-    def onAutosave(self):
-        "autosave process, run in separate thread"
-        # set autosave to False to abort autosaving
-        while self.autosave:
-            tfrac, tint = math.modf(time.time())
-            if tint != self.last_autosave:
-                self.last_autosave = tint
-                try:
-                    self.image.SaveFile(self.autosave_tmpf,
-                                        wx.BITMAP_TYPE_JPEG)
-                    shutil.copy(self.autosave_tmpf,
-                                self.autosave_file)
-                except:
-                    pass
-                tfrac, tint = math.modf(time.time())
-            # sleep for most of the remaining second
-            time.sleep(max(0.05, 0.75*(1.0-tfrac)))
+    def GrabWxImage(self, scale=1, rgb=True):
+        try:
+            return self.camera.GrabWxImage(scale=scale, rgb=rgb)
+        except pyfly2.FC2Error:
+            raise ValueError("could not grab camera image")
 
-    def SaveImage(self, fname, filetype='jpeg'):
-        """save image (jpeg) to file"""
-        ftype = wx.BITMAP_TYPE_JPEG
-        if filetype.lower() == 'png':
-            ftype = wx.BITMAP_TYPE_PNG
-        elif filetype.lower() in ('tiff', 'tif'):
-            ftype = wx.BITMAP_TYPE_TIFF
-        tmpimage = self.camera.GrabWxImage(scale=1, rgb=True)
-        tmpimage.SaveFile(fname, ftype)
-        return {'image_size': tmpimage.GetSize(), 
-                'image_format': 'RGB', 
-                'data_format': 'base64',
-                'data': base64.b64encode(tmpimage.GetData())}
 
-    def GrabImage(self):
-        """return base64 encoded image data"""
-        tmpimage = self.camera.GrabWxImage(scale=1, rgb=True)
-        return {'image_size': tmpimage.GetSize(), 
-                'image_format': 'RGB', 
-                'data_format': 'base64',
-                'data': base64.b64encode(tmpimage.GetData())}
+class ConfPanel_Fly2(wx.Panel):
+    def __init__(self, parent, image_panel=None, camera_id=0, 
+                 center_cb=None, **kws):
+        super(ConfPanel_Fly2, self).__init__(parent, -1, size=(280, 300))
+        self.image_panel = image_panel
+        self.center_cb = center_cb
+        self.camera_id = camera_id
+        self.camera = self.image_panel.camera
+        def txt(label, size=150):
+            return wx.StaticText(self, label=label, size=(size, -1),
+                                 style=wx.ALIGN_LEFT|wx.EXPAND)
+
+        self.wids = wids = {}
+        sizer = wx.GridBagSizer(10, 4)
+        sizer.SetVGap(5)
+        sizer.SetHGap(5)
+
+        self.title = txt("Fly2Capture: ", size=285)
+      
+        sizer.Add(self.title, (0, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)        
+       
+        self.__initializing = True
+        i = 2
+        #('Sharpness', '%', 100), ('Hue', 'deg', 100), ('Saturation', '%', 100), 
+        for dat in (('shutter', 'ms', 70),  
+                    ('gain', 'dB', 24),
+                    ('brightness', '%', 6), 
+                    ('gamma', '', 5)):
+            
+            key, units, maxval = dat
+            wids[key] = FloatCtrl(self, value=0, maxval=maxval,
+                                  precision=1,
+                                  action=self.onValue,
+                                  act_on_losefocus=True,
+                                  action_kw={'prop': key}, size=(55, -1))
+            label = '%s' % (key.title())
+            if len(units)> 0:
+                label = '%s (%s)' % (key.title(), units)
+            sizer.Add(txt(label), (i, 0), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+            sizer.Add(wids[key],  (i, 1), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+
+            akey = '%s_auto' % key
+            wids[akey] =  wx.CheckBox(self, -1, label='auto')
+            wids[akey].SetValue(0)
+            wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
+            sizer.Add(wids[akey], (i, 2), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+            i = i + 1
+
+        for color in ('blue', 'red'):
+            key = 'wb_%s' % color
+            wids[key] = FloatCtrl(self, value=0, maxval=1024,
+                                  precision=0,
+                                  action=self.onValue,
+                                  act_on_losefocus=True,
+                                  action_kw={'prop': key}, size=(55, -1))
+            label = 'White Balance (%s)' % (color)
+            sizer.Add(txt(label), (i, 0), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+            sizer.Add(wids[key],  (i, 1), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+
+            if color == 'blue':
+                akey = 'wb_auto'
+                wids[akey] =  wx.CheckBox(self, -1, label='auto')
+                wids[akey].SetValue(0)
+                wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
+                sizer.Add(wids[akey], (i, 2), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+            i += 1
+            
+        #  show last pixel position, move to center
+        i += 1
+        sizer.Add(txt("Last Pixel Position:", size=285),
+                  (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
+
+        i += 1
+        self.pixel_coord = wx.StaticText(self, label=' === \n === ', 
+                                         size=(285, 50), 
+                                         style=wx.ALIGN_LEFT|wx.EXPAND)
+
+
+        sizer.Add(self.pixel_coord, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
+      
+        center_button = add_button(self, "Bring to Center", 
+                                   action=self.onBringToCenter, size=(120, -1))
+
+        i += 1
+        sizer.Add(center_button, (i, 0), (1, 2), wx.ALIGN_LEFT)
+
+        pack(self, sizer)
+        self.__initializing = False
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
+        wx.CallAfter(self.onConnect)
+        
+    def onBringToCenter(self, event=None,  **kws):
+        if self.center_cb is not None:
+            self.center_cb(event=event, **kws)
+
+    def onConnect(self, **kws):
+        for key in ('shutter', 'gain', 'brightness', 'gamma'):
+            props = self.camera.GetProperty(key)
+            self.wids[key].SetValue(props['absValue'])
+            akey = '%s_auto' % key
+            self.wids[akey].SetValue({False: 0, True: 1}[props['autoManualMode']])
+
+        props = self.camera.GetProperty('white_balance')
+        self.wids['wb_red'].SetValue(props['valueA'])
+        self.wids['wb_blue'].SetValue(props['valueB'])
+        self.wids['wb_auto'].SetValue({False: 0, True: 1}[props['autoManualMode']])
+        self.timer.Start(1000)
+        self.title.SetLabel("Fly2Capture: %s" % self.image_panel.cam_name)
+
+    def onTimer(self, evt=None, **kws):
+        for prop in ('shutter', 'gain', 'brightness', 'gamma', 'white_balance'):
+            try: 
+                pdict = self.camera.GetProperty(prop)
+            except pyfly2.FC2Error:
+                return
+            if pdict['autoManualMode']:
+                if  prop == 'white_balance':
+                    self.wids['wb_red'].SetValue(pdict['valueA'])
+                    self.wids['wb_blue'].SetValue(pdict['valueB'])
+                else:
+                    self.wids[prop].SetValue(pdict['absValue'])
+
+    def onAuto(self, evt=None, prop=None, **kws):
+        if not evt.IsChecked():
+            return
+        if prop in ('wb_red', 'wb_blue', 'wb_auto'):
+            prop = 'white_balance'
+        try:
+            if prop in ('shutter', 'gain', 'brightness', 'gamma'):
+                pdict = self.camera.GetProperty(prop)
+                self.camera.SetPropertyValue(prop, pdict['absValue'], auto=True)
+                time.sleep(0.5)
+                pdict = self.camera.GetProperty(prop)
+                self.wids[prop].SetValue(pdict['absValue'])
+            elif prop == 'white_balance':
+                red =  self.wids['wb_red'].GetValue()
+                blue = self.wids['wb_blue'].GetValue()
+                self.camera.SetPropertyValue(prop, (red, blue), auto=True)
+                time.sleep(0.5)
+                pdict = self.camera.GetProperty(prop)            
+                self.wids['wb_red'].SetValue(pdict['valueA'])
+                self.wids['wb_blue'].SetValue(pdict['valueB'])
+        except pyfly2.FC2Error:
+            return
+
+    def onValue(self, prop=None, value=None,  **kws):
+        if self.__initializing:
+            return
+        if prop in ('wb_red', 'wb_blue', 'wb_auto'):
+            prop = 'white_balance'
+        try:
+            if prop in ('shutter', 'gain', 'brightness', 'gamma'):
+                auto = self.wids['%s_auto' % prop].GetValue()
+                self.camera.SetPropertyValue(prop, float(value), auto=auto)
+            elif prop == 'white_balance':
+                red =  self.wids['wb_red'].GetValue()
+                blue = self.wids['wb_blue'].GetValue()
+                auto = self.wids['wb_auto'].GetValue()
+                self.camera.SetPropertyValue(prop, (red, blue), auto=auto)
+        except pyfly2.FC2Error:
+            return

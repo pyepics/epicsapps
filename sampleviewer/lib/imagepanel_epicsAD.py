@@ -4,19 +4,19 @@
 import wx
 import time
 import os
-import shutil
-import math
 import numpy as np
-from threading import Thread
-from cStringIO import StringIO
-import base64
 
-from epics import PV, Device, caput
+from epics import PV, Device, caput, poll
 from epics.wx import EpicsFunction
 
 import Image
+from .imagepanel_base import ImagePanel_Base
 
-class ImagePanel_EpicsAD(wx.Panel):
+from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
+                      PVEnumChoice, PVFloatCtrl, PVTextCtrl)
+from epics.wx.utils import pack
+                            
+class ImagePanel_EpicsAD(ImagePanel_Base):
     img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
                  'ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
                  'ColorMode_RBV')
@@ -31,7 +31,10 @@ class ImagePanel_EpicsAD(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
     def __init__(self, parent, prefix=None, format='JPEG',
                  writer=None, autosave_file=None, **kws):
-        super(ImagePanel_EpicsAD, self).__init__(parent, -1, size=(800, 600))
+        super(ImagePanel_EpicsAD, self).__init__(parent, -1,
+                                                 size=(800, 600),
+                                                 writer=writer,
+                                                 autosave_file=autosave_file)
 
         if prefix.endswith(':'):
             prefix = prefix[:-1]
@@ -52,37 +55,11 @@ class ImagePanel_EpicsAD(wx.Panel):
        
         self.img_w = float(width+0.5)
         self.img_h = float(height+0.5)
-        self.writer = writer
-        self.cam_name = '-'
+        self.cam_name = prefix
 
         self.imgcount = 0
         self.imgcount_start = 0
         self.last_update = 0.0
-
-        self.scale = 0.60
-        self.count = 0
-        self.last_size = 0
-
-        self.scalebar = None
-        self.circle  = None
-        self.SetBackgroundColour("#EEEEEE")
-        self.starttime = time.clock()
-        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
-
-        self.Bind(wx.EVT_SIZE, self.onSize)
-        self.Bind(wx.EVT_PAINT, self.onPaint)
-        self.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
-
-        self.autosave = True
-        self.last_autosave = 0
-        self.autosave_tmpf = None
-        self.autosave_file = None
-        if autosave_file is not None:
-            path, tmp = os.path.split(autosave_file)
-            self.autosave_file = autosave_file
-            self.autosave_tmpf = os.path.join(path, '_tmp_.jpg')
-        self.autosave_thread = Thread(target=self.onAutosave)
-        self.autosave_thread.daemon = True
 
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
@@ -103,112 +80,18 @@ class ImagePanel_EpicsAD(wx.Panel):
         if format.upper() == 'JPEG1:':
             caput("%sJPEGQuality" % cname, 90)
 
-    def onSize(self, evt):
-        frame_w, frame_h = self.last_size = evt.GetSize()
-        self.scale = min(frame_w/self.img_w, frame_h/self.img_h)
-        self.Refresh()
-        evt.Skip()
-
-    def onTimer(self, evt=None):
-        self.Refresh()
-
-    def onLeftDown(self, evt=None):
-        print 'Left Down Event: ', evt.GetX(), evt.GetY()
-        print 'Left Down Panel Size:  ', self.panel_size
-        print 'Left Down Last Size:   ', self.last_size
-        print 'Left Down Bitmap Size: ', self.bitmap_size
-        print 'Left Down Image Scale: ', self.scale
-
-    def onPaint(self, event):
-        self.count += 1
-        now = time.clock()
-        elapsed = now - self.starttime
-        if elapsed >= 2.0 and self.writer is not None:
-            self.writer(" %.2f fps\n" % (self.count/elapsed))
-            self.starttime = now
-            self.count = 0
-
-        self.scale = max(self.scale, 0.05)
-
-        img =  self.GrabWxImage(scale=self.scale, rgb=True)
-        if img is None:
-            return
-        self.image = img
-        bitmap = wx.BitmapFromImage(self.image)
-        img_w, img_h = self.bitmap_size = bitmap.GetSize()
-        pan_w, pan_h = self.panel_size = self.GetSize()
-        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
-
-        dc = wx.AutoBufferedPaintDC(self)
-        dc.Clear()
-        dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
-        dc.BeginDrawing()
-        if self.scalebar is not None:
-            x0, x1, y0, y1, color, width = self.scalebar
-            # x0, y0, x1, y1 = img_w-20, img_h-60, img_w-200, img_h-60
-            # color = 'Red', width=1.5
-            dc.SetPen(wx.Pen('Red', 1.5, wx.SOLID))
-            dc.DrawLine(x0, y0, x1, y1)
-        if self.circle is not None:
-            x0, y0, rad, color, width = self.circle
-            dc.SetPen(wx.Pen(color, width, wx.SOLID))
-            dc.DrawCircle(x0, y0, rad)
-        dc.EndDrawing()
-
     def Start(self):
         "turn camera on"
-        # print 'Epics AD START ' # self.camera.Connect()
-        # self.cam_name = self.camera.info['modelName']
-        # self.camera.StartCapture()
         self.timer.Start(50)
-        self.autosave_thread.start()
+        if self.autosave_thread is not None:
+            self.autosave_thread.start()
 
     def Stop(self):
         "turn camera off"
         self.timer.Stop()
         self.autosave = False
-        # self.camera.StopCapture()
-        self.autosave_thread.join()
-
-    def onAutosave(self):
-        "autosave process, run in separate thread"
-        # set autosave to False to abort autosaving
-        while self.autosave:
-            tfrac, tint = math.modf(time.time())
-            if tint != self.last_autosave:
-                self.last_autosave = tint
-                try:
-                    self.image.SaveFile(self.autosave_tmpf,
-                                        wx.BITMAP_TYPE_JPEG)
-                    shutil.copy(self.autosave_tmpf,
-                                self.autosave_file)
-                except:
-                    pass
-                tfrac, tint = math.modf(time.time())
-            # sleep for most of the remaining second
-            time.sleep(max(0.05, 0.75*(1.0-tfrac)))
-
-    def SaveImage(self, fname, filetype='jpeg'):
-        """save image (jpeg) to file"""
-        ftype = wx.BITMAP_TYPE_JPEG
-        if filetype.lower() == 'png':
-            ftype = wx.BITMAP_TYPE_PNG
-        elif filetype.lower() in ('tiff', 'tif'):
-            ftype = wx.BITMAP_TYPE_TIFF
-        ## tmpimage = self.GrabWxImage(scale=self.scale, rgb=True)
-        ## tmpimage.SaveFile(fname, ftype)
-        return {'image_size': tmpimage.GetSize(), 
-                'image_format': 'RGB', 
-                'data_format': 'base64',
-                'data': base64.b64encode(tmpimage.GetData())}
-
-    def GrabImage(self):
-        """return base64 encoded image data"""
-        tmpimage = self.camera.GrabWxImage(scale=1, rgb=True)
-        return {'image_size': tmpimage.GetSize(), 
-                'image_format': 'RGB', 
-                'data_format': 'base64',
-                'data': base64.b64encode(tmpimage.GetData())}
+        if self.autosave_thread is not None:
+            self.autosave_thread.join()
 
     def GetImageSize(self):
         self.arrsize = [1,1,1]
@@ -254,15 +137,14 @@ class ImagePanel_EpicsAD(wx.Panel):
             dcount *= arrsize[2]
 
         rawdata = self.ad_img.PV('ArrayData').get(count=dcount)
+        if rawdata is None:
+            return
         
-        print "==== GrabImage ", im_mode, colormode, width, height, rawdata.dtype
-
         if (colormode == 0 and isinstance(rawdata, np.ndarray) and
             rawdata.dtype != np.uint8):
             im_mode = 'I'
             rawdata = rawdata.astype(np.uint32)
 
-        print "==== GrabImage ", im_mode, width, height, rawdata[:4]
         if im_mode in ('L', 'I'):
             image = wx.EmptyImage(width, height)
             imbuff = Image.frombuffer(im_mode, self.im_size, rawdata,
@@ -273,43 +155,145 @@ class ImagePanel_EpicsAD(wx.Panel):
             rawdata.shape = (3, width, height)
             image = wx.ImageFromData(width, height, rawdata)
 
-        return image.Scale(int(self.scale*width), int(self.scale*height))
+        return image.Scale(int(scale*width), int(scale*height))
+
+class ConfPanel_EpicsAD(wx.Panel):
+    img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
+                 'ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
+                 'ColorMode_RBV')
+
+    cam_attrs = ('Acquire', 'ArrayCounter', 'ArrayCounter_RBV',
+                 'DetectorState_RBV',  'NumImages', 'ColorMode',
+                 'DataType_RBV',  'Gain',
+                 'AcquireTime', 'AcquirePeriod', 'ImageMode',
+                 'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
+                 'SizeX', 'SizeY', 'MinX', 'MinY')
+    
+    def __init__(self, parent, image_panel=None, prefix=None, **kws):
+        super(ConfPanel_EpicsAD, self).__init__(parent, -1, size=(280, 300))
+
+        self.wids = {}
+        self.prefix = prefix
+        if self.prefix.endswith(':'):
+            self.prefix = self.prefix[:-1]
+        if self.prefix.endswith(':image1'):
+            self.prefix = self.prefix[:-7]
+        if self.prefix.endswith(':cam1'):
+            self.prefix = self.prefix[:-5]
+
+        self.ad_img = Device(self.prefix + ':image1:',
+                             delim='',  attrs=self.img_attrs)
+        self.ad_cam = Device(self.prefix + ':cam1:',
+                             delim='',  attrs=self.cam_attrs)
 
 
-xx = """
-cname = "%s%s1:"% (self.cam_adpref, self.cam_adform.upper())
-            caput("%sFileName" % cname, fname, wait=True)
-            time.sleep(0.03)
-            caput("%sWriteFile" % cname, 1, wait=True)
-            time.sleep(0.05)
-            img_ok = False
-            t0 = time.time()
-            while not img_ok:
-                if time.time()-t0 > 15:
-                    break
-                try:
-                    out = open(fname, "rb")
-                    imgdata = base64.b64encode(out.read())
-                    out.close()
-                    img_ok = True
-                except:
-                    pass
-                time.sleep(0.05)
+        self.SetBackgroundColour('#EEFFE')
+        title =  wx.StaticText(self, size=(285, 25),
+                               label="Epics AreaDetector: %s" % prefix)
+
+        for key in ('imagemode', 'triggermode', 'color'):
+            self.wids[key]   = PVEnumChoice(self, pv=None, size=(135, -1))
+        for key in ('exptime', 'period', 'numimages', 'gain'):
+            self.wids[key]   = PVFloatCtrl(self, pv=None, size=(135, -1), minval=0)
+        self.wids['gain'].SetMax(20)
+
+        for key in ('start', 'stop'):
+            self.wids[key] = wx.Button(self, -1, label=key.title(), size=(65, -1))
+            self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onButton, key=key))
+        
+        labstyle  = wx.ALIGN_LEFT|wx.EXPAND|wx.ALIGN_BOTTOM
+        ctrlstyle = wx.ALIGN_LEFT #  |wx.ALIGN_BOTTOM
+        rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
+        txtstyle  = wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
+
+
+        self.wids['fullsize']= wx.StaticText(self, -1,  size=(250,-1), style=txtstyle)
+
+        def txt(label, size=100):
+            return wx.StaticText(self, label=label, size=(size, -1), style=labstyle)
+
+        def lin(len=30, wid=2, style=wx.LI_HORIZONTAL):
+            return wx.StaticLine(self, size=(len, wid), style=style)
+
+        sizer = wx.GridBagSizer(10, 4)
+        sizer.SetVGap(5)
+        sizer.SetHGap(5)
+        
+        sizer.Add(title,                    (0, 0), (1, 3), labstyle)
+        sizer.Add(self.wids['fullsize'],    (1, 0), (1, 3), labstyle)
+        sizer.Add(txt('Acquire '),          (2, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['start'],       (2, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['stop'],        (2, 2), (1, 1), ctrlstyle)
+
+        sizer.Add(txt('Image Mode '),       (3, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['imagemode'],   (3, 1), (1, 2), ctrlstyle)
+
+        sizer.Add(txt('# Images '),         (4, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['numimages'],   (4, 1), (1, 2), ctrlstyle)
+
+        sizer.Add(txt('Trigger Mode '),     (5, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['triggermode'], (5, 1), (1, 2), ctrlstyle)
+
+        sizer.Add(txt('Period '),           (6, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['period'],      (6, 1), (1, 2), ctrlstyle)
+
+        sizer.Add(txt('Exposure Time '),    (7, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['exptime'],     (7, 1), (1, 2), ctrlstyle)
+
+        sizer.Add(txt('Gain '),             (8, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['gain'],        (8, 1), (1, 2), ctrlstyle)
+
+        sizer.Add(txt('Color Mode'),        (9, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['color'],       (9, 1), (1, 2), ctrlstyle)
+        
+        pack(self, sizer)
+        wx.CallAfter(self.connect_pvs )
 
     @EpicsFunction
-    def Start(self):
-        if not self.cam_adpref.endswith(':'):
-            self.cam_adpref = "%s:" % self.cam_adpref
-        cname = "%s%s1:"% (self.cam_adpref, self.cam_adform.upper())
-        caput("%sEnableCallbacks" % cname, 1)
-        thisdir = os.path.abspath(os.getcwd())
-        thisdir = thisdir.replace('\\', '/').replace('T:/', '/Volumes/Data/')
+    def connect_pvs(self, verbose=True):
+        # print "Connect PVS"
+        if self.prefix is None or len(self.prefix) < 2:
+            return
 
-        caput("%sFilePath" % cname, thisdir)
-        caput("%sAutoSave" % cname, 0)
-        caput("%sAutoIncrement" % cname, 0)
-        caput("%sFileTemplate" % cname, "%s%s")
-        if self.cam_adform.upper() == 'JPEG':
-            caput("%sJPEGQuality" % cname, 90)
-"""
+        time.sleep(0.010)
+        if not self.ad_img.PV('UniqueId_RBV').connected:
+            poll()
+            if not self.ad_img.PV('UniqueId_RBV').connected:
+                self.messag('Warning:  Camera seems to not be connected!')
+                return
 
+        self.wids['color'].SetPV(self.ad_cam.PV('ColorMode'))
+        self.wids['exptime'].SetPV(self.ad_cam.PV('AcquireTime'))
+        self.wids['period'].SetPV(self.ad_cam.PV('AcquirePeriod'))
+        self.wids['gain'].SetPV(self.ad_cam.PV('Gain'))
+        self.wids['numimages'].SetPV(self.ad_cam.PV('NumImages'))
+        self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
+        self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))
+
+        sizex = self.ad_cam.MaxSizeX_RBV
+        sizey = self.ad_cam.MaxSizeY_RBV
+        sizelabel = 'Image Size: %i x %i pixels'
+        try:
+            sizelabel = sizelabel  % (sizex, sizey)
+        except:
+            sizelabel = sizelabel  % (0, 0)
+
+        self.wids['fullsize'].SetLabel(sizelabel)
+        poll()
+
+    @EpicsFunction
+    def onButton(self, evt=None, key='name', **kw):
+        if evt is None:
+            return
+        if key == 'start':
+            self.n_img   = 0
+            self.n_drawn = 0
+            self.starttime = time.time()
+            self.imgcount_start = self.ad_cam.ArrayCounter_RBV
+            self.ad_cam.Acquire = 1
+        elif key == 'stop':
+            self.ad_cam.Acquire = 0
+        elif key == 'unzoom':
+            self.unZoom()
+        else:
+            print 'unknown Entry ? ', key

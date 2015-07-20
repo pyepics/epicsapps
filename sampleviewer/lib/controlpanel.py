@@ -2,6 +2,9 @@ import wx
 import time
 import json
 from collections import OrderedDict
+
+import wx.lib.agw.pycollapsiblepane as CP
+
 from epics import Motor
 from epics.wx import MotorPanel, EpicsFunction
 
@@ -10,17 +13,12 @@ from epics.wx.utils import (add_button, add_menu, popup, pack, Closure ,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from .icons import icons
+from .utils import normalize_pvname
 
 ALL_EXP  = wx.ALL|wx.EXPAND|wx.ALIGN_LEFT|wx.ALIGN_TOP
 LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
-
-def normalize_pvname(pvname):
-    pvname = str(pvname)
-    if '.' not in pvname:
-        pvname = '%s.VAL' % pvname
-    return pvname
 
 def make_steps(precision=3, minstep=0, maxstep=10, decades=7, steps=(1,2,5)):
     """automatically create list of step sizes, generally going as
@@ -37,7 +35,8 @@ def make_steps(precision=3, minstep=0, maxstep=10, decades=7, steps=(1,2,5)):
 class ControlPanel(wx.Panel):
     def __init__(self, parent, groups=None, config={}):
         wx.Panel.__init__(self, parent, -1)
-
+        self.subpanels = {}
+        
         self.groups = groups
         self.config = config #  json.loads(station_configs[station.upper()])
         self.tweak_wids  = {}   # tweak Combobox widgets per group
@@ -45,14 +44,15 @@ class ControlPanel(wx.Panel):
         self.motor_wids  = {}   # motor panel widgets, key=desc
         self.motors      = {}   # epics motor,         key=desc
         self.scale       = {}   # motor sign for ZFM,  key=desc
-        self.SetMinSize((320, 500))
+        # self.SetMinSize((320, 200))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         for group in groups:
             self.groupmotors[group] = []
             motorlist = []
             maxstep = 5000
-            prec = 7
+            show = 0
+            prec = 4
             for name, data in config.items():
                 name = normalize_pvname(name)
                 if data['group'] == group:
@@ -60,15 +60,18 @@ class ControlPanel(wx.Panel):
                     motorlist.append((name, data['desc']))
                     maxstep = min(maxstep, data['maxstep'])
                     prec    = min(prec, data['prec'])
+                    show    = show + data['show']
             kws = {'motorlist': motorlist, 'maxstep':maxstep, 
-                   'precision': prec}
+                   'precision': prec, 'show': show>0}
             if group.lower().startswith('fine'):
                 kws['buttons'] = [('Zero Fine Motors', self.onZeroFineMotors)]
             sizer.Add((3, 3))
             sizer.Add(self.group_panel(group=group, **kws),   0, ALL_EXP)
             sizer.Add((3, 3))
             sizer.Add(wx.StaticLine(self, size=(305, 3)), 0, CEN_TOP)
+
         pack(self, sizer)
+        
         self.connect_motors()
 
     @EpicsFunction
@@ -90,13 +93,29 @@ class ControlPanel(wx.Panel):
             out[name] = self.motors[data['desc']].VAL
         return out
 
+    def onCollapse(self, event=None, panel=None, group=''):
+        # change the group of 'Show/Hide'
+        # print ' onCollapse ', panel, group, event
+        if panel is None:
+            return
+        txt = 'Show'
+        if panel.IsExpanded():
+            txt = 'Hide'
+        panel.SetLabel('%s %s' % (txt, group))
+        # panel.Refresh()
+        size = self.GetSize()
+        # print 'on Collapse ', size
+        self.SetSize((size[0]+1, size[1]))
+        self.SetSize(size)
+        self.Refresh()
+
     def group_panel(self, group='Fine Stages', motorlist=None,
-                    precision=3, maxstep=5.01, buttons=None):
+                    precision=3, maxstep=5.01, buttons=None, show=True):
         """make motor group panel """
         panel  = wx.Panel(self)
-
-        # print 'Group Panel ', group, motorlist, precision, maxstep
-
+        self.subpanels[group] = panel
+        
+        # print 'Group Panel ', group, show
         tweaklist = make_steps(precision=precision, maxstep=maxstep)
         if group.lower().startswith('theta'):
             tweaklist.extend([10, 20, 30, 45, 90, 180])
@@ -131,7 +150,9 @@ class ControlPanel(wx.Panel):
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.Add(msizer, 0, ALL_EXP)
         sizer.Add(btnbox, 0, CEN_TOP, 1)
-
+        if not show:
+            panel.Disable()
+            
         pack(panel, sizer)
         return panel
 

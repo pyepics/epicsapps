@@ -1,8 +1,12 @@
 import os
 import wx
+import wx.lib.scrolledpanel as scrolled
+import json
 import time
 from collections import OrderedDict
-from epics.wx.utils import add_button, add_menu, popup, pack, Closure
+from epics import caput
+from epics.wx.utils import (add_button, add_menu, popup, pack, Closure,
+                            SimpleText)
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
@@ -17,6 +21,68 @@ from .imageframe import ImageDisplayFrame
 import larch
 from  larch_plugins.epics import ScanDB, InstrumentDB
 
+class ErasePositionsDialog(wx.Frame):
+    """ Erase all positions, with check boxes for all"""
+    def __init__(self, positions, instname=None, instdb=None):
+        wx.Frame.__init__(self, None, -1, title="Select Positions to Erase")
+        self.instname = instname
+        self.instdb = instdb
+        self.build_dialog(positions)
+
+    def build_dialog(self, positions):
+        self.positions = positions
+
+        panel = scrolled.ScrolledPanel(self)
+        self.checkboxes = {}
+        sizer = wx.GridBagSizer(len(positions)+2, 2)
+        sizer.SetVGap(2)        
+        sizer.SetHGap(3)        
+        sizer.Add(SimpleText(panel, ' Erase Positions?  Warning: CANNOT BE UNDONE!!',
+                            colour=wx.Colour(200, 0, 0)), (0, 0), (1, 2),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, ' Position Name'),  (1, 0), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, 'Erase?'),         (1, 1), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(wx.StaticLine(panel, size=(300, 2)), (2, 0), (1, 2),  LEFT_CEN, 2)
+        
+        irow = 2
+        for pname in positions:
+            irow += 1
+            cbox = self.checkboxes[pname] = wx.CheckBox(panel, -1, "")
+            cbox.SetValue(True)
+            sizer.Add(SimpleText(panel, "  %s  "%pname), (irow, 0), (1, 1),  LEFT_CEN, 2)
+            sizer.Add(cbox,                      (irow, 1), (1, 1),  LEFT_CEN, 2)
+        irow += 1
+        sizer.Add(wx.StaticLine(panel, size=(300, 2)), (irow, 0), (1, 2),  LEFT_CEN, 2)
+
+        pack(panel, sizer)
+        panel.SetMinSize((350, 300))
+        panel.SetupScrolling()
+        bkws = dict(size=(55, -1))
+        btn_ok     = add_button(self, "OK",  action=self.onOK, **bkws)
+        btn_cancel = add_button(self, "Cancel", action=self.onCancel,  **bkws)
+
+        brow = wx.BoxSizer(wx.HORIZONTAL)
+        brow.Add(btn_ok ,     0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        brow.Add(btn_cancel,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
+
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
+        mainsizer.Add(panel, 1, 2)
+        mainsizer.Add(wx.StaticLine(self, size=(300, 2)), 0, 2)
+        mainsizer.Add(brow, 0, 2)
+        pack(self, mainsizer)
+        self.Raise()
+        self.Show()
+        
+    def onOK(self, event=None):
+        if self.instname is not None and self.instdb is not None:
+            for pname, cbox in self.checkboxes.items():
+                if cbox.IsChecked():
+                    print 'erasing: ', pname
+                    self.instdb.remove_position(self.instname, pname)
+        self.Destroy()
+
+    def onCancel(self, event=None):
+        self.Destroy()
+        
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
     def __init__(self, parent, config=None):
@@ -31,17 +97,19 @@ class PositionPanel(wx.Panel):
 
         tlabel = wx.StaticText(self, label="Save Position: ")
 
-        bkws = dict(size=(60, -1))
+        bkws = dict(size=(55, -1))
         btn_save  = add_button(self, "Save",  action=self.onSave2, **bkws)
         btn_goto  = add_button(self, "Go To", action=self.onGo,    **bkws)
         btn_erase = add_button(self, "Erase", action=self.onErase, **bkws)
         btn_show  = add_button(self, "Show",  action=self.onShow,  **bkws)
+        # btn_many  = add_button(self, "Erase Many",  action=self.onEraseMany,  **bkws)
 
         brow = wx.BoxSizer(wx.HORIZONTAL)
         brow.Add(btn_save,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_goto,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_erase, 0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_show,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        # brow.Add(btn_many,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
 
         self.pos_list  = wx.ListBox(self)
         self.pos_list.SetBackgroundColour(wx.Colour(253, 253, 250))
@@ -57,16 +125,24 @@ class PositionPanel(wx.Panel):
 
         pack(self, sizer)
         self.init_scandb()
-        self.set_positions_instdb()
+        self.last_refresh = 0
+        self.get_positions_from_db()
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
+        self.timer.Start(3000)
 
     def init_scandb(self):
         dbconn = self.config
         if dbconn is not None:
             self.instname = dbconn.get('instrument', 'microscope_stages')
+            if dbconn['port'] in ('', 'None', None):
+                dbconn.pop('port')
             scandb = ScanDB(**dbconn)
             self.instdb = InstrumentDB(scandb)
             if self.instdb.get_instrument(self.instname) is None:
-                self.instdb.add_instrument(self.instname)
+                pvs = self.parent.config['stages'].keys()
+                self.instdb.add_instrument(self.instname, pvs=pvs)
+                
 
     def onSave1(self, event):
         "save from text enter"
@@ -79,43 +155,39 @@ class PositionPanel(wx.Panel):
     def onSave(self, name):
         if len(name) < 1:
             return
+
         if name in self.positions and self.parent.v_replace:
             ret = popup(self, "Overwrite Position %s?" % name,
                         "Veriry Overwrite Position",
                         style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
             if ret != wx.ID_YES:
                 return
+
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
         imgfile = os.path.join(self.parent.imgdir, imgfile)
-
         tmp_pos = self.parent.ctrlpanel.read_position()
-
         imgdata = self.parent.save_image(imgfile)
+        imgdata['data_format'] = 'file'
+        imgdata.pop('data')
+        notes = json.dumps(imgdata)
+        fullpath = os.path.join(os.getcwd(), imgfile)
 
-        print 'SAVE Position: ', name, imgfile, tmp_pos
-        image_notes = 'image_size=(%i, %i), image_format:%s,  data_format=%s'
-        image_notes = image_notes % (imgdata['image_size'],
-                                     imgdata['image_format'],
-                                     imgdata['data_format'])
-
-        self.positions[name] = {'image': imgfile,
+        self.positions[name] = {'image': fullpath,
                                 'timestamp': time.strftime('%b %d %H:%M:%S'),
                                 'position': tmp_pos,
-                                'image_size': imgdata['image_size'],
-                                'image_format': imgdata['image_format'],
-                                'data_forma': imgdata['data_format']}
+                                'notes':  notes}
 
         if name not in self.pos_list.GetItems():
             self.pos_list.Append(name)
-        self.instdb.save_position(self.instname, name, tmp_pos,
-                                  notes=image_notes,
-                                  image=imgdata['data'])
 
-        # self.pos_name.Clear()
+        self.instdb.save_position(self.instname, name, tmp_pos,
+                                  notes=notes, image=fullpath)
+            
         self.pos_list.SetStringSelection(name)
         # auto-save file
         self.parent.autosave(positions=self.positions)
-        self.parent.write_htmllog(name)
+        self.parent.write_htmllog(name, self.positions[name])
+        
         self.parent.write_message("Saved Position '%s', image in %s" % (name, imgfile))
         wx.CallAfter(Closure(self.onSelect, event=None, name=name))
 
@@ -136,32 +208,55 @@ class PositionPanel(wx.Panel):
             self.image_display.Raise()
 
         thispos = self.positions[posname]
-        thisimage = thispos['image']
-        if thisimage['type'] == 'filename':
-            self.image_display.showfile(thisimage['data'], title=posname)
-        elif thisimage['type'] == 'b46encode':
-            self.image_display.showb64img(thisimage['data'], title=posname)
+        try:
+            notes = json.loads(thispos['notes'])
+        except:
+            notes = {'data_format': ''}
+        label = []
+        stages  = self.parent.config['stages']
+        posvals = self.positions[posname]['position']
+        for pvname, value in posvals.items():
+            value = thispos['position'][pvname]
+            desc = stages.get(pvname, {}).get('desc', None)
+            if desc is None:
+                desc = pvname
+            label.append("%s=%.4f" % (desc, float(value)))
+        label = ', '.join(label)
+        label = '%s: %s' % (posname, label)
+
+        data  = thispos['image']
+        if str(notes['data_format']) == 'file':
+            self.image_display.showfile(data, title=posname,
+                                        label=label)
+        elif str(notes['data_format']) == 'base64':
+            size = notes.get('image_size', (800, 600))
+            self.image_display.showb64img(data, size=size, 
+                                          title=posname, label=label)
+        else:
+            print 'Cannot show image for %s' % posname
 
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
         if posname is None or len(posname) < 1:
             return
-        pos_vals = self.positions[posname]['position']
-        stage_names = self.parent.config['stages'].values()
+        stages  = self.parent.config['stages']
+        posvals = self.positions[posname]['position']
         postext = []
-        for name, val in zip(stage_names, pos_vals):
-            postext.append('  %s\t= %.4f' % (name['label'], val))
+        for pvname, value in posvals.items():
+            label = pvname
+            desc = stages.get(pvname, {}).get('desc', None)
+            if desc is not None:
+                label = '%s (%s)' % (desc, pvname)
+            postext.append('  %s\t= %.4f' % (label, float(value)))
         postext = '\n'.join(postext)
-
         if self.parent.v_move:
             ret = popup(self, "Move to %s?: \n%s" % (posname, postext),
                         'Verify Move',
                         style=wx.YES_NO|wx.ICON_QUESTION)
             if ret != wx.ID_YES:
                 return
-        motorwids = self.parent.ctrlpanel.motor_wids
-        for name, val in zip(stage_names, pos_vals):
-            motorwids[name['label']].drive.SetValue("%f" % val)
+        for pvname, value in posvals.items():
+            caput(pvname, value)
         self.parent.write_message('moved to %s' % posname)
 
     def onErase(self, event):
@@ -179,6 +274,12 @@ class PositionPanel(wx.Panel):
         self.pos_list.Delete(ipos)
         self.pos_name.Clear()
         self.parent.write_message('Erased Position %s' % posname)
+
+    def onEraseMany(self, event=None):
+        if self.instdb is not None:
+            ErasePositionsDialog(self.positions.keys(), 
+                                 instname=self.instname, 
+                                 instdb=self.instdb)
 
     def onSelect(self, event=None, name=None):
         "Event handler for selecting a named position"
@@ -230,27 +331,38 @@ class PositionPanel(wx.Panel):
 
     def set_positions(self, positions):
         "set the list of position on the left-side panel"
-
+        cur_sel = self.pos_list.GetStringSelection()
         self.pos_list.Clear()
-
         self.positions = positions
         for name, val in self.positions.items():
             self.pos_list.Append(name)
+        if cur_sel in self.positions:
+            self.pos_list.SetStringSelection(cur_sel)
+        self.last_refresh = time.time()
 
-    def set_positions_instdb(self):
+    def onTimer(self, evt=None):
+        posnames =  self.instdb.get_positionlist(self.instname)
+        if (len(posnames) != len(self.posnames) or
+            (time.time() - self.last_refresh) > 15.0):
+            self.get_positions_from_db()
+
+    def get_positions_from_db(self):
         if self.instdb is None:
-            print 'No instdb?'
             return
         positions = OrderedDict()
         iname = self.instname
         posnames =  self.instdb.get_positionlist(iname)
+        self.posnames = posnames
         for pname in posnames:
             thispos = self.instdb.get_position(iname, pname)
             image = ''
+            notes = {}
             if thispos.image is not None:
-                image = 'b64encode: %s' % thispos.image
+                image = thispos.image
+            if thispos.notes is not None:
+                notes = thispos.notes
             pdat = OrderedDict()
             for pvpos in thispos.pvs:
                 pdat[pvpos.pv.name] =  pvpos.value
-            positions[pname] = dict(position=pdat, image=image)
+            positions[pname] = dict(position=pdat, image=image, notes=notes)
         self.set_positions(positions)
