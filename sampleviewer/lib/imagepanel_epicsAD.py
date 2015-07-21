@@ -9,7 +9,7 @@ import numpy as np
 from epics import PV, Device, caput, poll
 from epics.wx import EpicsFunction
 
-import Image
+from PIL import Image
 from .imagepanel_base import ImagePanel_Base
 
 from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,

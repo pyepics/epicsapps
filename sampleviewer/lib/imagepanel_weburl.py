@@ -8,7 +8,7 @@ import numpy as np
 from  cStringIO import StringIO
 from  urllib import urlopen
 
-import Image
+from PIL import Image
 from .imagepanel_base import ImagePanel_Base
 from epics.wx.utils import  pack
 
