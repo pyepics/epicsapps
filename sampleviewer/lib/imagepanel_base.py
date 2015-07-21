@@ -50,6 +50,7 @@ class ImagePanel_Base(wx.Panel):
         self.last_autosave = 0
         self.autosave_tmpf = None
         self.autosave_file = None
+        self.autosave_time = 5.0
         self.autosave_thread = None
         self.full_size = None
         if autosave_file is not None:
@@ -148,7 +149,7 @@ class ImagePanel_Base(wx.Panel):
         # set autosave to False to abort autosaving
         while self.autosave:
             tfrac, tint = math.modf(time.time())
-            if tint != self.last_autosave:
+            if (tint -self.last_autosave) > self.autosave_time:
                 self.last_autosave = tint
                 try:
                     self.image.SaveFile(self.autosave_tmpf,
@@ -158,7 +159,7 @@ class ImagePanel_Base(wx.Panel):
                     pass
                 tfrac, tint = math.modf(time.time())
             # sleep for most of the remaining second
-            time.sleep(max(0.05, 0.75*(1.0-tfrac)))
+            time.sleep(0.17*self.autosave_time)
 
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
