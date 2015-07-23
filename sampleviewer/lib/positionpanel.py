@@ -167,6 +167,7 @@ class PositionPanel(wx.Panel):
         imgfile = os.path.join(self.parent.imgdir, imgfile)
         tmp_pos = self.parent.ctrlpanel.read_position()
         imgdata = self.parent.save_image(imgfile)
+        imgdata['source'] = 'SampleStage'
         imgdata['data_format'] = 'file'
         imgdata.pop('data')
         notes = json.dumps(imgdata)
