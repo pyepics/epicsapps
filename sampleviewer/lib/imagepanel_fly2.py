@@ -82,7 +82,7 @@ class ConfPanel_Fly2(wx.Panel):
 
         self.wids = wids = {}
         sizer = wx.GridBagSizer(10, 4)
-        sizer.SetVGap(5)
+        sizer.SetVGap(3)
         sizer.SetHGap(5)
 
         self.title = txt("Fly2Capture: ", size=285)
@@ -141,7 +141,7 @@ class ConfPanel_Fly2(wx.Panel):
                   (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
 
         i += 1
-        self.pixel_coord = wx.StaticText(self, label=' === \n === ', 
+        self.pixel_coord = wx.StaticText(self, label='         \n            ', 
                                          size=(285, 50), 
                                          style=wx.ALIGN_LEFT|wx.EXPAND)
 
