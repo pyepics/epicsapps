@@ -94,8 +94,8 @@ class StageFrame(wx.Frame):
         self.confpanel = ConfPanel(leftpanel, image_panel=self.imgpanel, **opts)
 
         leftsizer = wx.BoxSizer(wx.VERTICAL)
-        leftsizer.AddMany([(self.ctrlpanel, 1, ALL_EXP|LEFT_CEN, 1),
-                           (self.confpanel, 1, ALL_EXP|LEFT_CEN, 1)])
+        leftsizer.Add(self.ctrlpanel, 1, ALL_EXP|LEFT_CEN, 2)
+        leftsizer.Add(self.confpanel, 5, ALL_EXP|LEFT_CEN, 2)
                            
         pack(leftpanel, leftsizer)
         
