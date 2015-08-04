@@ -45,7 +45,7 @@ class StageFrame(wx.Frame):
 <body>
     """
 
-    def __init__(self, inifile='SampleStage_autosave.ini', size=(1600, 800)):
+    def __init__(self, inifile='SampleStage.ini', size=(1600, 800)):
         super(StageFrame, self).__init__(None, wx.ID_ANY,
                                          style=wx.DEFAULT_FRAME_STYLE,
                                          size=size)
@@ -322,7 +322,7 @@ class StageFrame(wx.Frame):
         return imgdata
 
     def autosave(self, positions=None):
-        self.cnf.Save('SampleStage_autosave.ini', positions=positions)
+        self.cnf.Save('SampleStage.ini', positions=positions)
 
     def write_htmllog(self, name, thispos):
         stages  = self.config['stages']

@@ -79,23 +79,26 @@ conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
                           ('stages', None),
                           ('positions', None)) )
 
-conf_files = ('SampleStage_autosave.ini', 'SampleStage.ini',
-              '//cars5/Data/xas_user/config/SampleStage.ini')
+conf_files = ('SampleStage.ini', 
+              'SampleStage_autosave.ini',
+              '//cars5/Data/xas_user/scan_config/13ide/SampleStage.ini')
 
 class StageConfig(object):
     def __init__(self, filename=None, text=None):
         self.config = {}
         self.cp = ConfigParser()
         self.nstages = 0
-        conf_found = False
-        if filename is None:
-            for fname in conf_files:
-                if os.path.exists(fname) and os.path.isfile(fname):
-                    filename = fname
+        fname = None
+        if filename is not None and os.path.exists(filename):
+            fname = filename
+        if fname is None:
+            for filename in conf_files:
+                if os.path.exists(filename) and os.path.isfile(filename):
+                    fname = filename
                     break
 
-        if filename is not None:
-            self.Read(fname=filename)
+        if fname is not None:
+            self.Read(fname=fname)
         else:
             self.cp.readfp(StringIO(DEFAULT_CONF))
             self._process_data()
