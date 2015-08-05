@@ -50,7 +50,7 @@ class ImagePanel_Base(wx.Panel):
         self.last_autosave = 0
         self.autosave_tmpf = None
         self.autosave_file = None
-        self.autosave_time = 5.0
+        self.autosave_time = 1.0
         self.autosave_thread = None
         self.full_size = None
         if autosave_file is not None:
@@ -158,8 +158,8 @@ class ImagePanel_Base(wx.Panel):
                 except:
                     pass
                 tfrac, tint = math.modf(time.time())
-            # sleep for most of the remaining second
-            time.sleep(0.17*self.autosave_time)
+            # sleep for most of the remaining time
+            time.sleep(max(0.002, (self.autosave_time-tfrac)*0.9))
 
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
