@@ -166,7 +166,13 @@ class PositionPanel(wx.Panel):
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
         imgfile = os.path.join(self.parent.imgdir, imgfile)
         tmp_pos = self.parent.ctrlpanel.read_position()
-        imgdata = self.parent.save_image(imgfile)
+        imgdata, count = None, 0
+        while imgdata is None and count <100:
+            imgdata = self.parent.save_image(imgfile)
+            if imgdata is None:
+                time.sleep(0.5)
+            count = count + 1
+
         imgdata['source'] = 'SampleStage'
         imgdata['data_format'] = 'file'
         imgdata.pop('data')
