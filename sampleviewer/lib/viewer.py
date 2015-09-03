@@ -314,8 +314,6 @@ class StageFrame(wx.Frame):
 
     def save_image(self, fname):
         "save image to file"
-        print 'Viewer Save_image ', fname
-        print self.imgpanel
         imgdata = self.imgpanel.SaveImage(fname)
         if imgdata is None:
             self.write_message('could not save image to %s' % fname)
