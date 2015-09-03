@@ -105,8 +105,9 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
             self.img_w = float(self.arrsize[1]+0.5)
             self.img_h = float(self.arrsize[2]+0.5)
 
-    def GrabWxImage(self, scale=1, rgb=True):
+    def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         if self.ad_img is None or self.ad_cam is None:
+            print 'GrabWxImage .. no ad_img / cam', self.ad_img, self.ad_cam
             return
 
         imgdim   = self.ad_img.NDimensions_RBV
@@ -115,7 +116,8 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
       
         imgcount = self.ad_cam.ArrayCounter_RBV
         now = time.time()
-        if (imgcount == self.imgcount or abs(now - self.last_update) < 0.025):
+        if (can_skip and (imgcount == self.imgcount or 
+                          abs(now - self.last_update) < 0.025)):
             return None
         self.imgcount = imgcount
         self.last_update = time.time()
@@ -154,7 +156,6 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         elif im_mode == 'RGB':
             rawdata.shape = (3, width, height)
             image = wx.ImageFromData(width, height, rawdata)
-
         return image.Scale(int(scale*width), int(scale*height))
 
 class ConfPanel_EpicsAD(wx.Panel):
@@ -193,7 +194,8 @@ class ConfPanel_EpicsAD(wx.Panel):
 
         for key in ('imagemode', 'triggermode', 'color'):
             self.wids[key]   = PVEnumChoice(self, pv=None, size=(135, -1))
-        for key in ('exptime', 'period', 'numimages', 'gain'):
+        # for key in ('exptime', 'period', 'numimages', 'gain'):
+        for key in ('exptime', 'gain'):
             self.wids[key]   = PVFloatCtrl(self, pv=None, size=(135, -1), minval=0)
         self.wids['gain'].SetMax(20)
 
@@ -228,23 +230,22 @@ class ConfPanel_EpicsAD(wx.Panel):
         sizer.Add(txt('Image Mode '),       (3, 0), (1, 1), labstyle)
         sizer.Add(self.wids['imagemode'],   (3, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('# Images '),         (4, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['numimages'],   (4, 1), (1, 2), ctrlstyle)
+        sizer.Add(txt('Trigger Mode '),     (4, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['triggermode'], (4, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Trigger Mode '),     (5, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['triggermode'], (5, 1), (1, 2), ctrlstyle)
+        # sizer.Add(txt('# Images '),         (4, 0), (1, 1), labstyle)
+        # sizer.Add(self.wids['numimages'],   (4, 1), (1, 2), ctrlstyle)
+        # sizer.Add(txt('Period '),           (6, 0), (1, 1), labstyle)
+        # sizer.Add(self.wids['period'],      (6, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Period '),           (6, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['period'],      (6, 1), (1, 2), ctrlstyle)
+        sizer.Add(txt('Exposure Time '),    (5, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['exptime'],     (5, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Exposure Time '),    (7, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['exptime'],     (7, 1), (1, 2), ctrlstyle)
+        sizer.Add(txt('Gain '),             (6, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['gain'],        (6, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Gain '),             (8, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['gain'],        (8, 1), (1, 2), ctrlstyle)
-
-        sizer.Add(txt('Color Mode'),        (9, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['color'],       (9, 1), (1, 2), ctrlstyle)
+        sizer.Add(txt('Color Mode'),        (7, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['color'],       (7, 1), (1, 2), ctrlstyle)
         
         pack(self, sizer)
         wx.CallAfter(self.connect_pvs )
@@ -264,10 +265,10 @@ class ConfPanel_EpicsAD(wx.Panel):
 
         self.wids['color'].SetPV(self.ad_cam.PV('ColorMode'))
         self.wids['exptime'].SetPV(self.ad_cam.PV('AcquireTime'))
-        self.wids['period'].SetPV(self.ad_cam.PV('AcquirePeriod'))
         self.wids['gain'].SetPV(self.ad_cam.PV('Gain'))
-        self.wids['numimages'].SetPV(self.ad_cam.PV('NumImages'))
         self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
+        # self.wids['period'].SetPV(self.ad_cam.PV('AcquirePeriod'))
+        # self.wids['numimages'].SetPV(self.ad_cam.PV('NumImages'))
         self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))
 
         sizex = self.ad_cam.MaxSizeX_RBV
