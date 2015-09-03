@@ -45,13 +45,13 @@ class StageFrame(wx.Frame):
 <body>
     """
 
-    def __init__(self, inifile='SampleStage.ini', size=(1600, 800)):
+    def __init__(self, inifile='SampleStage.ini', size=(1600, 800), ask_workdir=True):
         super(StageFrame, self).__init__(None, wx.ID_ANY,
                                          style=wx.DEFAULT_FRAME_STYLE,
                                          size=size)
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
-        self.read_config(configfile=inifile, get_dir=True)
+        self.read_config(configfile=inifile, get_dir=ask_workdir)
         self.overlay_frame = None
         self.last_pixel = None
         self.create_frame(size=size)
@@ -314,6 +314,8 @@ class StageFrame(wx.Frame):
 
     def save_image(self, fname):
         "save image to file"
+        print 'Viewer Save_image ', fname
+        print self.imgpanel
         imgdata = self.imgpanel.SaveImage(fname)
         if imgdata is None:
             self.write_message('could not save image to %s' % fname)
@@ -427,13 +429,14 @@ class StageFrame(wx.Frame):
         self.write_message('Read Configuration File %s' % fname)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, inifile=None, debug=False, **kws):
+    def __init__(self, inifile=None, debug=False, ask_workdir=True, **kws):
         self.inifile = inifile
         self.debug = debug
+        self.ask_workdir = ask_workdir
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        frame = StageFrame(inifile=self.inifile)
+        frame = StageFrame(inifile=self.inifile, ask_workdir=self.ask_workdir)
         frame.Show()
         self.SetTopWindow(frame)
 
