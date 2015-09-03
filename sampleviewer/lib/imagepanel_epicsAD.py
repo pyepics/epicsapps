@@ -14,7 +14,7 @@ from .imagepanel_base import ImagePanel_Base
 
 from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
                       PVEnumChoice, PVFloatCtrl, PVTextCtrl)
-from epics.wx.utils import pack
+from epics.wx.utils import pack, add_button
                             
 class ImagePanel_EpicsAD(ImagePanel_Base):
     img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
@@ -34,7 +34,7 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         super(ImagePanel_EpicsAD, self).__init__(parent, -1,
                                                  size=(800, 600),
                                                  writer=writer,
-                                                 autosave_file=autosave_file)
+                                                 autosave_file=autosave_file, **kws)
 
         if prefix.endswith(':'):
             prefix = prefix[:-1]
@@ -170,7 +170,7 @@ class ConfPanel_EpicsAD(wx.Panel):
                  'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
                  'SizeX', 'SizeY', 'MinX', 'MinY')
     
-    def __init__(self, parent, image_panel=None, prefix=None, **kws):
+    def __init__(self, parent, image_panel=None, prefix=None, center_cb=None, **kws):
         super(ConfPanel_EpicsAD, self).__init__(parent, -1, size=(280, 300))
 
         self.wids = {}
@@ -182,6 +182,7 @@ class ConfPanel_EpicsAD(wx.Panel):
         if self.prefix.endswith(':cam1'):
             self.prefix = self.prefix[:-5]
 
+        self.center_cb = center_cb
         self.ad_img = Device(self.prefix + ':image1:',
                              delim='',  attrs=self.img_attrs)
         self.ad_cam = Device(self.prefix + ':cam1:',
@@ -222,33 +223,65 @@ class ConfPanel_EpicsAD(wx.Panel):
         sizer.SetHGap(5)
         
         sizer.Add(title,                    (0, 0), (1, 3), labstyle)
-        sizer.Add(self.wids['fullsize'],    (1, 0), (1, 3), labstyle)
-        sizer.Add(txt('Acquire '),          (2, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['start'],       (2, 1), (1, 1), ctrlstyle)
-        sizer.Add(self.wids['stop'],        (2, 2), (1, 1), ctrlstyle)
+        i = 1
+        sizer.Add(self.wids['fullsize'],    (i, 0), (1, 3), labstyle)
+        i += 1
+        sizer.Add(txt('Acquire '),          (i, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['start'],       (i, 1), (1, 1), ctrlstyle)
+        sizer.Add(self.wids['stop'],        (i, 2), (1, 1), ctrlstyle)
+        i += 1
+        sizer.Add(txt('Image Mode '),       (i, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['imagemode'],   (i, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Image Mode '),       (3, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['imagemode'],   (3, 1), (1, 2), ctrlstyle)
-
-        sizer.Add(txt('Trigger Mode '),     (4, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['triggermode'], (4, 1), (1, 2), ctrlstyle)
+        i += 1
+        sizer.Add(txt('Trigger Mode '),     (i, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['triggermode'], (i, 1), (1, 2), ctrlstyle)
 
         # sizer.Add(txt('# Images '),         (4, 0), (1, 1), labstyle)
         # sizer.Add(self.wids['numimages'],   (4, 1), (1, 2), ctrlstyle)
         # sizer.Add(txt('Period '),           (6, 0), (1, 1), labstyle)
         # sizer.Add(self.wids['period'],      (6, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Exposure Time '),    (5, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['exptime'],     (5, 1), (1, 2), ctrlstyle)
+        i += 1
+        sizer.Add(txt('Exposure Time '),    (i, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['exptime'],     (i, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Gain '),             (6, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['gain'],        (6, 1), (1, 2), ctrlstyle)
+        i += 1
+        sizer.Add(txt('Gain '),             (i, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['gain'],        (i, 1), (1, 2), ctrlstyle)
 
-        sizer.Add(txt('Color Mode'),        (7, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['color'],       (7, 1), (1, 2), ctrlstyle)
+        i += 1
+        sizer.Add(txt('Color Mode'),        (i, 0), (1, 1), labstyle)
+        sizer.Add(self.wids['color'],       (i, 1), (1, 2), ctrlstyle)
         
+        #  show last pixel position, move to center
+        i += 1
+        sizer.Add(txt("Last Pixel Position:", size=285),
+                  (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
+
+        i += 1
+        self.pixel_coord = wx.StaticText(self, label='         \n            ', 
+                                         size=(285, 50), 
+                                         style=wx.ALIGN_LEFT|wx.EXPAND)
+
+
+        sizer.Add(self.pixel_coord, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
+      
+        center_button = add_button(self, "Bring to Center", 
+                                   action=self.onBringToCenter, size=(120, -1))
+
+        i += 1
+        sizer.Add(center_button, (i, 0), (1, 2), wx.ALIGN_LEFT)
+
+
         pack(self, sizer)
         wx.CallAfter(self.connect_pvs )
+
+        
+    def onBringToCenter(self, event=None,  **kws):
+        if self.center_cb is not None:
+            self.center_cb(event=event, **kws)
+
 
     @EpicsFunction
     def connect_pvs(self, verbose=True):
