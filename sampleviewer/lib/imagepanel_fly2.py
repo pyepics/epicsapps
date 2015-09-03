@@ -61,7 +61,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
         if self.autosave_thread is not None:
             self.autosave_thread.join()
 
-    def GrabWxImage(self, scale=1, rgb=True):
+    def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         try:
             return self.camera.GrabWxImage(scale=scale, rgb=rgb)
         except pyfly2.FC2Error:

@@ -48,7 +48,7 @@ class ImagePanel_URL(ImagePanel_Base):
         #    self.autosave_thread.join()
 
 
-    def GrabWxImage(self, scale=1, rgb=True):
+    def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         try:
             wximage = wx.ImageFromStream(StringIO(urlopen(self.url).read()))
             return wximage.Scale(int(scale*self.img_w), int(scale*self.img_h))

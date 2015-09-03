@@ -22,7 +22,7 @@ class ImagePanel_Base(wx.Panel):
         "turn camera off"
         raise NotImplementedError('must provide Stop()')
 
-    def GrabWxImage(self, scale=1, rgb=True):
+    def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         "grab Wx Image, with scale and rgb=True/False"
         raise NotImplementedError('must provide GrabWxImage()')
 
@@ -99,7 +99,7 @@ class ImagePanel_Base(wx.Panel):
         except ValueError:
             return
         if self.full_size is None:
-            img = self.GrabWxImage(scale=1.0, rgb=True)            
+            img = self.GrabWxImage(scale=1.0, rgb=True, can_skip=False)
             if img is not None:
                 self.full_size = img.GetSize()
             
@@ -155,11 +155,12 @@ class ImagePanel_Base(wx.Panel):
                     self.image.SaveFile(self.autosave_tmpf,
                                         wx.BITMAP_TYPE_JPEG)
                     shutil.copy(self.autosave_tmpf, self.autosave_file)
+                    # print 'save ! ', self.autosave_file, time.ctime()
                 except:
                     pass
                 tfrac, tint = math.modf(time.time())
             # sleep for most of the remaining time
-            time.sleep(max(0.002, (self.autosave_time-tfrac)*0.9))
+            time.sleep(max(0.002, (self.autosave_time-tfrac)*0.5))
 
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
@@ -192,7 +193,6 @@ class ImagePanel_Base(wx.Panel):
         self.__draw_objects(dc_output, width, height, 0, 0)
         # save to image file
         out.ConvertToImage().SaveFile(fname, ftype)
-
         # image.SaveFile(fname, ftype)        
         return self.image2dict(image)
 
