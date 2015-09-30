@@ -19,7 +19,8 @@ CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 from .imageframe import ImageDisplayFrame
 
 import larch
-from  larch_plugins.epics import ScanDB, InstrumentDB
+# from  larch_plugins.epics import ScanDB, InstrumentDB
+from epicsscan.scandb import ScanDB, InstrumentDB
 
 class ErasePositionsDialog(wx.Frame):
     """ Erase all positions, with check boxes for all"""
