@@ -18,7 +18,7 @@ CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
 from .imageframe import ImageDisplayFrame
 
-import larch
+# import larch
 # from  larch_plugins.epics import ScanDB, InstrumentDB
 from epicsscan.scandb import ScanDB, InstrumentDB
 
