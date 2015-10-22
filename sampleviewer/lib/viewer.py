@@ -89,30 +89,26 @@ class StageFrame(wx.Frame):
         self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, self.cpanel)
 
         ppanel = wx.Panel(self.cpanel.GetPane())
-        mpanel = wx.Panel(self.cpanel.GetPane())
 
         self.pospanel  = PositionPanel(ppanel, config=config['scandb'])
-        self.pospanel.SetMinSize((125, 700))
+        self.pospanel.SetMinSize((200, 700))
 
-        self.ctrlpanel = ControlPanel(mpanel,
+        self.ctrlpanel = ControlPanel(ppanel,
                                       groups=config['stage_groups'],
                                       config=config['stages'])
 
-        self.confpanel = ConfPanel(mpanel, image_panel=self.imgpanel, **opts)
+        self.confpanel = ConfPanel(ppanel,
+                                   image_panel=self.imgpanel, **opts)
 
-        msizer = wx.BoxSizer(wx.VERTICAL)
-        msizer.Add(self.ctrlpanel, 2, ALL_EXP|LEFT_TOP, 2)
-        msizer.Add(self.confpanel, 3, ALL_EXP|LEFT_TOP, 2)
+        msizer = wx.GridBagSizer(2, 2)
+        msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 1)
         
-        pack(mpanel, msizer)
-
-        psizer = wx.BoxSizer(wx.HORIZONTAL)
-        psizer.Add(mpanel,          1, ALL_EXP|LEFT_TOP, 1)
-        psizer.Add(self.pospanel,   1, ALL_EXP|LEFT_TOP, 1)
-        pack(ppanel, psizer)        
+        pack(ppanel, msizer)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 1),
+        sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
                        (self.cpanel,    0, ALL_EXP|LEFT_CEN|wx.GROW, 0)])
 
         pack(self, sizer)
@@ -125,7 +121,6 @@ class StageFrame(wx.Frame):
                {'shape':'line', 'color': (200, 100, 0),
                 'width': 2.0, 'args': (0.7, 0.97, 0.97, 0.97)}]
         
-
         self.create_menus()
         self.cpanel.Collapse(False)
         self.cpanel.SetLabel('Hide Controls')        
@@ -136,12 +131,13 @@ class StageFrame(wx.Frame):
 
     def OnPaneChanged(self, evt=None):
         self.Layout()
-        print 'Pane Changed!'
         if self.cpanel.IsExpanded():
             self.cpanel.SetLabel('Hide Controls')
         else:
             self.cpanel.SetLabel('Show Controls')
+        self.imgpanel.Refresh()
 
+        
     def onTimer(self, event=None, **kws):
         if self.imgpanel.full_size is not None:
             if 'overlays' in self.config:
@@ -171,7 +167,26 @@ class StageFrame(wx.Frame):
             self.timer.Stop()
 
 
+    def onChangeCamera(self, evt=None):
+        if not self.cam_type.startswith('area'):
+            print 'How did that happen?'
+            return
 
+        name = self.cam_adpref
+        prefix = None
+        dlg = wx.TextEntryDialog(self, 'Enter PV for Area Detector',
+                                 caption='Enter PV for Area Detector',
+                                 defaultValue=name)
+        dlg.Raise()
+        if dlg.ShowModal() == wx.ID_OK:
+            prefix = dlg.GetValue()
+        dlg.Destroy()
+        if prefix is not None:
+            self.imgpanel.set_prefix(prefix)
+            self.confpanel.set_prefix(prefix)            
+            self.cam_adpref = prefix
+            
+        
     def create_menus(self):
         "Create the menubar"
         mbar  = wx.MenuBar()
@@ -182,6 +197,11 @@ class StageFrame(wx.Frame):
 
         add_menu(self, fmenu, label="&Save Config", text="Save Configuration",
                  action = self.onSaveConfig)
+
+        if self.cam_type.startswith('area'):
+            add_menu(self, fmenu, label="Change AreaDetector",
+                     text="Change Camera to different AreaDetector",
+                     action = self.onChangeCamera)
 
         fmenu.AppendSeparator()
         add_menu(self, fmenu, label="E&xit",  text="Quit Program",
