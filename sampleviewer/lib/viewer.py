@@ -80,29 +80,40 @@ class StageFrame(wx.Frame):
             opts['url'] = self.cam_weburl
             ImagePanel, ConfPanel = ImagePanel_URL, ConfPanel_URL
 
-        self.pospanel  = PositionPanel(self, config=config['scandb'])
         self.imgpanel  = ImagePanel(self, **opts)
-
-        self.pospanel.SetMinSize((285, 250))
         self.imgpanel.SetMinSize((285, 250))
 
-        leftpanel = wx.Panel(self)
-        self.ctrlpanel = ControlPanel(leftpanel,
+        self.cpanel = wx.CollapsiblePane(self, label='Show Controls',        
+                                         style=wx.CP_DEFAULT_STYLE|wx.CP_NO_TLW_RESIZE)
+
+        self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, self.cpanel)
+
+        ppanel = wx.Panel(self.cpanel.GetPane())
+        mpanel = wx.Panel(self.cpanel.GetPane())
+
+        self.pospanel  = PositionPanel(ppanel, config=config['scandb'])
+        self.pospanel.SetMinSize((125, 700))
+
+        self.ctrlpanel = ControlPanel(mpanel,
                                       groups=config['stage_groups'],
                                       config=config['stages'])
 
-        self.confpanel = ConfPanel(leftpanel, image_panel=self.imgpanel, **opts)
+        self.confpanel = ConfPanel(mpanel, image_panel=self.imgpanel, **opts)
 
-        leftsizer = wx.BoxSizer(wx.VERTICAL)
-        leftsizer.Add(self.ctrlpanel, 1, ALL_EXP|LEFT_CEN, 2)
-        leftsizer.Add(self.confpanel, 5, ALL_EXP|LEFT_CEN, 2)
-                           
-        pack(leftpanel, leftsizer)
+        msizer = wx.BoxSizer(wx.VERTICAL)
+        msizer.Add(self.ctrlpanel, 2, ALL_EXP|LEFT_TOP, 2)
+        msizer.Add(self.confpanel, 3, ALL_EXP|LEFT_TOP, 2)
         
+        pack(mpanel, msizer)
+
+        psizer = wx.BoxSizer(wx.HORIZONTAL)
+        psizer.Add(mpanel,          1, ALL_EXP|LEFT_TOP, 1)
+        psizer.Add(self.pospanel,   1, ALL_EXP|LEFT_TOP, 1)
+        pack(ppanel, psizer)        
+
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.AddMany([(leftpanel,      0, ALL_EXP|LEFT_CEN, 1),
-                       (self.imgpanel,  3, ALL_EXP|LEFT_CEN, 1),
-                       (self.pospanel,  1, ALL_EXP|LEFT_CEN, 1)])
+        sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 1),
+                       (self.cpanel,    0, ALL_EXP|LEFT_CEN|wx.GROW, 0)])
 
         pack(self, sizer)
         self.SetSize(size)
@@ -114,15 +125,22 @@ class StageFrame(wx.Frame):
                {'shape':'line', 'color': (200, 100, 0),
                 'width': 2.0, 'args': (0.7, 0.97, 0.97, 0.97)}]
         
-        # self.imgpanel.draw_objects = ex
 
         self.create_menus()
-
-            
+        self.cpanel.Collapse(False)
+        self.cpanel.SetLabel('Hide Controls')        
         self.Bind(wx.EVT_CLOSE, self.onClose)
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
         self.timer.Start(1000)
+
+    def OnPaneChanged(self, evt=None):
+        self.Layout()
+        print 'Pane Changed!'
+        if self.cpanel.IsExpanded():
+            self.cpanel.SetLabel('Hide Controls')
+        else:
+            self.cpanel.SetLabel('Show Controls')
 
     def onTimer(self, event=None, **kws):
         if self.imgpanel.full_size is not None:
