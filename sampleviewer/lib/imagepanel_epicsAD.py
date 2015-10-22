@@ -36,27 +36,8 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
                                                  writer=writer,
                                                  autosave_file=autosave_file, **kws)
 
-        if prefix.endswith(':'):
-            prefix = prefix[:-1]
-        if prefix.endswith(':image1'):
-            prefix = prefix[:-7]
-        if prefix.endswith(':cam1'):
-            prefix = prefix[:-5]
-
-        self.ad_img = Device(prefix + ':image1:', delim='',
-                                   attrs=self.img_attrs)
-        self.ad_cam = Device(prefix + ':cam1:', delim='',
-                                   attrs=self.cam_attrs)
-
-        self.config_filesaver(prefix, format)
-
-        width = self.ad_cam.ArraySizeX_RBV
-        height = self.ad_cam.ArraySizeY_RBV
-       
-        self.img_w = float(width+0.5)
-        self.img_h = float(height+0.5)
-        self.cam_name = prefix
-
+        self.format = format
+        self.set_prefix(prefix)
         self.imgcount = 0
         self.imgcount_start = 0
         self.last_update = 0.0
@@ -64,6 +45,26 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
 
+    def set_prefix(self, prefix):
+        if prefix.endswith(':'):         prefix = prefix[:-1]
+        if prefix.endswith(':image1'):   prefix = prefix[:-7]
+        if prefix.endswith(':cam1'):     prefix = prefix[:-5]
+        self.prefix = prefix
+        
+        self.ad_img = Device(prefix + ':image1:', delim='',
+                                   attrs=self.img_attrs)
+        self.ad_cam = Device(prefix + ':cam1:', delim='',
+                                   attrs=self.cam_attrs)
+
+        self.config_filesaver(prefix, self.format)
+
+        width = self.ad_cam.ArraySizeX_RBV
+        height = self.ad_cam.ArraySizeY_RBV
+       
+        self.img_w = float(width+0.5)
+        self.img_h = float(height+0.5)
+        self.cam_name = prefix
+        
 
     def config_filesaver(self, prefix, format):
         if not prefix.endswith(':'):  prefix = "%s:" % prefix
@@ -174,28 +175,15 @@ class ConfPanel_EpicsAD(wx.Panel):
         super(ConfPanel_EpicsAD, self).__init__(parent, -1, size=(280, 300))
 
         self.wids = {}
-        self.prefix = prefix
-        if self.prefix.endswith(':'):
-            self.prefix = self.prefix[:-1]
-        if self.prefix.endswith(':image1'):
-            self.prefix = self.prefix[:-7]
-        if self.prefix.endswith(':cam1'):
-            self.prefix = self.prefix[:-5]
-
         self.center_cb = center_cb
-        self.ad_img = Device(self.prefix + ':image1:',
-                             delim='',  attrs=self.img_attrs)
-        self.ad_cam = Device(self.prefix + ':cam1:',
-                             delim='',  attrs=self.cam_attrs)
-
 
         self.SetBackgroundColour('#EEFFE')
-        title =  wx.StaticText(self, size=(285, 25),
-                               label="Epics AreaDetector: %s" % prefix)
+        self.title =  wx.StaticText(self, size=(285, 25),
+                                    label="Epics AreaDetector")
 
         for key in ('imagemode', 'triggermode', 'color'):
             self.wids[key]   = PVEnumChoice(self, pv=None, size=(135, -1))
-        # for key in ('exptime', 'period', 'numimages', 'gain'):
+
         for key in ('exptime', 'gain'):
             self.wids[key]   = PVFloatCtrl(self, pv=None, size=(135, -1), minval=0)
         self.wids['gain'].SetMax(20)
@@ -222,7 +210,7 @@ class ConfPanel_EpicsAD(wx.Panel):
         sizer.SetVGap(5)
         sizer.SetHGap(5)
         
-        sizer.Add(title,                    (0, 0), (1, 3), labstyle)
+        sizer.Add(self.title,               (0, 0), (1, 3), labstyle)
         i = 1
         sizer.Add(self.wids['fullsize'],    (i, 0), (1, 3), labstyle)
         i += 1
@@ -236,11 +224,6 @@ class ConfPanel_EpicsAD(wx.Panel):
         i += 1
         sizer.Add(txt('Trigger Mode '),     (i, 0), (1, 1), labstyle)
         sizer.Add(self.wids['triggermode'], (i, 1), (1, 2), ctrlstyle)
-
-        # sizer.Add(txt('# Images '),         (4, 0), (1, 1), labstyle)
-        # sizer.Add(self.wids['numimages'],   (4, 1), (1, 2), ctrlstyle)
-        # sizer.Add(txt('Period '),           (6, 0), (1, 1), labstyle)
-        # sizer.Add(self.wids['period'],      (6, 1), (1, 2), ctrlstyle)
 
         i += 1
         sizer.Add(txt('Exposure Time '),    (i, 0), (1, 1), labstyle)
@@ -275,13 +258,22 @@ class ConfPanel_EpicsAD(wx.Panel):
 
 
         pack(self, sizer)
-        wx.CallAfter(self.connect_pvs )
-
+        self.set_prefix(prefix)
         
-    def onBringToCenter(self, event=None,  **kws):
-        if self.center_cb is not None:
-            self.center_cb(event=event, **kws)
+    @EpicsFunction
+    def set_prefix(self, prefix):
+        if prefix.endswith(':'):         prefix = prefix[:-1]
+        if prefix.endswith(':image1'):   prefix = prefix[:-7]
+        if prefix.endswith(':cam1'):     prefix = prefix[:-5]
+        self.prefix = prefix
+        
+        self.ad_img = Device(prefix + ':image1:', delim='',
+                                   attrs=self.img_attrs)
+        self.ad_cam = Device(prefix + ':cam1:', delim='',
+                                   attrs=self.cam_attrs)
 
+        self.title.SetLabel("Epics AreaDetector: %s" % prefix)
+        self.connect_pvs()
 
     @EpicsFunction
     def connect_pvs(self, verbose=True):
@@ -314,6 +306,10 @@ class ConfPanel_EpicsAD(wx.Panel):
 
         self.wids['fullsize'].SetLabel(sizelabel)
         poll()
+
+    def onBringToCenter(self, event=None,  **kws):
+        if self.center_cb is not None:
+            self.center_cb(event=event, **kws)
 
     @EpicsFunction
     def onButton(self, evt=None, key='name', **kw):
