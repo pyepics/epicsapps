@@ -99,14 +99,12 @@ class PositionPanel(wx.Panel):
         tlabel = wx.StaticText(self, label="Save Position: ")
 
         bkws = dict(size=(55, -1))
-        btn_save  = add_button(self, "Save",  action=self.onSave2, **bkws)
         btn_goto  = add_button(self, "Go To", action=self.onGo,    **bkws)
         btn_erase = add_button(self, "Erase", action=self.onErase, **bkws)
         btn_show  = add_button(self, "Show",  action=self.onShow,  **bkws)
         # btn_many  = add_button(self, "Erase Many",  action=self.onEraseMany,  **bkws)
 
         brow = wx.BoxSizer(wx.HORIZONTAL)
-        brow.Add(btn_save,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_goto,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_erase, 0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_show,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
