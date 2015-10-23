@@ -27,13 +27,15 @@ class ImagePanel_Base(wx.Panel):
         raise NotImplementedError('must provide GrabWxImage()')
 
 
-    def __init__(self, parent,  camera_id=0, writer=None, leftdown_cb=None,
+    def __init__(self, parent,  camera_id=0, writer=None, 
+                 leftdown_cb=None, motion_cb=None,
                  autosave_file=None, draw_objects=None, **kws):
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
         self.img_w = 800.5
         self.img_h = 600.5
         self.writer = writer
         self.leftdown_cb = leftdown_cb
+        self.motion_cb   = motion_cb
         self.cam_name = '-'
         self.scale = 0.60
         self.count = 0
@@ -45,6 +47,7 @@ class ImagePanel_Base(wx.Panel):
         self.Bind(wx.EVT_SIZE, self.onSize)
         self.Bind(wx.EVT_PAINT, self.onPaint)
         self.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
+        self.Bind(wx.EVT_MOTION, self.onMotion)
 
         self.autosave = True
         self.last_autosave = 0
@@ -83,6 +86,24 @@ class ImagePanel_Base(wx.Panel):
         y = int(0.5 + (evt_y - pad_h)/self.scale)
         if self.leftdown_cb is not None:
             self.leftdown_cb(x, y, xmax=max_x, ymax=max_y)
+
+    def onMotion(self, evt=None):
+        """
+        report left down events within image
+        """
+        evt_x, evt_y = evt.GetX(), evt.GetY()
+        max_x, max_y = self.full_size
+        img_w, img_h = self.bitmap_size
+        pan_w, pan_h = self.panel_size
+        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
+
+        x = int(0.5 + (evt_x - pad_w)/self.scale)
+        y = int(0.5 + (evt_y - pad_h)/self.scale)
+        if self.motion_cb is not None:
+            self.motion_cb(x, y, xmax=max_x, ymax=max_y)
+
+        if self.motion_cb is not None:
+            self.motion_cb(x, y, xmax=max_x, ymax=max_y)
 
     def onPaint(self, event):
         self.count += 1
