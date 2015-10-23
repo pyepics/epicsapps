@@ -135,23 +135,33 @@ class ConfPanel_Fly2(wx.Panel):
                 sizer.Add(wids[akey], (i, 2), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
             i += 1
             
+        sizer.Add(txt("Image Size:"), (i, 0), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+
+        self.img_size = wx.StaticText(self, label='')
+        sizer.Add(self.img_size, (i, 1), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+
         #  show last pixel position, move to center
         i += 1
         sizer.Add(txt("Last Pixel Position:", size=285),
                   (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
 
         i += 1
-        self.pixel_coord = wx.StaticText(self, label='         \n            ', 
-                                         size=(285, 50), 
+        self.pixel_coord = wx.StaticText(self, label=' ', size=(285, 25), 
+                                         style=wx.ALIGN_LEFT|wx.EXPAND)
+        sizer.Add(self.pixel_coord, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
+
+        i += 1
+        self.pixel_motion = wx.StaticText(self, label=' ', size=(285, 25), 
                                          style=wx.ALIGN_LEFT|wx.EXPAND)
 
 
-        sizer.Add(self.pixel_coord, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
+
+        sizer.Add(self.pixel_motion, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
       
+        i += 1
         center_button = add_button(self, "Bring to Center", 
                                    action=self.onBringToCenter, size=(120, -1))
 
-        i += 1
         sizer.Add(center_button, (i, 0), (1, 2), wx.ALIGN_LEFT)
 
         pack(self, sizer)
