@@ -86,13 +86,14 @@ class ErasePositionsDialog(wx.Frame):
         
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
-    def __init__(self, parent, config=None):
+    def __init__(self, parent, viewer, config=None):
         wx.Panel.__init__(self, parent, -1, size=(300, 500))
         self.size = (300, 500)
         self.parent = parent
+        self.viewer = viewer
         self.config = config
         self.image_display = None
-        self.pos_name =  wx.TextCtrl(self, value="", size=(285, 25),
+        self.pos_name =  wx.TextCtrl(self, value="", size=(300, 25),
                                      style= wx.TE_PROCESS_ENTER)
         self.pos_name.Bind(wx.EVT_TEXT_ENTER, self.onSave1)
 
@@ -139,7 +140,7 @@ class PositionPanel(wx.Panel):
             scandb = ScanDB(**dbconn)
             self.instdb = InstrumentDB(scandb)
             if self.instdb.get_instrument(self.instname) is None:
-                pvs = self.parent.config['stages'].keys()
+                pvs = self.viewer.config['stages'].keys()
                 self.instdb.add_instrument(self.instname, pvs=pvs)
                 
 
@@ -155,7 +156,7 @@ class PositionPanel(wx.Panel):
         if len(name) < 1:
             return
 
-        if name in self.positions and self.parent.v_replace:
+        if name in self.positions and self.viewer.v_replace:
             ret = popup(self, "Overwrite Position %s?" % name,
                         "Veriry Overwrite Position",
                         style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
@@ -163,11 +164,11 @@ class PositionPanel(wx.Panel):
                 return
 
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
-        imgfile = os.path.join(self.parent.imgdir, imgfile)
-        tmp_pos = self.parent.ctrlpanel.read_position()
+        imgfile = os.path.join(self.viewer.imgdir, imgfile)
+        tmp_pos = self.viewer.ctrlpanel.read_position()
         imgdata, count = None, 0
         while imgdata is None and count <100:
-            imgdata = self.parent.save_image(imgfile)
+            imgdata = self.viewer.save_image(imgfile)
             if imgdata is None:
                 time.sleep(0.5)
             count = count + 1
@@ -191,10 +192,10 @@ class PositionPanel(wx.Panel):
             
         self.pos_list.SetStringSelection(name)
         # auto-save file
-        self.parent.autosave(positions=self.positions)
-        self.parent.write_htmllog(name, self.positions[name])
+        self.viewer.autosave(positions=self.positions)
+        self.viewer.write_htmllog(name, self.positions[name])
         
-        self.parent.write_message("Saved Position '%s', image in %s" % (name, imgfile))
+        self.viewer.write_message("Saved Position '%s', image in %s" % (name, imgfile))
         wx.CallAfter(Closure(self.onSelect, event=None, name=name))
 
     def onShow(self, event):
@@ -219,7 +220,7 @@ class PositionPanel(wx.Panel):
         except:
             notes = {'data_format': ''}
         label = []
-        stages  = self.parent.config['stages']
+        stages  = self.viewer.config['stages']
         posvals = self.positions[posname]['position']
         for pvname, value in posvals.items():
             value = thispos['position'][pvname]
@@ -245,7 +246,7 @@ class PositionPanel(wx.Panel):
         posname = self.pos_list.GetStringSelection()
         if posname is None or len(posname) < 1:
             return
-        stages  = self.parent.config['stages']
+        stages  = self.viewer.config['stages']
         posvals = self.positions[posname]['position']
         postext = []
         for pvname, value in posvals.items():
@@ -255,7 +256,7 @@ class PositionPanel(wx.Panel):
                 label = '%s (%s)' % (desc, pvname)
             postext.append('  %s\t= %.4f' % (label, float(value)))
         postext = '\n'.join(postext)
-        if self.parent.v_move:
+        if self.viewer.v_move:
             ret = popup(self, "Move to %s?: \n%s" % (posname, postext),
                         'Verify Move',
                         style=wx.YES_NO|wx.ICON_QUESTION)
@@ -263,14 +264,14 @@ class PositionPanel(wx.Panel):
                 return
         for pvname, value in posvals.items():
             caput(pvname, value)
-        self.parent.write_message('moved to %s' % posname)
+        self.viewer.write_message('moved to %s' % posname)
 
     def onErase(self, event):
         posname = self.pos_list.GetStringSelection()
         ipos  =  self.pos_list.GetSelection()
         if posname is None or len(posname) < 1:
             return
-        if self.parent.v_erase:
+        if self.viewer.v_erase:
             if wx.ID_YES != popup(self, "Erase  %s?" % (posname),
                                   'Verify Erase',
                                   style=wx.YES_NO|wx.ICON_QUESTION):
@@ -279,7 +280,7 @@ class PositionPanel(wx.Panel):
         self.positions.pop(posname)
         self.pos_list.Delete(ipos)
         self.pos_name.Clear()
-        self.parent.write_message('Erased Position %s' % posname)
+        self.viewer.write_message('Erased Position %s' % posname)
 
     def onEraseMany(self, event=None):
         if self.instdb is not None:
@@ -333,7 +334,7 @@ class PositionPanel(wx.Panel):
         for name in namelist:
             newpos[name]  = stmp[name]
         self.init_positions(newpos)
-        self.parent.autosave(positions=self.positions)
+        self.viewer.autosave(positions=self.positions)
 
     def set_positions(self, positions):
         "set the list of position on the left-side panel"
