@@ -68,6 +68,7 @@ class StageFrame(wx.Frame):
 
         opts = dict(writer=self.write_framerate,
                     leftdown_cb=self.onSelectPixel,
+                    motion_cb=self.onPixelMotion,
                     center_cb=self.onMoveToCenter,
                     autosave_file=self.autosave_file)
         if self.cam_type.startswith('fly2'):
@@ -90,8 +91,8 @@ class StageFrame(wx.Frame):
 
         ppanel = wx.Panel(self.cpanel.GetPane())
 
-        self.pospanel  = PositionPanel(ppanel, config=config['scandb'])
-        self.pospanel.SetMinSize((200, 700))
+        self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
+        self.pospanel.SetMinSize((250, 700))
 
         self.ctrlpanel = ControlPanel(ppanel,
                                       groups=config['stage_groups'],
@@ -421,14 +422,26 @@ class StageFrame(wx.Frame):
 
     def onSelectPixel(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "
-        fmt  = """  (%i, %i) of (%i, %i) 
-  (%.0f, %.0f) microns from center"""
+        fmt  = """ (%i, %i), (%.0f, %.0f) microns from center"""
         if x > 0 and x < xmax and y > 0 and y < ymax:
             dx = abs(self.cam_calibx*(x-xmax/2.0))
             dy = abs(self.cam_caliby*(y-ymax/2.0))
-            pix_msg = fmt % (x, y, xmax, ymax, dx, dy)
+            pix_msg = fmt % (x, y, dx, dy)
             if hasattr(self.confpanel, 'pixel_coord'):
                 self.confpanel.pixel_coord.SetLabel(pix_msg)
+            self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
+
+    def onPixelMotion(self, x, y, xmax=100, ymax=100):
+        " select a pixel from image "
+        fmt  = """ (%i, %i), (%.0f, %.0f) microns from center"""
+        if x > 0 and x < xmax and y > 0 and y < ymax:
+            dx = abs(self.cam_calibx*(x-xmax/2.0))
+            dy = abs(self.cam_caliby*(y-ymax/2.0))
+            pix_msg = fmt % (x, y, dx, dy)
+            if hasattr(self.confpanel, 'img_size'):
+                self.confpanel.img_size.SetLabel("(%i, %i)" % (xmax, ymax))
+            if hasattr(self.confpanel, 'pixel_motion'):
+                self.confpanel.pixel_motion.SetLabel(pix_msg)
             self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
 
     def onClose(self, event=None):
