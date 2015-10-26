@@ -5,7 +5,7 @@
 import wx
 import time
 
-from .imagepanel_base import ImagePanel_Base
+from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 from epics.wx.utils import  pack, FloatCtrl, Closure, add_button
 
 HAS_FLY2 = False
@@ -67,36 +67,32 @@ class ImagePanel_Fly2(ImagePanel_Base):
         except pyfly2.FC2Error:
             raise ValueError("could not grab camera image")
 
+LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
-class ConfPanel_Fly2(wx.Panel):
-    def __init__(self, parent, image_panel=None, camera_id=0, 
+class ConfPanel_Fly2(ConfPanel_Base):
+    def __init__(self, parent, image_panel=None, camera_id=0,
                  center_cb=None, **kws):
-        super(ConfPanel_Fly2, self).__init__(parent, -1, size=(280, 300))
+        super(ConfPanel_Fly2, self).__init__(parent, -1,
+                                             center_cb=center_cb)
         self.image_panel = image_panel
-        self.center_cb = center_cb
         self.camera_id = camera_id
         self.camera = self.image_panel.camera
-        def txt(label, size=150):
-            return wx.StaticText(self, label=label, size=(size, -1),
-                                 style=wx.ALIGN_LEFT|wx.EXPAND)
 
-        self.wids = wids = {}
-        sizer = wx.GridBagSizer(10, 4)
-        sizer.SetVGap(3)
-        sizer.SetHGap(5)
+        wids = self.wids
+        sizer = self.sizer
 
-        self.title = txt("Fly2Capture: ", size=285)
-      
-        sizer.Add(self.title, (0, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)        
-       
+        self.title = self.txt("Fly2Capture: ", size=285)
+
+        sizer.Add(self.title, (0, 0), (1, 3), LEFT)
+
         self.__initializing = True
         i = 2
-        #('Sharpness', '%', 100), ('Hue', 'deg', 100), ('Saturation', '%', 100), 
-        for dat in (('shutter', 'ms', 70),  
+        #('Sharpness', '%', 100), ('Hue', 'deg', 100), ('Saturation', '%', 100),
+        for dat in (('shutter', 'ms', 70),
                     ('gain', 'dB', 24),
-                    ('brightness', '%', 6), 
+                    ('brightness', '%', 6),
                     ('gamma', '', 5)):
-            
+
             key, units, maxval = dat
             wids[key] = FloatCtrl(self, value=0, maxval=maxval,
                                   precision=1,
@@ -106,14 +102,14 @@ class ConfPanel_Fly2(wx.Panel):
             label = '%s' % (key.title())
             if len(units)> 0:
                 label = '%s (%s)' % (key.title(), units)
-            sizer.Add(txt(label), (i, 0), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
-            sizer.Add(wids[key],  (i, 1), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+            sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)
+            sizer.Add(wids[key],  (i, 1), (1, 1), LEFT)
 
             akey = '%s_auto' % key
             wids[akey] =  wx.CheckBox(self, -1, label='auto')
             wids[akey].SetValue(0)
             wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
-            sizer.Add(wids[akey], (i, 2), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+            sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i = i + 1
 
         for color in ('blue', 'red'):
@@ -124,55 +120,25 @@ class ConfPanel_Fly2(wx.Panel):
                                   act_on_losefocus=True,
                                   action_kw={'prop': key}, size=(55, -1))
             label = 'White Balance (%s)' % (color)
-            sizer.Add(txt(label), (i, 0), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
-            sizer.Add(wids[key],  (i, 1), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+            sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)
+            sizer.Add(wids[key],  (i, 1), (1, 1), LEFT)
 
             if color == 'blue':
                 akey = 'wb_auto'
                 wids[akey] =  wx.CheckBox(self, -1, label='auto')
                 wids[akey].SetValue(0)
                 wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
-                sizer.Add(wids[akey], (i, 2), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
+                sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
-            
-        sizer.Add(txt("Image Size:"), (i, 0), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
-
-        self.img_size = wx.StaticText(self, label='')
-        sizer.Add(self.img_size, (i, 1), (1, 1), wx.ALIGN_LEFT|wx.EXPAND)
 
         #  show last pixel position, move to center
-        i += 1
-        sizer.Add(txt("Last Pixel Position:", size=285),
-                  (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
-
-        i += 1
-        self.pixel_coord = wx.StaticText(self, label=' ', size=(285, 25), 
-                                         style=wx.ALIGN_LEFT|wx.EXPAND)
-        sizer.Add(self.pixel_coord, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
-
-        i += 1
-        self.pixel_motion = wx.StaticText(self, label=' ', size=(285, 25), 
-                                         style=wx.ALIGN_LEFT|wx.EXPAND)
-
-
-
-        sizer.Add(self.pixel_motion, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
-      
-        i += 1
-        center_button = add_button(self, "Bring to Center", 
-                                   action=self.onBringToCenter, size=(120, -1))
-
-        sizer.Add(center_button, (i, 0), (1, 2), wx.ALIGN_LEFT)
+        next_row = self.show_position_info(row=i)
 
         pack(self, sizer)
         self.__initializing = False
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
         wx.CallAfter(self.onConnect)
-        
-    def onBringToCenter(self, event=None,  **kws):
-        if self.center_cb is not None:
-            self.center_cb(event=event, **kws)
 
     def onConnect(self, **kws):
         for key in ('shutter', 'gain', 'brightness', 'gamma'):
@@ -190,7 +156,7 @@ class ConfPanel_Fly2(wx.Panel):
 
     def onTimer(self, evt=None, **kws):
         for prop in ('shutter', 'gain', 'brightness', 'gamma', 'white_balance'):
-            try: 
+            try:
                 pdict = self.camera.GetProperty(prop)
             except pyfly2.FC2Error:
                 return
@@ -218,7 +184,7 @@ class ConfPanel_Fly2(wx.Panel):
                 blue = self.wids['wb_blue'].GetValue()
                 self.camera.SetPropertyValue(prop, (red, blue), auto=True)
                 time.sleep(0.5)
-                pdict = self.camera.GetProperty(prop)            
+                pdict = self.camera.GetProperty(prop)
                 self.wids['wb_red'].SetValue(pdict['valueA'])
                 self.wids['wb_blue'].SetValue(pdict['valueB'])
         except pyfly2.FC2Error:
