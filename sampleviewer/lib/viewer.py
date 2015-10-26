@@ -84,7 +84,7 @@ class StageFrame(wx.Frame):
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
 
-        self.cpanel = wx.CollapsiblePane(self, label='Show Controls',        
+        self.cpanel = wx.CollapsiblePane(self, label='Show Controls',
                                          style=wx.CP_DEFAULT_STYLE|wx.CP_NO_TLW_RESIZE)
 
         self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, self.cpanel)
@@ -105,7 +105,7 @@ class StageFrame(wx.Frame):
         msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
         msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
         msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 1)
-        
+
         pack(ppanel, msizer)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -121,10 +121,10 @@ class StageFrame(wx.Frame):
                 'width': 1.5, 'args': (0.5, 0.5, 0.007)},
                {'shape':'line', 'color': (200, 100, 0),
                 'width': 2.0, 'args': (0.7, 0.97, 0.97, 0.97)}]
-        
+
         self.create_menus()
         self.cpanel.Collapse(False)
-        self.cpanel.SetLabel('Hide Controls')        
+        self.cpanel.SetLabel('Hide Controls')
         self.Bind(wx.EVT_CLOSE, self.onClose)
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
@@ -138,7 +138,7 @@ class StageFrame(wx.Frame):
             self.cpanel.SetLabel('Show Controls')
         self.imgpanel.Refresh()
 
-        
+
     def onTimer(self, event=None, **kws):
         if self.imgpanel.full_size is not None:
             if 'overlays' in self.config:
@@ -158,12 +158,12 @@ class StageFrame(wx.Frame):
 
                 scol = wx.Colour(int(scolr), int(scolg), int(scolb))
                 ccol = wx.Colour(int(ccolr), int(ccolg), int(ccolb))
-                
-                dobjs = [dict(shape='Line', width=swid, 
+
+                dobjs = [dict(shape='Line', width=swid,
                               style=wx.SOLID, color=scol, args=sargs),
-                         dict(shape='Circle', width=cwid, 
+                         dict(shape='Circle', width=cwid,
                               style=wx.SOLID, color=ccol, args=cargs)]
-        
+
                 self.imgpanel.draw_objects = dobjs
             self.timer.Stop()
 
@@ -184,10 +184,10 @@ class StageFrame(wx.Frame):
         dlg.Destroy()
         if prefix is not None:
             self.imgpanel.set_prefix(prefix)
-            self.confpanel.set_prefix(prefix)            
+            self.confpanel.set_prefix(prefix)
             self.cam_adpref = prefix
-            
-        
+
+
     def create_menus(self):
         "Create the menubar"
         mbar  = wx.MenuBar()
@@ -208,11 +208,11 @@ class StageFrame(wx.Frame):
         add_menu(self, fmenu, label="E&xit",  text="Quit Program",
                  action = self.onClose)
 
-        add_menu(self, omenu, label="Image Overlays", 
+        add_menu(self, omenu, label="Image Overlays",
                  text="Setup Image Overlays",
                  action = self.onConfigOverlays)
 
-        add_menu(self, omenu, label="Erase Many Positions", 
+        add_menu(self, omenu, label="Erase Many Positions",
                  text="Select Multiple Positions to Erase",
                  action = self.onEraseMany)
 
@@ -221,7 +221,7 @@ class StageFrame(wx.Frame):
         vreplace = wx.NewId()
         cenfine = wx.NewId()
         self.menu_opts = {vmove: 'v_move', verase: 'v_erase',
-                          vreplace: 'v_replace', 
+                          vreplace: 'v_replace',
                           cenfine: 'center_with_fine_stages'}
 
         mitem = omenu.Append(vmove, "Verify Go To ",
@@ -250,7 +250,7 @@ class StageFrame(wx.Frame):
         # print 'Create Menus ',      self.ctrlpanel.subpanels
         # for key, val in self.config['stages'].items():
         #     print key, val
-            
+
         for name, panel in self.ctrlpanel.subpanels.items():
             show = 0
             label = 'Enable %s' % name
@@ -263,7 +263,7 @@ class StageFrame(wx.Frame):
             if show > 0 :
                 mitem.Check()
             self.Bind(wx.EVT_MENU, Closure(self.onShowHide, name=name, panel=panel), mitem)
-        
+
         mbar.Append(fmenu, '&File')
         mbar.Append(omenu, '&Options')
         self.SetMenuBar(mbar)
@@ -278,7 +278,7 @@ class StageFrame(wx.Frame):
         for mname, data in self.config['stages'].items():
             if data['group'] == name:
                 data['show'] = showval
-    
+
     def onEraseMany(self, evt=None, **kws):
         self.pospanel.onEraseMany(event=evt)
         evt.Skip()
@@ -327,7 +327,7 @@ class StageFrame(wx.Frame):
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
         self.cam_calibx = float(cam.get('calib_x', 0.001))
         self.cam_caliby = float(cam.get('calib_y', 0.001))
-        
+
         if not os.path.exists(self.imgdir):
             os.makedirs(self.imgdir)
         if not os.path.exists(self.htmllog):
@@ -375,13 +375,13 @@ class StageFrame(wx.Frame):
     <td><table><tr><td>Position:</td><td>%s</td><td>%s</td></tr>
     <tr><td>Motor Name</td><td>PV Name</td><td>Value</td></tr>
     %s
-    </table></td></tr></table>"""  
-        pos_fmt ="    <tr><td> %s </td><td> %s </td><td>   %f</td></tr>" 
+    </table></td></tr></table>"""
+        pos_fmt ="    <tr><td> %s </td><td> %s </td><td>   %f</td></tr>"
         for pvname, value in thispos['position'].items():
             txt.append(pos_fmt % (stages[pvname]['desc'], pvname, value))
-       
+
         fout = open(self.htmllog, 'a')
-        fout.write(html_fmt % (imgfile, imgfile, name, 
+        fout.write(html_fmt % (imgfile, imgfile, name,
                                thispos['timestamp'],  '\n'.join(txt)))
         fout.close()
 
@@ -396,11 +396,11 @@ class StageFrame(wx.Frame):
     def onMoveToCenter(self, event=None, **kws):
         "bring last pixel to image center"
         p = self.last_pixel
-        if p is None: 
+        if p is None:
             return
         dx = 0.001*self.cam_calibx*(p['x']-p['xmax']/2.0)
         dy = 0.001*self.cam_caliby*(p['y']-p['ymax']/2.0)
-        
+
         mots = self.ctrlpanel.motors
 
         xmotor, ymotor = 'x', 'y'
@@ -419,7 +419,6 @@ class StageFrame(wx.Frame):
         self.onSelectPixel(p['xmax']/2.0, p['ymax']/2.0,
                            xmax=p['xmax'], ymax=p['ymax'])
 
-
     def onSelectPixel(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "
         fmt  = """ (%i, %i), (%.0f, %.0f) microns from center"""
@@ -427,22 +426,29 @@ class StageFrame(wx.Frame):
             dx = abs(self.cam_calibx*(x-xmax/2.0))
             dy = abs(self.cam_caliby*(y-ymax/2.0))
             pix_msg = fmt % (x, y, dx, dy)
-            if hasattr(self.confpanel, 'pixel_coord'):
-                self.confpanel.pixel_coord.SetLabel(pix_msg)
+            self.confpanel.sel_pixel.SetLabel(pix_msg)
             self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
 
     def onPixelMotion(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "
-        fmt  = """ (%i, %i), (%.0f, %.0f) microns from center"""
+        fmt  = """ (%i, %i), (%.0f, %.0f) microns from center,
+          (%.0f, %.0f) microns from selected"""
         if x > 0 and x < xmax and y > 0 and y < ymax:
             dx = abs(self.cam_calibx*(x-xmax/2.0))
             dy = abs(self.cam_caliby*(y-ymax/2.0))
-            pix_msg = fmt % (x, y, dx, dy)
-            if hasattr(self.confpanel, 'img_size'):
+            ux = uy = 0, 0
+            if self.last_pixel is not None:
+                lastx = self.last_pixel['x']
+                lasty = self.last_pixel['y']
+                ux = abs(self.cam_calibx*(x-lastx))
+                uy = abs(self.cam_caliby*(y-lasty))
+
+            pix_msg = fmt % (x, y, dx, dy, ux, uy)
+            self.confpanel.cur_pixel.SetLabel(pix_msg)
+
+            if not self.confpanel.img_size_shown:
                 self.confpanel.img_size.SetLabel("(%i, %i)" % (xmax, ymax))
-            if hasattr(self.confpanel, 'pixel_motion'):
-                self.confpanel.pixel_motion.SetLabel(pix_msg)
-            self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
+                self.confpanel.img_size_shown = True
 
     def onClose(self, event=None):
         if wx.ID_YES == popup(self, "Really Quit?", "Exit Sample Stage?",
