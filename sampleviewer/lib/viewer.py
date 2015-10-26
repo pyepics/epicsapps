@@ -425,13 +425,10 @@ class StageFrame(wx.Frame):
 
     def onSelectPixel(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "
-        fmt  = """(%i, %i), (%.1f, %.1f)um from center"""
-        if x > 0 and x < xmax and y > 0 and y < ymax:
-            dx = abs(self.cam_calibx*(x-xmax/2.0))
-            dy = abs(self.cam_caliby*(y-ymax/2.0))
-            pix_msg = fmt % (x, y, dx, dy)
-            self.confpanel.sel_pixel.SetLabel(pix_msg)
-            self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
+        self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
+        self.confpanel.on_selected_pixel(x, y, xmax, ymax, 
+                                         cam_calibx=self.cam_calibx,
+                                         cam_caliby=self.cam_caliby)
 
     def onPixelMotion(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "
