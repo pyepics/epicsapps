@@ -72,8 +72,7 @@ LEFT = wx.ALIGN_LEFT|wx.EXPAND
 class ConfPanel_Fly2(ConfPanel_Base):
     def __init__(self, parent, image_panel=None, camera_id=0,
                  center_cb=None, **kws):
-        super(ConfPanel_Fly2, self).__init__(parent, -1,
-                                             center_cb=center_cb)
+        super(ConfPanel_Fly2, self).__init__(parent, center_cb=center_cb)
         self.image_panel = image_panel
         self.camera_id = camera_id
         self.camera = self.image_panel.camera
@@ -98,7 +97,7 @@ class ConfPanel_Fly2(ConfPanel_Base):
                                   precision=1,
                                   action=self.onValue,
                                   act_on_losefocus=True,
-                                  action_kw={'prop': key}, size=(55, -1))
+                                  action_kw={'prop': key}, size=(75, -1))
             label = '%s' % (key.title())
             if len(units)> 0:
                 label = '%s (%s)' % (key.title(), units)
@@ -118,7 +117,7 @@ class ConfPanel_Fly2(ConfPanel_Base):
                                   precision=0,
                                   action=self.onValue,
                                   act_on_losefocus=True,
-                                  action_kw={'prop': key}, size=(55, -1))
+                                  action_kw={'prop': key}, size=(75, -1))
             label = 'White Balance (%s)' % (color)
             sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)
             sizer.Add(wids[key],  (i, 1), (1, 1), LEFT)
