@@ -57,7 +57,7 @@ class ImagePanel_Base(wx.Panel):
         self.last_autosave = 0
         self.autosave_tmpf = None
         self.autosave_file = None
-        self.autosave_time = 1.0
+        self.autosave_time = 0.5
         self.autosave_thread = None
         self.full_size = None
         if autosave_file is not None:
@@ -236,36 +236,57 @@ class ImagePanel_Base(wx.Panel):
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
 class ConfPanel_Base(wx.Panel):
-    def __init__(self, parent,  center_cb=None, size=(280, 350), **kws):
+    def __init__(self, parent,  center_cb=None, xhair_cb=None, size=(280, 350), **kws):
         super(ConfPanel_Base, self).__init__(parent, -1, size=size, **kws)
         self.center_cb = center_cb
+        self.xhair_cb = xhair_cb
         self.wids = wids = {}
         self.sizer = wx.GridBagSizer(10, 4)
         self.sizer.SetVGap(3)
         self.sizer.SetHGap(5)
 
         self.sel_pixel = self.txt(' ', size=200)
+        self.cen_dist = self.txt(' ', size=200)
         self.cur_pixel = self.txt(' ', size=200)
         self.img_size  = self.txt(' ', size=140)
         self.img_size_shown = False
+        self.show_xhair = False
 
     def txt(self, lab, size=150, height=-1):
         return wx.StaticText(self, label=lab, size=(size, height), style=LEFT)
 
+    def on_selected_pixel(self, x, y, xmax, ymax, cam_calibx=1.0, cam_caliby=1.0):
+        if x > 0 and x < xmax and y > 0 and y < ymax:
+            dx = abs(cam_calibx*(x-xmax/2.0))
+            dy = abs(cam_caliby*(y-ymax/2.0))
+            self.sel_pixel.SetLabel("(%i, %i)" % (x, y))
+            self.cen_dist.SetLabel("(%.1f, %.1f)" % (dx, dy))
+
     def show_position_info(self, row=0):
         img_label = self.txt("Image Size:")
-        sel_label = self.txt("Selected Position:", size=280)
-        ctr_button = add_button(self, "Bring Selected Position to Center",
+        sel_label = self.txt("Selected Pixel:")
+        cen_label = self.txt("Distance to Center(um):")
+        ctr_button = add_button(self, "Bring Selected Pixel to Center",
                                 action=self.onBringToCenter, size=(240, -1))
-
+        xhair_button = add_button(self, "Toggle Crosshair at Selected Pixel",
+                                  action=self.onToggleCrosshair, size=(240, -1))
+        xhair_button.Disable()
         sizer = self.sizer
         sizer.Add(img_label,      (row,   0), (1, 1), LEFT)
         sizer.Add(self.img_size,  (row,   1), (1, 2), LEFT)
-        sizer.Add(sel_label,      (row+1, 0), (1, 3), LEFT)
-        sizer.Add(self.sel_pixel, (row+2, 0), (1, 3), LEFT)
-        sizer.Add(ctr_button,     (row+3, 0), (1, 3), wx.ALIGN_LEFT)
+        sizer.Add(sel_label,      (row+1, 0), (1, 1), LEFT)
+        sizer.Add(self.sel_pixel, (row+1, 1), (1, 2), LEFT)
+        sizer.Add(cen_label,      (row+2, 0), (1, 1), LEFT)
+        sizer.Add(self.cen_dist,  (row+2, 1), (1, 2), LEFT)
+        sizer.Add(xhair_button,   (row+3, 0), (1, 3), wx.ALIGN_LEFT)
+        sizer.Add(ctr_button,     (row+4, 0), (1, 3), wx.ALIGN_LEFT)
         return row+4
 
     def onBringToCenter(self, event=None,  **kws):
         if self.center_cb is not None:
             self.center_cb(event=event, **kws)
+
+    def onToggleCrosshair(self, event=None,  **kws):
+        self.show_xhair = not self.show_xhair
+        if self.xhair_cb is not None:
+            self.xhair_cb(event=event, **kws)
