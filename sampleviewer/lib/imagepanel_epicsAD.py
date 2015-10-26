@@ -10,7 +10,7 @@ from epics import PV, Device, caput, poll
 from epics.wx import EpicsFunction
 
 from PIL import Image
-from .imagepanel_base import ImagePanel_Base
+from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 
 from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
                       PVEnumChoice, PVFloatCtrl, PVTextCtrl)
@@ -159,7 +159,7 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
             image = wx.ImageFromData(width, height, rawdata)
         return image.Scale(int(scale*width), int(scale*height))
 
-class ConfPanel_EpicsAD(wx.Panel):
+class ConfPanel_EpicsAD(ConfPanel_Base):
     img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
                  'ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
                  'ColorMode_RBV')
@@ -172,10 +172,10 @@ class ConfPanel_EpicsAD(wx.Panel):
                  'SizeX', 'SizeY', 'MinX', 'MinY')
     
     def __init__(self, parent, image_panel=None, prefix=None, center_cb=None, **kws):
-        super(ConfPanel_EpicsAD, self).__init__(parent, -1, size=(280, 300))
+        super(ConfPanel_EpicsAD, self).__init__(parent, center_cb=center_cb)
 
-        self.wids = {}
-        self.center_cb = center_cb
+        wids = self.wids 
+        sizer = self.sizer
 
         self.SetBackgroundColour('#EEFFE')
         self.title =  wx.StaticText(self, size=(285, 25),
@@ -206,10 +206,6 @@ class ConfPanel_EpicsAD(wx.Panel):
         def lin(len=30, wid=2, style=wx.LI_HORIZONTAL):
             return wx.StaticLine(self, size=(len, wid), style=style)
 
-        sizer = wx.GridBagSizer(10, 4)
-        sizer.SetVGap(5)
-        sizer.SetHGap(5)
-        
         sizer.Add(self.title,               (0, 0), (1, 3), labstyle)
         i = 1
         sizer.Add(self.wids['fullsize'],    (i, 0), (1, 3), labstyle)
@@ -239,24 +235,7 @@ class ConfPanel_EpicsAD(wx.Panel):
         
         #  show last pixel position, move to center
         i += 1
-        sizer.Add(txt("Last Pixel Position:", size=285),
-                  (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
-
-        i += 1
-        self.pixel_coord = wx.StaticText(self, label='         \n            ', 
-                                         size=(285, 50), 
-                                         style=wx.ALIGN_LEFT|wx.EXPAND)
-
-
-        sizer.Add(self.pixel_coord, (i, 0), (1, 3), wx.ALIGN_LEFT|wx.EXPAND)
-      
-        center_button = add_button(self, "Bring to Center", 
-                                   action=self.onBringToCenter, size=(120, -1))
-
-        i += 1
-        sizer.Add(center_button, (i, 0), (1, 2), wx.ALIGN_LEFT)
-
-
+        next_row = self.show_position_info(row=i)
         pack(self, sizer)
         self.set_prefix(prefix)
         
