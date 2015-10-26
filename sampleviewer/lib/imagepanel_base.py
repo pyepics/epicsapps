@@ -237,16 +237,16 @@ LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
 class ConfPanel_Base(wx.Panel):
     def __init__(self, parent,  center_cb=None, size=(280, 350), **kws):
-        super(ConfPanel_Base, self).__init__(parent, -1, size=size)
+        super(ConfPanel_Base, self).__init__(parent, -1, size=size, **kws)
         self.center_cb = center_cb
         self.wids = wids = {}
         self.sizer = wx.GridBagSizer(10, 4)
         self.sizer.SetVGap(3)
         self.sizer.SetHGap(5)
 
-        self.sel_pixel = self.txt(' ', size=280)
-        self.cur_pixel = self.txt(' ', size=280)
-        self.img_size  = self.txt(' ', size=280)
+        self.sel_pixel = self.txt(' ', size=200)
+        self.cur_pixel = self.txt(' ', size=200)
+        self.img_size  = self.txt(' ', size=140)
         self.img_size_shown = False
 
     def txt(self, lab, size=150, height=-1):
@@ -255,19 +255,16 @@ class ConfPanel_Base(wx.Panel):
     def show_position_info(self, row=0):
         img_label = self.txt("Image Size:")
         sel_label = self.txt("Selected Position:", size=280)
-        cur_label = self.txt("Current Position:", size=280, height=50)
         ctr_button = add_button(self, "Bring Selected Position to Center",
                                 action=self.onBringToCenter, size=(240, -1))
 
         sizer = self.sizer
-        sizer.Add(img_label,      (row, 0), (1, 1), LEFT)
-        sizer.Add(self.img_size,  (row, 1), (1, 1), LEFT)
+        sizer.Add(img_label,      (row,   0), (1, 1), LEFT)
+        sizer.Add(self.img_size,  (row,   1), (1, 2), LEFT)
         sizer.Add(sel_label,      (row+1, 0), (1, 3), LEFT)
         sizer.Add(self.sel_pixel, (row+2, 0), (1, 3), LEFT)
         sizer.Add(ctr_button,     (row+3, 0), (1, 3), wx.ALIGN_LEFT)
-        sizer.Add(cur_label,      (row+4, 0), (1, 3), LEFT)
-        sizer.Add(self.cur_pixel, (row+5, 0), (1, 3), LEFT)
-        return row+6
+        return row+4
 
     def onBringToCenter(self, event=None,  **kws):
         if self.center_cb is not None:

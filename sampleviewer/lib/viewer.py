@@ -199,6 +199,9 @@ class StageFrame(wx.Frame):
         add_menu(self, fmenu, label="&Save Config", text="Save Configuration",
                  action = self.onSaveConfig)
 
+        add_menu(self, fmenu, label="Select &Working Directory", text="change Working Folder",
+                 action = self.onChangeWorkdir)
+
         if self.cam_type.startswith('area'):
             add_menu(self, fmenu, label="Change AreaDetector",
                      text="Change Camera to different AreaDetector",
@@ -298,6 +301,7 @@ class StageFrame(wx.Frame):
     def onMenuOption(self, evt=None):
         """events for options menu: move, erase, overwrite """
         setattr(self, self.menu_opts[evt.GetId()], evt.Checked())
+
 
     def read_config(self, configfile=None, get_dir=False):
         "open/read ini config file"
@@ -421,7 +425,7 @@ class StageFrame(wx.Frame):
 
     def onSelectPixel(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "
-        fmt  = """ (%i, %i), (%.0f, %.0f) microns from center"""
+        fmt  = """(%i, %i), (%.1f, %.1f)um from center"""
         if x > 0 and x < xmax and y > 0 and y < ymax:
             dx = abs(self.cam_calibx*(x-xmax/2.0))
             dy = abs(self.cam_caliby*(y-ymax/2.0))
@@ -431,12 +435,11 @@ class StageFrame(wx.Frame):
 
     def onPixelMotion(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "
-        fmt  = """ (%i, %i), (%.0f, %.0f) microns from center,
-          (%.0f, %.0f) microns from selected"""
+        fmt  = """Pixel=(%i, %i) (%.1f, %.1f)um from center, (%.1f, %.1f)um from selected"""
         if x > 0 and x < xmax and y > 0 and y < ymax:
             dx = abs(self.cam_calibx*(x-xmax/2.0))
             dy = abs(self.cam_caliby*(y-ymax/2.0))
-            ux = uy = 0, 0
+            ux, uy = 0, 0
             if self.last_pixel is not None:
                 lastx = self.last_pixel['x']
                 lasty = self.last_pixel['y']
@@ -444,7 +447,7 @@ class StageFrame(wx.Frame):
                 uy = abs(self.cam_caliby*(y-lasty))
 
             pix_msg = fmt % (x, y, dx, dy, ux, uy)
-            self.confpanel.cur_pixel.SetLabel(pix_msg)
+            self.write_message(pix_msg)
 
             if not self.confpanel.img_size_shown:
                 self.confpanel.img_size.SetLabel("(%i, %i)" % (xmax, ymax))
@@ -463,6 +466,20 @@ class StageFrame(wx.Frame):
             except:
                 pass
             self.Destroy()
+
+    def onChangeWorkdir(self, event=None):
+        ret = SelectWorkdir(self)
+        if ret is None:
+            return
+        os.chdir(ret)
+        cam = self.config['camera']
+        self.imgdir     = cam.get('image_folder', 'Sample_Images')
+        if not os.path.exists(self.imgdir):
+            os.makedirs(self.imgdir)
+        if not os.path.exists(self.htmllog):
+            self.begin_htmllog()
+
+        
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',
