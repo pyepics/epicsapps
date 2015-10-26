@@ -11,6 +11,8 @@ from threading import Thread
 from cStringIO import StringIO
 import base64
 
+from epics.wx.utils import  Closure, add_button
+
 class ImagePanel_Base(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
 
@@ -27,7 +29,7 @@ class ImagePanel_Base(wx.Panel):
         raise NotImplementedError('must provide GrabWxImage()')
 
 
-    def __init__(self, parent,  camera_id=0, writer=None, 
+    def __init__(self, parent,  camera_id=0, writer=None,
                  leftdown_cb=None, motion_cb=None,
                  autosave_file=None, draw_objects=None, **kws):
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
@@ -46,8 +48,10 @@ class ImagePanel_Base(wx.Panel):
 
         self.Bind(wx.EVT_SIZE, self.onSize)
         self.Bind(wx.EVT_PAINT, self.onPaint)
-        self.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
-        self.Bind(wx.EVT_MOTION, self.onMotion)
+        if self.leftdown_cb is not None:
+            self.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
+        if self.motion_cb is not None:
+            self.Bind(wx.EVT_MOTION, self.onMotion)
 
         self.autosave = True
         self.last_autosave = 0
@@ -76,6 +80,9 @@ class ImagePanel_Base(wx.Panel):
         """
         report left down events within image
         """
+        if self.leftdown_cb is None:
+            return
+
         evt_x, evt_y = evt.GetX(), evt.GetY()
         max_x, max_y = self.full_size
         img_w, img_h = self.bitmap_size
@@ -84,13 +91,15 @@ class ImagePanel_Base(wx.Panel):
 
         x = int(0.5 + (evt_x - pad_w)/self.scale)
         y = int(0.5 + (evt_y - pad_h)/self.scale)
-        if self.leftdown_cb is not None:
-            self.leftdown_cb(x, y, xmax=max_x, ymax=max_y)
+        self.leftdown_cb(x, y, xmax=max_x, ymax=max_y)
 
     def onMotion(self, evt=None):
         """
         report left down events within image
         """
+        if self.motion_cb is None:
+            return
+
         evt_x, evt_y = evt.GetX(), evt.GetY()
         max_x, max_y = self.full_size
         img_w, img_h = self.bitmap_size
@@ -99,11 +108,7 @@ class ImagePanel_Base(wx.Panel):
 
         x = int(0.5 + (evt_x - pad_w)/self.scale)
         y = int(0.5 + (evt_y - pad_h)/self.scale)
-        if self.motion_cb is not None:
-            self.motion_cb(x, y, xmax=max_x, ymax=max_y)
-
-        if self.motion_cb is not None:
-            self.motion_cb(x, y, xmax=max_x, ymax=max_y)
+        self.motion_cb(x, y, xmax=max_x, ymax=max_y)
 
     def onPaint(self, event):
         self.count += 1
@@ -123,7 +128,7 @@ class ImagePanel_Base(wx.Panel):
             img = self.GrabWxImage(scale=1.0, rgb=True, can_skip=False)
             if img is not None:
                 self.full_size = img.GetSize()
-            
+
         try:
             bitmap = wx.BitmapFromImage(self.image)
         except ValueError:
@@ -136,7 +141,7 @@ class ImagePanel_Base(wx.Panel):
         dc.Clear()
         dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
         self.__draw_objects(dc, img_w, img_h, pad_w, pad_h)
-        
+
     def __draw_objects(self, dc, img_w, img_h, pad_w, pad_h):
         dc.SetBrush(wx.Brush('Black', wx.BRUSHSTYLE_TRANSPARENT))
         if self.draw_objects is not None:
@@ -150,7 +155,7 @@ class ImagePanel_Base(wx.Panel):
                 style = obj.get('style', wx.SOLID)
                 args  = obj.get('args', [])
                 kws   = obj.get('kws', {})
-                
+
                 method = getattr(dc, 'Draw%s' % (shape.title()), None)
                 if shape.title() == 'Line':
                     args = [pad_w + args[0]*img_w,
@@ -160,7 +165,7 @@ class ImagePanel_Base(wx.Panel):
                 elif shape.title() == 'Circle':
                     args = [pad_w + args[0]*img_w,
                             pad_h + args[1]*img_h,  args[2]*img_w]
-                            
+
                 if method is not None:
                     dc.SetPen(wx.Pen(color, width, style))
                     method(*args, **kws)
@@ -192,7 +197,7 @@ class ImagePanel_Base(wx.Panel):
             ftype = wx.BITMAP_TYPE_PNG
         elif filetype.lower() in ('tiff', 'tif'):
             ftype = wx.BITMAP_TYPE_TIFF
-            
+
         image = self.GrabWxImage(scale=1, rgb=True)
         if image is None:
             return
@@ -214,7 +219,7 @@ class ImagePanel_Base(wx.Panel):
         self.__draw_objects(dc_output, width, height, 0, 0)
         # save to image file
         out.ConvertToImage().SaveFile(fname, ftype)
-        # image.SaveFile(fname, ftype)        
+        # image.SaveFile(fname, ftype)
         return self.image2dict(image)
 
     def image2dict(self, img=None):
@@ -223,7 +228,47 @@ class ImagePanel_Base(wx.Panel):
             img = self.GrabWxImage(scale=1, rgb=True)
         _size = img.GetSize()
         size = (_size[0], _size[1])
-        return {'image_size': size, 
-                'image_format': 'RGB', 
+        return {'image_size': size,
+                'image_format': 'RGB',
                 'data_format': 'base64',
                 'data': base64.b64encode(img.GetData())}
+
+LEFT = wx.ALIGN_LEFT|wx.EXPAND
+
+class ConfPanel_Base(wx.Panel):
+    def __init__(self, parent,  center_cb=None, size=(280, 350), **kws):
+        super(ConfPanel_Base, self).__init__(parent, -1, size=size)
+        self.center_cb = center_cb
+        self.wids = wids = {}
+        self.sizer = wx.GridBagSizer(10, 4)
+        self.sizer.SetVGap(3)
+        self.sizer.SetHGap(5)
+
+        self.sel_pixel = self.txt(' ', size=280)
+        self.cur_pixel = self.txt(' ', size=280)
+        self.img_size  = self.txt(' ', size=280)
+        self.img_size_shown = False
+
+    def txt(self, lab, size=150, height=-1):
+        return wx.StaticText(self, label=lab, size=(size, height), style=LEFT)
+
+    def show_position_info(self, row=0):
+        img_label = self.txt("Image Size:")
+        sel_label = self.txt("Selected Position:", size=280)
+        cur_label = self.txt("Current Position:", size=280, height=50)
+        ctr_button = add_button(self, "Bring Selected Position to Center",
+                                action=self.onBringToCenter, size=(240, -1))
+
+        sizer = self.sizer
+        sizer.Add(img_label,      (row, 0), (1, 1), LEFT)
+        sizer.Add(self.img_size,  (row, 1), (1, 1), LEFT)
+        sizer.Add(sel_label,      (row+1, 0), (1, 3), LEFT)
+        sizer.Add(self.sel_pixel, (row+2, 0), (1, 3), LEFT)
+        sizer.Add(ctr_button,     (row+3, 0), (1, 3), wx.ALIGN_LEFT)
+        sizer.Add(cur_label,      (row+4, 0), (1, 3), LEFT)
+        sizer.Add(self.cur_pixel, (row+5, 0), (1, 3), LEFT)
+        return row+6
+
+    def onBringToCenter(self, event=None,  **kws):
+        if self.center_cb is not None:
+            self.center_cb(event=event, **kws)
