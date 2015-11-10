@@ -174,19 +174,20 @@ class ImagePanel_Base(wx.Panel):
         "autosave process, run in separate thread"
         # set autosave to False to abort autosaving
         while self.autosave:
-            tfrac, tint = math.modf(time.time())
-            if (tint -self.last_autosave) > self.autosave_time:
-                self.last_autosave = tint
+            now = time.time()
+            tfrac, tint = math.modf(now)
+            dt = now - (self.last_autosave + self.autosave_time)
+            if  dt > 0:
+                self.last_autosave = now
                 try:
                     self.image.SaveFile(self.autosave_tmpf,
                                         wx.BITMAP_TYPE_JPEG)
                     shutil.copy(self.autosave_tmpf, self.autosave_file)
-                    # print 'save ! ', self.autosave_file, time.ctime()
+                    # print 'save ! ', self.autosave_file, self.autosave_time, time.ctime()
                 except:
                     pass
-                tfrac, tint = math.modf(time.time())
             # sleep for most of the remaining time
-            time.sleep(max(0.002, (self.autosave_time-tfrac)*0.5))
+            time.sleep( max(0.005, min(1.0, -dt*0.75)))
 
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
