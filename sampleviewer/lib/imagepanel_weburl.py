@@ -57,7 +57,7 @@ class ImagePanel_URL(ImagePanel_Base):
         
 class ConfPanel_URL(wx.Panel):
     def __init__(self, parent, url=None, **kws):
-        super(ConfPanel_URL, self).__init__(parent, -1, size=(280, 300))
+        super(ConfPanel_URL, self).__init__(parent, -1, size=(280, 300), **kws)
 
         title =  wx.StaticText(self, label="Webcam Config", size=(285, 25))
 

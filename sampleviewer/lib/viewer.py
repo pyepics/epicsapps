@@ -54,6 +54,7 @@ class StageFrame(wx.Frame):
         self.read_config(configfile=inifile, get_dir=ask_workdir)
         self.overlay_frame = None
         self.last_pixel = None
+        self.xhair_pixel = None
         self.create_frame(size=size)
         self.imgpanel.Start()
 
@@ -69,6 +70,7 @@ class StageFrame(wx.Frame):
         opts = dict(writer=self.write_framerate,
                     leftdown_cb=self.onSelectPixel,
                     motion_cb=self.onPixelMotion,
+                    xhair_cb=self.onShowCrosshair,
                     center_cb=self.onMoveToCenter,
                     autosave_file=self.autosave_file)
         if self.cam_type.startswith('fly2'):
@@ -163,7 +165,19 @@ class StageFrame(wx.Frame):
                               style=wx.SOLID, color=scol, args=sargs),
                          dict(shape='Circle', width=cwid,
                               style=wx.SOLID, color=ccol, args=cargs)]
+                
+                if self.xhair_pixel is not None:
+                    xwid, xcolr, xcolg, xcolb = swid, scolr, scolg, scolb
+                    xcol = wx.Colour(int(xcolr), int(xcolg), int(xcolb))
+                    xcol = wx.Colour(int(20), int(300), int(250))
+                    hx = self.xhair_pixel['x']
+                    hy = self.xhair_pixel['y']
+                    xargs = [hx - ssiz*iscale, hy - ssiz*iscale, hx + ssiz*iscale, hy + ssiz*iscale]
 
+                    dobjs.append(dict(shape='Line', width=2,
+                                      style=wx.SOLID, color=xcol, args=xargs))
+                    #print "Showing xhair: ", xargs
+                # print 'Draw Objects ', dobjs
                 self.imgpanel.draw_objects = dobjs
             self.timer.Stop()
 
@@ -329,8 +343,7 @@ class StageFrame(wx.Frame):
         self.cam_adpref = cam.get('ad_prefix', '')
         self.cam_adform = cam.get('ad_format', 'JPEG')
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
-        self.cam_calibx = float(cam.get('calib_x', 0.001))
-        self.cam_caliby = float(cam.get('calib_y', 0.001))
+        self.get_cam_calib()
 
         if not os.path.exists(self.imgdir):
             os.makedirs(self.imgdir)
@@ -348,6 +361,12 @@ class StageFrame(wx.Frame):
             if data['maxstep'] is None:
                 data['maxstep'] = (mot.high_limit - mot.low_limit)/2.10
             self.stages[mname] = data
+
+    def get_cam_calib(self):
+        cam = self.config['camera']
+        cx = self.cam_calibx = float(cam.get('calib_x', 0.001))
+        cy = self.cam_caliby = float(cam.get('calib_y', 0.001))
+        return cx, cy
 
     def begin_htmllog(self):
         "initialize log file"
@@ -397,13 +416,21 @@ class StageFrame(wx.Frame):
         "write to status bar"
         self.statusbar.SetStatusText(msg, 1)
 
+    def onShowCrosshair(self, event=None, show=True, **kws):
+        self.xhair_pixel = None
+        if show:
+            self.xhair_pixel = self.last_pixel
+            print "Set XHAIR ", self.xhair_pixel
+
     def onMoveToCenter(self, event=None, **kws):
         "bring last pixel to image center"
         p = self.last_pixel
         if p is None:
             return
-        dx = 0.001*self.cam_calibx*(p['x']-p['xmax']/2.0)
-        dy = 0.001*self.cam_caliby*(p['y']-p['ymax']/2.0)
+
+        cal_x, cal_y = self.get_cam_calib()
+        dx = 0.001*cal_x*(p['x']-p['xmax']/2.0)
+        dy = 0.001*cal_y*(p['y']-p['ymax']/2.0)
 
         mots = self.ctrlpanel.motors
 
@@ -426,9 +453,10 @@ class StageFrame(wx.Frame):
     def onSelectPixel(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "
         self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
+        cal_x, cal_y = self.get_cam_calib()
         self.confpanel.on_selected_pixel(x, y, xmax, ymax, 
-                                         cam_calibx=self.cam_calibx,
-                                         cam_caliby=self.cam_caliby)
+                                         cam_calibx=cal_x, 
+                                         cam_caliby=cal_y)
 
     def onPixelMotion(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "

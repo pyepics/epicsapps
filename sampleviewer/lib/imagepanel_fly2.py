@@ -71,8 +71,9 @@ LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
 class ConfPanel_Fly2(ConfPanel_Base):
     def __init__(self, parent, image_panel=None, camera_id=0,
-                 center_cb=None, **kws):
-        super(ConfPanel_Fly2, self).__init__(parent, center_cb=center_cb)
+                 center_cb=None, xhair_cb=None, **kws):
+        super(ConfPanel_Fly2, self).__init__(parent, center_cb=center_cb, 
+                                             xhair_cb=xhair_cb)
         self.image_panel = image_panel
         self.camera_id = camera_id
         self.camera = self.image_panel.camera

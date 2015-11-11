@@ -171,8 +171,10 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
                  'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
                  'SizeX', 'SizeY', 'MinX', 'MinY')
     
-    def __init__(self, parent, image_panel=None, prefix=None, center_cb=None, **kws):
-        super(ConfPanel_EpicsAD, self).__init__(parent, center_cb=center_cb)
+    def __init__(self, parent, image_panel=None, prefix=None, 
+                 center_cb=None, xhair_cb=None, **kws):
+        super(ConfPanel_EpicsAD, self).__init__(parent, center_cb=center_cb, 
+                                                xhair_cb=xhair_cb)
 
         wids = self.wids 
         sizer = self.sizer

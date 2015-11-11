@@ -290,4 +290,4 @@ class ConfPanel_Base(wx.Panel):
     def onToggleCrosshair(self, event=None,  **kws):
         self.show_xhair = not self.show_xhair
         if self.xhair_cb is not None:
-            self.xhair_cb(event=event, **kws)
+            self.xhair_cb(event=event, show=self.show_xhair, **kws)
