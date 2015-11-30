@@ -167,6 +167,8 @@ class PositionPanel(wx.Panel):
         imgfile = os.path.join(self.viewer.imgdir, imgfile)
         tmp_pos = self.viewer.ctrlpanel.read_position()
         imgdata, count = None, 0
+        if not os.path.exists(self.viewer.imgdir):
+            os.makedirs(self.viewer.imgdir)
         while imgdata is None and count <100:
             imgdata = self.viewer.save_image(imgfile)
             if imgdata is None:
@@ -194,8 +196,18 @@ class PositionPanel(wx.Panel):
         # auto-save file
         self.viewer.autosave(positions=self.positions)
         self.viewer.write_htmllog(name, self.positions[name])
-        
-        self.viewer.write_message("Saved Position '%s', image in %s" % (name, imgfile))
+
+        imgfile_exists = False
+        t0 = time.time()
+        if not imgfile_exists and time.time()-t0 < 10:
+            imgfile_exists = os.path.exists(fullpath)
+            time.sleep(0.5)
+        if imgfile_exists:
+            self.viewer.write_message("Saved Position '%s', image in %s" % 
+                                      (name, imgfile))
+        else:
+            self.viewer.write_message("COULD NOT SAVE IMAGE FILE!!")
+
         wx.CallAfter(Closure(self.onSelect, event=None, name=name))
 
     def onShow(self, event):
