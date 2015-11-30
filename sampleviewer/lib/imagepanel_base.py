@@ -219,7 +219,7 @@ class ImagePanel_Base(wx.Panel):
         # draw overlays to output
         self.__draw_objects(dc_output, width, height, 0, 0)
         # save to image file
-        out.ConvertToImage().SaveFile(fname, ftype)
+        ret = out.ConvertToImage().SaveFile(fname, ftype)
         # image.SaveFile(fname, ftype)
         return self.image2dict(image)
 
