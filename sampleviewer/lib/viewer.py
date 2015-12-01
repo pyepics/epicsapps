@@ -10,6 +10,7 @@ from cStringIO import StringIO
 from threading import Thread
 from collections import OrderedDict
 import base64
+import json
 
 from epics import caput, Motor
 from epics.wx import EpicsFunction
@@ -206,6 +207,7 @@ class StageFrame(wx.Frame):
         "Create the menubar"
         mbar  = wx.MenuBar()
         fmenu = wx.Menu()
+        pmenu = wx.Menu()
         omenu = wx.Menu()
         add_menu(self, fmenu, label="&Read Config", text="Read Configuration",
                  action = self.onReadConfig)
@@ -225,13 +227,19 @@ class StageFrame(wx.Frame):
         add_menu(self, fmenu, label="E&xit",  text="Quit Program",
                  action = self.onClose)
 
+        add_menu(self, pmenu, label="Export Positions", text="Export Positions",
+                 action = self.onExportPositions)
+        add_menu(self, pmenu, label="Import Positions", text="Import Positions",
+                 action = self.onImportPositions)
+        add_menu(self, pmenu, label="Erase Many Positions",
+                 text="Select Multiple Positions to Erase",
+                 action = self.onEraseMany)
+
+
         add_menu(self, omenu, label="Image Overlays",
                  text="Setup Image Overlays",
                  action = self.onConfigOverlays)
 
-        add_menu(self, omenu, label="Erase Many Positions",
-                 text="Select Multiple Positions to Erase",
-                 action = self.onEraseMany)
 
         vmove  = wx.NewId()
         verase = wx.NewId()
@@ -282,6 +290,7 @@ class StageFrame(wx.Frame):
             self.Bind(wx.EVT_MENU, Closure(self.onShowHide, name=name, panel=panel), mitem)
 
         mbar.Append(fmenu, '&File')
+        mbar.Append(pmenu, 'Positions')
         mbar.Append(omenu, '&Options')
         self.SetMenuBar(mbar)
 
@@ -492,6 +501,26 @@ class StageFrame(wx.Frame):
                 pass
             self.Destroy()
 
+    def onExportPositions(self, event=None):
+        fname = FileSave(self, 'Export Positions File',
+                         wildcard='Position Files (*.pos)|*.pos|All files (*.*)|*.*',
+                         default_file='Save.pos')
+        if fname is not None:
+            self.pospanel.SavePositions(fname)
+
+        self.write_message('Saved Positions File %s' % fname)
+
+    def onImportPositions(self, event=None):
+        print 'Import '
+        fname = FileOpen(self, 'Import Positions File',
+                         wildcard='Position Files (*.pos)|*.pos|All files (*.*)|*.*',
+                         default_file='Save.pos')
+        if fname is not None:
+            self.pospanel.LoadPositions(fname)
+
+        self.write_message('Loaded Positions from File %s' % fname)
+
+
     def onChangeWorkdir(self, event=None):
         ret = SelectWorkdir(self)
         if ret is None:
@@ -503,7 +532,6 @@ class StageFrame(wx.Frame):
             os.makedirs(self.imgdir)
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
-
         
 
     def onSaveConfig(self, event=None):
