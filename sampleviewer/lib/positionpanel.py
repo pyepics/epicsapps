@@ -426,10 +426,16 @@ class PositionPanel(wx.Panel):
         for line in text[1:]:
             name, pos, notes, img, ts = json.loads(line)
             tmp_pos = OrderedDict(pos)
-            self.positions[name] = {'image': img, 'timestamp': ts,
-                                    'position': tmp_pos, 'notes': notes}
-            self.instdb.save_position(self.instname, name, tmp_pos,
-                                      notes=notes, image=img)
+            try:
+                self.positions[name] = {'image': img, 'timestamp': ts,
+                                        'position': tmp_pos, 'notes': notes}
+            except:
+                print 'Cannot set', name, tmp_pos, notes, img
+            try:
+                self.instdb.save_position(self.instname, name, tmp_pos,
+                                          notes=json.dumps(notes), image=img)
+            except:
+                print 'Could save ', name, tmp_pos, notes, img
 
         self.set_positions(self.positions)
             

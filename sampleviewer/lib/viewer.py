@@ -511,7 +511,6 @@ class StageFrame(wx.Frame):
         self.write_message('Saved Positions File %s' % fname)
 
     def onImportPositions(self, event=None):
-        print 'Import '
         fname = FileOpen(self, 'Import Positions File',
                          wildcard='Position Files (*.pos)|*.pos|All files (*.*)|*.*',
                          default_file='Save.pos')
