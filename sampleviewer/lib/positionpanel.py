@@ -22,6 +22,7 @@ from .imageframe import ImageDisplayFrame
 # from  larch_plugins.epics import ScanDB, InstrumentDB
 from epicsscan.scandb import ScanDB, InstrumentDB
 
+POS_HEADER = '#SampleViewer POSITIONS FILE v1.0'
 class ErasePositionsDialog(wx.Frame):
     """ Erase all positions, with check boxes for all"""
     def __init__(self, positions, instname=None, instdb=None):
@@ -385,3 +386,51 @@ class PositionPanel(wx.Panel):
                 pdat[pvpos.pv.name] =  pvpos.value
             positions[pname] = dict(position=pdat, image=image, notes=notes)
         self.set_positions(positions)
+
+
+    def SavePositions(self, fname):
+        """
+        save positions to external file
+        """
+        out = [POS_HEADER]
+        for name, val in self.positions.items():
+            pos = []
+            notes = val['notes']
+            img =  val['image']
+            ts = val.get('timestamp', '')
+            for pvname, val in val['position'].items():
+                pos.append((pvname, val))
+            out.append(json.dumps((name, pos, notes, img, ts)))
+            
+        out.append('')
+        out = '\n'.join(out)
+        fout = open(fname, 'w')
+        fout.write(out)
+        fout.close()
+
+    def LoadPositions(self, fname):
+        """
+        save positions to external file
+        """
+        try:
+            fh = open(fname, 'r')
+            text = fh.readlines()
+            fh.close()
+        except IOError:
+            print 'IO Error'
+            return -1
+        header = text[0].replace('\n', '').replace('\r', '')
+        if header != POS_HEADER:
+            print 'Bad Header', header
+            return -2
+        for line in text[1:]:
+            name, pos, notes, img, ts = json.loads(line)
+            tmp_pos = OrderedDict(pos)
+            self.positions[name] = {'image': img, 'timestamp': ts,
+                                    'position': tmp_pos, 'notes': notes}
+            self.instdb.save_position(self.instname, name, tmp_pos,
+                                      notes=notes, image=img)
+
+        self.set_positions(self.positions)
+            
+        return 0
