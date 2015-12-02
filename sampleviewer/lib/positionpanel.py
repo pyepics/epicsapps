@@ -232,6 +232,8 @@ class PositionPanel(wx.Panel):
             notes = json.loads(thispos['notes'])
         except:
             notes = {'data_format': ''}
+        if isinstance(notes, basestring): 
+            notes = json.loads(notes)
         label = []
         stages  = self.viewer.config['stages']
         posvals = self.positions[posname]['position']
@@ -426,6 +428,7 @@ class PositionPanel(wx.Panel):
         for line in text[1:]:
             name, pos, notes, img, ts = json.loads(line)
             tmp_pos = OrderedDict(pos)
+          
             try:
                 self.positions[name] = {'image': img, 'timestamp': ts,
                                         'position': tmp_pos, 'notes': notes}
@@ -436,7 +439,8 @@ class PositionPanel(wx.Panel):
                                           notes=json.dumps(notes), image=img)
             except:
                 print 'Could save ', name, tmp_pos, notes, img
-
+            #print(" Import Pos ", name, img, notes)
+            
         self.set_positions(self.positions)
             
         return 0
