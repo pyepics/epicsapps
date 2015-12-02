@@ -353,7 +353,11 @@ class StageFrame(wx.Frame):
         self.cam_adform = cam.get('ad_format', 'JPEG')
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
         self.get_cam_calib()
-
+        try:
+            pref = self.imgdir.split('_')[0]
+        except:
+            pref = 'Sample'
+        self.htmllog = '%sStage.html' % pref
         if not os.path.exists(self.imgdir):
             os.makedirs(self.imgdir)
         if not os.path.exists(self.htmllog):
