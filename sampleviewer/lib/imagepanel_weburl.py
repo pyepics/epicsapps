@@ -14,7 +14,7 @@ from epics.wx.utils import  pack
 
 class ImagePanel_URL(ImagePanel_Base):
     """Image Panel for webcam"""
-    def __init__(self, parent, url, writer=None, autosave_file=None, **kws):
+    def __init__(self, parent, url=None, writer=None, autosave_file=None, **kws):
         super(ImagePanel_URL, self).__init__(parent, -1,
                                              size=(800, 600),
                                              writer=writer,
@@ -57,7 +57,7 @@ class ImagePanel_URL(ImagePanel_Base):
         
 class ConfPanel_URL(wx.Panel):
     def __init__(self, parent, url=None, **kws):
-        super(ConfPanel_URL, self).__init__(parent, -1, size=(280, 300), **kws)
+        super(ConfPanel_URL, self).__init__(parent, -1, size=(280, 300))
 
         title =  wx.StaticText(self, label="Webcam Config", size=(285, 25))
 
