@@ -338,7 +338,7 @@ class StageFrame(wx.Frame):
         gui = self.config['gui']
         self.workdir_file  = gui.get('workdir_file', 'sampleviewer_workdir.txt')
         self.iconfile      = gui.get('icon_file', '')
-        self.autosave_file = gui.get('autosave_file', None)
+        self.autosave_file = gui.get('autosave_file', 'SampleStage_autosave.ini')
         self.v_move    = gui.get('verify_move', True)
         self.v_erase   = gui.get('verify_erase', True)
         self.v_replace = gui.get('verify_overwrite', True)
