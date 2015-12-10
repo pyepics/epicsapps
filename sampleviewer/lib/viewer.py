@@ -397,7 +397,7 @@ class StageFrame(wx.Frame):
         return imgdata
 
     def autosave(self, positions=None):
-        self.cnf.Save('SampleStage.ini', positions=positions)
+        self.cnf.Save(self.autosave_file, positions=positions)
 
     def write_htmllog(self, name, thispos):
         stages  = self.config['stages']
