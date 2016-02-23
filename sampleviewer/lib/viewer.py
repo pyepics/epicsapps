@@ -29,7 +29,7 @@ from .imagepanel_fly2 import ImagePanel_Fly2, ConfPanel_Fly2
 from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
 from .imagepanel_weburl import ImagePanel_URL, ConfPanel_URL
 
-ALL_EXP  = wx.ALL|wx.EXPAND
+ALL_EXP  = wx.ALL|wx.EXPAND|wx.GROW
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
 LEFT_CEN = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL
 LEFT_TOP = wx.ALIGN_LEFT|wx.ALIGN_TOP
@@ -95,6 +95,7 @@ class StageFrame(wx.Frame):
         ppanel = wx.Panel(self.cpanel.GetPane())
 
         self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
+        # self.cpanel.SetMinSize((-1, 875))
         self.pospanel.SetMinSize((250, 700))
 
         self.ctrlpanel = ControlPanel(ppanel,
@@ -107,13 +108,13 @@ class StageFrame(wx.Frame):
         msizer = wx.GridBagSizer(2, 2)
         msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
         msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 1)
+        msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
 
         pack(ppanel, msizer)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
         sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
-                       (self.cpanel,    0, ALL_EXP|LEFT_CEN|wx.GROW, 0)])
+                       (self.cpanel,    1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
 
         pack(self, sizer)
         self.SetSize(size)
@@ -557,7 +558,7 @@ class StageFrame(wx.Frame):
         self.write_message('Read Configuration File %s' % fname)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, inifile=None, debug=False, ask_workdir=True, **kws):
+    def __init__(self, inifile=None, debug=True, ask_workdir=True, **kws):
         self.inifile = inifile
         self.debug = debug
         self.ask_workdir = ask_workdir
