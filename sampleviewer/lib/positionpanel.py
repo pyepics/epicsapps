@@ -87,12 +87,14 @@ class ErasePositionsDialog(wx.Frame):
         
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
-    def __init__(self, parent, viewer, config=None):
+    def __init__(self, parent, viewer, config=None, **kws):
+        print(" Position Panel ", parent, viewer, kws)
         wx.Panel.__init__(self, parent, -1, size=(300, 500))
-        self.size = (300, 500)
+        self.size = (300, 600)
         self.parent = parent
         self.viewer = viewer
         self.config = config
+        self.poslist_query = None
         self.image_display = None
         self.pos_name =  wx.TextCtrl(self, value="", size=(300, 25),
                                      style= wx.TE_PROCESS_ENTER)
@@ -130,7 +132,7 @@ class PositionPanel(wx.Panel):
         self.get_positions_from_db()
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
-        self.timer.Start(3000)
+        self.timer.Start(5000)
 
     def init_scandb(self):
         dbconn = self.config
@@ -143,7 +145,6 @@ class PositionPanel(wx.Panel):
             if self.instdb.get_instrument(self.instname) is None:
                 pvs = self.viewer.config['stages'].keys()
                 self.instdb.add_instrument(self.instname, pvs=pvs)
-                
 
     def onSave1(self, event):
         "save from text enter"
@@ -360,17 +361,26 @@ class PositionPanel(wx.Panel):
             self.pos_list.Append(name)
         if cur_sel in self.positions:
             self.pos_list.SetStringSelection(cur_sel)
-        self.last_refresh = time.time()
+        self.last_refresh = 0
 
     def onTimer(self, evt=None):
-        posnames =  self.instdb.get_positionlist(self.instname)
-        if (len(posnames) != len(self.posnames) or
-            (time.time() - self.last_refresh) > 15.0):
+        if self.poslist_query is None:
+            inst = self.instdb.get_instrument(self.instname)
+            cls, tab = self.instdb.scandb.get_table('positions')
+
+            self.poslist_select = tab.select().where(tab.c.instruments_id==inst.id)
+        npos = len(self.poslist_select.execute().fetchall())
+        now = time.time()
+        if (npos != len(self.posnames) or
+            (now - self.last_refresh) > 600.0):
+            # print("Timer ", npos, len(self.posnames), now-self.last_refresh)
             self.get_positions_from_db()
+            self.last_refresh = now
 
     def get_positions_from_db(self):
         if self.instdb is None:
             return
+
         positions = OrderedDict()
         iname = self.instname
         posnames =  self.instdb.get_positionlist(iname)
