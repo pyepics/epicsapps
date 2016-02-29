@@ -97,7 +97,7 @@ class ImagePanel_Base(wx.Panel):
         """
         report left down events within image
         """
-        if self.motion_cb is None:
+        if self.motion_cb is None or self.full_size is None:
             return
 
         evt_x, evt_y = evt.GetX(), evt.GetY()
