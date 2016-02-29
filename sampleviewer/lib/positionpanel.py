@@ -33,52 +33,74 @@ class ErasePositionsDialog(wx.Frame):
 
     def build_dialog(self, positions):
         self.positions = positions
-
         panel = scrolled.ScrolledPanel(self)
         self.checkboxes = {}
-        sizer = wx.GridBagSizer(len(positions)+2, 2)
+        sizer = wx.GridBagSizer(len(positions)+5, 4)
         sizer.SetVGap(2)        
-        sizer.SetHGap(3)        
-        sizer.Add(SimpleText(panel, ' Erase Positions?  Warning: CANNOT BE UNDONE!!',
+        sizer.SetHGap(3)    
+        bkws = dict(size=(95, -1))
+        btn_ok     = add_button(panel, "Erase Selected",   action=self.onOK, **bkws)
+        btn_all    = add_button(panel, "Select All",    action=self.onAll, **bkws)
+        btn_none   = add_button(panel, "Select None",   action=self.onNone,  **bkws)
+    
+        brow = wx.BoxSizer(wx.HORIZONTAL)
+        brow.Add(btn_all ,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        brow.Add(btn_none,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        brow.Add(btn_ok ,   0, ALL_EXP|wx.ALIGN_LEFT, 1)
+
+        sizer.Add(SimpleText(panel, ' Note: ERASING POSITIONS CANNOT BE UNDONE!! Use "Export Positions" to Save!',
                             colour=wx.Colour(200, 0, 0)), (0, 0), (1, 2),  LEFT_CEN, 2)
-        sizer.Add(SimpleText(panel, ' Position Name'),  (1, 0), (1, 1),  LEFT_CEN, 2)
-        sizer.Add(SimpleText(panel, 'Erase?'),         (1, 1), (1, 1),  LEFT_CEN, 2)
-        sizer.Add(wx.StaticLine(panel, size=(300, 2)), (2, 0), (1, 2),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, ' Use "Export Positions" to Save Positions!',
+                            colour=wx.Colour(200, 0, 0)), (1, 0), (1, 2),  LEFT_CEN, 2)
+
+        sizer.Add(brow,   (2, 0), (1, 3),  LEFT_CEN, 2)
+
+        sizer.Add(SimpleText(panel, ' Position Name'), (3, 0), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, 'Erase?'),         (3, 1), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, ' Position Name'), (3, 2), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, 'Erase?'),         (3, 3), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(wx.StaticLine(panel, size=(500, 2)), (4, 0), (1, 4),  LEFT_CEN, 2)
         
-        irow = 2
-        for pname in positions:
-            irow += 1
+        irow = 4
+        for ip, pname in enumerate(positions):
             cbox = self.checkboxes[pname] = wx.CheckBox(panel, -1, "")
             cbox.SetValue(True)
-            sizer.Add(SimpleText(panel, "  %s  "%pname), (irow, 0), (1, 1),  LEFT_CEN, 2)
-            sizer.Add(cbox,                      (irow, 1), (1, 1),  LEFT_CEN, 2)
+            
+            if ip % 2 == 0:
+                irow += 1
+                icol = 0
+            else:
+                icol = 2
+            sizer.Add(SimpleText(panel, "  %s  "%pname), (irow, icol),   (1, 1),  LEFT_CEN, 2)
+            sizer.Add(cbox,                              (irow, icol+1), (1, 1),  LEFT_CEN, 2)
         irow += 1
-        sizer.Add(wx.StaticLine(panel, size=(300, 2)), (irow, 0), (1, 2),  LEFT_CEN, 2)
+        sizer.Add(wx.StaticLine(panel, size=(500, 2)), (irow, 0), (1, 4),  LEFT_CEN, 2)
 
         pack(panel, sizer)
-        panel.SetMinSize((350, 300))
-        panel.SetupScrolling()
-        bkws = dict(size=(55, -1))
-        btn_ok     = add_button(self, "OK",  action=self.onOK, **bkws)
-        btn_cancel = add_button(self, "Cancel", action=self.onCancel,  **bkws)
+        panel.SetMinSize((700, 550))
 
-        brow = wx.BoxSizer(wx.HORIZONTAL)
-        brow.Add(btn_ok ,     0, ALL_EXP|wx.ALIGN_LEFT, 1)
-        brow.Add(btn_cancel,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        panel.SetupScrolling()
 
         mainsizer = wx.BoxSizer(wx.VERTICAL)
-        mainsizer.Add(panel, 1, 2)
-        mainsizer.Add(wx.StaticLine(self, size=(300, 2)), 0, 2)
-        mainsizer.Add(brow, 0, 2)
+        mainsizer.Add(panel, 1,  ALL_EXP|wx.GROW|wx.ALIGN_LEFT, 1)
         pack(self, mainsizer)
+
+        self.SetMinSize((700, 550))
         self.Raise()
         self.Show()
         
+    def onAll(self, event=None):
+        for cbox in self.checkboxes.values():
+            cbox.SetValue(True)
+
+    def onNone(self, event=None):
+        for cbox in self.checkboxes.values():
+            cbox.SetValue(False)
+
     def onOK(self, event=None):
         if self.instname is not None and self.instdb is not None:
             for pname, cbox in self.checkboxes.items():
                 if cbox.IsChecked():
-                    print 'erasing: ', pname
                     self.instdb.remove_position(self.instname, pname)
         self.Destroy()
 
@@ -88,7 +110,6 @@ class ErasePositionsDialog(wx.Frame):
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
     def __init__(self, parent, viewer, config=None, **kws):
-        print(" Position Panel ", parent, viewer, kws)
         wx.Panel.__init__(self, parent, -1, size=(300, 500))
         self.size = (300, 600)
         self.parent = parent
