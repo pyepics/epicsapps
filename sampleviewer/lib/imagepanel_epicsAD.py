@@ -15,7 +15,7 @@ from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
                       PVEnumChoice, PVFloatCtrl, PVTextCtrl)
 from epics.wx.utils import pack, add_button
-                            
+
 class ImagePanel_EpicsAD(ImagePanel_Base):
     img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
                  'ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
@@ -23,11 +23,11 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
 
     cam_attrs = ('Acquire', 'ArrayCounter', 'ArrayCounter_RBV',
                  'DetectorState_RBV',  'NumImages', 'ColorMode',
-                 'ColorMode_RBV', 
+                 'ColorMode_RBV',
                  'DataType_RBV',  'Gain',
                  'AcquireTime', 'AcquirePeriod', 'ImageMode',
                  'ArraySizeX_RBV', 'ArraySizeY_RBV')
-    
+
     """Image Panel for FlyCapture2 camera"""
     def __init__(self, parent, prefix=None, format='JPEG',
                  writer=None, autosave_file=None, **kws):
@@ -50,7 +50,7 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         if prefix.endswith(':image1'):   prefix = prefix[:-7]
         if prefix.endswith(':cam1'):     prefix = prefix[:-5]
         self.prefix = prefix
-        
+
         self.ad_img = Device(prefix + ':image1:', delim='',
                                    attrs=self.img_attrs)
         self.ad_cam = Device(prefix + ':cam1:', delim='',
@@ -60,17 +60,17 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
 
         width = self.ad_cam.ArraySizeX_RBV
         height = self.ad_cam.ArraySizeY_RBV
-       
+
         self.img_w = float(width+0.5)
         self.img_h = float(height+0.5)
         self.cam_name = prefix
-        
+
 
     def config_filesaver(self, prefix, format):
         if not prefix.endswith(':'):  prefix = "%s:" % prefix
         if not format.endswith('1'):  format = "%s1" % format
         if not format.endswith('1:'): format = "%s:" % format
-            
+
         cname = "%s%s"% (prefix, format)
         caput("%sEnableCallbacks" % cname, 1)
         thisdir = os.path.abspath(os.getcwd()).replace('\\', '/')
@@ -114,10 +114,10 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         imgdim   = self.ad_img.NDimensions_RBV
         width    = self.ad_cam.SizeX
         height   = self.ad_cam.SizeY
-      
+
         imgcount = self.ad_cam.ArrayCounter_RBV
         now = time.time()
-        if (can_skip and (imgcount == self.imgcount or 
+        if (can_skip and (imgcount == self.imgcount or
                           abs(now - self.last_update) < 0.025)):
             return None
         self.imgcount = imgcount
@@ -134,7 +134,7 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         if colormode == 2:
             im_mode = 'RGB'
             self.im_size = (arrsize[1], arrsize[2])
-        
+
         dcount = arrsize[0] * arrsize[1]
         if imgdim == 3:
             dcount *= arrsize[2]
@@ -142,20 +142,19 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         rawdata = self.ad_img.PV('ArrayData').get(count=dcount)
         if rawdata is None:
             return
-        
+
         if (colormode == 0 and isinstance(rawdata, np.ndarray) and
             rawdata.dtype != np.uint8):
             im_mode = 'I'
             rawdata = rawdata.astype(np.uint32)
-
         if im_mode in ('L', 'I'):
             image = wx.EmptyImage(width, height)
             imbuff = Image.frombuffer(im_mode, self.im_size, rawdata,
                                       'raw',  im_mode, 0, 1)
-            image.SetData(imbuff.convert('RGB').tostring())
-
+            image.SetData(imbuff.convert('RGB').tobytes())
         elif im_mode == 'RGB':
             rawdata.shape = (3, width, height)
+            rawdata = rawdata.astype(np.uint8)
             image = wx.ImageFromData(width, height, rawdata)
         return image.Scale(int(scale*width), int(scale*height))
 
@@ -170,13 +169,13 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
                  'AcquireTime', 'AcquirePeriod', 'ImageMode',
                  'MaxSizeX_RBV', 'MaxSizeY_RBV', 'TriggerMode',
                  'SizeX', 'SizeY', 'MinX', 'MinY')
-    
-    def __init__(self, parent, image_panel=None, prefix=None, 
+
+    def __init__(self, parent, image_panel=None, prefix=None,
                  center_cb=None, xhair_cb=None, **kws):
-        super(ConfPanel_EpicsAD, self).__init__(parent, center_cb=center_cb, 
+        super(ConfPanel_EpicsAD, self).__init__(parent, center_cb=center_cb,
                                                 xhair_cb=xhair_cb)
 
-        wids = self.wids 
+        wids = self.wids
         sizer = self.sizer
 
         self.SetBackgroundColour('#EEFFE')
@@ -193,7 +192,7 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
         for key in ('start', 'stop'):
             self.wids[key] = wx.Button(self, -1, label=key.title(), size=(65, -1))
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onButton, key=key))
-        
+
         labstyle  = wx.ALIGN_LEFT|wx.EXPAND|wx.ALIGN_BOTTOM
         ctrlstyle = wx.ALIGN_LEFT #  |wx.ALIGN_BOTTOM
         rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
@@ -234,20 +233,20 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
         i += 1
         sizer.Add(txt('Color Mode'),        (i, 0), (1, 1), labstyle)
         sizer.Add(self.wids['color'],       (i, 1), (1, 2), ctrlstyle)
-        
+
         #  show last pixel position, move to center
         i += 1
         next_row = self.show_position_info(row=i)
         pack(self, sizer)
         self.set_prefix(prefix)
-        
+
     @EpicsFunction
     def set_prefix(self, prefix):
         if prefix.endswith(':'):         prefix = prefix[:-1]
         if prefix.endswith(':image1'):   prefix = prefix[:-7]
         if prefix.endswith(':cam1'):     prefix = prefix[:-5]
         self.prefix = prefix
-        
+
         self.ad_img = Device(prefix + ':image1:', delim='',
                                    attrs=self.img_attrs)
         self.ad_cam = Device(prefix + ':cam1:', delim='',
