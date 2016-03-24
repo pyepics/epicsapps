@@ -36,13 +36,13 @@ class ErasePositionsDialog(wx.Frame):
         panel = scrolled.ScrolledPanel(self)
         self.checkboxes = {}
         sizer = wx.GridBagSizer(len(positions)+5, 4)
-        sizer.SetVGap(2)        
-        sizer.SetHGap(3)    
+        sizer.SetVGap(2)
+        sizer.SetHGap(3)
         bkws = dict(size=(95, -1))
         btn_ok     = add_button(panel, "Erase Selected",   action=self.onOK, **bkws)
         btn_all    = add_button(panel, "Select All",    action=self.onAll, **bkws)
         btn_none   = add_button(panel, "Select None",   action=self.onNone,  **bkws)
-    
+
         brow = wx.BoxSizer(wx.HORIZONTAL)
         brow.Add(btn_all ,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_none,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
@@ -60,12 +60,12 @@ class ErasePositionsDialog(wx.Frame):
         sizer.Add(SimpleText(panel, ' Position Name'), (3, 2), (1, 1),  LEFT_CEN, 2)
         sizer.Add(SimpleText(panel, 'Erase?'),         (3, 3), (1, 1),  LEFT_CEN, 2)
         sizer.Add(wx.StaticLine(panel, size=(500, 2)), (4, 0), (1, 4),  LEFT_CEN, 2)
-        
+
         irow = 4
         for ip, pname in enumerate(positions):
             cbox = self.checkboxes[pname] = wx.CheckBox(panel, -1, "")
             cbox.SetValue(True)
-            
+
             if ip % 2 == 0:
                 irow += 1
                 icol = 0
@@ -88,7 +88,7 @@ class ErasePositionsDialog(wx.Frame):
         self.SetMinSize((700, 550))
         self.Raise()
         self.Show()
-        
+
     def onAll(self, event=None):
         for cbox in self.checkboxes.values():
             cbox.SetValue(True)
@@ -106,7 +106,7 @@ class ErasePositionsDialog(wx.Frame):
 
     def onCancel(self, event=None):
         self.Destroy()
-        
+
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
     def __init__(self, parent, viewer, config=None, **kws):
@@ -214,7 +214,7 @@ class PositionPanel(wx.Panel):
 
         self.instdb.save_position(self.instname, name, tmp_pos,
                                   notes=notes, image=fullpath)
-            
+
         self.pos_list.SetStringSelection(name)
         # auto-save file
         self.viewer.autosave(positions=self.positions)
@@ -226,7 +226,7 @@ class PositionPanel(wx.Panel):
             imgfile_exists = os.path.exists(fullpath)
             time.sleep(0.5)
         if imgfile_exists:
-            self.viewer.write_message("Saved Position '%s', image in %s" % 
+            self.viewer.write_message("Saved Position '%s', image in %s" %
                                       (name, imgfile))
         else:
             self.viewer.write_message("COULD NOT SAVE IMAGE FILE!!")
@@ -254,7 +254,7 @@ class PositionPanel(wx.Panel):
             notes = json.loads(thispos['notes'])
         except:
             notes = {'data_format': ''}
-        if isinstance(notes, basestring): 
+        if isinstance(notes, basestring):
             notes = json.loads(notes)
         label = []
         stages  = self.viewer.config['stages']
@@ -274,7 +274,7 @@ class PositionPanel(wx.Panel):
                                         label=label)
         elif str(notes['data_format']) == 'base64':
             size = notes.get('image_size', (800, 600))
-            self.image_display.showb64img(data, size=size, 
+            self.image_display.showb64img(data, size=size,
                                           title=posname, label=label)
         else:
             print 'Cannot show image for %s' % posname
@@ -321,8 +321,8 @@ class PositionPanel(wx.Panel):
 
     def onEraseMany(self, event=None):
         if self.instdb is not None:
-            ErasePositionsDialog(self.positions.keys(), 
-                                 instname=self.instname, 
+            ErasePositionsDialog(self.positions.keys(),
+                                 instname=self.instname,
                                  instdb=self.instdb)
 
     def onSelect(self, event=None, name=None):
@@ -434,7 +434,7 @@ class PositionPanel(wx.Panel):
             for pvname, val in val['position'].items():
                 pos.append((pvname, val))
             out.append(json.dumps((name, pos, notes, img, ts)))
-            
+
         out.append('')
         out = '\n'.join(out)
         fout = open(fname, 'w')
@@ -459,7 +459,7 @@ class PositionPanel(wx.Panel):
         for line in text[1:]:
             name, pos, notes, img, ts = json.loads(line)
             tmp_pos = OrderedDict(pos)
-          
+
             try:
                 self.positions[name] = {'image': img, 'timestamp': ts,
                                         'position': tmp_pos, 'notes': notes}
@@ -471,7 +471,7 @@ class PositionPanel(wx.Panel):
             except:
                 print 'Could save ', name, tmp_pos, notes, img
             #print(" Import Pos ", name, img, notes)
-            
+
         self.set_positions(self.positions)
-            
+
         return 0
