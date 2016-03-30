@@ -1,7 +1,10 @@
 #!/usr/bin/python
 
 import wx
-from wx._core import PyDeadObjectError
+try:
+    from wx._core import PyDeadObjectError
+except:
+    PyDeadObjectError = Exception
 
 import time
 import epics
