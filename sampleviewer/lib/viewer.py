@@ -61,7 +61,7 @@ class StageFrame(wx.Frame):
 
     def create_frame(self, size=(1600, 800)):
         "build main frame"
-        self.statusbar = self.CreateStatusBar(2, wx.CAPTION|wx.THICK_FRAME)
+        self.statusbar = self.CreateStatusBar(2, wx.CAPTION)
         self.statusbar.SetStatusWidths([-4, -1])
 
         for index in range(2):
