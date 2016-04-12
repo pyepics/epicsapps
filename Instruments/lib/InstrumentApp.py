@@ -233,7 +233,7 @@ class InstrumentFrame(wx.Frame):
 
     def create_Statusbar(self):
         "create status bar"
-        self.statusbar = self.CreateStatusBar(2, wx.CAPTION|wx.THICK_FRAME)
+        self.statusbar = self.CreateStatusBar(2, wx.CAPTION)
         self.statusbar.SetStatusWidths([-4,-1])
         for index, name  in enumerate(("Messages", "Status")):
             self.statusbar.SetStatusText('', index)

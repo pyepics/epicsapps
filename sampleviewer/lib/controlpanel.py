@@ -165,21 +165,21 @@ class ControlPanel(wx.Panel):
 
     def make_button_panel(self, parent, group='', dim=2):
         panel = wx.Panel(parent)
+    
         if dim==2:
-            sizer = wx.GridSizer(3, 3, 1, 1)
-            sizer.Add(self.arrow(panel, group, 'nw'), 0, ALL_EXP)
-            sizer.Add(self.arrow(panel, group, 'nn'), 0, ALL_EXP)
-            sizer.Add(self.arrow(panel, group, 'ne'), 0, ALL_EXP)
-            sizer.Add(self.arrow(panel, group, 'ww'), 0, ALL_EXP)
-            sizer.Add((2, 2))
-            sizer.Add(self.arrow(panel, group, 'ee'), 0, ALL_EXP)
-            sizer.Add(self.arrow(panel, group, 'sw'), 0, ALL_EXP)
-            sizer.Add(self.arrow(panel, group, 'ss'), 0, ALL_EXP)
-            sizer.Add(self.arrow(panel, group, 'se'), 0, ALL_EXP)
+            sizer = wx.GridSizer(3, 3)
+            sizer.Add(self.arrow(panel, group, 'nw'), (0, 0), (1, 1), ALL_EXP)
+            sizer.Add(self.arrow(panel, group, 'nn'), (0, 1), (1, 1), ALL_EXP)
+            sizer.Add(self.arrow(panel, group, 'ne'), (0, 2), (1, 1), ALL_EXP)
+            sizer.Add(self.arrow(panel, group, 'ww'), (1, 0), (1, 1), ALL_EXP)
+            sizer.Add(self.arrow(panel, group, 'ee'), (1, 2), (1, 1), ALL_EXP)
+            sizer.Add(self.arrow(panel, group, 'sw'), (2, 0), (1, 1), ALL_EXP)
+            sizer.Add(self.arrow(panel, group, 'ss'), (2, 1), (1, 1), ALL_EXP)
+            sizer.Add(self.arrow(panel, group, 'se'), (2, 2), (1, 1), ALL_EXP)
         else:
-            sizer = wx.GridSizer(1, 3)
+            sizer = wx.BoxSizer(wx.HORIZONTAL)
             sizer.Add(self.arrow(panel, group, 'ww'), 0, ALL_EXP)
-            sizer.Add((2, 2))
+            sizer.Add((25, 25))
             sizer.Add(self.arrow(panel, group, 'ee'), 0, ALL_EXP)
 
         pack(panel, sizer)
