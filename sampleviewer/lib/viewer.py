@@ -167,7 +167,7 @@ class StageFrame(wx.Frame):
                               style=wx.SOLID, color=scol, args=sargs),
                          dict(shape='Circle', width=cwid,
                               style=wx.SOLID, color=ccol, args=cargs)]
-                
+
                 if self.xhair_pixel is not None:
                     xwid, xcolr, xcolg, xcolb = swid, scolr, scolg, scolb
                     xcol = wx.Colour(int(xcolr), int(xcolg), int(xcolb))
@@ -268,7 +268,7 @@ class StageFrame(wx.Frame):
 
         mitem = omenu.Append(cenfine, "Center With Fine Stages",
                      "Bring to Center will move the Fine Stages", wx.ITEM_CHECK)
-        mitem.Check()
+        mitem.Check(0)
         self.Bind(wx.EVT_MENU, self.onMenuOption, mitem)
 
         omenu.AppendSeparator()
@@ -343,7 +343,7 @@ class StageFrame(wx.Frame):
         self.v_move    = gui.get('verify_move', True)
         self.v_erase   = gui.get('verify_erase', True)
         self.v_replace = gui.get('verify_overwrite', True)
-        self.center_with_fine_stages = gui.get('center_with_fine_stages', True)
+        self.center_with_fine_stages = gui.get('center_with_fine_stages', False)
         self.SetTitle(gui.get('title', 'Microscope'))
 
         cam = self.config['camera']
@@ -468,8 +468,8 @@ class StageFrame(wx.Frame):
         " select a pixel from image "
         self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
         cal_x, cal_y = self.get_cam_calib()
-        self.confpanel.on_selected_pixel(x, y, xmax, ymax, 
-                                         cam_calibx=cal_x, 
+        self.confpanel.on_selected_pixel(x, y, xmax, ymax,
+                                         cam_calibx=cal_x,
                                          cam_caliby=cal_y)
 
     def onPixelMotion(self, x, y, xmax=100, ymax=100):
@@ -536,7 +536,7 @@ class StageFrame(wx.Frame):
             os.makedirs(self.imgdir)
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
-        
+
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',

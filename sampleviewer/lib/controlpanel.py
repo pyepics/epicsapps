@@ -36,7 +36,7 @@ class ControlPanel(wx.Panel):
     def __init__(self, parent, groups=None, config={}):
         wx.Panel.__init__(self, parent, -1)
         self.subpanels = {}
-        
+
         self.groups = groups
         self.config = config #  json.loads(station_configs[station.upper()])
         self.tweak_wids  = {}   # tweak Combobox widgets per group
@@ -61,7 +61,7 @@ class ControlPanel(wx.Panel):
                     maxstep = min(maxstep, data['maxstep'])
                     prec    = min(prec, data['prec'])
                     show    = show + data['show']
-            kws = {'motorlist': motorlist, 'maxstep':maxstep, 
+            kws = {'motorlist': motorlist, 'maxstep':maxstep,
                    'precision': prec, 'show': show>0}
             if group.lower().startswith('fine'):
                 kws['buttons'] = [('Zero Fine Motors', self.onZeroFineMotors)]
@@ -71,7 +71,7 @@ class ControlPanel(wx.Panel):
             sizer.Add(wx.StaticLine(self, size=(300, 3)), 0, CEN_TOP)
 
         pack(self, sizer)
-        
+
         self.connect_motors()
 
     @EpicsFunction
@@ -114,7 +114,7 @@ class ControlPanel(wx.Panel):
         """make motor group panel """
         panel  = wx.Panel(self)
         self.subpanels[group] = panel
-        
+
         # print 'Group Panel ', group, show
         tweaklist = make_steps(precision=precision, maxstep=maxstep)
         if group.lower().startswith('theta'):
@@ -136,7 +136,7 @@ class ControlPanel(wx.Panel):
 
         for pvname, desc in motorlist:
             pvname = normalize_pvname(pvname)
-            self.motor_wids[desc] = MotorPanel(panel, pvname, 
+            self.motor_wids[desc] = MotorPanel(panel, pvname,
                                                label=desc, psize='small')
             msizer.Add(self.motor_wids[desc], 0, ALL_EXP)
 
@@ -152,7 +152,7 @@ class ControlPanel(wx.Panel):
         sizer.Add(btnbox, 0, CEN_TOP, 1)
         if not show:
             panel.Disable()
-            
+
         pack(panel, sizer)
         return panel
 
