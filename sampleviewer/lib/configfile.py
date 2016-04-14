@@ -18,7 +18,7 @@ DEFAULT_CONF = """
 [gui]
 workdir_file = /tmp/workdir.dat
 autosave_file = /tmp/micro_live.jpg
-icon_file = 
+icon_file =
 title = Microscope
 verify_move = 1
 verify_erase = 1
@@ -55,8 +55,8 @@ port =
 3 = 13IDE:m3 || Focus       ||     ||       || 3    || 7.1
 #--------------------------#
 [positions]
-# index = name  || position || imagefile 
-001 =   p1 || 0, 0, 0, 90, 70, 350 || 
+# index = name  || position || imagefile
+001 =   p1 || 0, 0, 0, 90, 70, 350 ||
 """
 conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite',
                                 'center_with_fine_stages')},
@@ -71,15 +71,15 @@ conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
                                    'verify_erase', 'verify_overwrite',
                                    'center_with_fine_stages')),
                           ('camera', ('type', 'image_folder', 'fly2_id',
-                                      'ad_prefix', 'ad_format', 'web_url', 
+                                      'ad_prefix', 'ad_format', 'web_url',
                                       'calib_x', 'calib_y')),
                           ('scandb', ('instrument', 'dbname', 'server',
                                       'host', 'user', 'password', 'port')),
-                          ('overlays', ('circle', 'scalebar')), 
+                          ('overlays', ('circle', 'scalebar')),
                           ('stages', None),
                           ('positions', None)) )
 
-conf_files = ('SampleStage.ini', 
+conf_files = ('SampleStage.ini',
               'SampleStage_autosave.ini',
               '//cars5/Data/xas_user/scan_config/13ide/SampleStage.ini')
 
@@ -222,7 +222,7 @@ class StageConfig(object):
         if fname is not None:
             self.filename = fname
         o.append('## Sample Stage Configuration (saved: %s)'  % (time.ctime()))
-        
+
         if positions is None:
             positions = cnf['positions']
         for sect, optlist in conf_objs.items():
@@ -235,13 +235,17 @@ class StageConfig(object):
                 for name, val in positions.items():
                     pos = []
                     for pvname in cnf['stages']:
-                        pos.append(float(val['position'][pvname]))
+                        try:
+                            pos.append(float(val['position'][pvname]))
+                        except:
+                            pass
+                    pfmt =  ', '.join(['%f' for i in range(len(pos))])
                     pos = pfmt % tuple(pos)
                     try:
                         tmpdir, imgfile = os.path.split(val['image'])
                     except:
                         tmpdir, imgfile = '', ''
-                    
+
                     o.append(fmt % (idx, name, imgfile, pos))
                     idx = idx + 1
             elif sect == 'stages':
