@@ -46,7 +46,8 @@ class StageFrame(wx.Frame):
 <body>
     """
 
-    def __init__(self, inifile='SampleStage.ini', size=(1600, 800), ask_workdir=True):
+    def __init__(self, inifile='SampleStage.ini', size=(1600, 800),
+                 ask_workdir=True, orientation='landscape'):
         super(StageFrame, self).__init__(None, wx.ID_ANY,
                                          style=wx.DEFAULT_FRAME_STYLE,
                                          size=size)
@@ -56,10 +57,10 @@ class StageFrame(wx.Frame):
         self.overlay_frame = None
         self.last_pixel = None
         self.xhair_pixel = None
-        self.create_frame(size=size)
+        self.create_frame(size=size, orientation=orientation)
         self.imgpanel.Start()
 
-    def create_frame(self, size=(1600, 800)):
+    def create_frame(self, size=(1600, 800), orientation='landscape'):
         "build main frame"
         self.statusbar = self.CreateStatusBar(2, wx.CAPTION)
         self.statusbar.SetStatusWidths([-4, -1])
@@ -87,36 +88,67 @@ class StageFrame(wx.Frame):
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
 
-        self.cpanel = wx.CollapsiblePane(self, label='Show Controls',
-                                         style=wx.CP_DEFAULT_STYLE|wx.CP_NO_TLW_RESIZE)
+        if orientation.lower().startswith('land'):
+            size = (1600, 800)
+            self.cpanel = wx.CollapsiblePane(self, label='Show Controls',
+                                             style=wx.CP_DEFAULT_STYLE|wx.CP_NO_TLW_RESIZE)
 
-        self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, self.cpanel)
+            self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, self.cpanel)
 
-        ppanel = wx.Panel(self.cpanel.GetPane())
+            ppanel = wx.Panel(self.cpanel.GetPane())
 
-        self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
-        # self.cpanel.SetMinSize((-1, 875))
-        self.pospanel.SetMinSize((250, 700))
+            self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
+            self.pospanel.SetMinSize((250, 700))
 
-        self.ctrlpanel = ControlPanel(ppanel,
-                                      groups=config['stage_groups'],
-                                      config=config['stages'])
+            self.ctrlpanel = ControlPanel(ppanel,
+                                          groups=config['stage_groups'],
+                                          config=config['stages'])
 
-        self.confpanel = ConfPanel(ppanel,
-                                   image_panel=self.imgpanel, **opts)
+            self.confpanel = ConfPanel(ppanel,
+                                       image_panel=self.imgpanel, **opts)
 
-        msizer = wx.GridBagSizer(2, 2)
-        msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
+            msizer = wx.GridBagSizer(2, 2)
+            msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
 
-        pack(ppanel, msizer)
+            pack(ppanel, msizer)
 
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
-                       (self.cpanel,    1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
+            sizer = wx.BoxSizer(wx.HORIZONTAL)
+            sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
+                           (self.cpanel,    1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
 
-        pack(self, sizer)
+            pack(self, sizer)
+            self.cpanel.Collapse(False)
+            self.cpanel.SetLabel('Hide Controls')
+
+        else:
+            size = (900, 1500)
+            ppanel = wx.Panel(self)
+            self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
+            self.pospanel.SetMinSize((250, 400))
+
+            self.ctrlpanel = ControlPanel(ppanel,
+                                          groups=config['stage_groups'],
+                                          config=config['stages'])
+
+            self.confpanel = ConfPanel(ppanel,
+                                       image_panel=self.imgpanel, **opts)
+
+            msizer = wx.GridBagSizer(2, 2)
+            msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
+
+            pack(ppanel, msizer)
+
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
+                           (ppanel,    1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
+
+            pack(self, sizer)
+
+
         self.SetSize(size)
         if len(self.iconfile) > 0:
             self.SetIcon(wx.Icon(self.iconfile, wx.BITMAP_TYPE_ICO))
@@ -127,8 +159,6 @@ class StageFrame(wx.Frame):
                 'width': 2.0, 'args': (0.7, 0.97, 0.97, 0.97)}]
 
         self.create_menus()
-        self.cpanel.Collapse(False)
-        self.cpanel.SetLabel('Hide Controls')
         self.Bind(wx.EVT_CLOSE, self.onClose)
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
@@ -558,14 +588,18 @@ class StageFrame(wx.Frame):
         self.write_message('Read Configuration File %s' % fname)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, inifile=None, debug=True, ask_workdir=True, **kws):
+    def __init__(self, inifile=None, debug=True, ask_workdir=True,
+                 orientation='landscape', **kws):
         self.inifile = inifile
+        self.orientation = orientation
         self.debug = debug
         self.ask_workdir = ask_workdir
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        frame = StageFrame(inifile=self.inifile, ask_workdir=self.ask_workdir)
+        frame = StageFrame(inifile=self.inifile,
+                           orientation=self.orientation,
+                           ask_workdir=self.ask_workdir)
         frame.Show()
         self.SetTopWindow(frame)
 
