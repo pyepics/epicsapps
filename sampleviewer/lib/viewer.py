@@ -126,8 +126,7 @@ class StageFrame(wx.Frame):
             size = (900, 1500)
             ppanel = wx.Panel(self)
             self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
-            self.pospanel.SetMinSize((250, 400))
-
+            self.pospanel.SetMinSize((275, 500))
             self.ctrlpanel = ControlPanel(ppanel,
                                           groups=config['stage_groups'],
                                           config=config['stages'])
