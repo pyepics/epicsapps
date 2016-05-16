@@ -122,11 +122,11 @@ class StageFrame(wx.Frame):
             self.cpanel.Collapse(False)
             self.cpanel.SetLabel('Hide Controls')
 
-        else:
+        else: # portrait mode
             size = (900, 1500)
             ppanel = wx.Panel(self)
             self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
-            self.pospanel.SetMinSize((275, 500))
+            self.pospanel.SetMinSize((250, 450))
             self.ctrlpanel = ControlPanel(ppanel,
                                           groups=config['stage_groups'],
                                           config=config['stages'])
@@ -134,10 +134,10 @@ class StageFrame(wx.Frame):
             self.confpanel = ConfPanel(ppanel,
                                        image_panel=self.imgpanel, **opts)
 
-            msizer = wx.GridBagSizer(2, 2)
+            msizer = wx.GridBagSizer(3, 3)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
+            msizer.Add(self.confpanel, (0, 2), (1, 1), ALL_EXP|LEFT_TOP, 1)
 
             pack(ppanel, msizer)
 
