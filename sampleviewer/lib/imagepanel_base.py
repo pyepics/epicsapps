@@ -237,7 +237,7 @@ class ImagePanel_Base(wx.Panel):
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
 class ConfPanel_Base(wx.Panel):
-    def __init__(self, parent,  center_cb=None, xhair_cb=None, size=(280, 350), **kws):
+    def __init__(self, parent,  center_cb=None, xhair_cb=None, size=(300, 350), **kws):
         super(ConfPanel_Base, self).__init__(parent, -1, size=size, **kws)
         self.center_cb = center_cb
         self.xhair_cb = xhair_cb
@@ -269,9 +269,9 @@ class ConfPanel_Base(wx.Panel):
         cen_label = self.txt("Distance to Center(um):")
         ctr_button = add_button(self, "Bring Selected Pixel to Center",
                                 action=self.onBringToCenter, size=(240, -1))
-        xhair_button = add_button(self, "Toggle Crosshair at Selected Pixel",
-                                  action=self.onToggleCrosshair, size=(240, -1))
-        xhair_button.Disable()
+        #xhair_button = add_button(self, "Toggle Crosshair at Selected Pixel",
+        #                          action=self.onToggleCrosshair, size=(240, -1))
+        # xhair_button.Disable()
         sizer = self.sizer
         sizer.Add(img_label,      (row,   0), (1, 1), LEFT)
         sizer.Add(self.img_size,  (row,   1), (1, 2), LEFT)
@@ -279,9 +279,9 @@ class ConfPanel_Base(wx.Panel):
         sizer.Add(self.sel_pixel, (row+1, 1), (1, 2), LEFT)
         sizer.Add(cen_label,      (row+2, 0), (1, 1), LEFT)
         sizer.Add(self.cen_dist,  (row+2, 1), (1, 2), LEFT)
-        sizer.Add(xhair_button,   (row+3, 0), (1, 3), wx.ALIGN_LEFT)
-        sizer.Add(ctr_button,     (row+4, 0), (1, 3), wx.ALIGN_LEFT)
-        return row+4
+        # sizer.Add(xhair_button,   (row+3, 0), (1, 3), wx.ALIGN_LEFT)
+        sizer.Add(ctr_button,     (row+3, 0), (1, 3), wx.ALIGN_LEFT)
+        return row+3
 
     def onBringToCenter(self, event=None,  **kws):
         if self.center_cb is not None:
