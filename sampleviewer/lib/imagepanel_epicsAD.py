@@ -208,7 +208,8 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
             return wx.StaticLine(self, size=(len, wid), style=style)
 
         sizer.Add(self.title,               (0, 0), (1, 3), labstyle)
-        i = 1
+        i = next_row = self.show_position_info(row=1)
+        i += 1
         sizer.Add(self.wids['fullsize'],    (i, 0), (1, 3), labstyle)
         i += 1
         sizer.Add(txt('Acquire '),          (i, 0), (1, 1), labstyle)
@@ -235,8 +236,6 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
         sizer.Add(self.wids['color'],       (i, 1), (1, 2), ctrlstyle)
 
         #  show last pixel position, move to center
-        i += 1
-        next_row = self.show_position_info(row=i)
         pack(self, sizer)
         self.set_prefix(prefix)
 

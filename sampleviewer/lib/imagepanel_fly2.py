@@ -72,7 +72,7 @@ LEFT = wx.ALIGN_LEFT|wx.EXPAND
 class ConfPanel_Fly2(ConfPanel_Base):
     def __init__(self, parent, image_panel=None, camera_id=0,
                  center_cb=None, xhair_cb=None, **kws):
-        super(ConfPanel_Fly2, self).__init__(parent, center_cb=center_cb, 
+        super(ConfPanel_Fly2, self).__init__(parent, center_cb=center_cb,
                                              xhair_cb=xhair_cb)
         self.image_panel = image_panel
         self.camera_id = camera_id
@@ -84,9 +84,10 @@ class ConfPanel_Fly2(ConfPanel_Base):
         self.title = self.txt("Fly2Capture: ", size=285)
 
         sizer.Add(self.title, (0, 0), (1, 3), LEFT)
+        next_row = self.show_position_info(row=1)
 
         self.__initializing = True
-        i = 2
+        i = next_row + 1
         #('Sharpness', '%', 100), ('Hue', 'deg', 100), ('Saturation', '%', 100),
         for dat in (('shutter', 'ms', 70),
                     ('gain', 'dB', 24),
@@ -130,9 +131,6 @@ class ConfPanel_Fly2(ConfPanel_Base):
                 wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
-
-        #  show last pixel position, move to center
-        next_row = self.show_position_info(row=i)
 
         pack(self, sizer)
         self.__initializing = False
