@@ -191,15 +191,13 @@ class InstrumentPanel(wx.Panel):
         self.last_draw = 0
         self.inst = inst
         self.pvlist = pvlist
+        # print "Instrument ", pvlist
         self.db   = db
         self.write_message = writer
         self.pvs  = {}
         self.pv_components  = OrderedDict()
 
         wx.Panel.__init__(self, parent, size=size)
-
-        #for p in self.db.get_ordered_instpvs(inst):
-        #    self.add_pv(p.pv.name)
 
 
         self.colors = colors = GUIColors()
@@ -402,7 +400,7 @@ class InstrumentPanel(wx.Panel):
         # print 'Panel AddPV ', pvname
         self.pv_components[pvname] = (False, None, None)
         db_pv = self.db.get_pv(pvname)
-        # print 'Instrument Panel Add PV ', pvname , db_pv , db_pv.pvtype
+        #print 'Instrument Panel Add PV ', pvname , db_pv , db_pv.pvtype
         if db_pv.pvtype is None:
             print 'Return because no pvtype?' , pvname, db_pv
             return
@@ -413,7 +411,7 @@ class InstrumentPanel(wx.Panel):
         self.PV_Panel(pvname)
         self.conn_timer_t0 = time.time()        
         self.last_draw = 0.0
-        self.conn_timer.Start(0.5)
+        self.conn_timer.Start(2)
 
     def write(self, msg, status='normal'):
         if self.write_message is None:
