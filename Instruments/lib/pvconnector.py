@@ -3,6 +3,10 @@ import wx
 import epics
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 
+MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
+                '.HLS', '.LLS', '.SPMG', '.DESC')
+
+
 class PVNameCtrl(wx.TextCtrl):
     """Text Control for an Epics PV that should try to be connected.
     this must be used with a EpicsPVList
@@ -64,8 +68,41 @@ class EpicsPVList(object):
         except:
             pass
 
+    def init_connect(self, pvname, is_motor=False):
+        """try to connect epics PV, executing
+        action(wid=wid, pvname=pvname, pv=pv)
+        """
+        if pvname is None or len(pvname) < 1:
+            return
+        if '.' not in pvname:
+            pvname = '%s.VAL' % pvname
+        pvname = str(pvname)
+
+        if pvname in self.pvs:
+            return
+        self.pvs[pvname] = epics.get_pv(pvname)
+        self.in_progress[pvname] = (None, None, time.time())
+        if is_motor:
+            idot = pvname.find('.')
+            basname = pvname[:idot]
+            for ext in MOTOR_FIELDS:
+                pvname = "%s%s" % (basname, ext)
+                self.pvs[pvname] = epics.get_pv(pvname)
+                self.in_progress[pvname] = (None, None, time.time())
+
+    def show_unconnected(self):
+        all, unconn =  0, 0
+        for name, pv in self.pvs.items():
+            all += 1
+            if not pv.connected:
+                print(" Not connected: ", name)
+                unconn += 1
+            time.sleep(0.001)
+        # print(" Done : %i of %i unconnected" % (unconn, all))
+        
+                       
     @EpicsFunction
-    def connect_pv(self, pvname, wid=None, action=None):
+    def connect_pv(self, pvname, is_motor=False, wid=None, action=None):
         """try to connect epics PV, executing
         action(wid=wid, pvname=pvname, pv=pv)
         """
@@ -79,6 +116,13 @@ class EpicsPVList(object):
         if pvname not in self.in_progress:
             self.pvs[pvname] = epics.get_pv(pvname)
             self.in_progress[pvname] = (wid, action, time.time())
+        if is_motor:
+            idot = pvname.find('.')
+            basname = pvname[:idot]
+            for ext in MOTOR_FIELDS:
+                pvname = "%s%s" % (basname, ext)
+                self.pvs[pvname] = epics.get_pv(pvname)
+                self.in_progress[pvname] = (wid, action, time.time())
 
     @EpicsFunction
     def add_pv(self, pv, wid=None, action=None):
@@ -94,7 +138,7 @@ class EpicsPVList(object):
         if pvname not in self.pvs:
             self.pvs[pvname] = epics.get_pv(pvname)
         pv = self.pvs[pvname]
-        time.sleep(0.002)
+        time.sleep(0.001)
 
         if not self.pvs[pvname].connected:
             return
