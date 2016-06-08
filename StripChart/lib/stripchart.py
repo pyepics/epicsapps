@@ -28,7 +28,6 @@ STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL|wx.ALIGN_CENTER_VERTICAL
 CSTY = wx.ALIGN_CENTER|wx.ALIGN_CENTER_VERTICAL
 
-
 MENU_EXIT   = wx.NewId()
 MENU_SAVE_IMG = wx.NewId()
 MENU_SAVE_DAT = wx.NewId()
@@ -58,12 +57,14 @@ def get_bound(val):
 class MyChoice(wx.Choice):
     """Simplified wx Choice"""
     def __init__(self, parent, choices=('No', 'Yes'),
-                 defaultyes=True, size=(75, -1)):
+                 defaultyes=True, action=None, size=(75, -1)):
         wx.Choice.__init__(self, parent, -1, size=size)
         self.choices = choices
         self.Clear()
         self.SetItems(self.choices)
         self.SetSelection({False:0, True:1}[defaultyes])
+        if action is not None:
+            self.Bind(wx.EVT_CHOICE, action)
 
     def SetChoices(self, choices):
         self.Clear()
@@ -115,6 +116,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.colorsels = []
         self.plots_drawn = [False]*10
         self.needs_refresh = False
+        self.force_redraw  = False
         self.paused = False
 
         self.tmin = -60.0
@@ -180,9 +182,8 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.Refresh()
 
-
     def build_statusbar(self):
-        sbar = self.CreateStatusBar(2, wx.CAPTION|wx.THICK_FRAME)
+        sbar = self.CreateStatusBar(2, wx.CAPTION)
         sfont = sbar.GetFont()
         sfont.SetWeight(wx.BOLD)
         sfont.SetPointSize(10)
@@ -195,13 +196,13 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.SetBackgroundColour(wx.Colour(*BGCOL))
         sizer = self.pvsizer = wx.GridBagSizer(4, 5)
 
-        name = SimpleText(panel, ' PV:  ',       minsize=(65, -1), style=LSTY)
-        colr = SimpleText(panel, ' Color ',      minsize=(50, -1), style=LSTY)
-        logs = SimpleText(panel, ' Log? ',       minsize=(50, -1), style=LSTY)
-        ymin = SimpleText(panel, ' Y Minimum ',  minsize=(85, -1), style=LSTY)
-        ymax = SimpleText(panel, ' Y Maximum ',  minsize=(85, -1), style=LSTY)
-        desc = SimpleText(panel, ' Label ',      minsize=(85, -1), style=LSTY)
-        side = SimpleText(panel, ' Side  ',      minsize=(85, -1), style=LSTY)
+        name = SimpleText(panel, ' PV:  ',    minsize=(65, -1), style=LSTY)
+        colr = SimpleText(panel, ' Color ',   minsize=(50, -1), style=LSTY)
+        logs = SimpleText(panel, ' Log? ',    minsize=(50, -1), style=LSTY)
+        ymin = SimpleText(panel, ' Y Min ',   minsize=(85, -1), style=LSTY)
+        ymax = SimpleText(panel, ' Y Max ',   minsize=(85, -1), style=LSTY)
+        desc = SimpleText(panel, ' Label ',   minsize=(85, -1), style=LSTY)
+        side = SimpleText(panel, ' Side  ',   minsize=(85, -1), style=LSTY)
 
         sizer.Add(name, (0, 0), (1, 1), LSTY|wx.EXPAND, 2)
         sizer.Add(colr, (0, 1), (1, 1), LSTY, 1)
@@ -311,7 +312,7 @@ Matt Newville <newville@cars.uchicago.edu>
         ymin = wx.TextCtrl(panel, -1, '', size=(75, -1))
         ymax = wx.TextCtrl(panel, -1, '', size=(75, -1))
         desc = wx.TextCtrl(panel, -1, '', size=(150, -1))
-        side = MyChoice(panel, choices=('left', 'right'), size=(80, -1))
+        side = MyChoice(panel, choices=('left', 'right'), action=self.onSide, size=(80, -1))
         side.SetSelection((i-1)%2)
 
         if i > 2:
@@ -348,6 +349,10 @@ Matt Newville <newville@cars.uchicago.edu>
     def onTraceColor(self, trace, color, **kws):
         irow = self.get_current_traces()[trace][0] - 1
         self.colorsels[irow].SetColour(color)
+
+    def onSide(self, event=None, **kws):
+        self.needs_update = True
+        self.force_redraw  = True
 
     def onPVshow(self, event=None, row=0):
         if not event.IsChecked():
@@ -492,7 +497,7 @@ Matt Newville <newville@cars.uchicago.edu>
         dlg = wx.FileDialog(self, message='Save Data to File...',
                             defaultDir = os.getcwd(),
                             defaultFile='PVStripChart.dat',
-                            style=wx.SAVE|wx.CHANGE_DIR)
+                            style=wx.FD_SAVE|wx.FD_CHANGE_DIR)
         if dlg.ShowModal() == wx.ID_OK:
             path = dlg.GetPath()
             self.SaveDataFiles(path)
@@ -589,6 +594,7 @@ Matt Newville <newville@cars.uchicago.edu>
         did_update = False
         left_axes = self.plotpanel.axes
         right_axes = self.plotpanel.get_right_axes()
+        
 
         for tracedata in self.get_current_traces():
             irow, pname, uselog, color, ymin, ymax, desc, xside = tracedata
@@ -600,8 +606,11 @@ Matt Newville <newville@cars.uchicago.edu>
             if len(self.plots_drawn) < itrace:
                 self.plots_drawn.extend([False]*3)
             side = 'left'
+            axes = left_axes
             if xside == 1:
                 side = 'right'
+                axes = right_axes
+
             data = self.pvdata[pname][:]
             if len(data)  < 2:
                 update_failed = True
@@ -642,34 +651,34 @@ Matt Newville <newville@cars.uchicago.edu>
                 ymin, ymax = min(ydat), max(ydat)
             
             if self.needs_refresh:
-                if itrace == 0:
-                    self.plotpanel.set_ylabel(desc)
-                elif itrace == 1:
-                    self.plotpanel.set_y2label(desc)
-                if not self.plots_drawn[itrace]:
-                    plot = self.plotpanel.oplot
+                ppnl = self.plotpanel
+                if side == 'left':
+                    ppnl.set_ylabel(desc)
+                elif side == 'right':
+                    ppnl.set_y2label(desc)
+                if self.force_redraw or not self.plots_drawn[itrace]:
+                    self.force_redraw = False
+                    plot = ppnl.oplot
                     if itrace == 0:
-                        plot = self.plotpanel.plot
+                        plot = ppnl.plot
                     try:
-                        plot(tdat, ydat,
-                             drawstyle='steps-post', side=side,
+                        plot(tdat, ydat, drawstyle='steps-post', side=side,
                              ylog_scale=uselog, color=color,
-                             xmin=self.tmin, xmax=0,
+                             xmin=self.tmin, xmax=0, 
                              xlabel=xlabel, label=desc, autoscale=False)
+                       
                         self.plots_drawn[itrace] = True
                     except:
                         update_failed = True
                 else:
                     try:
-                        self.plotpanel.update_line(itrace, tdat, ydat, draw=False, update_limits=True)
-                        # self.plotpanel.plot(tdat, ydat, draw=False, update_limits=True)                        
-                        # self.plotpanel.set_xylims((self.tmin, 0, ymin, ymax),
-                        #                          side=side, autoscale=False)
+                        ppnl.update_line(itrace, tdat, ydat, draw=False, update_limits=False)
+                        axes.set_ylim((ymin, ymax), emit=True)
                         did_update = True
                     except:
                         update_failed = True
                 axes = left_axes
-                if itrace == 1:
+                if  side == 'right':
                     axes = right_axes
                 if uselog and min(ydat) > 0:
                     axes.set_yscale('log', basey=10)
@@ -683,7 +692,8 @@ Matt Newville <newville@cars.uchicago.edu>
         return
 
 if __name__ == '__main__':
-    app = wx.PySimpleApp()
+    app = wx.App()
     f = StripChart()
     f.Show(True)
+    # f.addPV('13IDA:QE2:DiffX:MeanValue_RBV')
     app.MainLoop()
