@@ -53,9 +53,7 @@ class FocusEventFrame(wx.Window):
         self.Bind(wx.EVT_CLOSE, self.closeFrame)
 
     def closeFrame(self, event):
-        win = wx.Window_FindFocus()
-        if win is not None:
-            win.Disconnect(-1, -1, wx.wxEVT_KILL_FOCUS)
+        self.Disconnect(-1, -1, wx.wxEVT_KILL_FOCUS)
         if self._closeHandler is not None:
             self._closeHandler(event)
         else:
@@ -75,7 +73,8 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
                           style=style, pos=pos)
         self.Handle_FocusEvents()
 
-        panel = scrolled.ScrolledPanel(self, size=(400, 500), style=wx.GROW|wx.TAB_TRAVERSAL)
+        panel = scrolled.ScrolledPanel(self, size=(400, 500),
+                                       style=wx.GROW|wx.TAB_TRAVERSAL)
         
         colors = GUIColors()
 
