@@ -63,17 +63,19 @@ class InstrumentFrame(wx.Frame):
 
         self.pvlist = EpicsPVList(self)
         for pv in self.db.get_allpvs():
-            self.pvlist.connect_pv(pv.name)
+            self.pvlist.init_connect(pv.name, is_motor=(4==pv.pvtype_id))
+
+        time.sleep(0.025)
+        self.pvlist.show_unconnected()
 
         self.colors = GUIColors()
         self.SetBackgroundColour(self.colors.bg)
 
-        wx.EVT_CLOSE(self, self.onClose)
+        self.Bind(wx.EVT_CLOSE, self.onClose)
         self.create_Statusbar()
         self.create_Menus()
         self.create_Frame()
         self.enable_epics_server()
-
 
     def connect_db(self, dbname=None, new=False):
         """connects to a db, possibly creating a new one"""
@@ -116,7 +118,7 @@ class InstrumentFrame(wx.Frame):
                                        agwStyle=FNB_STYLE)
 
         self.server_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.OnServerTimer, self.server_timer)
+        self.server_timer.Bind(wx.EVT_TIMER, self.OnServerTimer)
         colors = self.colors
         self.nb.SetActiveTabColour(colors.nb_active)
         self.nb.SetTabAreaColour(colors.nb_area)
@@ -457,10 +459,11 @@ class InstrumentFrame(wx.Frame):
             self.Layout()
         dlg.Destroy()
 
-    @EpicsFunction
+    # @EpicsFunction
     def onClose(self, event):
-        display_order = [self.nb.GetPage(i).inst.name for i in range(self.nb.GetPageCount())]
+        self.config.write()
 
+        display_order = [self.nb.GetPage(i).inst.name for i in range(self.nb.GetPageCount())]
         for inst in self.db.get_all_instruments():
             inst.show = 0
             if inst.name in display_order:
@@ -468,15 +471,18 @@ class InstrumentFrame(wx.Frame):
                 inst.display_order = display_order.index(inst.name)
         self.db.set_hostpid(clear=True)
         self.db.commit()
-
-        epics.poll()
-
+        time.sleep(0.25)
+        
+        for name, pv in self.pvlist.pvs.items():
+            pv.clear_callbacks()
+            pv.disconnect()
+            time.sleep(0.001)
+            
         if self.epics_server is not None:
             self.epics_server.Shutdown()
 
-        self.config.write()
-
-        time.sleep(0.5)
+        time.sleep(0.25)
+        
         self.Destroy()
 
 
@@ -500,7 +506,7 @@ if __name__ == '__main__':
     if inspect:
         app = EpicsInstrumentApp(dbname=dbname, conf=conf)
     else:
-        app = wx.PySimpleApp()
+        app = wx.App()
         InstrumentFrame(conf=conf, dbname=dbname).Show()
 
     app.MainLoop()
