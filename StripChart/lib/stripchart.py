@@ -108,6 +108,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def __init__(self, parent=None):
         self.pvdata = {}
+        self.pvs = []
         self.pvlist = [' -- ']
         self.pvwids = [None]
         self.pvchoices = [None]
@@ -312,7 +313,8 @@ Matt Newville <newville@cars.uchicago.edu>
         ymin = wx.TextCtrl(panel, -1, '', size=(75, -1))
         ymax = wx.TextCtrl(panel, -1, '', size=(75, -1))
         desc = wx.TextCtrl(panel, -1, '', size=(150, -1))
-        side = MyChoice(panel, choices=('left', 'right'), action=self.onSide, size=(80, -1))
+        side = MyChoice(panel, choices=('left', 'right'),
+                        action=self.onSide, size=(80, -1))
         side.SetSelection((i-1)%2)
 
         if i > 2:
@@ -374,6 +376,7 @@ Matt Newville <newville@cars.uchicago.edu>
             basename = str(name)
             pv = get_pv(basename, callback=self.onPVChange)
             pv.get()
+            self.pvs.append(pv)
             conn = False
             if pv is not None:
                 if not pv.connected:
@@ -548,12 +551,10 @@ Matt Newville <newville@cars.uchicago.edu>
         dlg.Destroy()
 
     def onExit(self, event=None):
-        try:
-            self.plotpanel.win_config.Close(True)
-            self.plotpanel.win_config.Destroy()
-        except:
-            pass
-
+        for pv in self.pvs:
+            pv.clear_callbacks()
+            pv.disconnect()
+            time.sleep(0.001)
         self.Destroy()
 
     def get_current_traces(self):
@@ -594,7 +595,6 @@ Matt Newville <newville@cars.uchicago.edu>
         did_update = False
         left_axes = self.plotpanel.axes
         right_axes = self.plotpanel.get_right_axes()
-        
 
         for tracedata in self.get_current_traces():
             irow, pname, uselog, color, ymin, ymax, desc, xside = tracedata
@@ -677,9 +677,6 @@ Matt Newville <newville@cars.uchicago.edu>
                         did_update = True
                     except:
                         update_failed = True
-                axes = left_axes
-                if  side == 'right':
-                    axes = right_axes
                 if uselog and min(ydat) > 0:
                     axes.set_yscale('log', basey=10)
                 else:
