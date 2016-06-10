@@ -5,7 +5,7 @@ import shutil
 import time
 import epics
 
-from epics.wx.utils import  pack
+from epics.wx.utils import  SimpleText, pack
 
 FileBrowser = filebrowse.FileBrowseButtonWithHistory
 
@@ -182,13 +182,11 @@ class ConnectDialog(wx.Dialog):
         if filelist is not None:
             self.filebrowser.SetValue(filelist[0])
         
+        self.message = SimpleText(self, 'Select DB File', size=(500,-1))
+        
         sizer = wx.BoxSizer(wx.VERTICAL)
-
+        sizer.Add(self.message, 0, wx.ALIGN_CENTER|wx.ALL|wx.GROW, 1)
         sizer.Add(self.filebrowser, 1, wx.ALIGN_CENTER|wx.ALL|wx.GROW, 1)
-
-        #sizer.Add(self.CreateButtonSizer(wx.OK| wx.CANCEL),
-        #         1, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 1)
-
 
         line = wx.StaticLine(self, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
         sizer.Add(line, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.TOP, 5)
