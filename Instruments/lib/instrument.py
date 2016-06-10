@@ -36,7 +36,7 @@ import sqlalchemy.dialects.sqlite
 
 import upgrades
 
-        
+
 def isInstrumentDB(dbname):
     """test if a file is a valid Instrument Library file:
        must be a sqlite db file, with tables named
@@ -198,6 +198,13 @@ class InstrumentDB(object):
             for statement in upgrades.sqlcode['1.2']:
                 conn.execute(statement)
             conn.execute("update info set value='1.2' where key='version'")
+            self.session.commit()
+
+        if version_string < '1.3':
+            print 'Upgrading Database to Version 1.3'
+            for statement in upgrades.sqlcode['1.3']:
+                conn.execute(statement)
+            conn.execute("update info set value='1.3' where key='version'")
             self.session.commit()
 
     def connect(self, dbname, backup=True):
@@ -402,7 +409,7 @@ arguments
 
     def get_allpvs(self):
         return self.query(PV).all()
-    
+
     def get_pv(self, name):
         """return pv by name
         """
@@ -591,6 +598,7 @@ arguments
         """restore named position for instrument
         """
         inst = self.get_instrument(inst)
+
         if inst is None:
             raise InstrumentDBException(
                 'restore_postion needs valid instrument')
@@ -604,26 +612,39 @@ arguments
         if exclude_pvs is None:
             exclude_pvs = []
 
-        pv_vals = []
+        pv_values = {}
         for pvpos in pos.pvs:
             pvname = pvpos.pv.name
             if pvname not in exclude_pvs:
-                thispv = epics.PV(pvname)
-                pv_vals.append((thispv, str(pvpos.value)))
+                pv_values[pvname] = pvpos.value
+
+        # ordered_pvs will hold ordered list of pv, vals in "move order"
+        IPV = Instrument_PV
+        instpvs =  self.query(IPV).filter(IPV.instrument_id==inst.id).all()
+        max_order = max([i.move_order for i in instpvs])
+
+        ordered_pvs = [[] for i  in range(max_order)]
+        for ipv in instpvs:
+            i = ipv.move_order - 1
+            pvname = ipv.pv.name
+            if pvname in pv_values:
+                ordered_pvs[i].append((epics.get_pv(pvname), pv_values[pvname]))
 
         epics.ca.poll()
-        # put values without waiting
-        for thispv, val in pv_vals:
-            if not thispv.connected:
-                thispv.wait_for_connection(timeout=timeout)
-            try:
-                thispv.put(val)
-            except:
-                pass
 
-        if wait:
-            for thispv, val in pv_vals:
+        for pvlist in ordered_pvs:
+            # put values without waiting
+            for thispv, val in pvlist:
+                if not thispv.connected:
+                    thispv.wait_for_connection(timeout=timeout)
                 try:
-                    thispv.put(val, wait=True)
+                    thispv.put(val)
                 except:
                     pass
+            # wait for all puts at this level, if desired
+            if wait:
+                for thispv, val in pvlist:
+                    try:
+                        thispv.put(val, wait=True)
+                    except:
+                        pass
