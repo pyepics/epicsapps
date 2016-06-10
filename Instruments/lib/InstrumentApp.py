@@ -10,6 +10,7 @@ import shutil
 import wx
 import wx.lib.agw.flatnotebook as flat_nb
 import wx.lib.mixins.inspection
+import wx.lib.agw.advancedsplash as AS
 
 
 import epics
@@ -46,9 +47,16 @@ Would you like this application to use this instrument file?
 
 class InstrumentFrame(wx.Frame):
     def __init__(self, parent=None, conf=None, dbname=None, **kwds):
-
-
         self.config = InstrumentConfig(name=conf)
+
+        wx.Frame.__init__(self, parent=parent, title='Epics Instruments',
+                          size=(925, -1), **kwds)
+
+        # splash = AS.AdvancedSplash(self, timeout=5000
+
+
+        self.pvlist = EpicsPVList(self)
+
         self.db, self.dbname = self.connect_db(dbname)
         if self.db is None:
             return
@@ -58,15 +66,6 @@ class InstrumentFrame(wx.Frame):
         self.epics_server = None
 
         self.server_timer = None
-        wx.Frame.__init__(self, parent=parent, title='Epics Instruments',
-                          size=(925, -1), **kwds)
-
-        self.pvlist = EpicsPVList(self)
-        for pv in self.db.get_allpvs():
-            self.pvlist.init_connect(pv.name, is_motor=(4==pv.pvtype_id))
-
-        time.sleep(0.025)
-        self.pvlist.show_unconnected()
 
         self.colors = GUIColors()
         self.SetBackgroundColour(self.colors.bg)
@@ -79,6 +78,7 @@ class InstrumentFrame(wx.Frame):
 
     def connect_db(self, dbname=None, new=False):
         """connects to a db, possibly creating a new one"""
+        dlg = None
         if dbname is None:
             filelist = self.config.get_dblist()
             if new:
@@ -90,8 +90,9 @@ class InstrumentFrame(wx.Frame):
                 if not dbname.endswith('.ein'):
                     dbname = "%s.ein" % dbname
             else:
+                print(" ... Dlg Destroy")
+                dlg.Destroy()
                 return None, dbname
-            dlg.Destroy()
 
         db = InstrumentDB()
         if isInstrumentDB(dbname):
@@ -111,6 +112,10 @@ class InstrumentFrame(wx.Frame):
         else:
             db.create_newdb(dbname, connect=True)
         self.config.set_current_db(dbname)
+        if dlg is not None:
+            dlg.message.SetLabel("Connecting to Epics PVs in database")
+        for pv in db.get_allpvs():
+            self.pvlist.init_connect(pv.name, is_motor=(4==pv.pvtype_id))
         return db, dbname
 
     def create_Frame(self):
@@ -131,7 +136,7 @@ class InstrumentFrame(wx.Frame):
 
         self.create_nbpages()
 
-        self.SetSize((876,    351))
+        self.SetSize((876, 351))
         self.SetMinSize((875, 350))
 
         pack(self, sizer)
@@ -156,11 +161,8 @@ class InstrumentFrame(wx.Frame):
                                 size=(925, -1),
                                 pvlist = self.pvlist,
                                 writer = self.write_message)
-        for pv in inst.pvs:
-            panel.add_pv(pv.name)
 
         self.panels[inst.name] = panel
-        # self.connect_pvs(inst, wait_time=0.10)
         self.nb.AddPage(panel, inst.name, True)
 
     def connect_pvs(self, inst, wait_time=0.10):
@@ -210,7 +212,7 @@ class InstrumentFrame(wx.Frame):
                  action=self.onRemoveInstrument)
 
         add_menu(self, opts_menu, "&Select Instruments to Show",
-                 "Change Which Instruments are Shown", 
+                 "Change Which Instruments are Shown",
                  action=self.onSelectInstruments)
 
         add_menu(self, opts_menu, "&General Settings",
@@ -394,7 +396,7 @@ class InstrumentFrame(wx.Frame):
             self.db.set_hostpid(clear=True)
             self.db.close()
             time.sleep(1)
-            self.db, self.dbname = self.connect_db(dbname)            
+            self.db, self.dbname = self.connect_db(dbname)
             self.config.set_current_db(dbname)
             self.db.set_hostpid(clear=False)
             self.config.write()
@@ -404,16 +406,16 @@ class InstrumentFrame(wx.Frame):
 #         fname = FileOpen(self, 'New Instrument File',
 #                          wildcard=EIN_WILDCARD,
 #                          default_file=self.dbname)
-# 
+#
 #         self.db.close()
 #         time.sleep(1)
 #         self.dbname = fname
-# 
+#
 #         self.connect_db(dbname=fname, new=True)
 #         self.config.set_current_db(fname)
 #         self.config.write()
 #         self.create_nbpages()
-# 
+#
 
     def onSave(self, event=None):
         outfile = FileSave(self, 'Save Instrument File As',
@@ -471,18 +473,19 @@ class InstrumentFrame(wx.Frame):
                 inst.display_order = display_order.index(inst.name)
         self.db.set_hostpid(clear=True)
         self.db.commit()
-        time.sleep(0.25)
-        
-        for name, pv in self.pvlist.pvs.items():
-            pv.clear_callbacks()
-            pv.disconnect()
-            time.sleep(0.001)
-            
+        time.sleep(0.1)
+        #for name, pv in self.pvlist.pvs.items():
+        #    try:
+        #        pv.clear_callbacks()
+        #    except:
+        #        pass
+
+        time.sleep(0.01)
+
         if self.epics_server is not None:
             self.epics_server.Shutdown()
+        time.sleep(0.1)
 
-        time.sleep(0.25)
-        
         self.Destroy()
 
 
@@ -496,7 +499,7 @@ class EpicsInstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         self.Init()
         frame = InstrumentFrame(conf=self.conf, dbname=self.dbname)
         frame.Show()
-        self.SetTopWindow(frame)
+        # self.SetTopWindow(frame)
         return True
 
 if __name__ == '__main__':
