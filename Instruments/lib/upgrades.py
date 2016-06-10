@@ -26,6 +26,8 @@ sqlcode['1.2'] = [
     "insert into position SELECT * from position_backup",
     "drop table position_backup"]
 
+# version 1.3 adds "move order" to instruments to allow
+# controlling of the order that PVs are moved.
 sqlcode['1.3'] = ["alter table instrument_pv add column move_order integer;",
                   "update instrument_pv set move_order=1;",
-    ]
+                  ]
