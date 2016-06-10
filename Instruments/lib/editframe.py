@@ -69,13 +69,13 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
             title = 'New Position for Instrument  %s ' % inst.name
 
         style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
-        wx.Frame.__init__(self, None, -1, title, size=(350, 450), 
+        wx.Frame.__init__(self, None, -1, title, size=(350, 450),
                           style=style, pos=pos)
         self.Handle_FocusEvents()
 
         panel = scrolled.ScrolledPanel(self, size=(400, 500),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
-        
+
         colors = GUIColors()
 
         font = self.GetFont()
@@ -111,7 +111,7 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
                              font=titlefont,  colour=colors.title),
                   (ir, 0), (1, 2), LSTY, 2)
 
-        ir += 1        
+        ir += 1
         sizer.Add(SimpleText(panel, 'Position Name:'),  (ir, 0), (1, 1), LSTY, 2)
         sizer.Add(self.name,                            (ir, 1), (1, 2), LSTY, 2)
         ir += 1
@@ -125,12 +125,12 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
         self.positions = []
         ir += 1
         for p in self.inst.pvs:
-            val =  wx.TextCtrl(panel, value='', size=(150, -1))            
+            val =  wx.TextCtrl(panel, value='', size=(150, -1))
             sizer.Add(SimpleText(panel, p.name), (ir, 0), (1, 1), LSTY, 2)
-            sizer.Add(val,                       (ir, 1), (1, 1), LSTY, 2)            
+            sizer.Add(val,                       (ir, 1), (1, 1), LSTY, 2)
             self.positions.append(val)
             ir += 1
-            
+
         sizer.Add(wx.StaticLine(panel, size=(195, -1), style=wx.LI_HORIZONTAL),
                   (ir, 0), (1, 3), CEN, 2)
 
@@ -147,7 +147,7 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
         ir += 1
         sizer.Add(btn_panel,  (ir, 0), (1, 3), CEN, 2)
         ir += 1
-       
+
         sizer.Add(wx.StaticLine(panel, size=(195, -1), style=wx.LI_HORIZONTAL),
                   (ir, 0), (1, 3), CEN, 2)
 
@@ -172,9 +172,9 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
                 if posname not in poslist.GetItems():
                     poslist.Append(posname)
         self.Destroy()
-        
+
     def onCancel(self, evt=None):
-        self.Destroy()            
+        self.Destroy()
 
 class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
     """ Edit / Add Instrument"""
@@ -192,7 +192,8 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                           style=style, pos=pos)
         self.Handle_FocusEvents()
 
-        panel = scrolled.ScrolledPanel(self, size=(500, 650), style=wx.GROW|wx.TAB_TRAVERSAL, name='p1')
+        panel = scrolled.ScrolledPanel(self, size=(580, 650),
+                                       style=wx.GROW|wx.TAB_TRAVERSAL, name='p1')
 
         self.colors = GUIColors()
 
@@ -222,7 +223,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         self.etimer_count = 0
         self.Bind(wx.EVT_TIMER, self.onTimer, self.etimer)
 
-        sizer = wx.GridBagSizer(12, 3)
+        sizer = wx.GridBagSizer(12, 4)
 
         # Name row
         label  = SimpleText(panel, 'Instrument Name: ',
@@ -232,7 +233,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         sizer.Add(label,      (0, 0), (1, 1), LSTY, 2)
         sizer.Add(self.name,  (0, 1), (1, 2), LSTY, 2)
         sizer.Add(wx.StaticLine(panel, size=(195, -1), style=wx.LI_HORIZONTAL),
-                  (1, 0), (1, 3), CEN, 2)
+                  (1, 0), (1, 4), CEN, 2)
 
         irow = 2
         self.curpvs, self.newpvs = [], {}
@@ -244,14 +245,18 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
             sizer.Add(SimpleText(panel, 'Display Type:',
                                  colour=self.colors.title, style=CSTY),
                       (2, 1), (1, 1), LSTY, 2)
+            sizer.Add(SimpleText(panel, 'Move Order:',
+                                 colour=self.colors.title, style=CSTY),
+                      (2, 2), (1, 1), LSTY, 2)
             sizer.Add(SimpleText(panel, 'Remove?:',
                                  colour=self.colors.title, style=CSTY),
-                      (2, 2), (1, 1), RSTY, 2)
+                      (2, 3), (1, 1), RSTY, 2)
 
-            opvs  = db.get_ordered_instpvs(inst)
-
-            for instpvs in self.db.get_ordered_instpvs(inst):
-                pv = instpvs.pv
+            ordered_pvs  = db.get_ordered_instpvs(inst)
+            move_choices = ["%i" % (i+1) for i in range(len(ordered_pvs))]
+            for instpv in ordered_pvs:
+                pv = instpv.pv
+                move_order = int(instpv.move_order)
                 irow += 1
                 pvchoices = get_pvtypes(pv, instrument)
 
@@ -266,12 +271,16 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                 pvtype = PVTypeChoice(panel, choices=pvchoices)
                 pvtype.SetSelection(itype)
                 pvtype.SetStringSelection(pv.pvtype.name)
-                del_pv = YesNo(panel, defaultyes=False)
-                self.curpvs.append((pv.name, label, pvtype, del_pv))
+                del_pv = YesNo(panel, defaultyes=False, size=(60, -1))
+                tc_order =  wx.Choice(panel, choices=move_choices, size=(50, -1))
+                tc_order.SetSelection(min(len(move_choices)-1, max(0, move_order - 1)))
 
-                sizer.Add(label,     (irow, 0), (1, 1), LSTY,  3)
-                sizer.Add(pvtype,    (irow, 1), (1, 1), CSTY,  3)
-                sizer.Add(del_pv,    (irow, 2), (1, 1), RSTY,  3)
+                self.curpvs.append((instpv, label, pvtype, tc_order, del_pv))
+
+                sizer.Add(label,    (irow, 0), (1, 1), LSTY,  3)
+                sizer.Add(pvtype,   (irow, 1), (1, 1), CSTY,  3)
+                sizer.Add(tc_order, (irow, 2), (1, 1), RSTY,  3)
+                sizer.Add(del_pv,   (irow, 3), (1, 1), RSTY,  3)
 
             irow += 1
             sizer.Add(wx.StaticLine(panel, size=(150, -1),
@@ -289,20 +298,25 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                   (irow, 1), (1, 1), LSTY, 2)
         sizer.Add(SimpleText(panel, 'Remove?',
                              colour=self.colors.title, style=CSTY),
-                  (irow, 2), (1, 1), RSTY, 2)
+                  (irow, 3), (1, 1), RSTY, 2)
         # New PVs
         for npv in range(5):
             irow += 1
             name = pvNameCtrl(self, panel, value='', size=(175, -1))
             pvtype = PVTypeChoice(panel)
-            del_pv = YesNo(panel, defaultyes=False)
+            del_pv = YesNo(panel, defaultyes=False, size=(60, -1))
+            tc_order =  wx.Choice(panel, choices=move_choices, size=(50, -1))
+            tc_order.SetSelection(0)
             pvtype.Disable()
+            tc_order.Disable()
             del_pv.Disable()
             sizer.Add(name,     (irow, 0), (1, 1), LSTY,  3)
             sizer.Add(pvtype,   (irow, 1), (1, 1), CSTY,  3)
-            sizer.Add(del_pv,   (irow, 2), (1, 1), RSTY,  3)
+            sizer.Add(tc_order, (irow, 2), (1, 1), CSTY,  3)
+            sizer.Add(del_pv,   (irow, 3), (1, 1), RSTY,  3)
 
             self.newpvs[name.GetId()] = dict(index=npv, name=name,
+                                             tc_order=tc_order,
                                              type=pvtype, delpv=del_pv)
 
         btn_panel = wx.Panel(panel, size=(75, -1))
@@ -381,11 +395,13 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         pv.get_ctrlvars()
 
         self.newpvs[wid]['type'].Enable()
+        self.newpvs[wid]['tc_order'].Enable()
         self.newpvs[wid]['delpv'].Enable()
 
         pvchoices = get_pvtypes(pv, instrument)
         self.newpvs[wid]['type'].SetChoices(pvchoices)
         self.newpvs[wid]['type'].SetSelection(0)
+        self.newpvs[wid]['tc_order'].SetSelection(0)
         self.newpvs[wid]['delpv'].SetStringSelection('No')
 
     def OnDone(self, event=None):
@@ -393,6 +409,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         instpanel = self.parent.nb.GetCurrentPage()
         db = instpanel.db
         inst = instpanel.inst
+        instpvs = db.get_ordered_instpvs(inst)
         pagemap = self.get_page_map()
         page = pagemap.get(inst.name, None)
 
@@ -412,19 +429,25 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                 pvname = str(entry['name'].GetValue().strip())
                 if len(pvname) > 0:
                     pvtype = str(entry['type'].GetStringSelection())
-                    new_pvs[entry['index']] = (pvname, pvtype)
+                    tc_order = int(entry['tc_order'].GetSelection() + 1)
+                    new_pvs[entry['index']] = (pvname, pvtype, tc_order)
         # print 'Edit Instrument Done: ADD PV ! ', new_pvs
         for newpvs in new_pvs:
             if newpvs is not None:
-                pvname, pvtype = newpvs
+                pvname, pvtype, tc_order = newpvs
                 db.add_pv(pvname, pvtype=pvtype)
                 inst.pvs.append(db.get_pv(pvname))
                 instpanel.add_pv(pvname)
+                for instpv in db.get_ordered_instpvs(inst):
+                    if pvname == instpv.pv.name:
+                        instpv.move_order = tc_order
 
-        for pvname, lctrl, typectrl, delctrl in  self.curpvs:
+        for ipv, lctrl, typectrl, tc_order, delctrl in  self.curpvs:
+            ipv.move_order = int(tc_order.GetSelection() + 1)
+            pvname = ipv.pv.name
             if delctrl.GetSelection() == 1:
-                instpv = db.get_pv(pvname)
-                inst.pvs.remove(instpv)
+                thispv = db.get_pv(pvname)
+                inst.pvs.remove(thispv)
                 instpanel.undisplay_pv(pvname)
             else:
                 newtype = typectrl.GetStringSelection()
@@ -433,41 +456,27 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                     db.set_pvtype(pvname, newtype)
                     instpanel.PV_Panel(pvname)
 
+
         db.commit()
+        time.sleep(0.5)
+
         # set order for PVs (as for next time)
-        ordered_inst_pvs = db.get_ordered_instpvs(inst)
-        for opv in ordered_inst_pvs:
+        inst = db.get_instrument(inst.name)
+        instpvs = db.get_ordered_instpvs(inst)
+        for opv in instpvs:
             opv.display_order = -1
 
         for i, pv in enumerate(inst.pvs):
-            for opv in ordered_inst_pvs:
+            for opv in instpvs:
                 if opv.pv == pv:
                     opv.display_order = i
 
-        for opv in ordered_inst_pvs:
+        for opv in instpvs:
             if opv.display_order == -1:
                 i = i + 1
                 opv.display_order = i
 
-
-            #for opv in ordered_inst_pvs:
-            #    if opv == pv:
-            #        opv.display_order = i+1
-
         db.commit()
-        # for pv in self.db.get_instrument_pvs(inst)
-
-        # instpanel.redraw_leftpanel(announce=True)
-
-        #         instpanel = self.parent.nb.GetCurrentPage()
-        #         inst = instpanel.inst
-        #         db = instpanel.db
-        #         print 'self.parent.inst: ', inst, inst.pvs, db
-        #         db.add_pv(pvname, pvtype=pvtype)
-        #         # db.commit()
-        #         inst.pvs.append(db.get_pv(pvname))
-        #         self.parent.add_pv(pv)
-
         self.Destroy()
 
     def onCancel(self, event=None):
