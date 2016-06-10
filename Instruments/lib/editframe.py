@@ -296,6 +296,10 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         sizer.Add(SimpleText(panel, 'Display Type',
                              colour=self.colors.title, style=CSTY),
                   (irow, 1), (1, 1), LSTY, 2)
+
+        sizer.Add(SimpleText(panel, 'Move Order:',
+                             colour=self.colors.title, style=CSTY),
+                  (irow, 2), (1, 1), LSTY, 2)
         sizer.Add(SimpleText(panel, 'Remove?',
                              colour=self.colors.title, style=CSTY),
                   (irow, 3), (1, 1), RSTY, 2)
