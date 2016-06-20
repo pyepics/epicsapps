@@ -500,7 +500,7 @@ class InstrumentPanel(wx.Panel):
     def restore_position(self, posname, exclude_pvs=None, timeout=60.0):
         msg= "Moving to '%s' to position '%s'" % (self.inst.name, posname)
         self.write(msg)
-        self.db.restore_position(posname, self.inst,
+        self.db.restore_position(posname, self.inst, wait=False,
                                 exclude_pvs=exclude_pvs)
 
     def OnMove(self, evt=None):
