@@ -474,14 +474,12 @@ class InstrumentFrame(wx.Frame):
         self.db.set_hostpid(clear=True)
         self.db.commit()
         time.sleep(0.1)
-        #for name, pv in self.pvlist.pvs.items():
-        #    try:
-        #        pv.clear_callbacks()
-        #    except:
-        #        pass
-
+        for name, pv in self.pvlist.pvs.items():
+            try:
+               pv.clear_callbacks()
+            except:
+                pass
         time.sleep(0.01)
-
         if self.epics_server is not None:
             self.epics_server.Shutdown()
         time.sleep(0.1)

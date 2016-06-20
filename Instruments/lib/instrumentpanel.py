@@ -248,6 +248,8 @@ class InstrumentPanel(wx.Panel):
 
         # start a timer to check for when to fill in PV panels
         self.puttimer = wx.Timer(self)
+        self.restore_complete = False
+        self.restoring_pvs = []
         self.etimer_count = 0
         self.etimer_poll = 25
 
@@ -419,7 +421,11 @@ class InstrumentPanel(wx.Panel):
 
     def OnPutTimer(self, evt=None):
         """Timer Event for GoTo to look if move is complete."""
-        if self.db.restore_complete():
+        if len(self.restoring_pvs) > 0:
+            self.restore_complete = all([p.put_complete for p in self.restoring_pvs])
+
+
+        if self.restore_complete:
             self.puttimer.Stop()
 
     def PV_Panel(self, pvname): # , panel, sizer, current_wid=None):
@@ -492,13 +498,10 @@ class InstrumentPanel(wx.Panel):
 
     @EpicsFunction
     def restore_position(self, posname, exclude_pvs=None, timeout=60.0):
-        self.db.restore_position(posname, self.inst,
-                                 exclude_pvs=exclude_pvs)
         msg= "Moving to '%s' to position '%s'" % (self.inst.name, posname)
-        if exclude_pvs is not None and len(exclude_pvs) > 0:
-            msg = "%s (Partial: %i PVs not restored)" % (msg, len(exclude_pvs))
         self.write(msg)
-        self.puttimer.Start(50)
+        self.db.restore_position(posname, self.inst,
+                                exclude_pvs=exclude_pvs)
 
     def OnMove(self, evt=None):
         """ on GoTo """
