@@ -2,6 +2,7 @@ import os
 import wx
 import wx.lib.scrolledpanel as scrolled
 import json
+import numpy as np
 import time
 from collections import OrderedDict
 from epics import caput
@@ -102,6 +103,132 @@ class ErasePositionsDialog(wx.Frame):
             for pname, cbox in self.checkboxes.items():
                 if cbox.IsChecked():
                     self.instdb.remove_position(self.instname, pname)
+        self.Destroy()
+
+    def onCancel(self, event=None):
+        self.Destroy()
+
+
+class TransferPositionsDialog(wx.Frame):
+    """ transfer positions from offline microscope"""
+    def __init__(self, offline, instname=None, instdb=None):
+        wx.Frame.__init__(self, None, -1, title="Copy Positions from Offline Microscope")
+        self.offline = offline
+        self.instname = instname
+        self.instdb = instdb
+        self.build_dialog()
+
+    def build_dialog(self):
+        positions  = self.instdb.get_positionlist(self.offline)
+        panel = scrolled.ScrolledPanel(self)
+        self.checkboxes = {}
+        sizer = wx.GridBagSizer(len(positions)+5, 4)
+        sizer.SetVGap(2)
+        sizer.SetHGap(3)
+        bkws = dict(size=(95, -1))
+        btn_ok     = add_button(panel, "Copy Selected", action=self.onOK, **bkws)
+        btn_all    = add_button(panel, "Select All",    action=self.onAll, **bkws)
+        btn_none   = add_button(panel, "Select None",   action=self.onNone,  **bkws)
+
+        brow = wx.BoxSizer(wx.HORIZONTAL)
+        brow.Add(btn_all ,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        brow.Add(btn_none,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        brow.Add(btn_ok ,   0, ALL_EXP|wx.ALIGN_LEFT, 1)
+
+        sizer.Add(brow,   (0, 0), (1, 4),  LEFT_CEN, 2)
+
+        sizer.Add(SimpleText(panel, ' Add Suffix:'), (1, 0), (1, 1),  LEFT_CEN, 2)
+
+        self.suffix =  wx.TextCtrl(panel, value="", size=(150, -1))
+        sizer.Add(self.suffix, (1, 1), (1, 3), LEFT_CEN, 2)
+
+        sizer.Add(SimpleText(panel, ' Position Name'), (2, 0), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, 'Copy?'),          (2, 1), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, ' Position Name'), (2, 2), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, 'Copy?'),          (2, 3), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(wx.StaticLine(panel, size=(500, 2)), (3, 0), (1, 4),  LEFT_CEN, 2)
+
+        irow = 3
+        for ip, pname in enumerate(positions):
+            cbox = self.checkboxes[pname] = wx.CheckBox(panel, -1, "")
+            cbox.SetValue(True)
+
+            if ip % 2 == 0:
+                irow += 1
+                icol = 0
+            else:
+                icol = 2
+            sizer.Add(SimpleText(panel, "  %s  "%pname), (irow, icol),   (1, 1),  LEFT_CEN, 2)
+            sizer.Add(cbox,                              (irow, icol+1), (1, 1),  LEFT_CEN, 2)
+        irow += 1
+        sizer.Add(wx.StaticLine(panel, size=(500, 2)), (irow, 0), (1, 4),  LEFT_CEN, 2)
+
+        pack(panel, sizer)
+        panel.SetMinSize((700, 550))
+
+        panel.SetupScrolling()
+
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
+        mainsizer.Add(panel, 1,  ALL_EXP|wx.GROW|wx.ALIGN_LEFT, 1)
+        pack(self, mainsizer)
+
+        self.SetMinSize((700, 550))
+        self.Raise()
+        self.Show()
+
+    def onAll(self, event=None):
+        for cbox in self.checkboxes.values():
+            cbox.SetValue(True)
+
+    def onNone(self, event=None):
+        for cbox in self.checkboxes.values():
+            cbox.SetValue(False)
+
+    def onOK(self, event=None):
+        if self.instname is not None and self.instdb is not None:
+            suff = self.suffix.GetValue()
+
+            idb = self.instdb
+            uscope = idb.get_instrument(self.offline)
+            sample = idb.get_instrument(self.instname)
+
+            notes = json.loads(uscope.notes)
+            rotmat = np.array(notes['rotmat2SampleStage'])
+
+            upos = OrderedDict()
+            for pname, cbox in self.checkboxes.items():
+                if cbox.IsChecked():
+                    v =  idb.get_position_vals(self.offline, pname)
+                    # print '>>> ', pname, v
+                    upos[pname]  = [v['13IDE:m1.VAL'],
+                                    v['13IDE:m2.VAL'],
+                                    v['13IDE:m3.VAL']]
+
+            newnames = upos.keys()
+            vals = np.ones((4, len(upos)))
+            for i, pname in enumerate(newnames):
+                vals[0, i] = upos[pname][0]
+                vals[1, i] = upos[pname][1]
+                vals[2, i] = upos[pname][2]
+
+            pred = np.dot(rotmat, vals)
+
+            poslist = idb.get_positionlist(self.instname)
+            pos0  = idb.get_position_vals(self.instname, poslist[0])
+            pvs = pos0.keys()
+            pvs.sort()
+            spos = OrderedDict()
+            for pvname in pvs:
+                spos[pvname] = 0.000
+
+            xoffset, yoffset, zoffset = 0.0, 0.0, 0.0
+            xpv, ypv, zpv = '13XRM:m4.VAL', '13XRM:m6.VAL', '13XRM:m5.VAL'
+            for i, pname in enumerate(newnames):
+                spos[xpv] = pred[0, i] + xoffset
+                spos[ypv] = pred[1, i] + yoffset
+                spos[zpv] = pred[2, i] + zoffset
+                nlabel = '%s%s' % (pname, suff)
+                idb.save_position(self.instname, nlabel, spos)
         self.Destroy()
 
     def onCancel(self, event=None):
@@ -324,6 +451,18 @@ class PositionPanel(wx.Panel):
             ErasePositionsDialog(self.positions.keys(),
                                  instname=self.instname,
                                  instdb=self.instdb)
+
+
+    def onMicroscopeTransfer(self, event=None):
+        offline =  self.config.get('offline', '')
+        print 'Microscope Transfer ', offline,  self.instname
+        if self.instdb is not None:
+            TransferPositionsDialog(offline, instname=self.instname,
+                                    instdb=self.instdb)
+
+    def onMicroscopeCalibrate(self, event=None, **kws):
+        offline = self.config.get('offline', '')
+        print 'Calibrate to Offline : ', offline
 
     def onSelect(self, event=None, name=None):
         "Event handler for selecting a named position"
