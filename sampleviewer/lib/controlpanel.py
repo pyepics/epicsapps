@@ -73,10 +73,10 @@ class ControlPanel(wx.Panel):
             sizer.Add(wx.StaticLine(self, size=(300, 3)), 0, CEN_TOP)
 
         if autofocus is not None:
-            af_button = add_button(self, "AutoFocus",
-                                   action=autofocus, size=(150, -1))
+            self.af_button = add_button(self, "AutoFocus",
+                                        action=autofocus, size=(150, -1))
             self.af_message = wx.StaticText(self, label="", size=(200,-1))
-            sizer.Add(af_button, 0, LEFT_TOP)
+            sizer.Add(self.af_button, 0, LEFT_TOP)
             sizer.Add(self.af_message, 0, LEFT_TOP)
         pack(self, sizer)
         self.connect_motors()
