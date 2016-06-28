@@ -337,8 +337,23 @@ class StageFrame(wx.Frame):
             self.Bind(wx.EVT_MENU, Closure(self.onShowHide, name=name, panel=panel), mitem)
 
         mbar.Append(fmenu, '&File')
-        mbar.Append(pmenu, 'Positions')
         mbar.Append(omenu, '&Options')
+        mbar.Append(pmenu, 'Positions')
+
+        if len(self.config['scandb'].get('offline', '')):
+            cmenu = wx.Menu()
+            # add_menu(self, cmenu, label="Calibrate Microscope",
+            #          text="Calibrate to Offline Microscope",
+            #          action = self.pospanel.onMicroscopeCalibrate)
+            add_menu(self, cmenu, label="Copy Positions from Offline Microscope",
+                     text="Copy Positions from Offline Microscope",
+                     action = self.pospanel.onMicroscopeTransfer)
+
+            #add_menu(self, cmenu, label="Transfer Positions from File",
+            #         text="Transfer Positions from Saved Positions File",
+            #         action = self.pospanel.onMicroscopeTransferFile)
+            mbar.Append(cmenu, 'Offline Microscope')
+
         self.SetMenuBar(mbar)
 
     def onShowHide(self, event=None, panel=None, name='---'):
@@ -371,7 +386,6 @@ class StageFrame(wx.Frame):
     def onMenuOption(self, evt=None):
         """events for options menu: move, erase, overwrite """
         setattr(self, self.menu_opts[evt.GetId()], evt.Checked())
-
 
     def read_config(self, configfile=None, get_dir=False):
         "open/read ini config file"
@@ -514,7 +528,7 @@ class StageFrame(wx.Frame):
         min_pos = start_pos - 2.50
         max_pos = start_pos + 2.50
 
-        step, min_step = 0.100, 0.001
+        step, min_step = 0.128, 0.002
         # start trying both directions:
         score_start = image_entropy(self.imgpanel)
         zstage.put(start_pos+step/2.0, wait=True)
@@ -540,8 +554,9 @@ class StageFrame(wx.Frame):
             count += 1
             pos = zstage.get() + step * direction
             zstage.put(pos, wait=True)
-            time.sleep(0.2)
+            time.sleep(0.125)
             score = image_entropy(self.imgpanel)
+            report('Auto-focussing step=%.3f' % step)
             # print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.1f' % (
             # count, pos, score, best_pos, best_score, step, direction)
             posvals.append(pos)
@@ -551,10 +566,10 @@ class StageFrame(wx.Frame):
                 best_pos = pos
             else: # if score > last_score:
                 # best_score = score
-                step = step / 1.5
+                step = step / 2
                 direction = -direction
                 zstage.put(best_pos + step, wait=True)
-                time.sleep(0.2)
+                time.sleep(0.125)
                 score_plus = image_entropy(self.imgpanel)
                 if score_plus < best_score:
                     direction = -direction
