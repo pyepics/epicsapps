@@ -4,6 +4,7 @@ Base Image Panel to be inherited by other ImagePanels
 
 import wx
 import time
+import numpy as np
 import os
 import shutil
 import math
@@ -24,10 +25,21 @@ class ImagePanel_Base(wx.Panel):
         "turn camera off"
         raise NotImplementedError('must provide Stop()')
 
+    def SetExposureTime(self, exptime):
+        "set exposure time... overwrite this!"
+        raise NotImplementedError('must provide SetExposureTime()')
+
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         "grab Wx Image, with scale and rgb=True/False"
         raise NotImplementedError('must provide GrabWxImage()')
 
+    def GrabNumpyImage(self):
+        "grab Image as numpy array"
+        raise NotImplementedError('must provide GrabNumpyImage()')
+
+    def AutoSetExposureTime(self):
+        """auto set exposure time"""
+        raise NotImplementedError('must provide AutoSetExposure')
 
     def __init__(self, parent,  camera_id=0, writer=None,
                  leftdown_cb=None, motion_cb=None,
@@ -180,7 +192,8 @@ class ImagePanel_Base(wx.Panel):
             if  dt > 0:
                 self.last_autosave = now
                 try:
-                    self.image.SaveFile(self.autosave_tmpf,
+                    fullimage = self.GrabWxImage(scale=1.0, rgb=True)
+                    fullimage.SaveFile(self.autosave_tmpf,
                                         wx.BITMAP_TYPE_JPEG)
                     shutil.copy(self.autosave_tmpf, self.autosave_file)
                     # print 'save ! ', self.autosave_file, self.autosave_time, time.ctime()
