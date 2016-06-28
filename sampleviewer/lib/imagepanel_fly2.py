@@ -35,7 +35,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
         self.img_h = 600.5
         self.writer = writer
         self.cam_name = '-'
-
+        self.confpanel = None
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
 
@@ -65,20 +65,24 @@ class ImagePanel_Fly2(ImagePanel_Base):
 
     def SetExposureTime(self, exptime):
         self.camera.SetPropertyValue('shutter', exptime, auto=False)
+        if self.confpanel is not None:
+            self.confpanel.wids['shutter'].SetValue(exptime)
+            self.confpanel.wids['shutter_auto'].SetValue(0)
+
 
     def AutoSetExposureTime(self):
         """auto set exposure time"""
         count, IMAX = 0, 255.0
-        while count < 8:
+        while count < 10:
             img = self.GrabNumpyImage()
             count += 1
             scale = 0
-            if img.max() < 0.5*IMAX:
+            if img.max() < 0.30*IMAX:
                 scale = 1.5
-            elif img.mean() > 0.50*IMAX:
-                scale = 0.75
-            elif img.mean() < 0.20*IMAX:
-                scale = 1.25
+            elif img.mean() > 0.70*IMAX:
+                scale = 0.85
+            elif img.mean() < 0.3*IMAX:
+                scale = 1.5
             else:
                 # print "auto set exposure done"
                 break
@@ -93,6 +97,8 @@ class ImagePanel_Fly2(ImagePanel_Base):
                     etime = 64.0
                 self.SetExposureTime(etime)
                 self.camera.SetPropertyValue('gain', gain, auto=False)
+                self.confpanel.wids['gain'].SetValue(gain)
+                self.confpanel.wids['gain_auto'].SetValue(0)
                 time.sleep(0.1)
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
