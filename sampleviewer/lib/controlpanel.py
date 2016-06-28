@@ -17,6 +17,7 @@ from .utils import normalize_pvname
 
 ALL_EXP  = wx.ALL|wx.EXPAND|wx.ALIGN_LEFT|wx.ALIGN_TOP
 LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
+LEFT_TOP = wx.ALIGN_LEFT|wx.ALIGN_TOP
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
@@ -33,7 +34,7 @@ def make_steps(precision=3, minstep=0, maxstep=10, decades=7, steps=(1,2,5)):
     return out
 
 class ControlPanel(wx.Panel):
-    def __init__(self, parent, groups=None, config={}):
+    def __init__(self, parent, groups=None, config={}, autofocus=None):
         wx.Panel.__init__(self, parent, -1)
         self.subpanels = {}
 
@@ -44,6 +45,7 @@ class ControlPanel(wx.Panel):
         self.motor_wids  = {}   # motor panel widgets, key=desc
         self.motors      = {}   # epics motor,         key=desc
         self.scale       = {}   # motor sign for ZFM,  key=desc
+        self.af_message = None
         # self.SetMinSize((320, 200))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -70,8 +72,13 @@ class ControlPanel(wx.Panel):
             sizer.Add((3, 3))
             sizer.Add(wx.StaticLine(self, size=(300, 3)), 0, CEN_TOP)
 
+        if autofocus is not None:
+            af_button = add_button(self, "AutoFocus",
+                                   action=autofocus, size=(150, -1))
+            self.af_message = wx.StaticText(self, label="", size=(200,-1))
+            sizer.Add(af_button, 0, LEFT_TOP)
+            sizer.Add(self.af_message, 0, LEFT_TOP)
         pack(self, sizer)
-
         self.connect_motors()
 
     @EpicsFunction
@@ -166,7 +173,7 @@ class ControlPanel(wx.Panel):
     def make_button_panel(self, parent, group='', dim=2):
         panel = wx.Panel(parent)
         sizer = wx.GridBagSizer(3, 3)
-    
+
         if dim==2:
             sizer.Add(self.arrow(panel, group, 'nw'), (0, 0), (1, 1), ALL_EXP)
             sizer.Add(self.arrow(panel, group, 'nn'), (0, 1), (1, 1), ALL_EXP)
