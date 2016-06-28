@@ -164,7 +164,7 @@ class StageFrame(wx.Frame):
 
             pack(self, sizer)
 
-
+        self.imgpanel.confpanel = self.confpanel
         self.SetSize(size)
         if len(self.iconfile) > 0:
             self.SetIcon(wx.Icon(self.iconfile, wx.BITMAP_TYPE_ICO))
@@ -549,10 +549,12 @@ class StageFrame(wx.Frame):
         #    best_pos, best_score, step, direction)
         posvals = []
         scores  = []
-        while step > min_step and count < 32:
+        while step > min_step and count < 64:
             self.imgpanel.Refresh()
             count += 1
             pos = zstage.get() + step * direction
+            if pos < min_pos or pos > max_pos:
+                break
             zstage.put(pos, wait=True)
             time.sleep(0.125)
             score = image_entropy(self.imgpanel)
@@ -564,9 +566,9 @@ class StageFrame(wx.Frame):
             if score < best_score:
                 best_score = score
                 best_pos = pos
-            else: # if score > last_score:
+            else:
                 # best_score = score
-                step = step / 2
+                step = step / 2.0
                 direction = -direction
                 zstage.put(best_pos + step, wait=True)
                 time.sleep(0.125)
