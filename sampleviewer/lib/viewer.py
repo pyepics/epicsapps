@@ -19,6 +19,8 @@ from epics.wx.utils import (add_menu, pack, Closure, popup,
                             NumericCombo, SimpleText, FileSave, FileOpen,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
+from scipy.optimize import minimize
+
 from .configfile import StageConfig
 from .icons import icons
 from .controlpanel import ControlPanel
@@ -48,8 +50,8 @@ def image_entropy(imgpanel):
     w, h = img.shape
     w1, w2, h1, h2 = int(w/4.0), int(3*w/4.0), int(h/4.0), int(3*h/4.0)
     img = img[w1:w2, h1:h2]
-    img = 1.e-12 + img/(len(img)*img.max())
-    return  -(img*np.log(img)).sum()
+    img = 0.1 + 0.001*img # /(img.max())
+    return  -(img*np.log2(img)).sum()
 
 class StageFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
@@ -507,56 +509,56 @@ class StageFrame(wx.Frame):
         report('Auto-focussing start')
 
         zstage = self.ctrlpanel.motors['z']._pvs['VAL']
+
         start_pos = zstage.get()
         min_pos = start_pos - 2.50
         max_pos = start_pos + 2.50
 
-        step, min_step = 0.128, 0.001
+        step, min_step = 0.100, 0.001
         # start trying both directions:
         score_start = image_entropy(self.imgpanel)
-
         zstage.put(start_pos+step/2.0, wait=True)
         time.sleep(0.1)
         score_plus = image_entropy(self.imgpanel)
 
-        zstage.put(start_pos-step/2.0, wait=True)
-        time.sleep(0.1)
-        score_minus = image_entropy(self.imgpanel)
-
-        best_pos = start_pos
-        zstage.put(start_pos)
-
         direction = 1
         if score_start < score_plus:
             direction = -1
-        elif score_start > score_minus:
-            direction = 1
 
-        best_score = last_score = 2*score_start
+        best_score = score_start
+        best_pos = start_pos
+        zstage.put(start_pos)
+
         count = 0
         report('Auto-focussing finding focus')
-        # print 'Focus 0: %.3f  %.3f %.3f %.0f ' % (best_pos, best_score, step, direction)
+        #print 'Focus 0: %.3f  %.3f %.3f %.0f ' % (
+        #    best_pos, best_score, step, direction)
+        posvals = []
+        scores  = []
         while step > min_step and count < 32:
             self.imgpanel.Refresh()
             count += 1
             pos = zstage.get() + step * direction
             zstage.put(pos, wait=True)
-            time.sleep(0.1)
+            time.sleep(0.2)
             score = image_entropy(self.imgpanel)
-            if np.isnan(score):
-                time.sleep(0.1)
-                score = image_entropy(self.imgpanel)
-
-            # print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.0f ' % (count, pos,
-            # score, best_pos, best_score,
-            # step, direction)
+            # print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.1f' % (
+            # count, pos, score, best_pos, best_score, step, direction)
+            posvals.append(pos)
+            scores.append(score)
             if score < best_score:
                 best_score = score
                 best_pos = pos
-            elif score > last_score:
+            else: # if score > last_score:
                 # best_score = score
+                step = step / 1.5
                 direction = -direction
-                step = step / 2.
+                zstage.put(best_pos + step, wait=True)
+                time.sleep(0.2)
+                score_plus = image_entropy(self.imgpanel)
+                if score_plus < best_score:
+                    direction = -direction
+
             last_score = score
         zstage.put(best_pos)
         self.af_done = True
@@ -708,3 +710,17 @@ class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
 if __name__ == '__main__':
     app = ViewerApp(inifile=None, debug=True)
     app.MainLoop()
+
+"""
+        def residual(vals):
+            zval = min(max_pos, max(min_pos, vals[0]))
+            zstage.put(zval, wait=True)
+            time.sleep(0.1)
+            score = image_entropy(self.imgpanel)
+            print 'Value: ', vals, zval, score
+            return score
+
+        minimize(residual, [zstage.get()], options={'xtol':0.002,
+                                                    'maxfev':25})
+
+"""
