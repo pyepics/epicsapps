@@ -54,7 +54,7 @@ def image_blurriness(imgpanel):
     img[np.where(img<0.5)] = 0.5
     img = img/img.max()
 
-    sobel = skimage.filters.sobel(img).sum()
+    sobel = 5*skimage.filters.sobel(img).sum()
     entropy = (img*np.log(img)).sum()
     return -(sobel - entropy)
 
