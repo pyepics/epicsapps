@@ -8,6 +8,8 @@ import time
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 from epics.wx.utils import  pack, FloatCtrl, Closure, add_button
 
+LEFT = wx.ALIGN_LEFT|wx.EXPAND
+
 HAS_FLY2 = False
 try:
     import pyfly2
@@ -61,13 +63,46 @@ class ImagePanel_Fly2(ImagePanel_Base):
         if self.autosave_thread is not None:
             self.autosave_thread.join()
 
+    def SetExposureTime(self, exptime):
+        self.camera.SetPropertyValue('shutter', exptime, auto=False)
+
+    def AutoSetExposureTime(self):
+        """auto set exposure time"""
+        count, IMAX = 0, 255.0
+        while count < 8:
+            img = self.GrabNumpyImage()
+            count += 1
+            scale = 0
+            if img.max() < 0.5*IMAX:
+                scale = 1.5
+            elif img.mean() > 0.50*IMAX:
+                scale = 0.75
+            elif img.mean() < 0.20*IMAX:
+                scale = 1.25
+            else:
+                # print "auto set exposure done"
+                break
+            if scale > 0:
+                scale = max(0.2, min(5.0, scale))
+                atime = self.camera.GetProperty('shutter')['absValue']
+                etime = atime*scale
+                pgain = self.camera.GetProperty('gain')
+                gain = pgain['absValue']
+                if etime > 64: # max exposure time
+                    gain *= etime/64.0
+                    etime = 64.0
+                self.SetExposureTime(etime)
+                self.camera.SetPropertyValue('gain', gain, auto=False)
+                time.sleep(0.1)
+
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         try:
             return self.camera.GrabWxImage(scale=scale, rgb=rgb)
         except pyfly2.FC2Error:
             raise ValueError("could not grab camera image")
 
-LEFT = wx.ALIGN_LEFT|wx.EXPAND
+    def GrabNumpyImage(self):
+        return self.camera.GrabNumPyImage(format='rgb')
 
 class ConfPanel_Fly2(ConfPanel_Base):
     def __init__(self, parent, image_panel=None, camera_id=0,

@@ -94,6 +94,31 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         if self.autosave_thread is not None:
             self.autosave_thread.join()
 
+    def SetExposureTime(self, exptime):
+        "set exposure time"
+        self.ad_cam.AcquireTime = exptime
+
+    def AutoSetExposureTime(self):
+        """auto set exposure time"""
+        count, IMAX = 0, 255.0
+        while count < 8:
+            img = self.GrabNumpyImage().astype(np.uint8)
+            count += 1
+            scale = 0
+            if img.max() < 0.5*IMAX:
+                scale = 1.5
+            elif img.mean() > 0.50*IMAX:
+                scale = 0.75
+            elif img.mean() < 0.20*IMAX:
+                scale = 1.25
+            else:
+                # print "auto set exposure done"
+                break
+            if scale > 0:
+                scale = max(0.2, min(5.0, scale))
+                self.ad_cam.AcquireTime *= scale
+                time.sleep(0.1)
+
     def GetImageSize(self):
         self.arrsize = [1,1,1]
         self.arrsize[0] = self.ad_img.ArraySize0_RBV
@@ -105,6 +130,38 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         if self.colormode == 2:
             self.img_w = float(self.arrsize[1]+0.5)
             self.img_h = float(self.arrsize[2]+0.5)
+
+    def GrabNumpyImage(self):
+        imgdim   = self.ad_img.NDimensions_RBV
+        width    = self.ad_cam.SizeX
+        height   = self.ad_cam.SizeY
+
+        arrsize = [1,1,1]
+        arrsize[0] = self.ad_img.ArraySize0_RBV
+        arrsize[1] = self.ad_img.ArraySize1_RBV
+        arrsize[2] = self.ad_img.ArraySize2_RBV
+
+        colormode = self.ad_img.ColorMode_RBV
+        im_mode = 'L'
+        self.im_size = (arrsize[0], arrsize[1])
+        if colormode == 2:
+            im_mode = 'RGB'
+            self.im_size = (arrsize[1], arrsize[2])
+
+        dcount = arrsize[0] * arrsize[1]
+        if imgdim == 3:
+            dcount *= arrsize[2]
+
+        img = self.ad_img.PV('ArrayData').get(count=dcount)
+        if img is None:
+            time.sleep(0.025)
+            img = self.ad_img.PV('ArrayData').get(count=dcount)
+
+        if colormode == 2:
+            img = img.reshape((width, height, 3)).sum(axis=2)
+        else:
+            img = img.reshape((width, height))
+        return img
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         if self.ad_img is None or self.ad_cam is None:
