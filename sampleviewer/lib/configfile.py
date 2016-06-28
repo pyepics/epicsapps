@@ -47,6 +47,7 @@ host =
 user =
 password =
 port =
+offline =
 #--------------------------#
 [stages]
 # index =  motor || group   ||desc || scale || prec || maxstep || show
@@ -74,14 +75,15 @@ conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
                                       'ad_prefix', 'ad_format', 'web_url',
                                       'calib_x', 'calib_y')),
                           ('scandb', ('instrument', 'dbname', 'server',
-                                      'host', 'user', 'password', 'port')),
+                                      'host', 'user', 'password', 'port',
+                                      'offline')),
                           ('overlays', ('circle', 'scalebar')),
                           ('stages', None),
                           ('positions', None)) )
 
 conf_files = ('SampleStage.ini',
               'SampleStage_autosave.ini',
-              '//cars5/Data/xas_user/scan_config/13ide/SampleStage.ini')
+              '//cars5/Data/xas_user/config/13ide/SampleStage.ini')
 
 class StageConfig(object):
     def __init__(self, filename=None, text=None):
