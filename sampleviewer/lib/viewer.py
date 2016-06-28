@@ -1,6 +1,6 @@
 import wx
 import wx.lib.mixins.inspection
-
+import numpy as np
 import sys
 import time
 import os
@@ -37,6 +37,19 @@ LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
+
+
+def image_entropy(imgpanel):
+    """ get image entropy of central half of intensity"""
+    img = imgpanel.GrabNumpyImage().astype(np.float32)
+    if len(img.shape) == 3:
+        img = img.sum(axis=2)
+
+    w, h = img.shape
+    w1, w2, h1, h2 = int(w/4.0), int(3*w/4.0), int(h/4.0), int(3*h/4.0)
+    img = img[w1:w2, h1:h2]
+    img = 1.e-12 + img/(len(img)*img.max())
+    return  -(img*np.log(img)).sum()
 
 class StageFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
@@ -102,7 +115,8 @@ class StageFrame(wx.Frame):
 
             self.ctrlpanel = ControlPanel(ppanel,
                                           groups=config['stage_groups'],
-                                          config=config['stages'])
+                                          config=config['stages'],
+                                          autofocus=self.onAutoFocus)
 
             self.confpanel = ConfPanel(ppanel,
                                        image_panel=self.imgpanel, **opts)
@@ -129,7 +143,8 @@ class StageFrame(wx.Frame):
             self.pospanel.SetMinSize((250, 450))
             self.ctrlpanel = ControlPanel(ppanel,
                                           groups=config['stage_groups'],
-                                          config=config['stages'])
+                                          config=config['stages'],
+                                          autofocus=self.onAutoFocus)
 
             self.confpanel = ConfPanel(ppanel,
                                        image_panel=self.imgpanel, **opts)
@@ -159,9 +174,9 @@ class StageFrame(wx.Frame):
 
         self.create_menus()
         self.Bind(wx.EVT_CLOSE, self.onClose)
-        self.timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
-        self.timer.Start(1000)
+        self.init_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onInitTimer, self.init_timer)
+        self.init_timer.Start(1000)
 
     def OnPaneChanged(self, evt=None):
         self.Layout()
@@ -172,7 +187,7 @@ class StageFrame(wx.Frame):
         self.imgpanel.Refresh()
 
 
-    def onTimer(self, event=None, **kws):
+    def onInitTimer(self, event=None, **kws):
         if self.imgpanel.full_size is not None:
             if 'overlays' in self.config:
                 olays = self.config['overlays']
@@ -210,7 +225,7 @@ class StageFrame(wx.Frame):
                     #print "Showing xhair: ", xargs
                 # print 'Draw Objects ', dobjs
                 self.imgpanel.draw_objects = dobjs
-            self.timer.Stop()
+            self.init_timer.Stop()
 
 
     def onChangeCamera(self, evt=None):
@@ -464,6 +479,86 @@ class StageFrame(wx.Frame):
         if show:
             self.xhair_pixel = self.last_pixel
             print "Set XHAIR ", self.xhair_pixel
+
+    def onAFTimer(self, event=None, **kws):
+        if self.af_done:
+            self.af_thread.join()
+            self.af_timer.Stop()
+            if self.ctrlpanel.af_message is not None:
+                self.ctrlpanel.af_message.SetLabel('')
+
+
+    def onAutoFocus(self, event=None, **kws):
+        self.af_done = False
+        self.af_thread = Thread(target=self.do_autofocus)
+        self.af_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onAFTimer, self.af_timer)
+        self.af_timer.Start(2000)
+        self.af_thread.start()
+
+    def do_autofocus(self):
+        report = None
+        if self.ctrlpanel.af_message is not None:
+            report = self.ctrlpanel.af_message.SetLabel
+        if report is not None:
+            report('Auto-setting exposure')
+        self.imgpanel.AutoSetExposureTime()
+        report('Auto-focussing start')
+        zstage = self.ctrlpanel.motors['z']._pvs['VAL']
+        start_pos = zstage.get()
+        min_pos = start_pos - 2.50
+        max_pos = start_pos + 2.50
+
+        step, min_step = 0.064, 0.001
+        # start trying both directions:
+        score_start = image_entropy(self.imgpanel)
+
+        zstage.put(start_pos+step, wait=True)
+        time.sleep(0.1)
+        score_plus = image_entropy(self.imgpanel)
+
+        zstage.put(start_pos-step, wait=True)
+        time.sleep(0.1)
+        score_minus = image_entropy(self.imgpanel)
+
+        direction = 1
+        best_pos = start_pos
+
+        if score_start < score_plus:
+            direction = -1
+        elif score_start > score_minus:
+            direction = 1
+
+        last_score = max(score_minus, score_plus, score_start)
+        best_score = min(score_minus, score_plus, score_start)
+
+        count = 0
+        report('Auto-focussing finding focus')
+        # print 'Focus 0: %.3f  %.3f %.3f %.0f ' % (best_pos, best_score, step, direction)
+        while step > min_step and count < 32:
+            self.imgpanel.Refresh()
+            count += 1
+            pos = zstage.get() + step * direction
+            zstage.put(pos, wait=True)
+            time.sleep(0.1)
+            score = image_entropy(self.imgpanel)
+            if np.isnan(score):
+                time.sleep(0.1)
+                score = image_entropy(self.imgpanel)
+
+            # print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.0f ' % (count, pos,
+            # score, best_pos, best_score, step, direction)
+            if score < best_score:
+                best_score = score
+                best_pos = pos
+            elif score > last_score:
+                best_score = score
+                direction = -direction
+                step = step / 2.
+            last_score = score
+        zstage.put(best_pos)
+        self.af_done = True
+        report('Auto-focussing done.')
 
     def onMoveToCenter(self, event=None, **kws):
         "bring last pixel to image center"
