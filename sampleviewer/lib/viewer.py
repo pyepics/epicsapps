@@ -20,6 +20,8 @@ from epics.wx.utils import (add_menu, pack, Closure, popup,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from scipy.optimize import minimize
+import skimage
+import skimage.filters
 
 from .configfile import StageConfig
 from .icons import icons
@@ -40,9 +42,8 @@ CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
 
-
-def image_entropy(imgpanel):
-    """ get image entropy of central half of intensity"""
+def image_blurriness(imgpanel):
+    """ get image blurriness of central half of intensity"""
     img = imgpanel.GrabNumpyImage().astype(np.float32)
     if len(img.shape) == 3:
         img = img.sum(axis=2)
@@ -50,8 +51,12 @@ def image_entropy(imgpanel):
     w, h = img.shape
     w1, w2, h1, h2 = int(w/4.0), int(3*w/4.0), int(h/4.0), int(3*h/4.0)
     img = img[w1:w2, h1:h2]
-    img = 0.1 + 0.001*img # /(img.max())
-    return  -(img*np.log2(img)).sum()
+    img[np.where(img<0.5)] = 0.5
+    img = img/img.max()
+
+    sobel = skimage.filters.sobel(img).sum()
+    entropy = (img*np.log(img)).sum()
+    return -(sobel - entropy)
 
 class StageFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
@@ -530,10 +535,10 @@ class StageFrame(wx.Frame):
 
         step, min_step = 0.128, 0.002
         # start trying both directions:
-        score_start = image_entropy(self.imgpanel)
+        score_start = image_blurriness(self.imgpanel)
         zstage.put(start_pos+step/2.0, wait=True)
         time.sleep(0.1)
-        score_plus = image_entropy(self.imgpanel)
+        score_plus = image_blurriness(self.imgpanel)
 
         direction = 1
         if score_start < score_plus:
@@ -545,8 +550,8 @@ class StageFrame(wx.Frame):
 
         count = 0
         report('Auto-focussing finding focus')
-        #print 'Focus 0: %.3f  %.3f %.3f %.0f ' % (
-        #    best_pos, best_score, step, direction)
+        print 'Focus 0: %.3f  %.3f %.3f %.0f ' % (
+            best_pos, best_score, step, direction)
         posvals = []
         scores  = []
         while step > min_step and count < 64:
@@ -557,10 +562,10 @@ class StageFrame(wx.Frame):
                 break
             zstage.put(pos, wait=True)
             time.sleep(0.125)
-            score = image_entropy(self.imgpanel)
+            score = image_blurriness(self.imgpanel)
             report('Auto-focussing step=%.3f' % step)
-            # print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.1f' % (
-            # count, pos, score, best_pos, best_score, step, direction)
+            print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.1f' % (
+                count, pos, score, best_pos, best_score, step, direction)
             posvals.append(pos)
             scores.append(score)
             if score < best_score:
@@ -572,7 +577,7 @@ class StageFrame(wx.Frame):
                 direction = -direction
                 zstage.put(best_pos + step, wait=True)
                 time.sleep(0.125)
-                score_plus = image_entropy(self.imgpanel)
+                score_plus = image_blurriness(self.imgpanel)
                 if score_plus < best_score:
                     direction = -direction
 
@@ -733,7 +738,7 @@ if __name__ == '__main__':
             zval = min(max_pos, max(min_pos, vals[0]))
             zstage.put(zval, wait=True)
             time.sleep(0.1)
-            score = image_entropy(self.imgpanel)
+            score = image_blurriness(self.imgpanel)
             print 'Value: ', vals, zval, score
             return score
 
