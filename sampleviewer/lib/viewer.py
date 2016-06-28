@@ -550,8 +550,8 @@ class StageFrame(wx.Frame):
 
         count = 0
         report('Auto-focussing finding focus')
-        print 'Focus 0: %.3f  %.3f %.3f %.0f ' % (
-            best_pos, best_score, step, direction)
+        # print 'Focus 0: %.3f  %.3f %.3f %.0f ' % (
+        #     best_pos, best_score, step, direction)
         posvals = []
         scores  = []
         while step > min_step and count < 64:
@@ -564,8 +564,8 @@ class StageFrame(wx.Frame):
             time.sleep(0.125)
             score = image_blurriness(self.imgpanel)
             report('Auto-focussing step=%.3f' % step)
-            print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.1f' % (
-                count, pos, score, best_pos, best_score, step, direction)
+            # print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.1f' % (
+            #     count, pos, score, best_pos, best_score, step, direction)
             posvals.append(pos)
             scores.append(score)
             if score < best_score:
