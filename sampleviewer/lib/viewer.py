@@ -486,10 +486,11 @@ class StageFrame(wx.Frame):
             self.af_timer.Stop()
             if self.ctrlpanel.af_message is not None:
                 self.ctrlpanel.af_message.SetLabel('')
-
+            self.ctrlpanel.af_button.Enable()
 
     def onAutoFocus(self, event=None, **kws):
         self.af_done = False
+        self.ctrlpanel.af_button.Disable()
         self.af_thread = Thread(target=self.do_autofocus)
         self.af_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onAFTimer, self.af_timer)
@@ -504,34 +505,34 @@ class StageFrame(wx.Frame):
             report('Auto-setting exposure')
         self.imgpanel.AutoSetExposureTime()
         report('Auto-focussing start')
+
         zstage = self.ctrlpanel.motors['z']._pvs['VAL']
         start_pos = zstage.get()
         min_pos = start_pos - 2.50
         max_pos = start_pos + 2.50
 
-        step, min_step = 0.064, 0.001
+        step, min_step = 0.128, 0.001
         # start trying both directions:
         score_start = image_entropy(self.imgpanel)
 
-        zstage.put(start_pos+step, wait=True)
+        zstage.put(start_pos+step/2.0, wait=True)
         time.sleep(0.1)
         score_plus = image_entropy(self.imgpanel)
 
-        zstage.put(start_pos-step, wait=True)
+        zstage.put(start_pos-step/2.0, wait=True)
         time.sleep(0.1)
         score_minus = image_entropy(self.imgpanel)
 
-        direction = 1
         best_pos = start_pos
+        zstage.put(start_pos)
 
+        direction = 1
         if score_start < score_plus:
             direction = -1
         elif score_start > score_minus:
             direction = 1
 
-        last_score = max(score_minus, score_plus, score_start)
-        best_score = min(score_minus, score_plus, score_start)
-
+        best_score = last_score = 2*score_start
         count = 0
         report('Auto-focussing finding focus')
         # print 'Focus 0: %.3f  %.3f %.3f %.0f ' % (best_pos, best_score, step, direction)
@@ -547,12 +548,13 @@ class StageFrame(wx.Frame):
                 score = image_entropy(self.imgpanel)
 
             # print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.0f ' % (count, pos,
-            # score, best_pos, best_score, step, direction)
+            # score, best_pos, best_score,
+            # step, direction)
             if score < best_score:
                 best_score = score
                 best_pos = pos
             elif score > last_score:
-                best_score = score
+                # best_score = score
                 direction = -direction
                 step = step / 2.
             last_score = score
