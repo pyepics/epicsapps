@@ -354,9 +354,6 @@ class StageFrame(wx.Frame):
                      text="Copy Positions from Offline Microscope",
                      action = self.pospanel.onMicroscopeTransfer)
 
-            #add_menu(self, cmenu, label="Transfer Positions from File",
-            #         text="Transfer Positions from Saved Positions File",
-            #         action = self.pospanel.onMicroscopeTransferFile)
             mbar.Append(cmenu, 'Offline Microscope')
 
         self.SetMenuBar(mbar)
@@ -533,10 +530,10 @@ class StageFrame(wx.Frame):
         min_pos = start_pos - 2.50
         max_pos = start_pos + 2.50
 
-        step, min_step = 0.128, 0.002
+        step, min_step = 0.243, 0.0009
         # start trying both directions:
         score_start = image_blurriness(self.imgpanel)
-        zstage.put(start_pos+step/2.0, wait=True)
+        zstage.put(start_pos+step/3.0, wait=True)
         time.sleep(0.1)
         score_plus = image_blurriness(self.imgpanel)
 
@@ -554,7 +551,7 @@ class StageFrame(wx.Frame):
         #     best_pos, best_score, step, direction)
         posvals = []
         scores  = []
-        while step > min_step and count < 64:
+        while step >= min_step and count < 64:
             self.imgpanel.Refresh()
             count += 1
             pos = zstage.get() + step * direction
@@ -573,18 +570,19 @@ class StageFrame(wx.Frame):
                 best_pos = pos
             else:
                 # best_score = score
-                step = step / 2.0
+                step = step / 3.0
                 direction = -direction
                 zstage.put(best_pos + step, wait=True)
                 time.sleep(0.125)
                 score_plus = image_blurriness(self.imgpanel)
                 if score_plus < best_score:
                     direction = -direction
-
             last_score = score
         zstage.put(best_pos)
         self.af_done = True
         report('Auto-focussing done.')
+
+
 
     def onMoveToCenter(self, event=None, **kws):
         "bring last pixel to image center"
