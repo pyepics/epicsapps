@@ -111,10 +111,11 @@ class ErasePositionsDialog(wx.Frame):
 
 class TransferPositionsDialog(wx.Frame):
     """ transfer positions from offline microscope"""
-    def __init__(self, offline, instname=None, instdb=None):
+    def __init__(self, offline, instname=None, instdb=None, parent=None):
         wx.Frame.__init__(self, None, -1, title="Copy Positions from Offline Microscope")
         self.offline = offline
         self.instname = instname
+        self.parent = parent
         self.instdb = instdb
         self.build_dialog()
 
@@ -214,7 +215,16 @@ class TransferPositionsDialog(wx.Frame):
             pred = np.dot(rotmat, vals)
 
             poslist = idb.get_positionlist(self.instname)
-            pos0  = idb.get_position_vals(self.instname, poslist[0])
+            saved_temp = None
+            if len(poslist) < 1 and self.parent is not None:
+                saved_temp = '__tmp__'
+                if saved_temp in newnames:
+                    saved_temp = '__tmp_a0012AZqspkwx9827nf917+o,ppa+'
+                self.parent.onSave(saved_temp)
+                time.sleep(3.0)
+                poslist = idb.get_positionlist(self.instname)
+
+            pos0 = idb.get_position_vals(self.instname, poslist[0])
             pvs = pos0.keys()
             pvs.sort()
             spos = OrderedDict()
@@ -229,6 +239,8 @@ class TransferPositionsDialog(wx.Frame):
                 spos[zpv] = pred[2, i] + zoffset
                 nlabel = '%s%s' % (pname, suff)
                 idb.save_position(self.instname, nlabel, spos)
+            if saved_temp is not None:
+                self.parent.onErase(posname=saved_temp, query=False)
         self.Destroy()
 
     def onCancel(self, event=None):
@@ -272,7 +284,6 @@ class PositionPanel(wx.Panel):
         sizer.Add(self.pos_name,  0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(brow,           0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(self.pos_list,  1, ALL_EXP|wx.ALIGN_CENTER, 3)
-        # print(" Position Panel ", self.GetSize(), self.size)
 
         pack(self, sizer)
         self.init_scandb()
@@ -430,16 +441,19 @@ class PositionPanel(wx.Panel):
             caput(pvname, value)
         self.viewer.write_message('moved to %s' % posname)
 
-    def onErase(self, event):
-        posname = self.pos_list.GetStringSelection()
-        ipos  =  self.pos_list.GetSelection()
+    def onErase(self, event=None, posname=None, query=True):
+        if posname is None:
+            posname = self.pos_list.GetStringSelection()
         if posname is None or len(posname) < 1:
             return
-        if self.viewer.v_erase:
+        if self.viewer.v_erase and query:
             if wx.ID_YES != popup(self, "Erase  %s?" % (posname),
                                   'Verify Erase',
                                   style=wx.YES_NO|wx.ICON_QUESTION):
                 return
+
+        pos_names = self.pos_list.GetItems()
+        ipos = pos_names.index(posname)
         self.instdb.remove_position(self.instname, posname)
         self.positions.pop(posname)
         self.pos_list.Delete(ipos)
@@ -457,7 +471,7 @@ class PositionPanel(wx.Panel):
         offline =  self.config.get('offline', '')
         if self.instdb is not None:
             TransferPositionsDialog(offline, instname=self.instname,
-                                    instdb=self.instdb)
+                                    instdb=self.instdb, parent=self)
 
     def onMicroscopeCalibrate(self, event=None, **kws):
         offline = self.config.get('offline', '')
