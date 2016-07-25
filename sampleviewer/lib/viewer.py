@@ -530,7 +530,7 @@ class StageFrame(wx.Frame):
         min_pos = start_pos - 2.50
         max_pos = start_pos + 2.50
 
-        step, min_step = 0.243, 0.0009
+        step, min_step = 0.004*(81), 0.001
         # start trying both directions:
         score_start = image_blurriness(self.imgpanel)
         zstage.put(start_pos+step/3.0, wait=True)
@@ -557,9 +557,10 @@ class StageFrame(wx.Frame):
             pos = zstage.get() + step * direction
             if pos < min_pos or pos > max_pos:
                 break
-            zstage.put(pos, wait=True)
+            zstage.put(pos, wait=True, timeout=3.0)
             time.sleep(0.125)
             score = image_blurriness(self.imgpanel)
+            # print(" step : ", step, direction, score_plus)
             report('Auto-focussing step=%.3f' % step)
             # print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.1f' % (
             #     count, pos, score, best_pos, best_score, step, direction)
@@ -571,8 +572,10 @@ class StageFrame(wx.Frame):
             else:
                 # best_score = score
                 step = step / 3.0
+                if step < min_step:
+                    break
                 direction = -direction
-                zstage.put(best_pos + step, wait=True)
+                zstage.put(best_pos + step, wait=True, timeout=3.0)
                 time.sleep(0.125)
                 score_plus = image_blurriness(self.imgpanel)
                 if score_plus < best_score:
