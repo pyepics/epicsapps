@@ -121,7 +121,7 @@ class TransferPositionsDialog(wx.Frame):
     def build_dialog(self):
         positions  = self.instdb.get_positionlist(self.offline)
         panel = scrolled.ScrolledPanel(self)
-        self.checkboxes = {}
+        self.checkboxes = OrderedDict()
         sizer = wx.GridBagSizer(len(positions)+5, 4)
         sizer.SetVGap(2)
         sizer.SetHGap(3)
@@ -455,7 +455,6 @@ class PositionPanel(wx.Panel):
 
     def onMicroscopeTransfer(self, event=None):
         offline =  self.config.get('offline', '')
-        print 'Microscope Transfer ', offline,  self.instname
         if self.instdb is not None:
             TransferPositionsDialog(offline, instname=self.instname,
                                     instdb=self.instdb)
