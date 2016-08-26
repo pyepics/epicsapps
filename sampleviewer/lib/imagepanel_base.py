@@ -64,7 +64,7 @@ class ImagePanel_Base(wx.Panel):
         self.scale = 0.60
         self.count = 0
         self.draw_objects = None
-        self.SetBackgroundColour("#F4F4F4")
+        self.SetBackgroundColour("#E4E4E4")
         self.starttime = time.clock()
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
@@ -155,10 +155,11 @@ class ImagePanel_Base(wx.Panel):
             bitmap = Bitmap(self.image)
         except ValueError:
             return
+        # print("IMAGE ", self.image, bitmap, self.scale, bitmap.GetSize())
 
         img_w, img_h = self.bitmap_size = bitmap.GetSize()
         pan_w, pan_h = self.panel_size  = self.GetSize()
-        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
+        pad_w, pad_h = int(1+(pan_w-img_w)/2.0), int(1+(pan_h-img_h)/2.0)
         dc = wx.AutoBufferedPaintDC(self)
         dc.Clear()
         dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
