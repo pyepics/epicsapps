@@ -14,6 +14,13 @@ import base64
 
 from epics.wx.utils import  Closure, add_button
 
+is_wxPhoenix = 'phoenix' in wx.PlatformInfo
+
+if is_wxPhoenix:
+    Bitmap = wx.Bitmap
+else:
+    Bitmap = wx.BitmapFromImage
+
 class ImagePanel_Base(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
 
@@ -41,7 +48,7 @@ class ImagePanel_Base(wx.Panel):
         """auto set exposure time"""
         raise NotImplementedError('must provide AutoSetExposure')
 
-    def __init__(self, parent,  camera_id=0, writer=None,
+    def __init__(self, parent,  camera_id=0, writer=None, output_pv=None,
                  leftdown_cb=None, motion_cb=None,
                  autosave_file=None, draw_objects=None, **kws):
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
@@ -50,6 +57,9 @@ class ImagePanel_Base(wx.Panel):
         self.writer = writer
         self.leftdown_cb = leftdown_cb
         self.motion_cb   = motion_cb
+        self.output_pv = output_pv
+        self.output_pvs = {}
+        self.last_save = 0.0
         self.cam_name = '-'
         self.scale = 0.60
         self.count = 0
@@ -142,7 +152,7 @@ class ImagePanel_Base(wx.Panel):
                 self.full_size = img.GetSize()
 
         try:
-            bitmap = wx.BitmapFromImage(self.image)
+            bitmap = Bitmap(self.image)
         except ValueError:
             return
 
@@ -153,6 +163,11 @@ class ImagePanel_Base(wx.Panel):
         dc.Clear()
         dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
         self.__draw_objects(dc, img_w, img_h, pad_w, pad_h)
+        # if ('ArrayData' in self.output_pvs and
+        #    time.time()-self.last_save > 5.0):
+        #    x = self.GrabNumpyImage().flatten()
+        #    self.output_pvs['ArrayData'].put(x)
+        #    self.last_save = time.time()
 
     def __draw_objects(self, dc, img_w, img_h, pad_w, pad_h):
         dc.SetBrush(wx.Brush('Black', wx.BRUSHSTYLE_TRANSPARENT))
@@ -200,7 +215,7 @@ class ImagePanel_Base(wx.Panel):
                 except:
                     pass
             # sleep for most of the remaining time
-            time.sleep( max(0.005, min(1.0, -dt*0.75)))
+            # time.sleep( max(0.005, min(1.0, -dt*0.75)))
 
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
@@ -221,7 +236,7 @@ class ImagePanel_Base(wx.Panel):
         # make two device contexts -- copy bitamp to one,
         # use other for image+overlays
         dc_bitmap = wx.MemoryDC()
-        dc_bitmap.SelectObject(wx.BitmapFromImage(image))
+        dc_bitmap.SelectObject(Bitmap(image))
         dc_output = wx.MemoryDC()
 
         out = wx.EmptyBitmap(width, height)

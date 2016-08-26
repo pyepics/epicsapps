@@ -5,6 +5,7 @@
 import wx
 import time
 
+from epics import PV
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 from epics.wx.utils import  pack, FloatCtrl, Closure, add_button
 
@@ -17,10 +18,18 @@ try:
 except ImportError:
     pass
 
+is_wxPhoenix = 'phoenix' in wx.PlatformInfo
+
+# if is_wxPhoenix:
+#     Image = wx.Image
+# else:
+#     Image = wx.ImageFromData
+#
+
 class ImagePanel_Fly2(ImagePanel_Base):
     """Image Panel for FlyCapture2 camera"""
     def __init__(self, parent,  camera_id=0, writer=None,
-                 autosave_file=None, **kws):
+                 autosave_file=None, output_pv=None, **kws):
         if not HAS_FLY2:
             raise ValueError("Fly2 library not available")
 
@@ -31,6 +40,8 @@ class ImagePanel_Fly2(ImagePanel_Base):
 
         self.context = pyfly2.Context()
         self.camera = self.context.get_camera(camera_id)
+        self.output_pv = output_pv
+        self.output_pvs = {}
         self.img_w = 800.5
         self.img_h = 600.5
         self.writer = writer
@@ -50,6 +61,16 @@ class ImagePanel_Fly2(ImagePanel_Base):
             self.img_h = float(height+0.5)
         except:
             pass
+        if self.output_pv is not None:
+            for attr  in ('ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
+                          'ColorMode_RBV', 'ArrayData'):
+                if attr not in self.output_pvs:
+                    self.output_pvs[attr] = PV("%s%s" % (self.output_pv, attr))
+            time.sleep(0.02)
+            self.output_pvs['ColorMode_RBV'].put(2)
+            self.output_pvs['ArraySize2_RBV'].put(3)
+            self.output_pvs['ArraySize1_RBV'].put(int(self.img_h))
+            self.output_pvs['ArraySize0_RBV'].put(int(self.img_w))
 
         self.timer.Start(50)
         if self.autosave_thread is not None:

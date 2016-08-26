@@ -12,6 +12,13 @@ from epics.wx.utils import (add_button, add_menu, popup, pack, Closure ,
                             NumericCombo, SimpleText, FileSave, FileOpen,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
+is_wxPhoenix = 'phoenix' in wx.PlatformInfo
+
+if is_wxPhoenix:
+    Bitmap = wx.Bitmap
+else:
+    Bitmap = wx.BitmapFromImage
+
 from .icons import icons
 from .utils import normalize_pvname
 
@@ -165,7 +172,7 @@ class ControlPanel(wx.Panel):
 
     def arrow(self, panel, group, name):
         "bitmap button"
-        bitmap = wx.BitmapFromImage(icons[name].GetImage())
+        bitmap = Bitmap(icons[name].GetImage())
         b = wx.BitmapButton(panel, -1, bitmap, style=wx.NO_BORDER)
         b.Bind(wx.EVT_BUTTON, Closure(self.onMove, group=group, name=name))
         return b

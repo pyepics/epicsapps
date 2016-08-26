@@ -97,6 +97,7 @@ class StageFrame(wx.Frame):
                     autosave_file=self.autosave_file)
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
+            opts['output_pv'] = config['camera'].get('output_pv', None)
             ImagePanel, ConfPanel = ImagePanel_Fly2, ConfPanel_Fly2
         elif self.cam_type.startswith('area'):
             opts['prefix'] = self.cam_adpref
