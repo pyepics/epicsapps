@@ -19,6 +19,7 @@ from epics.wx.utils import (add_menu, pack, Closure, popup,
                             NumericCombo, SimpleText, FileSave, FileOpen,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
+from wxmplot import PlotFrame
 from scipy.optimize import minimize
 import skimage
 import skimage.filters
@@ -78,13 +79,14 @@ class StageFrame(wx.Frame):
         self.last_pixel = None
         self.xhair_pixel = None
         self.create_frame(size=size, orientation=orientation)
+        self.xplot = None
+        self.yplot = None
         self.imgpanel.Start()
 
     def create_frame(self, size=(1600, 800), orientation='landscape'):
         "build main frame"
         self.statusbar = self.CreateStatusBar(2, wx.CAPTION)
         self.statusbar.SetStatusWidths([-4, -1])
-
         for index in range(2):
             self.statusbar.SetStatusText('', index)
         config = self.config
@@ -268,7 +270,16 @@ class StageFrame(wx.Frame):
         add_menu(self, fmenu, label="&Save Config", text="Save Configuration",
                  action = self.onSaveConfig)
 
-        add_menu(self, fmenu, label="Select &Working Directory", text="change Working Folder",
+        add_menu(self, fmenu, label="Show Projections\tCtrl+G",
+                 text="Start Projection Plots",
+                 action = self.onStartProjections)
+
+        add_menu(self, fmenu, label="Stop Projection\tCtrl+C",
+                 text="Stop Projection Plots",
+                 action = self.onStopProjections)
+
+        add_menu(self, fmenu, label="Select &Working Directory\tCtrl+W",
+                 text="change Working Folder",
                  action = self.onChangeWorkdir)
 
         if self.cam_type.startswith('area'):
@@ -277,14 +288,14 @@ class StageFrame(wx.Frame):
                      action = self.onChangeCamera)
 
         fmenu.AppendSeparator()
-        add_menu(self, fmenu, label="E&xit",  text="Quit Program",
+        add_menu(self, fmenu, label="E&xit\tCtrl+x",  text="Quit Program",
                  action = self.onClose)
 
         add_menu(self, pmenu, label="Export Positions", text="Export Positions",
                  action = self.onExportPositions)
         add_menu(self, pmenu, label="Import Positions", text="Import Positions",
                  action = self.onImportPositions)
-        add_menu(self, pmenu, label="Erase Many Positions",
+        add_menu(self, pmenu, label="Erase Many Positions\tCtrl+E",
                  text="Select Multiple Positions to Erase",
                  action = self.onEraseMany)
 
@@ -689,6 +700,60 @@ class StageFrame(wx.Frame):
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
 
+
+    def onStartProjections(self, event=None):
+        try:
+            self.xplot.Raise()
+        except:
+            self.xplot = PlotFrame(parent=self)
+        try:
+            self.yplot.Raise()
+        except:
+            self.yplot = PlotFrame(parent=self)
+
+        self.proj_start = True
+        self.proj_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onShowProjections, self.proj_timer)
+        self.proj_timer.Start(500)
+
+
+    def onStopProjections(self, event=None):
+        self.proj_timer.Stop()
+
+
+    def onShowProjections(self, event=None):
+        dat = self.imgpanel.grab_data()
+        shape = dat.shape
+        if len(shape) == 3:
+            dat = dat.sum(axis=2)
+        cx, cy = self.get_cam_calib()
+        kws = dict(ylabel='intensity',
+                   xlabel='distance ($\mu\mathrm{m}$)',
+                   marker='+', markersize=4)
+
+        _y = (np.arange(shape[0]) - shape[0]/2.0) *abs(cx)
+        _x = (np.arange(shape[1]) - shape[1]/2.0) *abs(cy)
+        _xi = dat.sum(axis=0)
+        _yi = dat.sum(axis=1)
+        ymin = min((min(_xi), min(_yi)))
+        ymax = max((max(_xi), max(_yi)))
+
+        if self.proj_start:
+            self.xplot.plot(_x, _xi, title='X projection', **kws)
+            self.yplot.plot(_y, _yi, title='Y projection', **kws)
+            self.xplot.Show()
+            self.yplot.Show()
+            self.proj_start = False
+        else:
+            self.xplot.panel.update_line(0, _x, _xi, draw=True, update_limits=True)
+            self.yplot.panel.update_line(0, _y, _yi, draw=True, update_limits=True)
+
+            self.xplot.panel.axes.set_ylim((ymin, ymax), emit=True)
+            self.yplot.panel.axes.set_ylim((ymin, ymax), emit=True)
+
+            # print 'X lims: ', self.xplot.panel.conf.zoom_lims, xlims
+            # self.xplot.panel.set_xylims(xlims)
+            # self.yplot.panel.set_xylims(ylims)
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',
