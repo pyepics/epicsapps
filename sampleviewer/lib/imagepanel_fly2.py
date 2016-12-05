@@ -20,11 +20,10 @@ except ImportError:
 
 is_wxPhoenix = 'phoenix' in wx.PlatformInfo
 
-# if is_wxPhoenix:
-#     Image = wx.Image
-# else:
-#     Image = wx.ImageFromData
-#
+if is_wxPhoenix:
+    Image = wx.Image
+else:
+    Image = wx.ImageFromData
 
 class ImagePanel_Fly2(ImagePanel_Base):
     """Image Panel for FlyCapture2 camera"""
@@ -96,6 +95,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
         count, IMAX = 0, 255.0
         while count < 10:
             img = self.GrabNumpyImage()
+
             count += 1
             scale = 0
             if img.max() < 0.30*IMAX:
