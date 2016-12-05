@@ -43,7 +43,7 @@ CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
 
-def image_blurriness(imgpanel):
+def image_blurriness(imgpanel, full=False):
     """ get image blurriness of central half of intensity"""
     img = imgpanel.GrabNumpyImage().astype(np.float32)
     if len(img.shape) == 3:
@@ -57,7 +57,10 @@ def image_blurriness(imgpanel):
 
     sobel = 5*skimage.filters.sobel(img).sum()
     entropy = (img*np.log(img)).sum()
-    return -(sobel - entropy)
+    if full:
+        return (sobel, entropy)
+    else:
+        return -(5*sobel - entropy)
 
 class StageFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
@@ -273,6 +276,10 @@ class StageFrame(wx.Frame):
         add_menu(self, fmenu, label="Show Projections\tCtrl+G",
                  text="Start Projection Plots",
                  action = self.onStartProjections)
+
+        add_menu(self, fmenu, label="Print Blurriness\tCtrl+B",
+                 text="print blurriness",
+                 action = self.onReportBlurry)
 
         add_menu(self, fmenu, label="Stop Projection\tCtrl+C",
                  text="Stop Projection Plots",
@@ -542,39 +549,38 @@ class StageFrame(wx.Frame):
         min_pos = start_pos - 2.50
         max_pos = start_pos + 2.50
 
-        step, min_step = 0.004*(81), 0.001
+        step, min_step = 0.004*(81), 0.002
         # start trying both directions:
-        score_start = image_blurriness(self.imgpanel)
-        zstage.put(start_pos+step/3.0, wait=True)
-        time.sleep(0.1)
-        score_plus = image_blurriness(self.imgpanel)
 
+        score_start = image_blurriness(self.imgpanel)
+        zstage.put(start_pos+step/2.0, wait=True)
+        time.sleep(0.15)
+        score_plus = image_blurriness(self.imgpanel)
         direction = 1
         if score_start < score_plus:
             direction = -1
+        print("Start Scores: ", score_start, score_plus, direction)
 
         best_score = score_start
         best_pos = start_pos
-        zstage.put(start_pos)
+        zstage.put(start_pos, wait=True)
 
         count = 0
         report('Auto-focussing finding focus')
-        # print 'Focus 0: %.3f  %.3f %.3f %.0f ' % (
-        #     best_pos, best_score, step, direction)
         posvals = []
         scores  = []
-        while step >= min_step and count < 64:
+        while step >= min_step and count < 32:
             self.imgpanel.Refresh()
             count += 1
             pos = zstage.get() + step * direction
             if pos < min_pos or pos > max_pos:
                 break
             zstage.put(pos, wait=True, timeout=3.0)
-            time.sleep(0.125)
+            time.sleep(0.15)
             score = image_blurriness(self.imgpanel)
             # print(" step : ", step, direction, score_plus)
             report('Auto-focussing step=%.3f' % step)
-            # print 'Focus %i: %.3f  %.3f %.3f %.3f %.3f %.1f' % (
+            # print 'Focus %i: %.3f %.3f %.3f %.3f %.3f %.1f' % (
             #     count, pos, score, best_pos, best_score, step, direction)
             posvals.append(pos)
             scores.append(score)
@@ -587,11 +593,8 @@ class StageFrame(wx.Frame):
                 if step < min_step:
                     break
                 direction = -direction
-                zstage.put(best_pos + step, wait=True, timeout=3.0)
-                time.sleep(0.125)
-                score_plus = image_blurriness(self.imgpanel)
-                if score_plus < best_score:
-                    direction = -direction
+                zstage.put(best_pos, wait=True, timeout=3.0)
+                time.sleep(0.15)
             last_score = score
         zstage.put(best_pos)
         self.af_done = True
@@ -700,6 +703,11 @@ class StageFrame(wx.Frame):
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
 
+
+    def onReportBlurry(self, event=None):
+        score = image_blurriness(self.imgpanel, full=True)
+        tscore = -(5*score[0] - score[1])
+        print(" blurriness: %.3f  %.3f -> %.3f " % (score[0], score[1], tscore))
 
     def onStartProjections(self, event=None):
         try:
