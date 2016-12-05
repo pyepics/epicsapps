@@ -49,7 +49,7 @@ class ImagePanel_Base(wx.Panel):
         raise NotImplementedError('must provide AutoSetExposure')
 
     def __init__(self, parent,  camera_id=0, writer=None, output_pv=None,
-                 leftdown_cb=None, motion_cb=None,
+                 leftdown_cb=None, motion_cb=None, grab_data=True,
                  autosave_file=None, draw_objects=None, **kws):
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
         self.img_w = 800.5
@@ -82,12 +82,19 @@ class ImagePanel_Base(wx.Panel):
         self.autosave_time = 0.5
         self.autosave_thread = None
         self.full_size = None
+        self.data = None
+        self.last_data_time = 0
         if autosave_file is not None:
             path, tmp = os.path.split(autosave_file)
             self.autosave_file = autosave_file
             self.autosave_tmpf = autosave_file + '_tmp'
             self.autosave_thread = Thread(target=self.onAutosave)
             self.autosave_thread.daemon = True
+
+    def grab_data(self):
+        self.data = self.GrabNumpyImage()
+        self.last_data_time = time.time()
+        return self.data
 
     def onSize(self, evt):
         frame_w, frame_h = evt.GetSize()
@@ -147,7 +154,7 @@ class ImagePanel_Base(wx.Panel):
         except ValueError:
             return
         if self.full_size is None:
-            img = self.GrabWxImage(scale=1.0, rgb=True, can_skip=False)
+            img = self.GrabWxImage(scale=1.0, rgb=True)
             if img is not None:
                 self.full_size = img.GetSize()
 
