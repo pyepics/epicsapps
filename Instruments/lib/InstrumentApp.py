@@ -64,7 +64,6 @@ class InstrumentFrame(wx.Frame):
         self.connected = {}
         self.panels = {}
         self.epics_server = None
-
         self.server_timer = None
 
         self.colors = GUIColors()
@@ -122,8 +121,6 @@ class InstrumentFrame(wx.Frame):
         self.nb = flat_nb.FlatNotebook(self, wx.ID_ANY,
                                        agwStyle=FNB_STYLE)
 
-        self.server_timer = wx.Timer(self)
-        self.server_timer.Bind(wx.EVT_TIMER, self.OnServerTimer)
         colors = self.colors
         self.nb.SetActiveTabColour(colors.nb_active)
         self.nb.SetTabAreaColour(colors.nb_area)
@@ -248,6 +245,7 @@ class InstrumentFrame(wx.Frame):
     def enable_epics_server(self):
         """connect to an epics db to act as a server for external access."""
         connect = False
+        epics_prefix = ''
         if (1 == int(self.db.get_info('epics_use', default=0))):
             epics_prefix = self.db.get_info('epics_prefix', default='')
             if len(epics_prefix) > 1:
@@ -257,10 +255,11 @@ class InstrumentFrame(wx.Frame):
 
         self.epics_server = EpicsInstrumentServer(epics_prefix, db=self.db)
         self.epics_server.Start('Initializing...')
-
-        if self.epics_server is not None and self.server_timer is not None:
+        if self.epics_server is not None:
             self.epics_server.SetInfo(os.path.abspath(self.dbname))
-            self.server_timer.Start(100)
+            self.server_timer = wx.Timer(self)
+            self.Bind(wx.EVT_TIMER, self.OnServerTimer, self.server_timer)
+            self.server_timer.Start(250)
 
     def OnServerTimer(self, evt=None):
         """Epics Server Events:
