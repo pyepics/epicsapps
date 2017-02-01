@@ -46,27 +46,30 @@ class EpicsPVList(object):
     The main way to use this is with the PVNameCtrl above
 
     """
-    def __init__(self, parent, timeout=30):
+    def __init__(self, parent, timeout=10):
         self.pvs = {}
         self.in_progress = {}
         self.timeout = timeout
         self.etimer = wx.Timer(parent)
         parent.Bind(wx.EVT_TIMER, self.onTimer, self.etimer)
-        self.etimer.Start(75)
+        self.etimer.Start(250)
+        self.need_connecting = []
 
     def onTimer(self, event=None):
         "timer event handler: looks for in_progress, may timeout"
-        time.sleep(0.001)
+        time.sleep(0.01)
+
         if len(self.in_progress) == 0:
             return
-        try:
-            for pvname in self.in_progress:
-                # print 'waiting for connect: ', pvname
+
+        in_progress = self.in_progress.keys()
+        for pvname in in_progress:
+            wid, action, xtime = self.in_progress[pvname]
+            # print 'waiting for connect: ', pvname
+            if action is not None:
                 self.__connect(pvname)
-                if time.time() - self.in_progress[pvname][2] > self.timeout:
-                    self.in_progress.pop(pvname)
-        except:
-            pass
+            if time.time() - xtime > self.timeout:
+                self.in_progress.pop(pvname)
 
     def init_connect(self, pvname, is_motor=False):
         """try to connect epics PV, executing
@@ -87,8 +90,10 @@ class EpicsPVList(object):
             basname = pvname[:idot]
             for ext in MOTOR_FIELDS:
                 pvname = "%s%s" % (basname, ext)
+                # self.need_connecting.append(pvname)
                 self.pvs[pvname] = epics.get_pv(pvname)
                 self.in_progress[pvname] = (None, None, time.time())
+
 
     def show_unconnected(self):
         all, unconn =  0, 0
@@ -99,8 +104,8 @@ class EpicsPVList(object):
                 unconn += 1
             time.sleep(0.001)
         # print(" Done : %i of %i unconnected" % (unconn, all))
-        
-                       
+
+
     @EpicsFunction
     def connect_pv(self, pvname, is_motor=False, wid=None, action=None):
         """try to connect epics PV, executing
@@ -113,7 +118,7 @@ class EpicsPVList(object):
         pvname = str(pvname)
         if pvname in self.pvs:
             return
-        if pvname not in self.in_progress:
+        if pvname not in self.pvs:
             self.pvs[pvname] = epics.get_pv(pvname)
             self.in_progress[pvname] = (wid, action, time.time())
         if is_motor:
@@ -134,11 +139,11 @@ class EpicsPVList(object):
     @EpicsFunction
     def __connect(self, pvname):
         """if a new epics PV has connected, run the requested action"""
+
         # print ' __connect!! ', pvname
         if pvname not in self.pvs:
             self.pvs[pvname] = epics.get_pv(pvname)
         pv = self.pvs[pvname]
-        time.sleep(0.001)
 
         if not self.pvs[pvname].connected:
             return
@@ -148,6 +153,6 @@ class EpicsPVList(object):
         except KeyError:
             wid, action, itime = None, None, 0
         pv.get_ctrlvars()
-        # print 'PV connected: ', pv
+
         if hasattr(action, '__call__'):
             action(wid=wid, pvname=pvname, pv=self.pvs[pvname])
