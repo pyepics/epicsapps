@@ -58,8 +58,10 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
 
         self.config_filesaver(prefix, self.format)
 
-        width = self.ad_cam.ArraySizeX_RBV
+        width  = self.ad_cam.ArraySizeX_RBV
         height = self.ad_cam.ArraySizeY_RBV
+        width  = self.ad_img.ArraySize0_RBV
+        height = self.ad_img.ArraySize1_RBV
 
         self.img_w = float(width+0.5)
         self.img_h = float(height+0.5)
@@ -135,6 +137,8 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         imgdim   = self.ad_img.NDimensions_RBV
         width    = self.ad_cam.SizeX
         height   = self.ad_cam.SizeY
+        width    = self.ad_img.ArraySize0_RBV
+        height   = self.ad_img.ArraySize1_RBV
 
         arrsize = [1,1,1]
         arrsize[0] = self.ad_img.ArraySize0_RBV
@@ -171,6 +175,8 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         imgdim   = self.ad_img.NDimensions_RBV
         width    = self.ad_cam.SizeX
         height   = self.ad_cam.SizeY
+        width    = self.ad_img.ArraySize0_RBV
+        height   = self.ad_img.ArraySize1_RBV
 
         imgcount = self.ad_cam.ArrayCounter_RBV
         now = time.time()
@@ -334,6 +340,8 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
 
         sizex = self.ad_cam.MaxSizeX_RBV
         sizey = self.ad_cam.MaxSizeY_RBV
+        sizex = self.ad_img.ArraySize0_RBV
+        sizey = self.ad_img.ArraySize1_RBV
         sizelabel = 'Image Size: %i x %i pixels'
         try:
             sizelabel = sizelabel  % (sizex, sizey)
