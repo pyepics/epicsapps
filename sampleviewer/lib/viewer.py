@@ -673,6 +673,7 @@ class StageFrame(wx.Frame):
             self.Destroy()
 
     def onExportPositions(self, event=None):
+        curpath = os.getcwd()
         fname = FileSave(self, 'Export Positions File',
                          wildcard='Position Files (*.pos)|*.pos|All files (*.*)|*.*',
                          default_file='Save.pos')
@@ -680,8 +681,10 @@ class StageFrame(wx.Frame):
             self.pospanel.SavePositions(fname)
 
         self.write_message('Saved Positions File %s' % fname)
+        os.chdir(curpath)
 
     def onImportPositions(self, event=None):
+        curpath = os.getcwd()
         fname = FileOpen(self, 'Import Positions File',
                          wildcard='Position Files (*.pos)|*.pos|All files (*.*)|*.*',
                          default_file='Save.pos')
@@ -689,6 +692,7 @@ class StageFrame(wx.Frame):
             self.pospanel.LoadPositions(fname)
 
         self.write_message('Loaded Positions from File %s' % fname)
+        os.chdir(curpath)
 
 
     def onChangeWorkdir(self, event=None):
@@ -773,6 +777,7 @@ class StageFrame(wx.Frame):
 
 
     def onReadConfig(self, event=None):
+        curpath = os.getcwd()
         fname = FileOpen(self, 'Read Configuration File',
                          wildcard='INI (*.ini)|*.ini|All files (*.*)|*.*',
                          default_file='SampleStage.ini')
@@ -781,6 +786,7 @@ class StageFrame(wx.Frame):
             self.connect_motors()
             self.pospanel.set_positions(self.config['positions'])
         self.write_message('Read Configuration File %s' % fname)
+        os.chdir(curpath)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
     def __init__(self, inifile=None, debug=True, ask_workdir=True,
