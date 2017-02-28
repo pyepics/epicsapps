@@ -193,8 +193,8 @@ class TransferPositionsDialog(wx.Frame):
             uscope = idb.get_instrument(self.offline)
             sample = idb.get_instrument(self.instname)
 
-            notes = json.loads(uscope.notes)
-            rotmat = np.array(notes['rotmat2SampleStage'])
+            us2ss_conf = idb.scandb.get_config('microscope2samplestage')
+            rotmat = np.array(json.loads(us2ss_conf.notes))
 
             upos = OrderedDict()
             for pname, cbox in self.checkboxes.items():
