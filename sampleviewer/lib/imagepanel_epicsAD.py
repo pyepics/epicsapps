@@ -58,15 +58,8 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
 
         self.config_filesaver(prefix, self.format)
 
-        width  = self.ad_cam.ArraySizeX_RBV
-        height = self.ad_cam.ArraySizeY_RBV
-        width  = self.ad_img.ArraySize0_RBV
-        height = self.ad_img.ArraySize1_RBV
-
-        self.img_w = float(width+0.5)
-        self.img_h = float(height+0.5)
+        w, h = self.GetImageSize()
         self.cam_name = prefix
-
 
     def config_filesaver(self, prefix, format):
         if not prefix.endswith(':'):  prefix = "%s:" % prefix
@@ -122,46 +115,39 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
                 time.sleep(0.1)
 
     def GetImageSize(self):
-        self.arrsize = [1,1,1]
-        self.arrsize[0] = self.ad_img.ArraySize0_RBV
-        self.arrsize[1] = self.ad_img.ArraySize1_RBV
-        self.arrsize[2] = self.ad_img.ArraySize2_RBV
+        arrsize0 = self.ad_img.ArraySize0_RBV
+        arrsize1 = self.ad_img.ArraySize1_RBV
+        arrsize2 = self.ad_img.ArraySize2_RBV
+        self.arrsize   = (arrsize0, arrsize1, arrsize2)
         self.colormode = self.ad_img.ColorMode_RBV
-        self.img_w = float(self.arrsize[0]+0.5)
-        self.img_h = float(self.arrsize[1]+0.5)
-        if self.colormode == 2:
-            self.img_w = float(self.arrsize[1]+0.5)
-            self.img_h = float(self.arrsize[2]+0.5)
+        
+        w, h = arrsize0, arrsize1
+        if self.ad_img.NDimensions_RBV == 3:
+            w, h  = arrsize1, arrsize2
+        self.img_w = float(w+0.5)
+        self.img_h = float(h+0.5)
+        return w, h
+
 
     def GrabNumpyImage(self):
-        imgdim   = self.ad_img.NDimensions_RBV
-        width    = self.ad_cam.SizeX
-        height   = self.ad_cam.SizeY
-        width    = self.ad_img.ArraySize0_RBV
-        height   = self.ad_img.ArraySize1_RBV
+        width, height = self.GetImageSize()
 
-        arrsize = [1,1,1]
-        arrsize[0] = self.ad_img.ArraySize0_RBV
-        arrsize[1] = self.ad_img.ArraySize1_RBV
-        arrsize[2] = self.ad_img.ArraySize2_RBV
-
-        colormode = self.ad_img.ColorMode_RBV
         im_mode = 'L'
-        self.im_size = (arrsize[0], arrsize[1])
-        if colormode == 2:
+        self.im_size = (self.arrsize[0], self.arrsize[1])
+        if self.ad_img.ColorMode_RBV == 2:
             im_mode = 'RGB'
-            self.im_size = (arrsize[1], arrsize[2])
+            self.im_size = (self.arrsize[1], self.arrsize[2])
 
-        dcount = arrsize[0] * arrsize[1]
-        if imgdim == 3:
-            dcount *= arrsize[2]
+        dcount = self.arrsize[0] * self.arrsize[1]
+        if self.ad_img.NDimensions_RBV == 3:
+            dcount *= self.arrsize[2]
 
         img = self.ad_img.PV('ArrayData').get(count=dcount)
         if img is None:
             time.sleep(0.025)
             img = self.ad_img.PV('ArrayData').get(count=dcount)
 
-        if colormode == 2:
+        if self.ad_img.ColorMode_RBV == 2:
             img = img.reshape((width, height, 3)).sum(axis=2)
         else:
             img = img.reshape((width, height))
@@ -172,12 +158,7 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
             print 'GrabWxImage .. no ad_img / cam', self.ad_img, self.ad_cam
             return
 
-        imgdim   = self.ad_img.NDimensions_RBV
-        width    = self.ad_cam.SizeX
-        height   = self.ad_cam.SizeY
-        width    = self.ad_img.ArraySize0_RBV
-        height   = self.ad_img.ArraySize1_RBV
-
+        width, height = self.GetImageSize()
         imgcount = self.ad_cam.ArrayCounter_RBV
         now = time.time()
         if (can_skip and (imgcount == self.imgcount or
@@ -186,27 +167,22 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         self.imgcount = imgcount
         self.last_update = time.time()
 
-        arrsize = [1,1,1]
-        arrsize[0] = self.ad_img.ArraySize0_RBV
-        arrsize[1] = self.ad_img.ArraySize1_RBV
-        arrsize[2] = self.ad_img.ArraySize2_RBV
-
-        colormode = self.ad_img.ColorMode_RBV
         im_mode = 'L'
-        self.im_size = (arrsize[0], arrsize[1])
-        if colormode == 2:
+        self.im_size = (self.arrsize[0], self.arrsize[1])
+        if self.ad_img.ColorMode_RBV == 2:
             im_mode = 'RGB'
-            self.im_size = (arrsize[1], arrsize[2])
+            self.im_size = (self.arrsize[1], self.arrsize[2])
 
-        dcount = arrsize[0] * arrsize[1]
-        if imgdim == 3:
-            dcount *= arrsize[2]
+        dcount = self.arrsize[0] * self.arrsize[1]
+        if self.ad_img.NDimensions_RBV == 3:
+            dcount *= self.arrsize[2]
 
         rawdata = self.ad_img.PV('ArrayData').get(count=dcount)
         if rawdata is None:
             return
 
-        if (colormode == 0 and isinstance(rawdata, np.ndarray) and
+        if (self.ad_img.ColorMode_RBV == 0 and 
+            isinstance(rawdata, np.ndarray) and
             rawdata.dtype != np.uint8):
             im_mode = 'I'
             rawdata = rawdata.astype(np.uint32)
@@ -240,7 +216,7 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
 
         wids = self.wids
         sizer = self.sizer
-
+        self.image_panel = image_panel
         self.SetBackgroundColour('#EEFFE')
         self.title =  wx.StaticText(self, size=(285, 25),
                                     label="Epics AreaDetector")
@@ -334,19 +310,11 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
         self.wids['exptime'].SetPV(self.ad_cam.PV('AcquireTime'))
         self.wids['gain'].SetPV(self.ad_cam.PV('Gain'))
         self.wids['imagemode'].SetPV(self.ad_cam.PV('ImageMode'))
-        # self.wids['period'].SetPV(self.ad_cam.PV('AcquirePeriod'))
-        # self.wids['numimages'].SetPV(self.ad_cam.PV('NumImages'))
+
         self.wids['triggermode'].SetPV(self.ad_cam.PV('TriggerMode'))
 
-        sizex = self.ad_cam.MaxSizeX_RBV
-        sizey = self.ad_cam.MaxSizeY_RBV
-        sizex = self.ad_img.ArraySize0_RBV
-        sizey = self.ad_img.ArraySize1_RBV
-        sizelabel = 'Image Size: %i x %i pixels'
-        try:
-            sizelabel = sizelabel  % (sizex, sizey)
-        except:
-            sizelabel = sizelabel  % (0, 0)
+        width, height = self.image_panel.GetImageSize()
+        sizelabel = 'Image Size: %i x %i pixels' % (width, height)
 
         self.wids['fullsize'].SetLabel(sizelabel)
         poll()
