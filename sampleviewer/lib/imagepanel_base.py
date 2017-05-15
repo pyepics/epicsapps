@@ -63,6 +63,7 @@ class ImagePanel_Base(wx.Panel):
         self.cam_name = '-'
         self.scale = 0.60
         self.count = 0
+        self.image = None
         self.draw_objects = None
         self.SetBackgroundColour("#E4E4E4")
         self.starttime = time.clock()
@@ -153,6 +154,10 @@ class ImagePanel_Base(wx.Panel):
             self.image = self.GrabWxImage(scale=self.scale, rgb=True)
         except ValueError:
             return
+
+        if self.image is None:
+            return
+
         if self.full_size is None:
             img = self.GrabWxImage(scale=1.0, rgb=True)
             if img is not None:
@@ -162,7 +167,6 @@ class ImagePanel_Base(wx.Panel):
             bitmap = Bitmap(self.image)
         except ValueError:
             return
-        # print("IMAGE ", self.image, bitmap, self.scale, bitmap.GetSize())
 
         img_w, img_h = self.bitmap_size = bitmap.GetSize()
         pan_w, pan_h = self.panel_size  = self.GetSize()
