@@ -2,6 +2,8 @@
 """
 
 import wx
+is_wxPhoenix = 'phoenix' in wx.PlatformInfo
+
 import time
 import os
 import numpy as np
@@ -120,7 +122,7 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         arrsize2 = self.ad_img.ArraySize2_RBV
         self.arrsize   = (arrsize0, arrsize1, arrsize2)
         self.colormode = self.ad_img.ColorMode_RBV
-        
+
         w, h = arrsize0, arrsize1
         if self.ad_img.NDimensions_RBV == 3:
             w, h  = arrsize1, arrsize2
@@ -181,7 +183,7 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         if rawdata is None:
             return
 
-        if (self.ad_img.ColorMode_RBV == 0 and 
+        if (self.ad_img.ColorMode_RBV == 0 and
             isinstance(rawdata, np.ndarray) and
             rawdata.dtype != np.uint8):
             im_mode = 'I'
@@ -194,7 +196,10 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         elif im_mode == 'RGB':
             rawdata.shape = (3, width, height)
             rawdata = rawdata.astype(np.uint8)
-            image = wx.ImageFromData(width, height, rawdata)
+            if is_wxPhoenix:
+                image = wx.Image(width, height, rawdata)
+            else:
+                image = wx.ImageFromData(width, height, rawdata)
         return image.Scale(int(scale*width), int(scale*height))
 
 class ConfPanel_EpicsAD(ConfPanel_Base):
