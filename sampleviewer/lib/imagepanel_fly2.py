@@ -13,7 +13,8 @@ LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
 HAS_FLY2 = False
 try:
-    import pyfly2
+    import PyCapture2
+    import fly2_camera
     HAS_FLY2 = True
 except ImportError:
     pass
@@ -31,14 +32,12 @@ class ImagePanel_Fly2(ImagePanel_Base):
                  autosave_file=None, output_pv=None, **kws):
         if not HAS_FLY2:
             raise ValueError("Fly2 library not available")
-
         super(ImagePanel_Fly2, self).__init__(parent, -1,
                                               size=(800, 600),
                                               writer=writer,
                                               autosave_file=autosave_file, **kws)
 
-        self.context = pyfly2.Context()
-        self.camera = self.context.get_camera(camera_id)
+        self.camera = fly2_camera.Fly2Camera(camera_id=camera_id)
         self.output_pv = output_pv
         self.output_pvs = {}
         self.img_w = 800.5
@@ -52,7 +51,8 @@ class ImagePanel_Fly2(ImagePanel_Base):
     def Start(self):
         "turn camera on"
         self.camera.Connect()
-        self.cam_name = self.camera.info['modelName']
+        self.cam_name = self.camera.info.modelName
+
         try:
             self.camera.StartCapture()
             width, height = self.camera.GetSize()
@@ -109,10 +109,10 @@ class ImagePanel_Fly2(ImagePanel_Base):
                 break
             if scale > 0:
                 scale = max(0.2, min(5.0, scale))
-                atime = self.camera.GetProperty('shutter')['absValue']
+                atime = self.camera.GetProperty('shutter').absValue
                 etime = atime*scale
                 pgain = self.camera.GetProperty('gain')
-                gain = pgain['absValue']
+                gain = pgain.absValue
                 if etime > 64: # max exposure time
                     gain *= etime/64.0
                     etime = 64.0
@@ -125,7 +125,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         try:
             return self.camera.GrabWxImage(scale=scale, rgb=rgb)
-        except pyfly2.FC2Error:
+        except: #  pyfly2.FC2Error:
             raise ValueError("could not grab camera image")
 
     def GrabNumpyImage(self):
@@ -151,13 +151,14 @@ class ConfPanel_Fly2(ConfPanel_Base):
         self.__initializing = True
         i = next_row + 1
         #('Sharpness', '%', 100), ('Hue', 'deg', 100), ('Saturation', '%', 100),
-        for dat in (('shutter', 'ms', 70),
-                    ('gain', 'dB', 24),
-                    ('brightness', '%', 6),
-                    ('gamma', '', 5)):
+        for dat in (('shutter', 'ms',  50 , 0, 70),
+                    ('gain', 'dB',      0, -2, 24),
+                    # ('brightness', '%', 0,  0,  6),
+                    ('gamma', '',       1, 0.5, 4)):
 
-            key, units, maxval = dat
-            wids[key] = FloatCtrl(self, value=0, maxval=maxval,
+            key, units, defval, minval, maxval = dat
+            wids[key] = FloatCtrl(self, value=defval,
+                                  minval=minval, maxval=maxval,
                                   precision=1,
                                   action=self.onValue,
                                   act_on_losefocus=True,
@@ -201,31 +202,31 @@ class ConfPanel_Fly2(ConfPanel_Base):
         wx.CallAfter(self.onConnect)
 
     def onConnect(self, **kws):
-        for key in ('shutter', 'gain', 'brightness', 'gamma'):
-            props = self.camera.GetProperty(key)
-            self.wids[key].SetValue(props['absValue'])
-            akey = '%s_auto' % key
-            self.wids[akey].SetValue({False: 0, True: 1}[props['autoManualMode']])
+        for prop in ('shutter', 'gain', 'gamma'): # , 'brightness'):
+            p = self.camera.GetProperty(prop)
+            self.wids[prop].SetValue(p.absValue)
+            akey = '%s_auto' % prop
+            self.wids[akey].SetValue({False: 0, True: 1}[p.autoManualMode])
 
-        props = self.camera.GetProperty('white_balance')
-        self.wids['wb_red'].SetValue(props['valueA'])
-        self.wids['wb_blue'].SetValue(props['valueB'])
-        self.wids['wb_auto'].SetValue({False: 0, True: 1}[props['autoManualMode']])
+        p = self.camera.GetProperty('white_balance')
+        self.wids['wb_red'].SetValue(p.valueA)
+        self.wids['wb_blue'].SetValue(p.valueB)
+        self.wids['wb_auto'].SetValue({False: 0, True: 1}[p.autoManualMode])
         self.timer.Start(1000)
         self.title.SetLabel("Fly2Capture: %s" % self.image_panel.cam_name)
 
     def onTimer(self, evt=None, **kws):
-        for prop in ('shutter', 'gain', 'brightness', 'gamma', 'white_balance'):
+        for prop in ('shutter', 'gain', 'gamma', 'white_balance'):
             try:
-                pdict = self.camera.GetProperty(prop)
-            except pyfly2.FC2Error:
+                p = self.camera.GetProperty(prop)
+            except:
                 return
-            if pdict['autoManualMode']:
+            if p.autoManualMode:
                 if  prop == 'white_balance':
-                    self.wids['wb_red'].SetValue(pdict['valueA'])
-                    self.wids['wb_blue'].SetValue(pdict['valueB'])
+                    self.wids['wb_red'].SetValue(p.valueA)
+                    self.wids['wb_blue'].SetValue(p.valueB)
                 else:
-                    self.wids[prop].SetValue(pdict['absValue'])
+                    self.wids[prop].SetValue(p.absValue)
 
     def onAuto(self, evt=None, prop=None, **kws):
         if not evt.IsChecked():
@@ -233,21 +234,21 @@ class ConfPanel_Fly2(ConfPanel_Base):
         if prop in ('wb_red', 'wb_blue', 'wb_auto'):
             prop = 'white_balance'
         try:
-            if prop in ('shutter', 'gain', 'brightness', 'gamma'):
-                pdict = self.camera.GetProperty(prop)
-                self.camera.SetPropertyValue(prop, pdict['absValue'], auto=True)
+            if prop in ('shutter', 'gain', 'gamma'): # , 'brightness'):
+                p = self.camera.GetProperty(prop)
+                self.camera.SetPropertyValue(prop, p.absValue, auto=True)
                 time.sleep(0.5)
-                pdict = self.camera.GetProperty(prop)
-                self.wids[prop].SetValue(pdict['absValue'])
+                p = self.camera.GetProperty(prop)
+                self.wids[prop].SetValue(p.absValue)
             elif prop == 'white_balance':
                 red =  self.wids['wb_red'].GetValue()
                 blue = self.wids['wb_blue'].GetValue()
                 self.camera.SetPropertyValue(prop, (red, blue), auto=True)
                 time.sleep(0.5)
-                pdict = self.camera.GetProperty(prop)
-                self.wids['wb_red'].SetValue(pdict['valueA'])
-                self.wids['wb_blue'].SetValue(pdict['valueB'])
-        except pyfly2.FC2Error:
+                p = self.camera.GetProperty(prop)
+                self.wids['wb_red'].SetValue(p.valueA)
+                self.wids['wb_blue'].SetValue(p.valueB)
+        except:
             return
 
     def onValue(self, prop=None, value=None,  **kws):
@@ -256,7 +257,7 @@ class ConfPanel_Fly2(ConfPanel_Base):
         if prop in ('wb_red', 'wb_blue', 'wb_auto'):
             prop = 'white_balance'
         try:
-            if prop in ('shutter', 'gain', 'brightness', 'gamma'):
+            if prop in ('shutter', 'gain', 'gamma'): # , 'brightness'):
                 auto = self.wids['%s_auto' % prop].GetValue()
                 self.camera.SetPropertyValue(prop, float(value), auto=auto)
             elif prop == 'white_balance':
@@ -264,5 +265,5 @@ class ConfPanel_Fly2(ConfPanel_Base):
                 blue = self.wids['wb_blue'].GetValue()
                 auto = self.wids['wb_auto'].GetValue()
                 self.camera.SetPropertyValue(prop, (red, blue), auto=auto)
-        except pyfly2.FC2Error:
+        except:
             return
