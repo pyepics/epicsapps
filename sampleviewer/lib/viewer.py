@@ -11,6 +11,7 @@ from threading import Thread
 from collections import OrderedDict
 import base64
 import json
+from wxmplot import PlotFrame
 
 from epics import caput, Motor
 from epics.wx import EpicsFunction
@@ -19,7 +20,6 @@ from epics.wx.utils import (add_menu, pack, Closure, popup,
                             NumericCombo, SimpleText, FileSave, FileOpen,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
-from wxmplot import PlotFrame
 from scipy.optimize import minimize
 import skimage
 import skimage.filters
@@ -55,12 +55,9 @@ def image_blurriness(imgpanel, full=False):
     img[np.where(img<0.5)] = 0.5
     img = img/img.max()
 
-    sobel = 5*skimage.filters.sobel(img).sum()
-    entropy = (img*np.log(img)).sum()
-    if full:
-        return (sobel, entropy)
-    else:
-        return -(5*sobel - entropy)
+    sobel = 50*skimage.filters.sobel(img).sum()/1000.0
+    entropy = (img*np.log(img)).sum()/1000.0
+    return (sobel, entropy)
 
 class StageFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
@@ -524,6 +521,11 @@ class StageFrame(wx.Frame):
             if self.ctrlpanel.af_message is not None:
                 self.ctrlpanel.af_message.SetLabel('')
             self.ctrlpanel.af_button.Enable()
+            # print("AF Done: plot results")
+            # x, y = self.af_data
+            # plotf = PlotFrame(self)
+            # plotf.plot(x, y, xlabel='focus', ylabel='focus score')
+            # plotf.Show()
 
     def onAutoFocus(self, event=None, **kws):
         self.af_done = False
@@ -549,22 +551,26 @@ class StageFrame(wx.Frame):
         min_pos = start_pos - 2.50
         max_pos = start_pos + 2.50
 
-        step, min_step = 0.004*(81), 0.002
+        step, min_step = 0.003*(81), 0.002
         # start trying both directions:
 
-        score_start = image_blurriness(self.imgpanel)
+        def get_score():
+            sobel, entropy = image_blurriness(self.imgpanel)
+            return 0.5*entropy - sobel
+
+        score_start = best_score = get_score()
+        best_pos = start_pos
+
         zstage.put(start_pos+step/2.0, wait=True)
         time.sleep(0.15)
-        score_plus = image_blurriness(self.imgpanel)
-        direction = 1
-        if score_start < score_plus:
-            direction = -1
-        print("Start Scores: ", score_start, score_plus, direction)
+        score_plus = get_score()
+        direction = -1
+        if score_plus < score_start:
+            direction = 1
+            best_score = score_plus
+            best_post = start_pos + step/2.0
 
-        best_score = score_start
-        best_pos = start_pos
-        zstage.put(start_pos, wait=True)
-
+        zstage.put(best_pos, wait=True)
         count = 0
         report('Auto-focussing finding focus')
         posvals = []
@@ -577,11 +583,10 @@ class StageFrame(wx.Frame):
                 break
             zstage.put(pos, wait=True, timeout=3.0)
             time.sleep(0.15)
-            score = image_blurriness(self.imgpanel)
-            # print(" step : ", step, direction, score_plus)
+            score = get_score() # image_blurriness(self.imgpanel)
             report('Auto-focussing step=%.3f' % step)
-            # print 'Focus %i: %.3f %.3f %.3f %.3f %.3f %.1f' % (
-            #     count, pos, score, best_pos, best_score, step, direction)
+            # print 'Focus %2.2i: (%.3f, %.2f) best=(%.3f, %.2f) step=%.3f' % (
+            #     count, pos, score, best_pos, best_score, step*direction)
             posvals.append(pos)
             scores.append(score)
             if score < best_score:
@@ -598,7 +603,9 @@ class StageFrame(wx.Frame):
             last_score = score
         zstage.put(best_pos)
         self.af_done = True
+        self.af_data = (posvals, scores)
         report('Auto-focussing done.')
+
 
 
 
