@@ -11,6 +11,8 @@ from threading import Thread
 from collections import OrderedDict
 import base64
 import json
+import matplotlib
+matplotlib.use('WXAgg')
 from wxmplot import PlotFrame
 
 from epics import caput, Motor
@@ -375,7 +377,7 @@ class StageFrame(wx.Frame):
         self.SetMenuBar(mbar)
 
     def onShowHide(self, event=None, panel=None, name='---'):
-        showval = {True:1, False:0}[event.Checked()]
+        showval = {True:1, False:0}[event.IsChecked()]
         if showval:
             panel.Enable()
         else:
@@ -403,7 +405,7 @@ class StageFrame(wx.Frame):
 
     def onMenuOption(self, evt=None):
         """events for options menu: move, erase, overwrite """
-        setattr(self, self.menu_opts[evt.GetId()], evt.Checked())
+        setattr(self, self.menu_opts[evt.GetId()], evt.IsChecked())
 
     def read_config(self, configfile=None, get_dir=False):
         "open/read ini config file"
