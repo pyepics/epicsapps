@@ -1,4 +1,4 @@
-"""Image Panel using direct connection to Fly2 API
+"""Image Panel using direct connection to PyCapture2 API
    for Point Grey FlyCapture2 cameras
 """
 
@@ -31,7 +31,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
     def __init__(self, parent,  camera_id=0, writer=None,
                  autosave_file=None, output_pv=None, **kws):
         if not HAS_FLY2:
-            raise ValueError("Fly2 library not available")
+            raise ValueError("PyCapture2 library not available")
         super(ImagePanel_Fly2, self).__init__(parent, -1,
                                               size=(800, 600),
                                               writer=writer,
@@ -143,10 +143,12 @@ class ConfPanel_Fly2(ConfPanel_Base):
         wids = self.wids
         sizer = self.sizer
 
-        self.title = self.txt("Fly2Capture: ", size=285)
+        self.title = self.txt("PyCapture2: ", size=285)
+        self.title2 = self.txt(" ", size=285)
 
         sizer.Add(self.title, (0, 0), (1, 3), LEFT)
-        next_row = self.show_position_info(row=1)
+        sizer.Add(self.title2,(1, 0), (1, 3), LEFT)
+        next_row = self.show_position_info(row=2)
 
         self.__initializing = True
         i = next_row + 1
@@ -213,7 +215,14 @@ class ConfPanel_Fly2(ConfPanel_Base):
         self.wids['wb_blue'].SetValue(p.valueB)
         self.wids['wb_auto'].SetValue({False: 0, True: 1}[p.autoManualMode])
         self.timer.Start(1000)
-        self.title.SetLabel("Fly2Capture: %s" % self.image_panel.cam_name)
+        cinfo  = self.image_panel.camera.info
+        self.title.SetLabel("Camera Model: %s" % (cinfo.modelName))
+        self.title2.SetLabel("Serial #%d, Firmware %s" % (cinfo.serialNumber, cinfo.firmwareVersion))
+        # print( "Camera info: ")
+        # for a in dir(cinfo):
+        # if a.startswith('__'):
+        #         continue
+        #     print(a, getattr(cinfo, a, '??'))
 
     def onTimer(self, evt=None, **kws):
         for prop in ('shutter', 'gain', 'gamma', 'white_balance'):
