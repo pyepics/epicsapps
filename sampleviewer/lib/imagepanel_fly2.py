@@ -1,13 +1,14 @@
 """Image Panel using direct connection to PyCapture2 API
    for Point Grey FlyCapture2 cameras
 """
-
+import numpy as np
 import wx
 import time
 
 from epics import PV
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
-from epics.wx.utils import  pack, FloatCtrl, Closure, add_button
+from epics.wx.utils import pack, FloatCtrl, Closure, add_button
+from epics.wx import DelayedEpicsCallback
 
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
@@ -47,6 +48,8 @@ class ImagePanel_Fly2(ImagePanel_Base):
         self.confpanel = None
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
+        self.push_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onPushTimer, self.push_timer)
 
     def Start(self):
         "turn camera on"
@@ -71,6 +74,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
             self.output_pvs['ArraySize1_RBV'].put(int(self.img_h))
             self.output_pvs['ArraySize0_RBV'].put(int(self.img_w))
 
+        self.push_timer.Start(100)
         self.timer.Start(50)
         if self.autosave_thread is not None:
             self.autosave_thread.start()
@@ -122,11 +126,33 @@ class ImagePanel_Fly2(ImagePanel_Base):
                 self.confpanel.wids['gain_auto'].SetValue(0)
                 time.sleep(0.1)
 
-    def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
-        try:
-            return self.camera.GrabWxImage(scale=scale, rgb=rgb)
-        except: #  pyfly2.FC2Error:
-            raise ValueError("could not grab camera image")
+    # @DelayedEpicsCallback
+    def onPushTimer(self, evt=None):
+        if 'ArrayData' in self.output_pvs:
+            nx, ny, nc = self.shape
+            d = self.img.reshape(nx/4, 4, ny/4, 4, nc)
+            # d = np.round(d.mean(axis=3).mean(axis=1)).astype(self.img.dtype)
+            # d = d.sum(axis=3).sum(axis=1)/16
+            # nx, ny, nc = d.shape
+            # print("Push Timer ", d.shape, time.ctime())
+            # self.output_pvs['ArrayData'].put(d.flatten())
+            # self.output_pvs['ArraySize0_RBV'].put(nx)
+            # self.output_pvs['ArraySize1_RBV'].put(ny)
+            # self.output_pvs['ArraySize2_RBV'].put(nc)
+
+    def GrabWxImage(self, scale=1, rgb=True, can_skip=True,
+                    quality=wx.IMAGE_QUALITY_HIGH):
+        # return self.camera.GrabWxImage(scale=scale, rgb=rgb)
+        img = self.camera.cam.retrieveBuffer()
+        ncols, nrows = img.getCols(), img.getRows()
+        scale = max(scale, 0.05)
+        width, height = int(scale*ncols), int(scale*nrows)
+        if rgb:
+            img = img.convert(PyCapture2.PIXEL_FORMAT.RGB)
+        self.shape = (ncols, nrows, 3)
+        self.img = np.array(img.getData())
+        return wx.Image(ncols, nrows, self.img).Rescale(width, height,
+                                                        quality=quality)
 
     def GrabNumpyImage(self):
         return self.camera.GrabNumPyImage(format='rgb')
