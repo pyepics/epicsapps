@@ -80,10 +80,11 @@ class ImagePanel_Base(wx.Panel):
         self.last_autosave = 0
         self.autosave_tmpf = None
         self.autosave_file = None
-        self.autosave_time = 0.5
+        self.autosave_time = 0.3
         self.autosave_thread = None
         self.full_size = None
         self.data = None
+        self.data_shape = (0, 0, 0)
         self.last_data_time = 0
         if autosave_file is not None:
             path, tmp = os.path.split(autosave_file)
@@ -129,7 +130,6 @@ class ImagePanel_Base(wx.Panel):
         """
         if self.motion_cb is None or self.full_size is None:
             return
-
         evt_x, evt_y = evt.GetX(), evt.GetY()
         max_x, max_y = self.full_size
         img_w, img_h = self.bitmap_size
@@ -175,11 +175,6 @@ class ImagePanel_Base(wx.Panel):
         dc.Clear()
         dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
         self.__draw_objects(dc, img_w, img_h, pad_w, pad_h)
-        # if ('ArrayData' in self.output_pvs and
-        #    time.time()-self.last_save > 5.0):
-        #    x = self.GrabNumpyImage().flatten()
-        #    self.output_pvs['ArrayData'].put(x)
-        #    self.last_save = time.time()
 
     def __draw_objects(self, dc, img_w, img_h, pad_w, pad_h):
         dc.SetBrush(wx.Brush('Black', wx.BRUSHSTYLE_TRANSPARENT))
@@ -216,18 +211,19 @@ class ImagePanel_Base(wx.Panel):
             now = time.time()
             tfrac, tint = math.modf(now)
             dt = now - (self.last_autosave + self.autosave_time)
-            if  dt > 0:
+            if dt > 0:
+                if 'ArrayData' in self.output_pvs and self.data_shape[0] > 0:
+                    nx, ny, nc = self.data_shape
+                    d = 1.00*self.data.reshape(nx/nbin, nbin, ny/nbin, nbin, nc)
+                    d = d.sum(axis=3).sum(axis=1)/(nbin*nbin)
+                    d = d.astype(self.data.dtype)
+                    nx, ny, nc = d.shape
+                    self.output_pvs['ArrayData'].put(d.flatten())
+                    self.output_pvs['ArraySize0_RBV'].put(nx)
+                    self.output_pvs['ArraySize1_RBV'].put(ny)
+                    self.output_pvs['ArraySize2_RBV'].put(nc)
                 self.last_autosave = now
-                try:
-                    fullimage = self.GrabWxImage(scale=1.0, rgb=True)
-                    fullimage.SaveFile(self.autosave_tmpf,
-                                        wx.BITMAP_TYPE_JPEG)
-                    shutil.copy(self.autosave_tmpf, self.autosave_file)
-                    # print 'save ! ', self.autosave_file, self.autosave_time, time.ctime()
-                except:
-                    pass
-            # sleep for most of the remaining time
-            # time.sleep( max(0.005, min(1.0, -dt*0.75)))
+            time.sleep(0.05)
 
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
