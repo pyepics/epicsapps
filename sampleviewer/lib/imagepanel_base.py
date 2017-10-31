@@ -214,6 +214,7 @@ class ImagePanel_Base(wx.Panel):
             if dt > 0:
                 if 'ArrayData' in self.output_pvs and self.data_shape[0] > 0:
                     nx, ny, nc = self.data_shape
+                    nbin = 2
                     d = 1.00*self.data.reshape(nx/nbin, nbin, ny/nbin, nbin, nc)
                     d = d.sum(axis=3).sum(axis=1)/(nbin*nbin)
                     d = d.astype(self.data.dtype)
