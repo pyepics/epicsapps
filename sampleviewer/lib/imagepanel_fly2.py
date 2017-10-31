@@ -126,11 +126,12 @@ class ImagePanel_Fly2(ImagePanel_Base):
                     quality=wx.IMAGE_QUALITY_HIGH):
         try:
             img = self.camera.cam.retrieveBuffer()
-        except:
+        except PyCapture2.Fc2error:
             time.sleep(0.025)
             img = self.camera.cam.retrieveBuffer()
 
-        ncols, nrows = img.getCols(), img.getRows()
+        nrows = img.getRows()
+        ncols = img.getCols()
         scale = max(scale, 0.05)
         width, height = int(scale*ncols), int(scale*nrows)
         if rgb:
