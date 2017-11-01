@@ -37,7 +37,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
                                               size=(800, 600),
                                               writer=writer,
                                               autosave_file=autosave_file,
-                                              datapush=False, **kws)
+                                              datapush=True, **kws)
         self.camera = fly2_camera.Fly2Camera(camera_id=camera_id)
         self.output_pv = output_pv
         self.output_pvs = {}
@@ -206,9 +206,8 @@ class ConfPanel_Fly2(ConfPanel_Base):
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
 
-        #
-        wids['datapush'] =  wx.CheckBox(self, -1, label='Show Image on Hutch Computer')
-        wids['datapush'].SetValue(0)
+        wids['datapush'] =  wx.CheckBox(self, -1, label='Send Image on Hutch Computer')
+        wids['datapush'].SetValue(1)
         wids['datapush'].Bind(wx.EVT_CHECKBOX, self.onEnableDataPush)
 
         sizer.Add(wids['datapush'], (i+1, 0), (1, 3), LEFT)
