@@ -50,7 +50,7 @@ class ImagePanel_Base(wx.Panel):
 
     def __init__(self, parent,  camera_id=0, writer=None, output_pv=None,
                  leftdown_cb=None, motion_cb=None, grab_data=True,
-                 autosave_file=None, draw_objects=None, **kws):
+                 autosave_file=None, datapush=True, draw_objects=None, **kws):
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
         self.img_w = 800.5
         self.img_h = 600.5
@@ -76,22 +76,32 @@ class ImagePanel_Base(wx.Panel):
         if self.motion_cb is not None:
             self.Bind(wx.EVT_MOTION, self.onMotion)
 
+        self.data = None
+        self.data_shape = (0, 0, 0)
+        self.datapush = datapush
+        self.datapush_lasttime = 0
+        self.datapush_delay = 0.25
+        self.full_image = None
+
         self.autosave = True
         self.last_autosave = 0
         self.autosave_tmpf = None
         self.autosave_file = None
-        self.autosave_time = 0.3
+        self.autosave_time = 2.0
         self.autosave_thread = None
         self.full_size = None
-        self.data = None
-        self.data_shape = (0, 0, 0)
-        self.last_data_time = 0
-        if autosave_file is not None:
-            path, tmp = os.path.split(autosave_file)
-            self.autosave_file = autosave_file
-            self.autosave_tmpf = autosave_file + '_tmp'
-            self.autosave_thread = Thread(target=self.onAutosave)
-            self.autosave_thread.daemon = True
+#         if autosave_file is not None:
+#             path, tmp = os.path.split(autosave_file)
+#             self.autosave_file = autosave_file
+#             self.autosave_tmpf = autosave_file + '_tmp'
+#             self.autosave_thread = Thread(target=self.onAutosave)
+#             self.autosave_thread.daemon = True
+#             self.autosave_thread.start()
+
+        self.datapush_thread = Thread(target=self.onDatapush)
+        self.datapush_thread.daemon = True
+        self.datapush_thread.start()
+
 
     def grab_data(self):
         self.data = self.GrabNumpyImage()
@@ -206,25 +216,49 @@ class ImagePanel_Base(wx.Panel):
 
     def onAutosave(self):
         "autosave process, run in separate thread"
-        # set autosave to False to abort autosaving
-        while self.autosave:
+        # set autosave to True/False to enable/disable autosaving
+        return
+#         while True:
+#             time.sleep(0.05)
+#             if not self.autosave:
+#                 time.sleep(0.5)
+#                 continue
+#             now = time.time()
+#             dtsave = now - (self.last_autosave + self.autosave_time)
+#             if dtsave > 0:
+#                 self.last_autosave = now
+#                 try:
+#                     fullimage = self.GrabWxImage(scale=1.0, rgb=True)
+#                     fullimage.SaveFile(self.autosave_tmpf, wx.BITMAP_TYPE_JPEG)
+#                     shutil.copy(self.autosave_tmpf, self.autosave_file)
+#                     time.sleep(self.autosave_time/2.0)
+#                 except:
+#                     pass
+
+    def onDatapush(self):
+        while True:
+            time.sleep(0.025)
+            if not self.datapush:
+                time.sleep(0.5)
+                continue
             now = time.time()
-            tfrac, tint = math.modf(now)
-            dt = now - (self.last_autosave + self.autosave_time)
-            if dt > 0:
-                if 'ArrayData' in self.output_pvs and self.data_shape[0] > 0:
-                    nx, ny, nc = self.data_shape
-                    nbin = 2
-                    d = 1.00*self.data.reshape(nx/nbin, nbin, ny/nbin, nbin, nc)
-                    d = d.sum(axis=3).sum(axis=1)/(nbin*nbin)
-                    d = d.astype(self.data.dtype)
-                    nx, ny, nc = d.shape
-                    self.output_pvs['ArrayData'].put(d.flatten())
-                    self.output_pvs['ArraySize0_RBV'].put(nx)
-                    self.output_pvs['ArraySize1_RBV'].put(ny)
-                    self.output_pvs['ArraySize2_RBV'].put(nc)
-                self.last_autosave = now
-            time.sleep(0.05)
+            dt = now - (self.datapush_lasttime + self.datapush_delay)
+            # print(" datapush? ", self.datapush, dt>0,
+            # 'ArrayData' in self.output_pvs, self.data_shape)
+            if (dt > 0 and 'ArrayData' in self.output_pvs and
+                self.data_shape[0] > 0):
+                nx, ny, nc = self.data_shape
+                nbin = 2
+                d = 1.00*self.data.reshape(nx/nbin, nbin, ny/nbin, nbin, nc)
+                d = d.sum(axis=3).sum(axis=1)/(nbin*nbin)
+                d = d.astype(self.data.dtype)
+                nx, ny, nc = d.shape
+                self.output_pvs['ArrayData'].put(d.flatten())
+                self.output_pvs['ArraySize0_RBV'].put(nx)
+                self.output_pvs['ArraySize1_RBV'].put(ny)
+                self.output_pvs['ArraySize2_RBV'].put(nc)
+                self.datapush_lasttime = now
+
 
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
