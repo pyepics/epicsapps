@@ -254,9 +254,9 @@ class ImagePanel_Base(wx.Panel):
                 d = d.astype(self.data.dtype)
                 nx, ny, nc = d.shape
                 self.output_pvs['ArrayData'].put(d.flatten())
-                self.output_pvs['ArraySize0_RBV'].put(nx)
+                self.output_pvs['ArraySize0_RBV'].put(nc)
                 self.output_pvs['ArraySize1_RBV'].put(ny)
-                self.output_pvs['ArraySize2_RBV'].put(nc)
+                self.output_pvs['ArraySize2_RBV'].put(nx)
                 self.datapush_lasttime = now
 
 
