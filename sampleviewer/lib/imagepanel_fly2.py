@@ -206,11 +206,10 @@ class ConfPanel_Fly2(ConfPanel_Base):
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
 
-        wids['datapush'] =  wx.CheckBox(self, -1, label='Send Image on Hutch Computer')
-        wids['datapush'].SetValue(1)
-        wids['datapush'].Bind(wx.EVT_CHECKBOX, self.onEnableDataPush)
-
-        sizer.Add(wids['datapush'], (i+1, 0), (1, 3), LEFT)
+        # wids['datapush'] =  wx.CheckBox(self, -1, label='Send Image on Hutch Computer')
+        # wids['datapush'].SetValue(1)
+        # wids['datapush'].Bind(wx.EVT_CHECKBOX, self.onEnableDataPush)
+        # sizer.Add(wids['datapush'], (i+1, 0), (1, 3), LEFT)
 
         pack(self, sizer)
         self.__initializing = False
@@ -233,6 +232,7 @@ class ConfPanel_Fly2(ConfPanel_Base):
         cinfo  = self.image_panel.camera.info
         self.title.SetLabel("Camera Model: %s" % (cinfo.modelName))
         self.title2.SetLabel("Serial #%d, Firmware %s" % (cinfo.serialNumber, cinfo.firmwareVersion))
+
     def onEnableDataPush(self, evt=None, **kws):
         self.image_panel.datapush = evt.IsChecked()
 
