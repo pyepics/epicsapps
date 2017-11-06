@@ -101,6 +101,8 @@ class StageFrame(wx.Frame):
                     center_cb=self.onMoveToCenter,
                     autosave_file=self.autosave_file)
 
+        autofocs_cb = self.onAutoFocus
+
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
             opts['output_pv'] = config['camera'].get('output_pv', None)
@@ -108,6 +110,7 @@ class StageFrame(wx.Frame):
         elif self.cam_type.startswith('adfly'):
             opts['prefix'] = self.cam_adpref
             ImagePanel, ConfPanel = ImagePanel_Fly2AD, ConfPanel_Fly2AD
+            autofocus_cb = None
         elif self.cam_type.startswith('area'):
             opts['prefix'] = self.cam_adpref
             ImagePanel, ConfPanel = ImagePanel_EpicsAD, ConfPanel_EpicsAD
@@ -133,7 +136,7 @@ class StageFrame(wx.Frame):
             self.ctrlpanel = ControlPanel(ppanel,
                                           groups=config['stage_groups'],
                                           config=config['stages'],
-                                          autofocus=self.onAutoFocus)
+                                          autofocus=autofocus_cb)
 
             self.confpanel = ConfPanel(ppanel,
                                        image_panel=self.imgpanel, **opts)
@@ -161,7 +164,7 @@ class StageFrame(wx.Frame):
             self.ctrlpanel = ControlPanel(ppanel,
                                           groups=config['stage_groups'],
                                           config=config['stages'],
-                                          autofocus=self.onAutoFocus)
+                                          autofocus=autofocus_cb)
 
             self.confpanel = ConfPanel(ppanel,
                                        image_panel=self.imgpanel, **opts)
