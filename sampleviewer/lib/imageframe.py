@@ -17,15 +17,15 @@ class ImageDisplayFrame(wx.Frame):
         self.label = wx.StaticText(panel, -1, " "*200, size=(300, -1))
 
         self.bitmap = wx.StaticBitmap(panel, -1,
-                  wx.BitmapFromBuffer(iw, ih,
-                    array.array('B', [220]*3*iw*ih)))
+                                      wx.BitmapFromBuffer(iw, ih,
+                                                          array.array('B', [220]*3*iw*ih)))
 
         self.Bind(wx.EVT_SIZE,  self.onSize)
         self.Bind(wx.EVT_CLOSE, self.onClose)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        sizer.Add(self.bitmap, 1, 
+        sizer.Add(self.bitmap, 1,
                   wx.ALL|wx.GROW|wx.ALIGN_CENTER,  3)
         sizer.Add(self.label, 0,
                   wx.ALL|wx.GROW|wx.ALIGN_CENTER,  2)
@@ -68,7 +68,7 @@ class ImageDisplayFrame(wx.Frame):
         winh = max(winh, 400)
         imgw, imgh = img.GetSize()
         scale = min((winw*1.0 - self.pad)/imgw, (winh*1.0 - self.pad)/imgh)
-        self.bitmap.SetBitmap(wx.BitmapFromImage(img.Scale(scale*imgw, 
+        self.bitmap.SetBitmap(wx.BitmapFromImage(img.Scale(scale*imgw,
                                                            scale*imgh)))
         self.Refresh()
 

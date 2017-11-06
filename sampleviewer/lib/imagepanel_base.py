@@ -79,8 +79,9 @@ class ImagePanel_Base(wx.Panel):
         self.data = None
         self.data_shape = (0, 0, 0)
         self.datapush = datapush
+        # self.datapush = False
         self.datapush_lasttime = 0
-        self.datapush_delay = 0.25
+        self.datapush_delay = 0.5
         self.full_image = None
 
         self.autosave = True
@@ -237,7 +238,7 @@ class ImagePanel_Base(wx.Panel):
 
     def onDatapush(self):
         while True:
-            time.sleep(0.025)
+            time.sleep(0.1)
             if not self.datapush:
                 time.sleep(0.5)
                 continue
@@ -282,7 +283,7 @@ class ImagePanel_Base(wx.Panel):
         dc_bitmap.SelectObject(Bitmap(image))
         dc_output = wx.MemoryDC()
 
-        out = wx.EmptyBitmap(width, height)
+        out = wx.Bitmap(width, height)
         dc_output.SelectObject(out)
 
         # draw image bitmap to output
