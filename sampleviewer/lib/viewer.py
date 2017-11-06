@@ -101,7 +101,7 @@ class StageFrame(wx.Frame):
                     center_cb=self.onMoveToCenter,
                     autosave_file=self.autosave_file)
 
-        autofocs_cb = self.onAutoFocus
+        autofocus_cb = self.onAutoFocus
 
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
