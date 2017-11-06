@@ -33,6 +33,7 @@ from .positionpanel import PositionPanel
 from .overlayframe import OverlayFrame
 
 from .imagepanel_fly2 import ImagePanel_Fly2, ConfPanel_Fly2
+from .imagepanel_fly2 import ImagePanel_Fly2AD, ConfPanel_Fly2AD
 from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
 from .imagepanel_weburl import ImagePanel_URL, ConfPanel_URL
 
@@ -99,10 +100,14 @@ class StageFrame(wx.Frame):
                     xhair_cb=self.onShowCrosshair,
                     center_cb=self.onMoveToCenter,
                     autosave_file=self.autosave_file)
+
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
             opts['output_pv'] = config['camera'].get('output_pv', None)
             ImagePanel, ConfPanel = ImagePanel_Fly2, ConfPanel_Fly2
+        elif self.cam_type.startswith('adfly'):
+            opts['prefix'] = self.cam_adpref
+            ImagePanel, ConfPanel = ImagePanel_Fly2AD, ConfPanel_Fly2AD
         elif self.cam_type.startswith('area'):
             opts['prefix'] = self.cam_adpref
             ImagePanel, ConfPanel = ImagePanel_EpicsAD, ConfPanel_EpicsAD
@@ -514,7 +519,7 @@ class StageFrame(wx.Frame):
         self.xhair_pixel = None
         if show:
             self.xhair_pixel = self.last_pixel
-            print "Set XHAIR ", self.xhair_pixel
+            # print "Set XHAIR ", self.xhair_pixel
 
     def onAFTimer(self, event=None, **kws):
         if self.af_done:
@@ -798,7 +803,7 @@ class StageFrame(wx.Frame):
         os.chdir(curpath)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, inifile=None, debug=True, ask_workdir=True,
+    def __init__(self, inifile=None, debug=False, ask_workdir=True,
                  orientation='landscape', **kws):
         self.inifile = inifile
         self.orientation = orientation
