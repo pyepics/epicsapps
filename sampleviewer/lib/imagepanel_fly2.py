@@ -5,7 +5,9 @@ import numpy as np
 import wx
 import time
 
-from epics import PV
+from epics import PV, Device, caput, poll
+from epics.wx import EpicsFunction
+
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 from epics.wx.utils import pack, FloatCtrl, Closure, add_button
 from epics.wx import DelayedEpicsCallback
@@ -84,7 +86,6 @@ class ImagePanel_Fly2(ImagePanel_Base):
         if self.confpanel is not None:
             self.confpanel.wids['shutter'].SetValue(exptime)
             self.confpanel.wids['shutter_auto'].SetValue(0)
-
 
     def AutoSetExposureTime(self):
         """auto set exposure time"""
@@ -288,3 +289,146 @@ class ConfPanel_Fly2(ConfPanel_Base):
                 self.camera.SetPropertyValue(prop, (red, blue), auto=auto)
         except:
             return
+
+
+class ImagePanel_Fly2AD(ImagePanel_Base):
+    img_attrs = ('ArrayData',
+                 'ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
+                 'ColorMode_RBV')
+
+    """Image Panel for FlyCapture2 camera"""
+    def __init__(self, parent, prefix=None, format='JPEG',
+                 writer=None, autosave_file=None, **kws):
+        super(ImagePanel_Fly2AD, self).__init__(parent, -1,
+                                                size=(800, 600),
+                                                writer=writer,
+                                                autosave_file=False, **kws)
+
+        self.format = format
+        self.set_prefix(prefix)
+        self.imgcount = 0
+        self.imgcount_start = 0
+        self.last_update = 0.0
+
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
+
+    def set_prefix(self, prefix):
+        self.prefix = prefix
+        self.ad_img = Device(prefix, delim='',
+                             attrs=self.img_attrs)
+        w, h = self.GetImageSize()
+        self.cam_name = prefix
+
+    def config_filesaver(self, prefix, format):
+        pass
+
+    def Start(self):
+        "turn camera on"
+        self.timer.Start(100)
+
+    def Stop(self):
+        "turn camera off"
+        self.timer.Stop()
+
+    def SetExposureTime(self, exptime):
+        "set exposure time"
+        pass
+
+    def AutoSetExposureTime(self):
+        """auto set exposure time"""
+        pass
+
+    def GetImageSize(self):
+        arrsize0 = self.ad_img.ArraySize0_RBV
+        arrsize1 = self.ad_img.ArraySize1_RBV
+        arrsize2 = self.ad_img.ArraySize2_RBV
+        self.arrsize   = (arrsize0, arrsize1, arrsize2)
+        self.colormode = self.ad_img.ColorMode_RBV
+
+        w, h  = arrsize1, arrsize2
+        self.img_w = float(w+0.5)
+        self.img_h = float(h+0.5)
+        return w, h
+
+    def GrabNumpyImage(self):
+        pass
+
+    def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
+        if self.ad_img is None:
+            print 'GrabWxImage .. no ad_img ', self.ad_img
+            return
+
+        width, height = self.GetImageSize()
+        now = time.time()
+        if (can_skip and (abs(now - self.last_update) < 0.15)):
+            return None
+        self.last_update = time.time()
+
+        im_mode = 'RGB'
+        self.im_size = (self.arrsize[1], self.arrsize[2])
+
+        dcount = self.arrsize[0] * self.arrsize[1] * self.arrsize[2]
+
+        rawdata = self.ad_img.PV('ArrayData').get(count=dcount)
+        time.sleep(0.1)
+        if rawdata is None:
+            return
+
+        if (self.ad_img.ColorMode_RBV == 0 and
+            isinstance(rawdata, np.ndarray) and
+            rawdata.dtype != np.uint8):
+            im_mode = 'I'
+            rawdata = rawdata.astype(np.uint32)
+        if im_mode in ('L', 'I'):
+            image = wx.EmptyImage(width, height)
+            imbuff = Image.frombuffer(im_mode, self.im_size, rawdata,
+                                      'raw',  im_mode, 0, 1)
+            image.SetData(imbuff.convert('RGB').tobytes())
+        elif im_mode == 'RGB':
+            rawdata.shape = (3, width, height)
+            rawdata = rawdata.astype(np.uint8)
+            if is_wxPhoenix:
+                image = wx.Image(width, height, rawdata)
+            else:
+                image = wx.ImageFromData(width, height, rawdata)
+        return image.Scale(int(scale*width), int(scale*height))
+
+class ConfPanel_Fly2AD(ConfPanel_Base):
+    img_attrs = ('ArrayData', 'ArraySize0_RBV', 'ArraySize1_RBV',
+                 'ArraySize2_RBV', 'ColorMode_RBV')
+
+    def __init__(self, parent, image_panel=None, prefix=None,
+                 center_cb=None, xhair_cb=None, **kws):
+        super(ConfPanel_Fly2AD, self).__init__(parent, center_cb=center_cb,
+                                                xhair_cb=xhair_cb)
+
+        sizer = self.sizer
+        self.image_panel = image_panel
+        self.SetBackgroundColour('#EEFFE')
+        self.title =  wx.StaticText(self, size=(285, 25),
+                                    label="Fly2 Camera Mirror")
+        labstyle  = wx.ALIGN_LEFT|wx.EXPAND|wx.ALIGN_BOTTOM
+        sizer.Add(self.title,               (0, 0), (1, 3), labstyle)
+        pack(self, sizer)
+        self.set_prefix(prefix)
+
+    @EpicsFunction
+    def set_prefix(self, prefix):
+        self.prefix = prefix
+        self.ad_img = Device(prefix + ':image1:', delim='',
+                             attrs=self.img_attrs)
+        self.title.SetLabel("Fly2AD: %s" % prefix)
+        self.connect_pvs()
+
+    @EpicsFunction
+    def connect_pvs(self, verbose=True):
+        if self.prefix is None or len(self.prefix) < 2:
+            return
+
+        time.sleep(0.025)
+        if not self.ad_img.PV('ColorMode_RBV').connected:
+            poll()
+            if not self.ad_img.PV('ColorMode_RBV').connected:
+                return
+        poll()
