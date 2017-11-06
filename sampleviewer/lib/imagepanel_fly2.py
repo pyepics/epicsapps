@@ -352,7 +352,7 @@ class ImagePanel_Fly2AD(ImagePanel_Base):
         return w, h
 
     def GrabNumpyImage(self):
-        pass
+        return self.ad_img.PV('ArrayData')
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         if self.ad_img is None:
