@@ -79,9 +79,8 @@ class ImagePanel_Base(wx.Panel):
         self.data = None
         self.data_shape = (0, 0, 0)
         self.datapush = datapush
-        # self.datapush = False
         self.datapush_lasttime = 0
-        self.datapush_delay = 0.5
+        self.datapush_delay = 5.0
         self.full_image = None
 
         self.autosave = True
@@ -244,7 +243,8 @@ class ImagePanel_Base(wx.Panel):
                 continue
             now = time.time()
             dt = now - (self.datapush_lasttime + self.datapush_delay)
-            # print(" datapush? ", self.datapush, dt>0,
+            # print(" datapush? ", self.datapush, self.datapush_delay)
+
             # 'ArrayData' in self.output_pvs, self.data_shape)
             if (dt > 0 and 'ArrayData' in self.output_pvs and
                 self.data_shape[0] > 0):

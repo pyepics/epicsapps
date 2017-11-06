@@ -207,7 +207,16 @@ class ConfPanel_Fly2(ConfPanel_Base):
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
 
-        # wids['datapush'] =  wx.CheckBox(self, -1, label='Send Image on Hutch Computer')
+        datapush_time = "%.1f" % self.image_panel.datapush_delay
+        wids['dpush_time'] =  FloatCtrl(self, value=datapush_time, maxval=1e6,
+                                        precision=1, minval=0,
+                                        action=self.onValue, act_on_losefocus=True,
+                                        action_kw={'prop':'autosave_time'}, size=(75, -1))
+
+        label = 'AutoSave Time (sec)'
+        sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)
+        sizer.Add(wids['dpush_time'],  (i, 1), (1, 1), LEFT)
+
         # wids['datapush'].SetValue(1)
         # wids['datapush'].Bind(wx.EVT_CHECKBOX, self.onEnableDataPush)
         # sizer.Add(wids['datapush'], (i+1, 0), (1, 3), LEFT)
@@ -278,6 +287,8 @@ class ConfPanel_Fly2(ConfPanel_Base):
             return
         if prop in ('wb_red', 'wb_blue', 'wb_auto'):
             prop = 'white_balance'
+        if prop == 'autosave_time':
+            self.image_panel.datapush_delay = float(value)
         try:
             if prop in ('shutter', 'gain', 'gamma'): # , 'brightness'):
                 auto = self.wids['%s_auto' % prop].GetValue()
@@ -356,7 +367,7 @@ class ImagePanel_Fly2AD(ImagePanel_Base):
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         if self.ad_img is None:
-            print 'GrabWxImage .. no ad_img ', self.ad_img
+            print( 'GrabWxImage .. no ad_img ', self.ad_img)
             return
 
         width, height = self.GetImageSize()
