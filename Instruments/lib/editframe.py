@@ -256,7 +256,11 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
             move_choices = ["%i" % (i+1) for i in range(len(ordered_pvs))]
             for instpv in ordered_pvs:
                 pv = instpv.pv
-                move_order = int(instpv.move_order)
+                move_order = instpv.move_order
+                if move_order is None:
+                    move_order = 1
+
+                move_order = int(move_order)
                 irow += 1
                 pvchoices = get_pvtypes(pv, instrument)
 
