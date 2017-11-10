@@ -17,7 +17,7 @@ def normalize_pvname(pvname):
     if '.' not in pvname:
         pvname = '%s.VAL' % pvname
     return pvname
-       
+
 def get_pvdesc(pvname):
     desc = pref = pvname
     if '.' in pvname:
@@ -27,22 +27,23 @@ def get_pvdesc(pvname):
     if descpv.connect():
         desc = descpv.get()
     return desc
-        
+
 
 def get_pvtypes(pvobj, instrument=None):
     """create tuple of choices for PV Type for database,
     which sets how to display PV entry.
-    
+
     if pvobj is an epics.PV, the epics record type and
     pv.type are used to select the choices.
 
     if pvobj is an instrument.PV (ie, a db entry), the
     pvobj.pvtype.name field is used.
-    """    
+    """
     inst_pv = None
     if instrument is not None:
         inst_pv = instrument.PV
-    
+
+    print("Get PV Types ", pvobj, instrument)
     choices = ['numeric', 'string']
     if isinstance(pvobj, epics.PV):
         prefix = pvobj.pvname
@@ -55,21 +56,18 @@ def get_pvtypes(pvobj, instrument=None):
             typename = 'motor'
         if pvobj.type == 'char' and pvobj.count > 1:
             typename = 'string'
-            
+
     elif inst_pv is  not None and isinstance(pvobj, inst_pv):
         typename = str(pvobj.pvtype.name)
 
     # now we have typename: use as default, add alternate choices
     if typename == 'motor':
-        choices = ['numeric', 'string']
-    elif typename == 'enum':
-        choices = ['numeric', 'string']
-    elif typename == 'string':
-        choices = ['numeric']
-    else:
-        typename = None
-    if typename is not None:
-        choices.insert(0, typename)
+        choices = ['motor', 'numeric', 'string']
+    elif typename in ('enum', 'time_enum'):
+        choices = ['enum', 'numeric', 'string']
+    elif typename in ('string', 'time_string'):
+        choices = ['string', 'numeric']
+
     return tuple(choices)
 
 def dumpsql(dbname, fname=None):
@@ -77,7 +75,7 @@ def dumpsql(dbname, fname=None):
     if fname is None:
         fname =  '%s_dump.sql' % dbname
     os.system('echo .dump | sqlite3 %s > %s' % (dbname, fname))
-    
+
 def backup_versions(fname, max=5):
     """keep backups of a file -- up to 'max', in order"""
     if not os.path.exists(fname):
@@ -90,13 +88,13 @@ def backup_versions(fname, max=5):
             try:
                 shutil.move(fb0, fb1)
             except:
-                pass 
+                pass
     try:
         shutil.move(fname, "%s_1%s" % (base, ext))
     except:
         pass
 
-    
+
 def save_backup(fname, outfile=None):
     """make a copy of fname"""
     if not os.path.exists(fname):
@@ -148,7 +146,7 @@ class YesNo(wx.Choice):
         self.Clear()
         self.SetItems(choices)
         self.choices = choices
-        
+
     def Select(self, choice):
         if isinstance(choice, int):
             self.SetSelection(0)
@@ -181,9 +179,9 @@ class ConnectDialog(wx.Dialog):
 
         if filelist is not None:
             self.filebrowser.SetValue(filelist[0])
-        
+
         self.message = SimpleText(self, 'Select DB File', size=(500,-1))
-        
+
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.message, 0, wx.ALIGN_CENTER|wx.ALL|wx.GROW, 1)
         sizer.Add(self.filebrowser, 1, wx.ALIGN_CENTER|wx.ALL|wx.GROW, 1)
@@ -192,11 +190,11 @@ class ConnectDialog(wx.Dialog):
         sizer.Add(line, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.TOP, 5)
 
         btnsizer = wx.StdDialogButtonSizer()
-        
+
         if wx.Platform != "__WXMSW__":
             btn = wx.ContextHelpButton(self)
             btnsizer.AddButton(btn)
-        
+
         btn = wx.Button(self, wx.ID_OK)
         btn.SetHelpText("Use this Instruments File")
         btn.SetDefault()
@@ -210,4 +208,3 @@ class ConnectDialog(wx.Dialog):
 
         self.SetSizer(sizer)
         sizer.Fit(self)
-
