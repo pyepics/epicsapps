@@ -43,7 +43,6 @@ def get_pvtypes(pvobj, instrument=None):
     if instrument is not None:
         inst_pv = instrument.PV
 
-    print("Get PV Types ", pvobj, instrument)
     choices = ['numeric', 'string']
     if isinstance(pvobj, epics.PV):
         prefix = pvobj.pvname
