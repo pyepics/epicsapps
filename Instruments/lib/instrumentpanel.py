@@ -324,6 +324,8 @@ class InstrumentPanel(wx.Panel):
             pvname, comp = val
             connected, pvtype, pv = comp
             grow = 0
+            # print(" comp : ", icomp, connected, pvtype, pv)
+
             panel = None
             if pvtype == 'motor':
                 try:
@@ -334,43 +336,55 @@ class InstrumentPanel(wx.Panel):
             elif pv is not None and hasattr(pv, 'pvname') and pv.pvname not in skip:
                 panel = wx.Panel(self.leftpanel)
                 sizer = wx.BoxSizer(wx.HORIZONTAL)
-
-                label = SimpleText(panel, '  %s' % pvname,
+                label = SimpleText(panel, pvname,
                                    colour=self.colors.pvname,
-                                   minsize=(180,-1), style=wx.ALIGN_LEFT)
+                                   minsize=(250,-1), style=wx.ALIGN_LEFT)
+                desc = ''
+                if pvname.endswith('.VAL'):
+                    try:
+                        desc = epics.caget(pvname[:-3] + 'DESC')
+                    except:
+                        pass
+                dlabel = SimpleText(panel, desc,
+                                    colour=self.colors.pvname,
+                                    minsize=(250,-1), style=wx.ALIGN_LEFT)
 
-                if pvtype == 'enum':
-                    ctrl = PVEnumChoice(panel, pv=pv, size=(120, -1))
-                elif pvtype in ('string', 'unicode'):
-                    ctrl = PVTextCtrl(panel, pv=pv, size=(120, -1))
+                if 'enum' in pvtype:
+                    ctrl = PVEnumChoice(panel, pv=pv, size=(150, -1))
+                elif 'string' in pvtype: #  in ('string', 'unicode'):
+                    ctrl = PVTextCtrl(panel, pv=pv, size=(150, -1))
                 else:
-                    ctrl = PVFloatCtrl(panel, pv=pv, size=(120, -1))
+                    ctrl = PVFloatCtrl(panel, pv=pv, size=(150, -1))
 
                 current_comps.append(ctrl)
                 current_comps.append(label)
 
-                sizer.Add(label, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
-                sizer.Add(ctrl,  0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
+                sizer.Add(label,  0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
+                sizer.Add(ctrl,   0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
+                sizer.Add(dlabel, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
 
                 if (pvtype != 'motor' and icomp < len(pvcomps)-1 and
                     pvcomps[icomp+1][1][1] != 'motor'): #  and False):
+                    pass
+                    a = """
                     conn, pvtype2, pv2 = pvcomps[icomp+1][1]
                     skip.append(pv2.pvname)
 
                     l2 = SimpleText(panel, '  %s' % pv2.pvname,
                                     colour=self.colors.pvname,
                                     minsize=(180,-1), style=wx.ALIGN_LEFT)
-                    if pvtype2 == 'enum':
-                        c2 = PVEnumChoice(panel, pv=pv2, size=(120, -1))
-                    elif pvtype2 in ('string', 'unicode'):
-                        c2 = PVTextCtrl(panel, pv=pv2, size=(120, -1))
+                    if 'enum' in pvtype2:
+                        c2 = PVEnumChoice(panel, pv=pv2, size=(150, -1))
+                    elif 'string' in pvtype2: #  in ('string', 'unicode'):
+                        c2 = PVTextCtrl(panel, pv=pv2, size=(150, -1))
                     else:
-                        c2 = PVFloatCtrl(panel, pv=pv2, size=(120, -1))
+                        c2 = PVFloatCtrl(panel, pv=pv2, size=(150, -1))
 
                     sizer.Add(l2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
                     sizer.Add(c2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
                     current_comps.append(c2)
                     current_comps.append(l2)
+                    """
                 pack(panel, sizer)
 
             if panel is not None:
@@ -463,7 +477,6 @@ class InstrumentPanel(wx.Panel):
 
         #   pvtype  = get_pvtypes(pv)[0]
         self.pv_components[pvname] = (True, pvtype, pv)
-        # print("PV Comp ", pvname, pv, pvtype)
         self.pvs[pvname] = pv
         # self.db.set_pvtype(pvname, pvtype)
 
