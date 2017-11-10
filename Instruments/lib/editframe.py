@@ -253,7 +253,10 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                       (2, 3), (1, 1), RSTY, 2)
 
             ordered_pvs  = db.get_ordered_instpvs(inst)
-            move_choices = ["%i" % (i+1) for i in range(len(ordered_pvs))]
+            move_choices = ["1"]
+            if len(ordered_pvs) > 1:
+                move_choices = ["%i" % (i+1) for i in range(len(ordered_pvs))]
+
             for instpv in ordered_pvs:
                 pv = instpv.pv
                 move_order = instpv.move_order
