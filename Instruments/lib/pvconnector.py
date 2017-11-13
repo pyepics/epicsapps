@@ -58,14 +58,12 @@ class EpicsPVList(object):
     def onTimer(self, event=None):
         "timer event handler: looks for in_progress, may timeout"
         time.sleep(0.01)
-
         if len(self.in_progress) == 0:
             return
-
         in_progress = self.in_progress.keys()
+        # print("PV Connect timer ", len(in_progress))
         for pvname in in_progress:
             wid, action, xtime = self.in_progress[pvname]
-            # print 'waiting for connect: ', pvname
             if action is not None:
                 self.__connect(pvname)
             if time.time() - xtime > self.timeout:
@@ -83,17 +81,16 @@ class EpicsPVList(object):
 
         if pvname in self.pvs:
             return
-        self.pvs[pvname] = epics.get_pv(pvname)
+        self.pvs[pvname] = epics.get_pv(pvname, form='native')
         self.in_progress[pvname] = (None, None, time.time())
         if is_motor:
             idot = pvname.find('.')
             basname = pvname[:idot]
-            for ext in MOTOR_FIELDS:
-                pvname = "%s%s" % (basname, ext)
-                # self.need_connecting.append(pvname)
-                self.pvs[pvname] = epics.get_pv(pvname)
-                self.in_progress[pvname] = (None, None, time.time())
-
+            # for ext in MOTOR_FIELDS:
+            #    pvname = "%s%s" % (basname, ext)
+            #    # self.need_connecting.append(pvname)
+            #    self.pvs[pvname] = epics.get_pv(pvname)
+            #    self.in_progress[pvname] = (None, None, time.time())
 
     def show_unconnected(self):
         all, unconn =  0, 0
@@ -103,8 +100,6 @@ class EpicsPVList(object):
                 print(" Not connected: ", name)
                 unconn += 1
             time.sleep(0.001)
-        # print(" Done : %i of %i unconnected" % (unconn, all))
-
 
     @EpicsFunction
     def connect_pv(self, pvname, is_motor=False, wid=None, action=None):
@@ -119,15 +114,15 @@ class EpicsPVList(object):
         if pvname in self.pvs:
             return
         if pvname not in self.pvs:
-            self.pvs[pvname] = epics.get_pv(pvname)
+            self.pvs[pvname] = epics.get_pv(pvname, form='native')
             self.in_progress[pvname] = (wid, action, time.time())
         if is_motor:
             idot = pvname.find('.')
             basname = pvname[:idot]
-            for ext in MOTOR_FIELDS:
-                pvname = "%s%s" % (basname, ext)
-                self.pvs[pvname] = epics.get_pv(pvname)
-                self.in_progress[pvname] = (wid, action, time.time())
+            # for ext in MOTOR_FIELDS:
+            #     pvname = "%s%s" % (basname, ext)
+            #     self.pvs[pvname] = epics.get_pv(pvname)
+            #     self.in_progress[pvname] = (wid, action, time.time())
 
     @EpicsFunction
     def add_pv(self, pv, wid=None, action=None):
@@ -142,9 +137,8 @@ class EpicsPVList(object):
 
         # print ' __connect!! ', pvname
         if pvname not in self.pvs:
-            self.pvs[pvname] = epics.get_pv(pvname)
+            self.pvs[pvname] = epics.get_pv(pvname, form='native')
         pv = self.pvs[pvname]
-
         if not self.pvs[pvname].connected:
             return
 
