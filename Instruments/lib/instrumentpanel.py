@@ -485,13 +485,13 @@ class InstrumentPanel(wx.Panel):
         values = {}
         for pv in self.pvs.values():
             values[pv.pvname] = pv.get(as_string=True)
-        print("Saving Current Position ", posname, values)
+        # print("Saving Current Position ", posname, values)
         self.db.save_position(posname, self.inst, values)
         self.write("Saved position '%s' for '%s'" % (posname, self.inst.name))
 
     def onSavePosition(self, evt=None):
         posname = evt.GetString().strip()
-        print("onSave Position ", evt, posname)
+        # print("onSave Position ", evt, posname)
         verify = int(self.db.get_info('verify_overwrite'))
         if verify and posname in self.pos_list.GetItems():
 
