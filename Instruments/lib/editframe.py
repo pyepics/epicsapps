@@ -311,7 +311,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                              colour=self.colors.title, style=CSTY),
                   (irow, 3), (1, 1), RSTY, 2)
         # New PVs
-        for npv in range(5):
+        for npv in range(8):
             irow += 1
             name = pvNameCtrl(self, panel, value='', size=(175, -1))
             pvtype = PVTypeChoice(panel)
@@ -375,7 +375,6 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
             if pvname not in self.epics_pvs:
                 self.epics_pvs[pvname] = epics.PV(pvname)
             self.connecting_pvs[pvname] = (wid, time.time())
-
             if not self.etimer.IsRunning():
                 self.etimer.Start(150)
 
@@ -383,10 +382,14 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         "timer event handler: look for connecting_pvs give up after 30 seconds"
         if len(self.connecting_pvs) == 0:
             self.etimer.Stop()
-        for pvname in self.connecting_pvs:
-            self.new_pv_connected(pvname)
-            if time.time() - self.connecting_pvs[pvname][1] > 30:
-                self.connecting_pvs.pop(pvname)
+        try:
+            for pvname in self.connecting_pvs:
+                self.new_pv_connected(pvname)
+                if time.time() - self.connecting_pvs[pvname][1] > 15:
+                    self.connecting_pvs.pop(pvname)
+        except:
+            pass
+
 
     @EpicsFunction
     def new_pv_connected(self, pvname):
@@ -417,6 +420,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
 
     def OnDone(self, event=None):
         """ Done Button Event: save and exit"""
+        # print(" On Done1 ", event)
         instpanel = self.parent.nb.GetCurrentPage()
         db = instpanel.db
         inst = instpanel.inst
@@ -442,7 +446,12 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                     pvtype = str(entry['type'].GetStringSelection())
                     tc_order = int(entry['tc_order'].GetSelection() + 1)
                     new_pvs[entry['index']] = (pvname, pvtype, tc_order)
-        # print 'Edit Instrument Done: ADD PV ! ', new_pvs
+
+
+        self.etimer.Stop()
+        for i in list(self.connecting_pvs.keys()):
+            self.connecting_pvs.pop(i)
+
         for newpvs in new_pvs:
             if newpvs is not None:
                 pvname, pvtype, tc_order = newpvs
@@ -467,26 +476,23 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                     db.set_pvtype(pvname, newtype)
                     instpanel.PV_Panel(pvname)
 
-
         db.commit()
         time.sleep(0.5)
+        self.etimer.Stop()
 
         # set order for PVs (as for next time)
         inst = db.get_instrument(inst.name)
         instpvs = db.get_ordered_instpvs(inst)
         for opv in instpvs:
             opv.display_order = -1
-
         for i, pv in enumerate(inst.pvs):
             for opv in instpvs:
                 if opv.pv == pv:
                     opv.display_order = i
 
         for opv in instpvs:
-            if opv.display_order == -1:
-                i = i + 1
-                opv.display_order = i
-
+            i = i + 1
+            opv.display_order = i
         db.commit()
         self.Destroy()
 
