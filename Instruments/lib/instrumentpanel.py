@@ -352,7 +352,7 @@ class InstrumentPanel(wx.Panel):
                 if 'enum' in pvtype:
                     ctrl = PVEnumChoice(panel, pv=pv, size=(150, -1))
                 elif 'string' in pvtype: #  in ('string', 'unicode'):
-                    ctrl = PVTextCtrl(panel, pv=pv, size=(150, -1))
+                    ctrl = PVTextCtrl(panel, pv=pv, size=(200, -1))
                 else:
                     ctrl = PVFloatCtrl(panel, pv=pv, size=(150, -1))
 
@@ -485,11 +485,13 @@ class InstrumentPanel(wx.Panel):
         values = {}
         for pv in self.pvs.values():
             values[pv.pvname] = pv.get(as_string=True)
+        print("Saving Current Position ", posname, values)
         self.db.save_position(posname, self.inst, values)
         self.write("Saved position '%s' for '%s'" % (posname, self.inst.name))
 
     def onSavePosition(self, evt=None):
         posname = evt.GetString().strip()
+        print("onSave Position ", evt, posname)
         verify = int(self.db.get_info('verify_overwrite'))
         if verify and posname in self.pos_list.GetItems():
 
@@ -508,6 +510,7 @@ class InstrumentPanel(wx.Panel):
         self.save_current_position(posname)
         if posname not in self.pos_list.GetItems():
             self.pos_list.Append(posname)
+        evt.Skip()
 
     @EpicsFunction
     def restore_position(self, posname, exclude_pvs=None, timeout=60.0):
