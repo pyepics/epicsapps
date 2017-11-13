@@ -23,7 +23,7 @@ def get_pvdesc(pvname):
     if '.' in pvname:
         pref = pvname[:pvname.find('.')]
     t0 = time.time()
-    descpv = epics.PV(pref + '.DESC')
+    descpv = epics.get_pv(pref + '.DESC', form='native')
     if descpv.connect():
         desc = descpv.get()
     return desc
