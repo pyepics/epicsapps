@@ -53,14 +53,13 @@ class InstrumentFrame(wx.Frame):
                           size=(925, -1), **kwds)
 
         # splash = AS.AdvancedSplash(self, timeout=5000
-
+        t0 = self.t0 = time.time()
 
         self.pvlist = EpicsPVList(self)
 
         self.db, self.dbname = self.connect_db(dbname)
         if self.db is None:
             return
-
         self.connected = {}
         self.panels = {}
         self.epics_server = None
@@ -70,6 +69,7 @@ class InstrumentFrame(wx.Frame):
         self.SetBackgroundColour(self.colors.bg)
 
         self.Bind(wx.EVT_CLOSE, self.onClose)
+
         self.create_Statusbar()
         self.create_Menus()
         self.create_Frame()
@@ -78,6 +78,7 @@ class InstrumentFrame(wx.Frame):
     def connect_db(self, dbname=None, new=False):
         """connects to a db, possibly creating a new one"""
         dlg = None
+        # print("connect db top %.3f sec " % (time.time()-self.t0))
         if dbname is None:
             filelist = self.config.get_dblist()
             if new:
@@ -89,11 +90,12 @@ class InstrumentFrame(wx.Frame):
                 if not dbname.endswith('.ein'):
                     dbname = "%s.ein" % dbname
             else:
-                print(" ... Dlg Destroy")
+                # print(" ... Dlg Destroy")
                 dlg.Destroy()
                 return None, dbname
 
         db = InstrumentDB()
+        # print("connect db empty db %.3f sec " % (time.time()-self.t0))
         if isInstrumentDB(dbname):
             db.connect(dbname)
             set_hostpid = True
@@ -114,7 +116,7 @@ class InstrumentFrame(wx.Frame):
         if dlg is not None:
             dlg.message.SetLabel("Connecting to Epics PVs in database")
         for pv in db.get_allpvs():
-            self.pvlist.init_connect(pv.name, is_motor=(4==pv.pvtype_id))
+            self.pvlist.init_connect(pv.name) # , is_motor=(4==pv.pvtype_id))
         return db, dbname
 
     def create_Frame(self):
@@ -475,20 +477,23 @@ class InstrumentFrame(wx.Frame):
         time.sleep(0.1)
         for name, pv in self.pvlist.pvs.items():
             try:
-               pv.clear_callbacks()
+                pv.clear_callbacks()
+                # pv = None
             except:
                 pass
-        time.sleep(0.01)
+        time.sleep(0.10)
+        self.pvlist.etimer.Stop()
+        self.server_timer.Stop()
         if self.epics_server is not None:
             self.epics_server.Shutdown()
-        time.sleep(0.1)
-
+        time.sleep(0.10)
         self.Destroy()
 
 
 class EpicsInstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, conf=None, dbname=None, **kws):
+    def __init__(self, conf=None, dbname=None, debug=False, **kws):
         self.conf  = conf
+        self.debug = debug
         self.dbname  = dbname
         wx.App.__init__(self)
 
@@ -496,17 +501,15 @@ class EpicsInstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         self.Init()
         frame = InstrumentFrame(conf=self.conf, dbname=self.dbname)
         frame.Show()
-        # self.SetTopWindow(frame)
+        self.SetTopWindow(frame)
+        if self.debug:
+            self.ShowInspectionTool()
         return True
 
 if __name__ == '__main__':
     conf = None
     dbname = None
-    inspect = True
-    if inspect:
-        app = EpicsInstrumentApp(dbname=dbname, conf=conf)
-    else:
-        app = wx.App()
-        InstrumentFrame(conf=conf, dbname=dbname).Show()
+    inspect = False
+    app = EpicsInstrumentApp(dbname=dbname, debug=inspect, conf=conf)
 
     app.MainLoop()
