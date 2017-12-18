@@ -53,6 +53,18 @@ def image_blurriness(imgpanel, full=False):
         img = img.sum(axis=2)
 
     w, h = img.shape
+    w1, w2, h1, h2 = int(w/5.0), int(4*w/5.0), int(h/5.0), int(4*h/5.0)
+    img = img[w1:w2, h1:h2]
+    sharpness = ((img -img.mean())**2).sum()
+    return -sharpness
+
+def image_blurriness_sobel_entropy(imgpanel, full=False):
+    """ get image blurriness of central half of intensity"""
+    img = imgpanel.GrabNumpyImage().astype(np.float32)
+    if len(img.shape) == 3:
+        img = img.sum(axis=2)
+
+    w, h = img.shape
     w1, w2, h1, h2 = int(w/4.0), int(3*w/4.0), int(h/4.0), int(3*h/4.0)
     img = img[w1:w2, h1:h2]
     img[np.where(img<0.5)] = 0.5
@@ -565,14 +577,17 @@ class StageFrame(wx.Frame):
         # start trying both directions:
 
         def get_score():
-            sobel, entropy = image_blurriness(self.imgpanel)
-            return 0.5*entropy - sobel
+            # sobel, entropy = image_blurriness(self.imgpanel)
+            # return 0.5*entropy - sobel
+            score = image_blurriness(self.imgpanel)
+            print("Image blurry score = ", score)
+            return score
 
         score_start = best_score = get_score()
         best_pos = start_pos
 
         zstage.put(start_pos+step/2.0, wait=True)
-        time.sleep(0.15)
+        time.sleep(0.1)
         score_plus = get_score()
         direction = -1
         if score_plus < score_start:
@@ -595,8 +610,8 @@ class StageFrame(wx.Frame):
             time.sleep(0.15)
             score = get_score() # image_blurriness(self.imgpanel)
             report('Auto-focussing step=%.3f' % step)
-            # print 'Focus %2.2i: (%.3f, %.2f) best=(%.3f, %.2f) step=%.3f' % (
-            #     count, pos, score, best_pos, best_score, step*direction)
+            print('Focus %2.2i: (%.3f, %.2f) best=(%.3f, %.2f) step=%.3f' % (
+                count, pos, score, best_pos, best_score, step*direction))
             posvals.append(pos)
             scores.append(score)
             if score < best_score:
@@ -724,11 +739,10 @@ class StageFrame(wx.Frame):
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
 
-
     def onReportBlurry(self, event=None):
-        score = image_blurriness(self.imgpanel, full=True)
-        tscore = -(5*score[0] - score[1])
-        print(" blurriness: %.3f  %.3f -> %.3f " % (score[0], score[1], tscore))
+        score = image_blurriness(self.imgpanel)
+        # tscore = -(5*score[0] - score[1])
+        print(" blurriness = %.3f" % (score))
 
     def onStartProjections(self, event=None):
         try:
