@@ -104,6 +104,12 @@ class ImagePanel_Fly2(ImagePanel_Base):
             else:
                 # print "auto set exposure done"
                 break
+            pgain = self.camera.GetProperty('gain')
+            if scale < 1 and pgain > 2:
+                self.confpanel.wids['gain_auto'].SetValue(0)
+                self.camera.SetPropertyValue('gain', 2.0, auto=False)
+                self.confpanel.wids['gain'].SetValue(gain)
+
             if scale > 0:
                 scale = max(0.2, min(5.0, scale))
                 atime = self.camera.GetProperty('shutter').absValue
