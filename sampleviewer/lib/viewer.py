@@ -51,11 +51,10 @@ def image_blurriness(imgpanel, full=False):
     img = imgpanel.GrabNumpyImage().astype(np.float32)
     if len(img.shape) == 3:
         img = img.sum(axis=2)
-
     w, h = img.shape
     w1, w2, h1, h2 = int(w/5.0), int(4*w/5.0), int(h/5.0), int(4*h/5.0)
     img = img[w1:w2, h1:h2]
-    sharpness = ((img -img.mean())**2).sum()
+    sharpness = ((img -img.mean())**2).sum()/(w*h)
     return -sharpness
 
 def image_blurriness_sobel_entropy(imgpanel, full=False):
@@ -567,72 +566,59 @@ class StageFrame(wx.Frame):
         self.imgpanel.AutoSetExposureTime()
         report('Auto-focussing start')
 
+        def make_fibs(max=3000):
+            f = [1., 2.]
+            i = 0
+            while True:
+                val = f[i] + f[i+1]
+                if val > max:
+                    break
+                f.append(val)
+                i += 1
+            return f
+
         zstage = self.ctrlpanel.motors['z']._pvs['VAL']
 
         start_pos = zstage.get()
-        min_pos = start_pos - 2.50
-        max_pos = start_pos + 2.50
+        focus_data = []
 
-        step, min_step = 0.003*(81), 0.002
-        # start trying both directions:
-
-        def get_score():
-            # sobel, entropy = image_blurriness(self.imgpanel)
-            # return 0.5*entropy - sobel
+        def get_score(pos):
+            zpos = start_pos + pos * 0.001
+            zstage.put(zpos, wait=True)
             score = image_blurriness(self.imgpanel)
-            print("Image blurry score = ", score)
+            dat = (pos, zstage.get(), score)
+            focus_data.append(dat)
             return score
 
-        score_start = best_score = get_score()
-        best_pos = start_pos
-
-        zstage.put(start_pos+step/2.0, wait=True)
-        time.sleep(0.1)
-        score_plus = get_score()
-        direction = -1
-        if score_plus < score_start:
-            direction = 1
-            best_score = score_plus
-            best_post = start_pos + step/2.0
-
-        zstage.put(best_pos, wait=True)
-        count = 0
         report('Auto-focussing finding focus')
-        posvals = []
-        scores  = []
-        while step >= min_step and count < 32:
-            self.imgpanel.Refresh()
-            count += 1
-            pos = zstage.get() + step * direction
-            if pos < min_pos or pos > max_pos:
-                break
-            zstage.put(pos, wait=True, timeout=3.0)
-            time.sleep(0.15)
-            score = get_score() # image_blurriness(self.imgpanel)
-            report('Auto-focussing step=%.3f' % step)
-            print('Focus %2.2i: (%.3f, %.2f) best=(%.3f, %.2f) step=%.3f' % (
-                count, pos, score, best_pos, best_score, step*direction))
-            posvals.append(pos)
-            scores.append(score)
-            if score < best_score:
-                best_score = score
-                best_pos = pos
+        start, stop = -750, 750
+        fibs = make_fibs(max=abs(stop-start))
+        fibs.pop()
+        nfibs = len(fibs)
+        step = fibs[nfibs-3] / fibs[nfibs-1]
+        best = (start+stop)/2
+        z1, z2 = int(start + step*(stop-start)), int(stop - step*(stop-start))
+        score1, score2 = get_score(z1), get_score(z2)
+
+        for i in range(nfibs-1):
+            step = fibs[nfibs-i-3] / fibs[nfibs-i-1]
+            report("Auto-focussing %i " %(i+1))
+            if score1 > score2:
+                start = z1
+                best = int(stop - step*(stop-start))
+                z1, z2 = z2, best
+                score1, score2 = score2, get_score(best)
             else:
-                # best_score = score
-                step = step / 3.0
-                if step < min_step:
-                    break
-                direction = -direction
-                zstage.put(best_pos, wait=True, timeout=3.0)
-                time.sleep(0.15)
-            last_score = score
-        zstage.put(best_pos)
-        self.af_done = True
-        self.af_data = (posvals, scores)
-        report('Auto-focussing done.')
+                stop = z2
+                best = int(start + step*(stop-start))
+                z1, z2 = best, z1
+                score1, score2 = get_score(best), score1
+            if abs(z1-z2) < 2:
+                break
 
-
-
+        get_score(best)
+        report('Auto-focussing done. ')
+        self.ctrlpanel.af_button.Enable()
 
     def onMoveToCenter(self, event=None, **kws):
         "bring last pixel to image center"
