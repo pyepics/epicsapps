@@ -599,8 +599,7 @@ class StageFrame(wx.Frame):
         best = (start+stop)/2
         z1, z2 = int(start + step*(stop-start)), int(stop - step*(stop-start))
         score1, score2 = get_score(z1), get_score(z2)
-        # print(" search %i points " % nfibs, z1, z2)
-        for i in range(nfibs-1):
+        for i in range(nfibs-2):
             step = fibs[nfibs-i-3] / fibs[nfibs-i-1]
             report("Auto-focussing %i " %(i+1))
             if score1 > score2:
