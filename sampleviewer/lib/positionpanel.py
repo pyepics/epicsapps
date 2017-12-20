@@ -255,7 +255,7 @@ class PositionPanel(wx.Panel):
         self.parent = parent
         self.viewer = viewer
         self.config = config
-        self.poslist_query = None
+        self.poslist_select = None
         self.image_display = None
         self.pos_name =  wx.TextCtrl(self, value="", size=(300, 25),
                                      style= wx.TE_PROCESS_ENTER)
@@ -292,7 +292,7 @@ class PositionPanel(wx.Panel):
         self.get_positions_from_db()
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
-        self.timer.Start(5000)
+        self.timer.Start(2500)
 
     def init_scandb(self):
         dbconn = self.config
@@ -542,15 +542,14 @@ class PositionPanel(wx.Panel):
         self.last_refresh = 0
 
     def onTimer(self, evt=None):
-        if self.poslist_query is None:
+        if self.poslist_select is None:
             inst = self.instdb.get_instrument(self.instname)
-            cls, tab = self.instdb.scandb.get_table('positions')
+            cls, tab = self.instdb.scandb.get_table('position')
 
-            self.poslist_select = tab.select().where(tab.c.instruments_id==inst.id)
+            self.poslist_select = tab.select().where(tab.c.instrument_id==inst.id)
         npos = len(self.poslist_select.execute().fetchall())
         now = time.time()
-        if (npos != len(self.posnames) or
-            (now - self.last_refresh) > 600.0):
+        if (npos != len(self.posnames) or (now - self.last_refresh) > 900.0):
             # print("Timer ", npos, len(self.posnames), now-self.last_refresh)
             self.get_positions_from_db()
             self.last_refresh = now
