@@ -46,7 +46,9 @@ Would you like this application to use this instrument file?
 """
 
 class InstrumentFrame(wx.Frame):
-    def __init__(self, parent=None, conf=None, dbname=None, **kwds):
+    def __init__(self, parent=None, conf=None, dbname=None,
+                 server='sqlite', user='', password='', host='', port=None,
+                 **kwds):
         self.config = InstrumentConfig(name=conf)
 
         wx.Frame.__init__(self, parent=parent, title='Epics Instruments',
@@ -57,7 +59,9 @@ class InstrumentFrame(wx.Frame):
 
         self.pvlist = EpicsPVList(self)
 
-        self.db, self.dbname = self.connect_db(dbname)
+        self.db, self.dbname = self.connect_db(dbname, server=server,
+                                               host=host, port=port,
+                                               user=user, password=password)
         if self.db is None:
             return
         self.connected = {}
@@ -75,7 +79,8 @@ class InstrumentFrame(wx.Frame):
         self.create_Frame()
         self.enable_epics_server()
 
-    def connect_db(self, dbname=None, new=False):
+    def connect_db(self, dbname=None, new=False, server='sqlite',
+                   user='', password='', host='', port=None):
         """connects to a db, possibly creating a new one"""
         dlg = None
         # print("connect db top %.3f sec " % (time.time()-self.t0))
@@ -248,6 +253,8 @@ class InstrumentFrame(wx.Frame):
         """connect to an epics db to act as a server for external access."""
         connect = False
         epics_prefix = ''
+        if not self.db.server.startswith('sqlite'):
+            return
         if (1 == int(self.db.get_info('epics_use', default=0))):
             epics_prefix = self.db.get_info('epics_prefix', default='')
             if len(epics_prefix) > 1:
