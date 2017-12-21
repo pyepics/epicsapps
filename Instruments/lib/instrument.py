@@ -169,8 +169,9 @@ class Instrument_Postcommand(_BaseTable):
 
 class InstrumentDB(object):
     "interface to Instrument Database"
-    def __init__(self, dbname=None):
+    def __init__(self, dbname=None, server='sqlite', **kws):
         self.dbname = dbname
+        self.server = server
         self.tables = None
         self.engine = None
         self.session = None
@@ -179,7 +180,7 @@ class InstrumentDB(object):
         self.pvs = {}
         self.restoring_pvs = []
         if dbname is not None:
-            self.connect(dbname)
+            self.connect(dbname, server=server, **kws)
 
     def create_newdb(self, dbname, connect=False):
         "create a new, empty database"
@@ -207,19 +208,31 @@ class InstrumentDB(object):
             conn.execute("update info set value='1.3' where key='version'")
             self.session.commit()
 
-    def connect(self, dbname, backup=True):
+    def connect(self, dbname, server='sqlite', backup=True,
+                user='', password='',  host='', port=None):
         "connect to an existing database"
-        if not os.path.exists(dbname):
-            raise IOError("Database '%s' not found!" % dbname)
-
-        if not isInstrumentDB(dbname):
-            raise ValueError("'%s' is not an Instrument file!" % dbname)
-
-        if backup:
-            save_backup(dbname)
         self.dbname = dbname
-        self.engine = create_engine('sqlite:///%s' % self.dbname,
-                                    poolclass = SingletonThreadPool)
+        self.engine = None
+        if server.startswith('sqlite'):
+            if not os.path.exists(dbname):
+                raise IOError("Database '%s' not found!" % dbname)
+
+            if not isInstrumentDB(dbname):
+                raise ValueError("'%s' is not an Instrument file!" % dbname)
+
+            if backup:
+                save_backup(dbname)
+            self.engine = create_engine('sqlite:///%s' % self.dbname,
+                                        poolclass = SingletonThreadPool)
+        elif server.startswith('post'):
+            conn_str= 'postgresql://%s:%s@%s:%i/%s'
+            if port is None:
+                port = 5432
+            self.engine = create_engine(conn_str % (user, password, host, port, dbname))
+
+        if self.engine is None:
+                raise ValueError("could not connect to '%s'!" % dbname)
+
         self.conn = self.engine.connect()
         self.session = sessionmaker(bind=self.engine)()
         self.check_version()
@@ -234,7 +247,7 @@ class InstrumentDB(object):
             pass
 
         mapper(Info,     tables['info'])
-        mapper(Command,  tables['command'])
+        # mapper(Command,  tables['command'])
         mapper(PV,       tables['pv'])
 
         mapper(Instrument, tables['instrument'],
@@ -258,16 +271,16 @@ class InstrumentDB(object):
         mapper(Position_PV, tables['position_pv'],
                properties={'pv':relationship(PV)})
 
-        mapper(Instrument_Precommand,  tables['instrument_precommand'],
-               properties={'instrument': relationship(Instrument,
-                                                      backref='precommands'),
-                           'command':   relationship(Command,
-                                                     backref='inst_precoms')})
-        mapper(Instrument_Postcommand,   tables['instrument_postcommand'],
-               properties={'instrument': relationship(Instrument,
-                                                      backref='postcommands'),
-                           'command':   relationship(Command,
-                                                     backref='inst_postcoms')})
+#         mapper(Instrument_Precommand,  tables['instrument_precommand'],
+#                properties={'instrument': relationship(Instrument,
+#                                                       backref='precommands'),
+#                            'command':   relationship(Command,
+#                                                      backref='inst_precoms')})
+#         mapper(Instrument_Postcommand,   tables['instrument_postcommand'],
+#                properties={'instrument': relationship(Instrument,
+#                                                       backref='postcommands'),
+#                            'command':   relationship(Command,
+#                                                      backref='inst_postcoms')})
 
     def commit(self):
         "commit session state"
