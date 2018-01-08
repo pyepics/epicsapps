@@ -589,43 +589,42 @@ class StageFrame(wx.Frame):
             score = image_blurriness(self.imgpanel)
             dat = (pos, zstage.get(), score)
             focus_data.append(dat)
-            print("%.4f : %.3f" % (zpos, score))
+            # print("%.4f : %.3f" % (zpos, score))
             return score
 
         # step 1: take up to 5 steps of 300 microns
         # while score is still improving
+        report('Auto-focussing finding rough focus')
         scores = []
-        step = 400.0
+        step = 300.0
         score0 = get_score(0)
         scorep = get_score(step)
         scorem = get_score(-step)
+        sign = None
         if scorem < score0:
             score0 = scorem
-            i = 1
-            while i < 5:
-                i=i+1
-                best = -step*(i+1)
-                score = get_score(best)
-                if score > score0:
-                    break
+            sign = -1.0
         elif scorep < score0:
             score0 = scorep
+            sign = 1.0
+
+        if sign is None:
+            best = 0.0
+        else:
             i = 1
             while i < 5:
                 i=i+1
-                best = step*(i+1)
-                score = get_score(best)
+                tmp = sign*step*(i+1)
+                score = get_score(tmp)
                 if score > score0:
                     break
-        else:
-            best = 0
-
+                score0, best = score, tmp
         zstage.put(start_pos + best * 0.001, wait=True)
 
         # now refine
         start_pos = zstage.get()
-        report('Auto-focussing finding focus')
-        start, stop = -750, 750
+        report('Auto-focussing refining focus')
+        start, stop = -450, 450
         fibs = make_fibs(max=abs(stop-start))
         nfibs = len(fibs)
         step = fibs[nfibs-3] / fibs[nfibs-1]
