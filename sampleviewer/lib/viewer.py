@@ -589,8 +589,41 @@ class StageFrame(wx.Frame):
             score = image_blurriness(self.imgpanel)
             dat = (pos, zstage.get(), score)
             focus_data.append(dat)
+            print("%.4f : %.3f" % (zpos, score))
             return score
 
+        # step 1: take up to 5 steps of 300 microns
+        # while score is still improving
+        scores = []
+        step = 400.0
+        score0 = get_score(0)
+        scorep = get_score(step)
+        scorem = get_score(-step)
+        if scorem < score0:
+            score0 = scorem
+            i = 1
+            while i < 5:
+                i=i+1
+                best = -step*(i+1)
+                score = get_score(best)
+                if score > score0:
+                    break
+        elif scorep < score0:
+            score0 = scorep
+            i = 1
+            while i < 5:
+                i=i+1
+                best = step*(i+1)
+                score = get_score(best)
+                if score > score0:
+                    break
+        else:
+            best = 0
+
+        zstage.put(start_pos + best * 0.001, wait=True)
+
+        # now refine
+        start_pos = zstage.get()
         report('Auto-focussing finding focus')
         start, stop = -750, 750
         fibs = make_fibs(max=abs(stop-start))
@@ -618,10 +651,10 @@ class StageFrame(wx.Frame):
 
         get_score(best)
         report('Auto-focussing done. ')
-        print(" Focus Index   ZMotor      Blurriness  (best Index=%+4.4d)" % best)
-        for d in focus_data:
-            print("  %+4.4d  %13.4f %13.4f" % (d))
-        print('----')
+        # print(" Focus Index   ZMotor      Blurriness  (best Index=%+4.4d)" % best)
+        # for d in focus_data:
+        #    print("  %+4.4d  %13.4f %13.4f" % (d))
+        # print('----')
         self.ctrlpanel.af_button.Enable()
 
     def onMoveToCenter(self, event=None, **kws):
