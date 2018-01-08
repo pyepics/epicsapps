@@ -565,7 +565,7 @@ class PositionPanel(wx.Panel):
         self.posnames = posnames
         for pname in posnames:
             thispos = self.instdb.get_position(iname, pname)
-            print(pname, thispos)
+            # print(pname, thispos)
             image = ''
             notes = {}
             if thispos.image is not None:
