@@ -361,6 +361,7 @@ class PositionPanel(wx.Panel):
         self.pos_list.SetStringSelection(name)
         # auto-save file
         self.viewer.autosave(positions=self.positions)
+
         self.viewer.write_htmllog(name, self.positions[name])
 
         imgfile_exists = False
@@ -564,6 +565,7 @@ class PositionPanel(wx.Panel):
         self.posnames = posnames
         for pname in posnames:
             thispos = self.instdb.get_position(iname, pname)
+            print(pname, thispos)
             image = ''
             notes = {}
             if thispos.image is not None:
@@ -571,11 +573,10 @@ class PositionPanel(wx.Panel):
             if thispos.notes is not None:
                 notes = thispos.notes
             pdat = OrderedDict()
-            for pvpos in thispos.pvs:
+            for pvpos in thispos.pv:
                 pdat[pvpos.pv.name] =  pvpos.value
             positions[pname] = dict(position=pdat, image=image, notes=notes)
         self.set_positions(positions)
-
 
     def SavePositions(self, fname):
         """
