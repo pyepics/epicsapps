@@ -445,8 +445,14 @@ arguments
             pos.name = newname
             self.commit()
 
+    def get_positions(self, instrument):
+        """return list of positions for an instrument
+        """
+        inst = self.get_instrument(instrument)
+        return self.query(Position).filter(Position.instrument_id==inst.id).all()
+
     def get_position(self, name, instrument=None):
-        """return position from namea and instrument
+        """return position from name and instrument
         """
         inst = None
         if instrument is not None:
