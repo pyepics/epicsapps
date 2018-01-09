@@ -601,6 +601,7 @@ class StageFrame(wx.Frame):
         scorep = get_score(step)
         scorem = get_score(-step)
         sign = None
+        best = 0.0
         if scorem < score0:
             score0 = scorem
             sign = -1.0
@@ -608,9 +609,7 @@ class StageFrame(wx.Frame):
             score0 = scorep
             sign = 1.0
 
-        if sign is None:
-            best = 0.0
-        else:
+        if sign is not None:
             i = 1
             while i < 5:
                 i=i+1
