@@ -521,7 +521,6 @@ class StageFrame(wx.Frame):
         self.xhair_pixel = None
         if show:
             self.xhair_pixel = self.last_pixel
-            # print "Set XHAIR ", self.xhair_pixel
 
     def onAFTimer(self, event=None, **kws):
         if self.af_done:
@@ -530,11 +529,6 @@ class StageFrame(wx.Frame):
             if self.ctrlpanel.af_message is not None:
                 self.ctrlpanel.af_message.SetLabel('')
             self.ctrlpanel.af_button.Enable()
-            # print("AF Done: plot results")
-            # x, y = self.af_data
-            # plotf = PlotFrame(self)
-            # plotf.plot(x, y, xlabel='focus', ylabel='focus score')
-            # plotf.Show()
 
     def onAutoFocus(self, event=None, **kws):
         self.af_done = False
@@ -621,7 +615,7 @@ class StageFrame(wx.Frame):
         score1, score2 = get_score(z1), get_score(z2)
         for i in range(nfibs-2):
             step = fibs[nfibs-i-3] / fibs[nfibs-i-1]
-            report("Auto-focussing %i " %(i+1))
+            report("Auto-focussing refining focus %i " %(i+1))
             if score1 > score2:
                 start = z1
                 best = int(stop - step*(stop-start))
@@ -632,16 +626,11 @@ class StageFrame(wx.Frame):
                 best = int(start + step*(stop-start))
                 z1, z2 = best, z1
                 score1, score2 = get_score(best), score1
-            # print("step: ", i, step, z1, z2, score1, score2, best)
             if abs(z1-z2) < 2:
                 break
 
         get_score(best)
         report('Auto-focussing done. ')
-        # print(" Focus Index   ZMotor      Blurriness  (best Index=%+4.4d)" % best)
-        # for d in focus_data:
-        #    print("  %+4.4d  %13.4f %13.4f" % (d))
-        # print('----')
         self.ctrlpanel.af_button.Enable()
 
     def onMoveToCenter(self, event=None, **kws):
