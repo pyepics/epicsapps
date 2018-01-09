@@ -637,17 +637,16 @@ arguments
         instpvs =  self.query(IPV).filter(IPV.instrument_id==inst.id).all()
         max_order = 1
         for i in instpvs:
-            if i.move_order is None:
-                i.move_order = 1
-            if i.move_order > max_order:
-                max_order = i.move_order
+            move_order = getattr(i, 'move_order', 1)
+            if move_order > max_order:
+                max_order = move_order
 
-        ordered_pvs = [[] for i  in range(max_order)]
+        ordered_pvs = [[] for i  in range(1+max_order)]
+        # print(" Get Ordered position: ")
         for ipv in instpvs:
-            i = ipv.move_order
-            if i is None: i = 2
-            i = ipv.move_order - 1
+            i = getattr(ipv, 'move_order', 1) - 1
             pvname = ipv.pv.name
+            # print(" -- ", i, pvname, epics.get_pv(pvname), pv_values[pvname])
             if pvname in pv_values:
                 ordered_pvs[i].append((epics.get_pv(pvname), pv_values[pvname]))
 

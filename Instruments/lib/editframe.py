@@ -245,9 +245,9 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
             sizer.Add(SimpleText(panel, 'Display Type:',
                                  colour=self.colors.title, style=CSTY),
                       (2, 1), (1, 1), LSTY, 2)
-            sizer.Add(SimpleText(panel, 'Move Order:',
-                                 colour=self.colors.title, style=CSTY),
-                      (2, 2), (1, 1), LSTY, 2)
+            # sizer.Add(SimpleText(panel, 'Move Order:',
+            #                      colour=self.colors.title, style=CSTY),
+            #           (2, 2), (1, 1), LSTY, 2)
             sizer.Add(SimpleText(panel, 'Remove?:',
                                  colour=self.colors.title, style=CSTY),
                       (2, 3), (1, 1), RSTY, 2)
@@ -279,15 +279,15 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                 pvtype.SetSelection(itype)
                 pvtype.SetStringSelection(pv.pvtype.name)
                 del_pv = YesNo(panel, defaultyes=False, size=(60, -1))
-                tc_order =  wx.Choice(panel, choices=move_choices, size=(50, -1))
-                tc_order.SetSelection(min(len(move_choices)-1, max(0, move_order - 1)))
+                # tc_order =  wx.Choice(panel, choices=move_choices, size=(50, -1))
+                # tc_order.SetSelection(min(len(move_choices)-1, max(0, move_order - 1)))
 
-                self.curpvs.append((instpv, label, pvtype, tc_order, del_pv))
+                self.curpvs.append((instpv, label, pvtype, del_pv))
 
                 sizer.Add(label,    (irow, 0), (1, 1), LSTY,  3)
                 sizer.Add(pvtype,   (irow, 1), (1, 1), CSTY,  3)
-                sizer.Add(tc_order, (irow, 2), (1, 1), RSTY,  3)
-                sizer.Add(del_pv,   (irow, 3), (1, 1), RSTY,  3)
+                # sizer.Add(tc_order, (irow, 2), (1, 1), RSTY,  3)
+                sizer.Add(del_pv,   (irow, 2), (1, 1), RSTY,  3)
 
             irow += 1
             sizer.Add(wx.StaticLine(panel, size=(150, -1),
@@ -316,18 +316,18 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
             name = pvNameCtrl(self, panel, value='', size=(175, -1))
             pvtype = PVTypeChoice(panel)
             del_pv = YesNo(panel, defaultyes=False, size=(60, -1))
-            tc_order =  wx.Choice(panel, choices=move_choices, size=(50, -1))
-            tc_order.SetSelection(0)
+            # tc_order =  wx.Choice(panel, choices=move_choices, size=(50, -1))
+            # tc_order.SetSelection(0)
             pvtype.Disable()
-            tc_order.Disable()
+            # tc_order.Disable()
             del_pv.Disable()
             sizer.Add(name,     (irow, 0), (1, 1), LSTY,  3)
             sizer.Add(pvtype,   (irow, 1), (1, 1), CSTY,  3)
-            sizer.Add(tc_order, (irow, 2), (1, 1), CSTY,  3)
-            sizer.Add(del_pv,   (irow, 3), (1, 1), RSTY,  3)
+            # sizer.Add(tc_order, (irow, 2), (1, 1), CSTY,  3)
+            sizer.Add(del_pv,   (irow, 2), (1, 1), RSTY,  3)
 
             self.newpvs[name.GetId()] = dict(index=npv, name=name,
-                                             tc_order=tc_order,
+                                             # tc_order=tc_order,
                                              type=pvtype, delpv=del_pv)
 
         btn_panel = wx.Panel(panel, size=(75, -1))
@@ -409,13 +409,13 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         pv.get_ctrlvars()
 
         self.newpvs[wid]['type'].Enable()
-        self.newpvs[wid]['tc_order'].Enable()
+        # self.newpvs[wid]['tc_order'].Enable()
         self.newpvs[wid]['delpv'].Enable()
 
         pvchoices = get_pvtypes(pv, instrument)
         self.newpvs[wid]['type'].SetChoices(pvchoices)
         self.newpvs[wid]['type'].SetSelection(0)
-        self.newpvs[wid]['tc_order'].SetSelection(0)
+        # self.newpvs[wid]['tc_order'].SetSelection(0)
         self.newpvs[wid]['delpv'].SetStringSelection('No')
 
     def OnDone(self, event=None):
@@ -444,8 +444,8 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                 pvname = str(entry['name'].GetValue().strip())
                 if len(pvname) > 0:
                     pvtype = str(entry['type'].GetStringSelection())
-                    tc_order = int(entry['tc_order'].GetSelection() + 1)
-                    new_pvs[entry['index']] = (pvname, pvtype, tc_order)
+                    # tc_order = int(entry['tc_order'].GetSelection() + 1)
+                    new_pvs[entry['index']] = (pvname, pvtype)
 
 
         self.etimer.Stop()
@@ -454,16 +454,16 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
 
         for newpvs in new_pvs:
             if newpvs is not None:
-                pvname, pvtype, tc_order = newpvs
+                pvname, pvtype = newpvs
                 db.add_pv(pvname, pvtype=pvtype)
                 inst.pvs.append(db.get_pv(pvname))
                 instpanel.add_pv(pvname)
-                for instpv in db.get_ordered_instpvs(inst):
-                    if pvname == instpv.pv.name:
-                        instpv.move_order = tc_order
+                # for instpv in db.get_ordered_instpvs(inst):
+                #     if pvname == instpv.pv.name:
+                        # instpv.move_order = tc_order
 
-        for ipv, lctrl, typectrl, tc_order, delctrl in  self.curpvs:
-            ipv.move_order = int(tc_order.GetSelection() + 1)
+        for ipv, lctrl, typectrl, delctrl in  self.curpvs:
+            # ipv.move_order = int(tc_order.GetSelection() + 1)
             pvname = ipv.pv.name
             if delctrl.GetSelection() == 1:
                 thispv = db.get_pv(pvname)
