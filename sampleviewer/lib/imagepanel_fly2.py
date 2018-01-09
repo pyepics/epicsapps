@@ -90,40 +90,33 @@ class ImagePanel_Fly2(ImagePanel_Base):
     def AutoSetExposureTime(self):
         """auto set exposure time"""
         count, IMAX = 0, 255.0
-        while count < 10:
-            img = self.GrabNumpyImage()
-
+        self.confpanel.wids['gain_auto'].SetValue(0)
+        while count < 5:
             count += 1
-            scale = 0
-            if img.max() < 0.30*IMAX:
-                scale = 1.5
-            elif img.mean() > 0.70*IMAX:
-                scale = 0.85
-            elif img.mean() < 0.3*IMAX:
-                scale = 1.5
+            img = self.GrabNumpyImage()
+            imgmax = img.max()
+            imgave = img.mean()
+            pgain = self.camera.GetProperty('gain').absValue
+            atime = self.camera.GetProperty('shutter').absValue
+            # print(" autoexposure ", count, imgmax, imgave, pgain, atime)
+            if imgmax > 250:
+                if  pgain > 4.0:
+                    pgain = 0.75 * pgain
+                    self.camera.SetPropertyValue('gain', pgain, auto=False)
+                    self.confpanel.wids['gain'].SetValue(pgain)
+                else:
+                    self.SetExposureTime(0.75*atime)
+            elif imgave < 100:
+                if atime > 60:
+                    pgain = 1.75 * pgain
+                    self.camera.SetPropertyValue('gain', pgain, auto=False)
+                    self.confpanel.wids['gain'].SetValue(pgain)
+                else:
+                    etime = max(10, min(64, 1.75*atime))
+                    self.SetExposureTime(etime)
             else:
-                # print "auto set exposure done"
                 break
-            pgain = self.camera.GetProperty('gain')
-            if scale < 1 and pgain > 2:
-                self.confpanel.wids['gain_auto'].SetValue(0)
-                self.camera.SetPropertyValue('gain', 2.0, auto=False)
-                self.confpanel.wids['gain'].SetValue(gain)
-
-            if scale > 0:
-                scale = max(0.2, min(5.0, scale))
-                atime = self.camera.GetProperty('shutter').absValue
-                etime = atime*scale
-                pgain = self.camera.GetProperty('gain')
-                gain = pgain.absValue
-                if etime > 64: # max exposure time
-                    gain *= etime/64.0
-                    etime = 64.0
-                self.SetExposureTime(etime)
-                self.camera.SetPropertyValue('gain', gain, auto=False)
-                self.confpanel.wids['gain'].SetValue(gain)
-                self.confpanel.wids['gain_auto'].SetValue(0)
-                time.sleep(0.1)
+            time.sleep(0.2)
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True,
                     quality=wx.IMAGE_QUALITY_HIGH):
