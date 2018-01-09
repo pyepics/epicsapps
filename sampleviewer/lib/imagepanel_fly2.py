@@ -116,7 +116,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
                     self.SetExposureTime(etime)
             else:
                 break
-            time.sleep(0.2)
+            time.sleep(0.1)
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True,
                     quality=wx.IMAGE_QUALITY_HIGH):

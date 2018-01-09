@@ -47,31 +47,19 @@ CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
 
 def image_blurriness(imgpanel, full=False):
-    """ get image blurriness of central half of intensity"""
+    """ get image blurriness of central half of intensity
+
+    want to maximize sharpness = sum([image - <image>]**2)
+
+    """
     img = imgpanel.GrabNumpyImage().astype(np.float32)
     if len(img.shape) == 3:
         img = img.sum(axis=2)
     w, h = img.shape
-    w1, w2, h1, h2 = int(w/5.0), int(4*w/5.0), int(h/5.0), int(4*h/5.0)
+    w1, w2, h1, h2 = int(0.15*w), int(0.85*w), int(0.15*h), int(0.85*h)
     img = img[w1:w2, h1:h2]
-    sharpness = ((img -img.mean())**2).sum()/(w*h)
+    sharpness = ((img - img.mean())**2).sum()/(w*h)
     return -sharpness
-
-def image_blurriness_sobel_entropy(imgpanel, full=False):
-    """ get image blurriness of central half of intensity"""
-    img = imgpanel.GrabNumpyImage().astype(np.float32)
-    if len(img.shape) == 3:
-        img = img.sum(axis=2)
-
-    w, h = img.shape
-    w1, w2, h1, h2 = int(w/4.0), int(3*w/4.0), int(h/4.0), int(3*h/4.0)
-    img = img[w1:w2, h1:h2]
-    img[np.where(img<0.5)] = 0.5
-    img = img/img.max()
-
-    sobel = 50*skimage.filters.sobel(img).sum()/1000.0
-    entropy = (img*np.log(img)).sum()/1000.0
-    return (sobel, entropy)
 
 class StageFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
@@ -589,14 +577,15 @@ class StageFrame(wx.Frame):
             score = image_blurriness(self.imgpanel)
             dat = (pos, zstage.get(), score)
             focus_data.append(dat)
-            # print("%.4f : %.3f" % (zpos, score))
+            # print(" Focus : " , dat)
             return score
 
-        # step 1: take up to 5 steps of 300 microns
+        # step 1: take up to 15 steps of 250 microns
         # while score is still improving
         report('Auto-focussing finding rough focus')
         scores = []
-        step = 300.0
+        NMAX = 15
+        step = 250.0
         score0 = get_score(0)
         scorep = get_score(step)
         scorem = get_score(-step)
@@ -611,7 +600,7 @@ class StageFrame(wx.Frame):
 
         if sign is not None:
             i = 1
-            while i < 5:
+            while i < NMAX:
                 i=i+1
                 tmp = sign*step*(i+1)
                 score = get_score(tmp)
@@ -623,7 +612,7 @@ class StageFrame(wx.Frame):
         # now refine
         start_pos = zstage.get()
         report('Auto-focussing refining focus')
-        start, stop = -450, 450
+        start, stop = -300, 300
         fibs = make_fibs(max=abs(stop-start))
         nfibs = len(fibs)
         step = fibs[nfibs-3] / fibs[nfibs-1]
