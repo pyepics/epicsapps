@@ -58,10 +58,12 @@ class InstrumentFrame(wx.Frame):
         t0 = self.t0 = time.time()
 
         self.pvlist = EpicsPVList(self)
+        # print(" connect db? ", dbname, server, user, host)
 
         self.db, self.dbname = self.connect_db(dbname, server=server,
                                                host=host, port=port,
                                                user=user, password=password)
+        # print(" A ", self.db, self.dbname)
         if self.db is None:
             return
         self.connected = {}
@@ -73,11 +75,12 @@ class InstrumentFrame(wx.Frame):
         self.SetBackgroundColour(self.colors.bg)
 
         self.Bind(wx.EVT_CLOSE, self.onClose)
-
+        # print(" B ")
         self.create_Statusbar()
         self.create_Menus()
         self.create_Frame()
-        self.enable_epics_server()
+        # self.enable_epics_server()
+        # print(" C")
 
     def connect_db(self, dbname=None, new=False, server='sqlite',
                    user='', password='', host='', port=None):
@@ -99,29 +102,38 @@ class InstrumentFrame(wx.Frame):
                 dlg.Destroy()
                 return None, dbname
 
-        db = InstrumentDB()
-        # print("connect db empty db %.3f sec " % (time.time()-self.t0))
-        if isInstrumentDB(dbname):
-            db.connect(dbname)
-            set_hostpid = True
-            if not db.check_hostpid():
-                hostname = db.get_info('host_name')
-                pid     =  db.get_info('process_id')
-                ret = popup(None, FILE_IN_USE_MSG % (os.path.abspath(dbname),
-                                                     hostname, pid),
-                            'Database in use',
-                            style=wx.YES_NO|wx.ICON_EXCLAMATION)
-                set_hostpid = (ret != wx.ID_YES)
-            if set_hostpid:
-                db.set_hostpid()
+        db = InstrumentDB(dbname=dbname, server=server, user=user,
+                          password=password, host=host, port=port)
+        # print("connect db %.3f sec " % (time.time()-self.t0))
+        # print(" Instruments:  ",  isInstrumentDB(dbname))
+        # for inst in db.get_all_instruments():
+        #    print("##  ", inst)
+        if server=='sqlite':
+            if isInstrumentDB(dbname):
+                db.connect(dbname)
+                set_hostpid = True
+                if not db.check_hostpid():
+                    hostname = db.get_info('host_name')
+                    pid     =  db.get_info('process_id')
+                    ret = popup(None, FILE_IN_USE_MSG % (os.path.abspath(dbname),
+                                                         hostname, pid),
+                                'Database in use',
+                                style=wx.YES_NO|wx.ICON_EXCLAMATION)
+                    set_hostpid = (ret != wx.ID_YES)
+                if set_hostpid:
+                    db.set_hostpid()
 
-        else:
-            db.create_newdb(dbname, connect=True)
-        self.config.set_current_db(dbname)
+            else:
+                db.create_newdb(dbname, connect=True)
+            self.config.set_current_db(dbname)
         if dlg is not None:
             dlg.message.SetLabel("Connecting to Epics PVs in database")
+
+        # print("connect to PVs ", len(db.get_allpvs()))
         for pv in db.get_allpvs():
             self.pvlist.init_connect(pv.name) # , is_motor=(4==pv.pvtype_id))
+
+        # print(" --> ", len(self.pvlist.in_progress))
         return db, dbname
 
     def create_Frame(self):
@@ -490,27 +502,36 @@ class InstrumentFrame(wx.Frame):
                 pass
         time.sleep(0.10)
         self.pvlist.etimer.Stop()
-        self.server_timer.Stop()
+        # self.server_timer.Stop()
         if self.epics_server is not None:
             self.epics_server.Shutdown()
         time.sleep(0.10)
         self.Destroy()
 
 
-class EpicsInstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, conf=None, dbname=None, debug=False, **kws):
+class EpicsInstrumentApp(wx.App): # , wx.lib.mixins.inspection.InspectionMixin):
+    def __init__(self, conf=None, dbname=None, debug=False, server='sqlite',
+                 user='', password='', host='', port=None):
         self.conf  = conf
-        self.debug = debug
         self.dbname  = dbname
+        self.debug = debug
+        self.server = server
+        self.user = user
+        self.password = password
+        self.host = host
+        self.port = port
+
         wx.App.__init__(self)
 
     def OnInit(self):
-        self.Init()
-        frame = InstrumentFrame(conf=self.conf, dbname=self.dbname)
+        frame = InstrumentFrame(conf=self.conf, dbname=self.dbname,
+                                server=self.server, host=self.host,
+                                port=self.port, user=self.user,
+                                password=self.password)
         frame.Show()
         self.SetTopWindow(frame)
-        if self.debug:
-            self.ShowInspectionTool()
+        # if self.debug:
+        #     self.ShowInspectionTool()
         return True
 
 if __name__ == '__main__':
