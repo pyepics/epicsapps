@@ -420,7 +420,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
 
     def OnDone(self, event=None):
         """ Done Button Event: save and exit"""
-        # print(" On Done1 ", event)
+        # print("EditInstrumentFrame OnDone ", event)
         instpanel = self.parent.nb.GetCurrentPage()
         db = instpanel.db
         inst = instpanel.inst
@@ -432,6 +432,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         oldname = inst.name
         if newname != oldname:
             inst.name = newname
+
         if page is not None:
             self.parent.nb.SetPageText(page, newname)
             instpanel.inst_title.SetLabel(' %s ' % newname)
@@ -458,6 +459,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                 db.add_pv(pvname, pvtype=pvtype)
                 inst.pvs.append(db.get_pv(pvname))
                 instpanel.add_pv(pvname)
+                # print("Added pvname ", pvname, instpanel)
                 # for instpv in db.get_ordered_instpvs(inst):
                 #     if pvname == instpv.pv.name:
                         # instpv.move_order = tc_order
@@ -477,6 +479,10 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                     instpanel.PV_Panel(pvname)
 
         db.commit()
+
+        pagemap = self.get_page_map()
+        self.parent.nb.DeletePage(pagemap[newname])
+        self.parent.add_instrument_page(inst)
         time.sleep(0.5)
         self.etimer.Stop()
 
@@ -491,9 +497,10 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                     opv.display_order = i
 
         for opv in instpvs:
-            i = i + 1
             opv.display_order = i
+            i = i + 1
         db.commit()
+
         self.Destroy()
 
     def onCancel(self, event=None):
