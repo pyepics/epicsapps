@@ -2,6 +2,7 @@ import time
 import wx
 import epics
 from epics.wx import EpicsFunction, DelayedEpicsCallback
+from epics import Motor
 
 MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
                 '.HLS', '.LLS', '.SPMG', '.DESC')
@@ -87,11 +88,12 @@ class EpicsPVList(object):
         if is_motor:
             idot = pvname.find('.')
             basname = pvname[:idot]
-            for ext in MOTOR_FIELDS:
-               pvname = "%s%s" % (basname, ext)
-               self.need_connecting.append(pvname)
-               self.pvs[pvname] = epics.get_pv(pvname)
-               self.in_progress[pvname] = (None, None, time.time())
+            x = Motor(basname)
+            # for ext in MOTOR_FIELDS:
+            #    pvname = "%s%s" % (basname, ext)
+            #    self.need_connecting.append(pvname)
+            #    self.pvs[pvname] = epics.get_pv(pvname)
+            #    self.in_progress[pvname] = (None, None, time.time())
 
     def show_unconnected(self):
         all, unconn =  0, 0
