@@ -351,7 +351,6 @@ class InstrumentDB(object):
         return me
 
 
-
     def _get_foreign_keyid(self, table, value, name='name',
                            keyid='id', default=None):
         """generalized lookup for foreign key
@@ -399,7 +398,6 @@ arguments
         IPV = Instrument_PV
         return self.query(IPV).filter(IPV.instrument_id==inst.id
                                       ).order_by(IPV.display_order).all()
-
 
     def set_pvtype(self, name, pvtype):
         """ set a pv type"""
@@ -552,13 +550,15 @@ arguments
         if inst is None:
             raise InstrumentDBException('Save Postion needs valid instrument')
 
-        tab = self.tables['instrument']
-        self.conn.execute(tab.delete().where(tab.c.id==inst.id))
+        for pos in self.get_positions(inst):
+            self.remove_position(pos.name, inst)
 
-        for tablename in ('position', 'instrument_pv', 'instrument_precommand',
-                          'instrument_postcommand'):
+        for tablename in ('position', 'instrument_pv'):
             tab = self.tables[tablename]
             self.conn.execute(tab.delete().where(tab.c.instrument_id==inst.id))
+
+        tab = self.tables['instrument']
+        self.conn.execute(tab.delete().where(tab.c.id==inst.id))
 
     def save_position(self, posname, inst, values, **kw):
         """save position for instrument
