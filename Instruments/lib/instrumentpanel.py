@@ -192,16 +192,15 @@ class InstrumentPanel(wx.Panel):
         self.last_draw = 0
         self.inst = inst
         self.pvlist = pvlist
-        # print "Instrument ", inst, time.ctime()
+
         self.db   = db
         self.write_message = writer
         self.pvs  = {}
         self.pv_components  = OrderedDict()
 
         wx.Panel.__init__(self, parent, size=size)
-
-        for p in inst.pvs:
-            self.add_pv(p.name)
+        for dbpv in self.db.get_ordered_instpvs(inst):
+            self.add_pv(dbpv.pv.name)
 
         self.colors = colors = GUIColors()
         self.parent = parent
@@ -324,7 +323,7 @@ class InstrumentPanel(wx.Panel):
             pvname, comp = val
             connected, pvtype, pv = comp
             grow = 0
-            # print(" comp : ", icomp, connected, pvtype, pv)
+            #print(" comp : ", icomp, connected, pvtype, pv)
 
             panel = None
             if pvtype == 'motor':
@@ -349,6 +348,7 @@ class InstrumentPanel(wx.Panel):
                                     colour=self.colors.pvname,
                                     minsize=(250,-1), style=wx.ALIGN_LEFT)
 
+                # print(" Show PV ", pv, pvtype)
                 if 'enum' in pvtype:
                     ctrl = PVEnumChoice(panel, pv=pv, size=(150, -1))
                 elif 'string' in pvtype: #  in ('string', 'unicode'):
