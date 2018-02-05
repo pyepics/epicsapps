@@ -567,11 +567,10 @@ class StageFrame(wx.Frame):
         def get_score(pos):
             zpos = start_pos + pos * 0.001
             zstage.put(zpos, wait=True)
-            time.sleep(0.05)
+            time.sleep(0.2)
             score = image_blurriness(self.imgpanel)
             dat = (pos, zstage.get(), score)
             focus_data.append(dat)
-            # print(" Focus : " , dat)
             return score
 
         # step 1: take up to 15 steps of 250 microns
@@ -740,7 +739,6 @@ class StageFrame(wx.Frame):
 
     def onReportBlurry(self, event=None):
         score = image_blurriness(self.imgpanel)
-        # tscore = -(5*score[0] - score[1])
         print(" blurriness = %.3f" % (score))
 
     def onStartProjections(self, event=None):
