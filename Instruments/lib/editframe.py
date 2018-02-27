@@ -10,8 +10,8 @@ from epics.wx.utils import  (empty_bitmap, add_button, add_menu,
                              Closure, NumericCombo, pack, popup, SimpleText,
                              FileSave, FileOpen, SelectWorkdir)
 
-from utils import GUIColors, HideShow, YesNo, set_font_with_children, get_pvtypes
-import instrument
+from .utils import GUIColors, HideShow, YesNo, set_font_with_children, get_pvtypes
+from . import instrument
 
 class PVTypeChoice(wx.Choice):
     def __init__(self, parent, choices=None, size=(95, -1), **kws):

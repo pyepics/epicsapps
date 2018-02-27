@@ -13,7 +13,7 @@ from sqlalchemy import (MetaData, create_engine, Table, Column,
                         Integer, Float, String, Text, DateTime,
                         ForeignKey, UniqueConstraint)
 
-from utils import dumpsql, backup_versions
+from .utils import dumpsql, backup_versions
 
 def PointerCol(name, other=None, keyid='id', **kws):
     if other is None:
@@ -74,10 +74,10 @@ def  make_newdb(dbname, server= 'sqlite'):
                       Column('id', Integer, primary_key=True),
                       StrCol('name', nullable=False),
                       StrCol('notes'),
-                      StrCol('attributes'), 
+                      StrCol('attributes'),
                       Column('date', DateTime),
                       Column("instrument_id",  ForeignKey('instrument.id')),
-                      UniqueConstraint('name', 'instrument_id'))    
+                      UniqueConstraint('name', 'instrument_id'))
 
     instrument_precommand = NamedTable('instrument_precommand', metadata,
                                        cols=[Column('order', Integer),
@@ -130,5 +130,5 @@ if __name__ == '__main__':
     dbname = 'Test.ein'
     backup_versions(dbname)
     make_newdb(dbname)
-    print '''%s  created and initialized.''' % dbname
+    print('''%s  created and initialized.''' % dbname)
     dumpsql(dbname)

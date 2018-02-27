@@ -2,11 +2,11 @@ import wx
 import sys
 import time
 
-from epics.wx.utils import  (empty_bitmap, add_button, add_menu,
-                 Closure, NumericCombo, pack, popup, SimpleText,
-                             FileSave, FileOpen, SelectWorkdir)
+from epics.wx.utils import (empty_bitmap, add_button, add_menu, Closure,
+                            NumericCombo, pack, popup, SimpleText,
+                            FileSave, FileOpen, SelectWorkdir)
 
-from utils import GUIColors, set_font_with_children
+from .utils import GUIColors, set_font_with_children
 
 class SettingsFrame(wx.Frame) :
     """ GUI Configure Frame"""
@@ -214,4 +214,3 @@ class InstSelectionFrame(wx.Frame) :
 
     def OnCancel(self, event=None):
         self.Destroy()
-

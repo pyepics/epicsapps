@@ -1,1 +1,1 @@
-from InstrumentApp import EpicsInstrumentApp
+from .InstrumentApp import EpicsInstrumentApp

@@ -1,6 +1,6 @@
 import os
-from ConfigParser import  ConfigParser
-from cStringIO import StringIO
+from six.moves.configparser import  ConfigParser
+from six import StringIO
 
 def get_appdir(appname):
     """gives a user-writeable application directory for config files etc"""
@@ -27,11 +27,11 @@ default_config="""
 [dbs]
 most_recent=MyInstruments.ein
 """
-    
+
 class InstrumentConfig(object):
     basename = 'epics_insts'
     sections = ('dbs',)
-    
+
     def __init__(self, name=None):
         self.conffile = name
         if name is None:
@@ -40,7 +40,7 @@ class InstrumentConfig(object):
         self.conf = {}
         self.cp =  ConfigParser()
         self.read()
-        
+
     def read(self):
         for s in self.sections:
             self.conf[s] = {}
@@ -70,11 +70,11 @@ class InstrumentConfig(object):
                     if count < maxcount:
                         out.append('%s = %s\n' % (key, val))
                         count += 1
-                        
+
         fout = open(fname, 'w')
         fout.writelines(out)
         fout.close()
-        
+
     def get_dblist(self):
         dblist = [self.conf['dbs'].get('most_recent', '')]
         for key in sorted(self.conf['dbs'].keys()):
@@ -94,5 +94,5 @@ class InstrumentConfig(object):
                 key = 'v%2.2i' % idx
                 self.conf['dbs'][key] = name
                 idx += 1
-                
+
         self.conf['dbs']['most_recent'] = dbname

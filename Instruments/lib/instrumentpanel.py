@@ -11,9 +11,9 @@ import epics
 from epics.wx import (EpicsFunction, PVText, PVFloatCtrl, PVTextCtrl,
                       PVEnumChoice, MotorPanel)
 from epics.wx.utils import  pack, popup, add_button, SimpleText
-from epics.wx.ordereddict import OrderedDict
+from collections import OrderedDict
 
-from utils import ALL_EXP , GUIColors, get_pvtypes, get_pvdesc
+from .utils import ALL_EXP , GUIColors, get_pvtypes, get_pvdesc
 
 MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
                 '.HLS', '.LLS', '.SPMG', '.DESC')
@@ -418,7 +418,7 @@ class InstrumentPanel(wx.Panel):
         db_pv = self.db.get_pv(pvname)
 
         if db_pv.pvtype is None:
-            print 'Return because no pvtype?' , pvname, db_pv
+            print('Return because no pvtype?' , pvname, db_pv)
             return
         if db_pv.pvtype.name == 'motor':
             idot = pvname.find('.')

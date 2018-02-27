@@ -18,17 +18,17 @@ from epics.wx import finalize_epics, EpicsFunction
 from epics.wx.utils import  (empty_bitmap, add_button, add_menu, pack, popup,
                     Closure, NumericCombo, FileSave, FileOpen, SelectWorkdir)
 
-from configfile import InstrumentConfig
-from instrument import isInstrumentDB, InstrumentDB
+from .configfile import InstrumentConfig
+from .instrument import isInstrumentDB, InstrumentDB
 
-from utils import GUIColors, ConnectDialog, set_font_with_children, EIN_WILDCARD
-from instrumentpanel import InstrumentPanel
+from .utils import GUIColors, ConnectDialog, set_font_with_children, EIN_WILDCARD
+from .instrumentpanel import InstrumentPanel
 
-from settingsframe import SettingsFrame, InstSelectionFrame
-from editframe import EditInstrumentFrame, NewPositionFrame
-from epics_server import EpicsInstrumentServer
+from .settingsframe import SettingsFrame, InstSelectionFrame
+from .editframe import EditInstrumentFrame, NewPositionFrame
+from .epics_server import EpicsInstrumentServer
 
-from pvconnector import EpicsPVList
+from .pvconnector import EpicsPVList
 
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON|flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS
 FNB_STYLE |= flat_nb.FNB_DROPDOWN_TABS_LIST|flat_nb.FNB_NO_NAV_BUTTONS
