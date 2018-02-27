@@ -109,7 +109,6 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
             elif img.mean() < 0.20*IMAX:
                 scale = 1.25
             else:
-                # print "auto set exposure done"
                 break
             if scale > 0:
                 scale = max(0.2, min(5.0, scale))
@@ -157,7 +156,7 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         if self.ad_img is None or self.ad_cam is None:
-            print 'GrabWxImage .. no ad_img / cam', self.ad_img, self.ad_cam
+            print('GrabWxImage .. no ad_img / cam', self.ad_img, self.ad_cam)
             return
 
         width, height = self.GetImageSize()
@@ -300,7 +299,6 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
 
     @EpicsFunction
     def connect_pvs(self, verbose=True):
-        # print "Connect PVS"
         if self.prefix is None or len(self.prefix) < 2:
             return
 
@@ -343,4 +341,4 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
         elif key == 'unzoom':
             self.unZoom()
         else:
-            print 'unknown Entry ? ', key
+            print('unknown Entry ? ', key)

@@ -201,7 +201,7 @@ class TransferPositionsDialog(wx.Frame):
             for pname, cbox in self.checkboxes.items():
                 if cbox.IsChecked():
                     v =  idb.get_position_vals(self.offline, pname)
-                    # print '>>> ', pname, v
+                    # print( '>>> ', pname, v)
                     upos[pname]  = [v['13IDE:m1.VAL'],
                                     v['13IDE:m2.VAL'],
                                     v['13IDE:m3.VAL']]
@@ -421,7 +421,7 @@ class PositionPanel(wx.Panel):
             self.image_display.showb64img(data, size=size,
                                           title=posname, label=label)
         else:
-            print 'Cannot show image for %s' % posname
+            print('Cannot show image for %s' % posname)
 
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
@@ -481,7 +481,7 @@ class PositionPanel(wx.Panel):
 
     def onMicroscopeCalibrate(self, event=None, **kws):
         offline = self.config.get('offline', '')
-        print 'Calibrate to Offline : ', offline
+        print('Calibrate to Offline : ', offline)
 
     def onSelect(self, event=None, name=None):
         "Event handler for selecting a named position"
@@ -607,11 +607,11 @@ class PositionPanel(wx.Panel):
             text = fh.readlines()
             fh.close()
         except IOError:
-            print 'IO Error'
+            print( 'IO Error')
             return -1
         header = text[0].replace('\n', '').replace('\r', '')
         if header != POS_HEADER:
-            print 'Bad Header', header
+            print( 'Bad Header', header)
             return -2
         for line in text[1:]:
             name, pos, notes, img, ts = json.loads(line)
@@ -621,12 +621,12 @@ class PositionPanel(wx.Panel):
                 self.positions[name] = {'image': img, 'timestamp': ts,
                                         'position': tmp_pos, 'notes': notes}
             except:
-                print 'Cannot set', name, tmp_pos, notes, img
+                print( 'Cannot set', name, tmp_pos, notes, img)
             try:
                 self.instdb.save_position(self.instname, name, tmp_pos,
                                           notes=json.dumps(notes), image=img)
             except:
-                print 'Could save ', name, tmp_pos, notes, img
+                print( 'Could save ', name, tmp_pos, notes, img)
             #print(" Import Pos ", name, img, notes)
 
         self.set_positions(self.positions)

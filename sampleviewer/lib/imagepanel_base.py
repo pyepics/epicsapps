@@ -9,7 +9,7 @@ import os
 import shutil
 import math
 from threading import Thread
-from cStringIO import StringIO
+from six import StringIO
 import base64
 
 from epics.wx.utils import  Closure, add_button

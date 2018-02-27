@@ -6,7 +6,7 @@ import time
 import os
 import shutil
 
-from cStringIO import StringIO
+from six import StringIO
 from threading import Thread
 from collections import OrderedDict
 import base64
@@ -241,15 +241,15 @@ class StageFrame(wx.Frame):
 
                     dobjs.append(dict(shape='Line', width=2,
                                       style=wx.SOLID, color=xcol, args=xargs))
-                    #print "Showing xhair: ", xargs
-                # print 'Draw Objects ', dobjs
+                    #print( "Showing xhair: ", xargs)
+                # print('Draw Objects ', dobjs)
                 self.imgpanel.draw_objects = dobjs
             self.init_timer.Stop()
 
 
     def onChangeCamera(self, evt=None):
         if not self.cam_type.startswith('area'):
-            print 'How did that happen?'
+            print('How did that happen?')
             return
 
         name = self.cam_adpref
@@ -349,9 +349,9 @@ class StageFrame(wx.Frame):
 
         omenu.AppendSeparator()
 
-        # print 'Create Menus ',      self.ctrlpanel.subpanels
+        # print( 'Create Menus ',      self.ctrlpanel.subpanels)
         # for key, val in self.config['stages'].items():
-        #     print key, val
+        #     print( key, val)
 
         for name, panel in self.ctrlpanel.subpanels.items():
             show = 0
@@ -791,7 +791,7 @@ class StageFrame(wx.Frame):
             self.xplot.panel.axes.set_ylim((ymin, ymax), emit=True)
             self.yplot.panel.axes.set_ylim((ymin, ymax), emit=True)
 
-            # print 'X lims: ', self.xplot.panel.conf.zoom_lims, xlims
+            # print('X lims: ', self.xplot.panel.conf.zoom_lims, xlims)
             # self.xplot.panel.set_xylims(xlims)
             # self.yplot.panel.set_xylims(ylims)
 
@@ -848,7 +848,7 @@ if __name__ == '__main__':
             zstage.put(zval, wait=True)
             time.sleep(0.1)
             score = image_blurriness(self.imgpanel)
-            print 'Value: ', vals, zval, score
+            print( 'Value: ', vals, zval, score)
             return score
 
         minimize(residual, [zstage.get()], options={'xtol':0.002,

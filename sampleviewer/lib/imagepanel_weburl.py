@@ -5,8 +5,8 @@ import wx
 import time
 import os
 import numpy as np
-from  cStringIO import StringIO
-from  urllib import urlopen
+from six import StringIO
+from six.moves.urllib.request import urlopen
 
 from PIL import Image
 from .imagepanel_base import ImagePanel_Base
@@ -54,7 +54,7 @@ class ImagePanel_URL(ImagePanel_Base):
             return wximage.Scale(int(scale*self.img_w), int(scale*self.img_h))
         except:
             pass
-        
+
 class ConfPanel_URL(wx.Panel):
     def __init__(self, parent, url=None, **kws):
         super(ConfPanel_URL, self).__init__(parent, -1, size=(280, 300))
@@ -64,4 +64,3 @@ class ConfPanel_URL(wx.Panel):
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(title,         0, wx.ALIGN_LEFT|wx.ALL)
         pack(self, sizer)
-        

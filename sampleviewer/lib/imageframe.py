@@ -1,5 +1,5 @@
 import wx
-from cStringIO import StringIO
+from six import StringIO
 import base64
 import array
 
