@@ -17,8 +17,8 @@ import socket
 
 from datetime import datetime
 
-from utils import backup_versions, save_backup, get_pvtypes, normalize_pvname
-from creator import make_newdb
+from .utils import backup_versions, save_backup, get_pvtypes, normalize_pvname
+from .creator import make_newdb
 
 from sqlalchemy import MetaData, create_engine, and_
 from sqlalchemy.orm import sessionmaker,  mapper, clear_mappers, relationship
@@ -34,7 +34,7 @@ import sqlalchemy.dialects.sqlite
 # logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
 # logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
 
-import upgrades
+from . import upgrades
 
 
 def isInstrumentDB(dbname):
@@ -195,14 +195,14 @@ class InstrumentDB(object):
         qvers = "select value from info where key='version'"
         version_string = conn.execute(qvers).fetchone()[0]
         if version_string < '1.2':
-            print 'Upgrading Database to Version 1.2'
+            print('Upgrading Database to Version 1.2')
             for statement in upgrades.sqlcode['1.2']:
                 conn.execute(statement)
             conn.execute("update info set value='1.2' where key='version'")
             self.session.commit()
 
         if version_string < '1.3':
-            print 'Upgrading Database to Version 1.3'
+            print('Upgrading Database to Version 1.3')
             for statement in upgrades.sqlcode['1.3']:
                 conn.execute(statement)
             conn.execute("update info set value='1.3' where key='version'")
@@ -344,7 +344,7 @@ class InstrumentDB(object):
         try:
             self.session.add(me)
             # self.session.commit()
-        except IntegrityError, msg:
+        except IntegrityError(msg):
             self.session.rollback()
             raise Warning('Could not add data to table %s\n%s' % (table, msg))
 
@@ -425,7 +425,7 @@ arguments
         name = normalize_pvname(name)
         out = self.query(PV).filter(PV.name==name).all()
         ret = None_or_one(out, 'get_pv expected 1 or None PV')
-        # print 'instrument.get_pv ',name, out, ret
+        # print('instrument.get_pv ',name, out, ret)
         if ret is None and name.endswith('.VAL'):
             name = name[:-4]
             out = self.query(PV).filter(PV.name==name).all()
@@ -638,13 +638,18 @@ arguments
         max_order = 1
         for i in instpvs:
             move_order = getattr(i, 'move_order', 1)
+            if move_order is None:
+                move_order = 1
             if move_order > max_order:
                 max_order = move_order
 
         ordered_pvs = [[] for i  in range(1+max_order)]
         # print(" Get Ordered position: ")
         for ipv in instpvs:
-            i = getattr(ipv, 'move_order', 1) - 1
+            move_order = getattr(ipv, 'move_order', 1)
+            if move_order is None:
+                move_order = 1
+            i = move_order - 1
             pvname = ipv.pv.name
             # print(" -- ", i, pvname, epics.get_pv(pvname), pv_values[pvname])
             if pvname in pv_values:
