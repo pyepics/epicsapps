@@ -283,9 +283,9 @@ class StageFrame(wx.Frame):
                  text="Start Projection Plots",
                  action = self.onStartProjections)
 
-        add_menu(self, fmenu, label="Print Blurriness\tCtrl+B",
-                 text="print blurriness",
-                 action = self.onReportBlurry)
+        #         add_menu(self, fmenu, label="Print Blurriness\tCtrl+B",
+        #                  text="print blurriness",
+        #                  action = self.onReportBlurry)
 
         add_menu(self, fmenu, label="Stop Projection\tCtrl+C",
                  text="Stop Projection Plots",
