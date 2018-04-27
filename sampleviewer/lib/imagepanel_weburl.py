@@ -44,13 +44,11 @@ class ImagePanel_URL(ImagePanel_Base):
         "turn camera off"
         self.timer.Stop()
         self.autosave = False
-        #if self.autosave_thread is not None:
-        #    self.autosave_thread.join()
-
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         try:
-            wximage = wx.ImageFromStream(StringIO(urlopen(self.url).read()))
+            wximage = wx.Image(StringIO(urlopen(self.url).read()))
+            # wximage = wx.ImageFromStream(StringIO(urlopen(self.url).read()))
             return wximage.Scale(int(scale*self.img_w), int(scale*self.img_h))
         except:
             pass
