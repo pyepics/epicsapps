@@ -6,7 +6,7 @@ from collections import OrderedDict
 import wx.lib.agw.pycollapsiblepane as CP
 
 from epics import Motor
-from epics.wx import MotorPanel, EpicsFunction
+from epics.wx import EpicsFunction
 
 from epics.wx.utils import (add_button, add_menu, popup, pack, Closure ,
                             NumericCombo, SimpleText, FileSave, FileOpen,
@@ -19,6 +19,7 @@ if is_wxPhoenix:
 else:
     Bitmap = wx.BitmapFromImage
 
+from .motorpanel import MotorPanel
 from .icons import icons
 from .utils import normalize_pvname
 
