@@ -193,8 +193,10 @@ class TransferPositionsDialog(wx.Frame):
             idb = self.instdb
             uscope = idb.get_instrument(self.offline)
             sample = idb.get_instrument(self.instname)
-
-            us2ss_conf = idb.scandb.get_config('microscope2samplestage')
+            uname = uscope.name.replace(' ', '_')
+            sname = sample.name.replace(' ', '_')
+            conf_name = "CoordTrans:%s:%s" % (uname, sname)
+            us2ss_conf = idb.scandb.get_config(conf_name)
             rotmat = np.array(json.loads(us2ss_conf.notes))
 
             upos = OrderedDict()
