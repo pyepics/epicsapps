@@ -196,17 +196,16 @@ class TransferPositionsDialog(wx.Frame):
             uname = uscope.name.replace(' ', '_')
             sname = sample.name.replace(' ', '_')
             conf_name = "CoordTrans:%s:%s" % (uname, sname)
-            us2ss_conf = idb.scandb.get_config(conf_name)
-            rotmat = np.array(json.loads(us2ss_conf.notes))
 
+            conf = json.loads(idb.scandb.get_config(conf_name).notes)
+            source_pvs = conf['source']
+            dest_pvs = conf'dest']
+            rotmat = np.array(conf['rotmat'])
             upos = OrderedDict()
             for pname, cbox in self.checkboxes.items():
                 if cbox.IsChecked():
                     v =  idb.get_position_vals(self.offline, pname)
-                    # print( '>>> ', pname, v)
-                    upos[pname]  = [v['13IDE:m1.VAL'],
-                                    v['13IDE:m2.VAL'],
-                                    v['13IDE:m3.VAL']]
+                    upos[pname]  = [v[pvn] for pvn in source_pvs]
 
             newnames = upos.keys()
             vals = np.ones((4, len(upos)))
@@ -235,7 +234,7 @@ class TransferPositionsDialog(wx.Frame):
                 spos[pvname] = 0.000
 
             xoffset, yoffset, zoffset = 0.0, 0.0, 0.0
-            xpv, ypv, zpv = '13XRM:m4.VAL', '13XRM:m6.VAL', '13XRM:m5.VAL'
+            xpv, ypv, zpv = dest_pvs
             for i, pname in enumerate(newnames):
                 spos[xpv] = pred[0, i] + xoffset
                 spos[ypv] = pred[1, i] + yoffset
