@@ -129,7 +129,8 @@ class StageFrame(wx.Frame):
 
             ppanel = wx.Panel(self.cpanel.GetPane())
 
-            self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
+            self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'],
+                                           offline_config=config['offline'])
             self.pospanel.SetMinSize((250, 700))
 
             self.ctrlpanel = ControlPanel(ppanel,
@@ -370,15 +371,15 @@ class StageFrame(wx.Frame):
         mbar.Append(omenu, '&Options')
         mbar.Append(pmenu, 'Positions')
 
-        if len(self.config['scandb'].get('offline', '')):
+        if len(self.config['offline'].get('instrument', '')):
             cmenu = wx.Menu()
-            # add_menu(self, cmenu, label="Calibrate Microscope",
-            #          text="Calibrate to Offline Microscope",
-            #          action = self.pospanel.onMicroscopeCalibrate)
             add_menu(self, cmenu, label="Copy Positions from Offline Microscope",
                      text="Copy Positions from Offline Microscope",
                      action = self.pospanel.onMicroscopeTransfer)
-
+            cmenu.AppendSeparator()
+            add_menu(self, cmenu, label="Calibrate to Offline Microscope",
+                     text="Calibrate to Offline Microscope",
+                     action = self.pospanel.onMicroscopeCalibrate)
             mbar.Append(cmenu, 'Offline Microscope')
 
         self.SetMenuBar(mbar)
