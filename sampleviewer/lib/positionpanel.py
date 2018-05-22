@@ -632,7 +632,7 @@ class PositionPanel(wx.Panel):
             online_xyz  = self.offline_config.get('xyz_online', '')
             online_xyz  = [s.strip() for s in online_xyz.split(',')]
 
-            if len(offline_xyz) == 3 an len(online_xyz) == 3:
+            if len(offline_xyz) == 3 and len(online_xyz) == 3:
                 print("calibrate %s to %s " % (offline, online))
                 make_uscope_rotation(self.scandb,
                                      offline_inst=offline,
