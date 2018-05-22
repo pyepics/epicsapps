@@ -8,7 +8,12 @@ import time
 from collections import OrderedDict
 from epics import caput
 from epics.wx.utils import (add_button, add_menu, popup, pack, Closure,
-                            SimpleText)
+                            SimpleText, FloatCtrl)
+
+from epicsscan.scandb import ScanDB, InstrumentDB
+from lmfit import Parameters, minimize
+from .transformations import superimposition_matrix
+from .imageframe import ImageDisplayFrame
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
@@ -18,11 +23,131 @@ LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
-from .imageframe import ImageDisplayFrame
 
-# import larch
-# from  larch_plugins.epics import ScanDB, InstrumentDB
-from epicsscan.scandb import ScanDB, InstrumentDB
+def read_xyz(instdb, name, xyz_stages):
+    """
+    read XYZ Positions from instrument
+    returns dictionary of PositionName: (x, y, z)
+    """
+    out = OrderedDict()
+    for pname in instdb.get_positionlist(name):
+        v =  instdb.get_position_vals(name, pname)
+        out[pname]  = [v[p] for p in xyz_stages]
+    return out
+
+def params2rotmatrix(params, mat):
+    """--private--  turn fitting parameters
+    into rotation matrix
+    """
+    mat[0][1] = params['c01'].value
+    mat[1][0] = params['c10'].value
+    mat[0][2] = params['c02'].value
+    mat[2][0] = params['c20'].value
+    mat[1][2] = params['c12'].value
+    mat[2][1] = params['c21'].value
+    return mat
+#enddef
+
+def resid_rotmatrix(params, mat, v1, v2):
+    "--private-- resdiual function for fit"
+    mat = params2rotmatrix(params, mat)
+    return (v2 - np.dot(mat, v1)).flatten()
+#enddef
+
+def calc_rotmatrix(d1, d2):
+    """get best-fit rotation matrix to transform coordinates
+    from 1st position dict into the 2nd position dict
+    """
+    labels = []
+    d2keys = d2.keys()
+    for x in d1.keys():
+        if x in d2keys:
+            labels.append(x)
+        #endif
+    #endfor
+    labels.sort()
+    if len(labels) < 6:
+        print """Error: need at least 6 saved positions
+  in common to calculate rotation matrix"""
+
+        return None, None, None
+    #endif
+    print("Calculate Rotation Matrix with Positions:", labels)
+    v1 = np.ones((4, len(labels)))
+    v2 = np.ones((4, len(labels)))
+    for i, label in enumerate(labels):
+        v1[0, i] = d1[label][0]
+        v1[1, i] = d1[label][1]
+        v1[2, i] = d1[label][2]
+        v2[0, i] = d2[label][0]
+        v2[1, i] = d2[label][1]
+        v2[2, i] = d2[label][2]
+    #endfor
+
+    # get initial rotation matrix, assuming that
+    # there are orthogonal coordinate systems.
+    mat = superimposition_matrix(v1, v2, scale=True)
+
+    params = Parameters()
+    params.add('c10', mat[1][0], vary=True)
+    params.add('c01', mat[0][1], vary=True)
+    params.add('c20', mat[2][0], vary=True)
+    params.add('c02', mat[0][2], vary=True)
+    params.add('c12', mat[1][2], vary=True)
+    params.add('c21', mat[2][1], vary=True)
+
+    fit_result = minimize(resid_rotmatrix, params, args=(mat, v1, v2))
+    mat = params2rotmatrix(params, mat)
+    return mat, v1, v2
+
+
+def make_uscope_rotation(scandb,
+                         offline_inst='IDE_Microscope',
+                         offline_xyz=('13IDE:m1.VAL', '13IDE:m2.VAL', '13IDE:m3.VAL'),
+                         online_inst='IDE_SampleStage',
+                         online_xyz=('13XRM:m4.VAL', '13XRM:m6.VAL', '13XRM:m5.VAL')):
+    """
+    Calculate and store the rotation maxtrix needed to convert
+    positions from the GSECARS offline microscope (OSCAR)
+    to the SampleStage in the microprobe station.
+
+    This calculates the rotation matrix based on all position
+    names that occur in the Position List for both instruments.
+
+    Note:
+        The result is saved as a json dictionary to the config table
+    """
+    instdb = InstrumentDB(scandb)
+
+    pos_us = read_xyz(instdb, offline_inst, offline_xyz)
+    pos_ss = read_xyz(instdb, online_inst, online_xyz)
+    # calculate the rotation matrix
+    mat_us2ss, v1, v2 = calc_rotmatrix(pos_us, pos_ss)
+    if mat_us2ss is None:
+        return
+    #endif
+    uscope = instdb.get_instrument(offline_inst)
+    sample = instdb.get_instrument(online_inst)
+
+    uname = uscope.name.replace(' ', '_')
+    sname = sample.name.replace(' ', '_')
+    conf_us2ss = "CoordTrans:%s:%s" % (uname, sname)
+
+    us2ss = dict(source=offline_xyz, dest=online_xyz,
+                 rotmat=mat_us2ss.tolist())
+
+    scandb.set_config(conf_us2ss, json.dumps(us2ss))
+
+    # calculate the rotation matrix going the other way
+    mat_ss2us, v1, v2 = calc_rotmatrix(pos_ss, pos_us)
+    conf_ss2us = "CoordTrans:%s:%s" % (sname, uname)
+    ss2us = dict(source=online_xyz, dest=offline_xyz,
+                 rotmat=mat_ss2us.tolist())
+    print("Saving Calibration %s" %  conf_ss2us)
+    scandb.set_config(conf_ss2us, json.dumps(ss2us))
+    scandb.commit()
+
+######################
 
 POS_HEADER = '#SampleViewer POSITIONS FILE v1.0'
 class ErasePositionsDialog(wx.Frame):
@@ -137,20 +262,34 @@ class TransferPositionsDialog(wx.Frame):
         brow.Add(btn_none,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_ok ,   0, ALL_EXP|wx.ALIGN_LEFT, 1)
 
-        sizer.Add(brow,   (0, 0), (1, 4),  LEFT_CEN, 2)
-
-        sizer.Add(SimpleText(panel, ' Add Suffix:'), (1, 0), (1, 1),  LEFT_CEN, 2)
 
         self.suffix =  wx.TextCtrl(panel, value="", size=(150, -1))
-        sizer.Add(self.suffix, (1, 1), (1, 3), LEFT_CEN, 2)
+        self.xoff = FloatCtrl(panel, value=0, precision=3, size=(75, -1))
+        self.yoff = FloatCtrl(panel, value=0, precision=3, size=(75, -1))
+        self.zoff = FloatCtrl(panel, value=0, precision=3, size=(75, -1))
 
-        sizer.Add(SimpleText(panel, ' Position Name'), (2, 0), (1, 1),  LEFT_CEN, 2)
-        sizer.Add(SimpleText(panel, 'Copy?'),          (2, 1), (1, 1),  LEFT_CEN, 2)
-        sizer.Add(SimpleText(panel, ' Position Name'), (2, 2), (1, 1),  LEFT_CEN, 2)
-        sizer.Add(SimpleText(panel, 'Copy?'),          (2, 3), (1, 1),  LEFT_CEN, 2)
-        sizer.Add(wx.StaticLine(panel, size=(500, 2)), (3, 0), (1, 4),  LEFT_CEN, 2)
+        irow = 0
+        sizer.Add(brow,   (irow, 0), (1, 4),  LEFT_CEN, 2)
 
-        irow = 3
+        irow += 1
+        sizer.Add(SimpleText(panel, ' Add Suffix:'), (irow, 0), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(self.suffix, (irow, 1), (1, 3), LEFT_CEN, 2)
+
+        irow += 1
+        sizer.Add(SimpleText(panel, 'Offsets X, Y, Z:'), (irow, 0), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(self.xoff, (irow, 1), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(self.yoff, (irow, 2), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(self.zoff, (irow, 3), (1, 1),  LEFT_CEN, 2)
+
+        irow += 1
+        sizer.Add(SimpleText(panel, ' Position Name'), (irow, 0), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, 'Copy?'),          (irow, 1), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, ' Position Name'), (irow, 2), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, 'Copy?'),          (irow, 3), (1, 1),  LEFT_CEN, 2)
+
+        irow += 1
+        sizer.Add(wx.StaticLine(panel, size=(500, 2)), (irow, 0), (1, 4),  LEFT_CEN, 2)
+
         for ip, pname in enumerate(positions):
             cbox = self.checkboxes[pname] = wx.CheckBox(panel, -1, "")
             cbox.SetValue(True)
@@ -199,7 +338,7 @@ class TransferPositionsDialog(wx.Frame):
 
             conf = json.loads(idb.scandb.get_config(conf_name).notes)
             source_pvs = conf['source']
-            dest_pvs = conf'dest']
+            dest_pvs = conf['dest']
             rotmat = np.array(conf['rotmat'])
             upos = OrderedDict()
             for pname, cbox in self.checkboxes.items():
@@ -233,7 +372,9 @@ class TransferPositionsDialog(wx.Frame):
             for pvname in pvs:
                 spos[pvname] = 0.000
 
-            xoffset, yoffset, zoffset = 0.0, 0.0, 0.0
+            xoffset = self.xoff.GetValue()
+            yoffset = self.yoff.GetValue()
+            zoffset = self.zoff.GetValue()
             xpv, ypv, zpv = dest_pvs
             for i, pname in enumerate(newnames):
                 spos[xpv] = pred[0, i] + xoffset
@@ -250,12 +391,14 @@ class TransferPositionsDialog(wx.Frame):
 
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
-    def __init__(self, parent, viewer, config=None, **kws):
+    def __init__(self, parent, viewer, config=None, offline_config=None, **kws):
         wx.Panel.__init__(self, parent, -1, size=(300, 500))
+        self.scandb = None
         self.size = (300, 600)
         self.parent = parent
         self.viewer = viewer
         self.config = config
+        self.offline_config = offline_config
         self.poslist_select = None
         self.image_display = None
         self.pos_name =  wx.TextCtrl(self, value="", size=(300, 25),
@@ -305,8 +448,8 @@ class PositionPanel(wx.Panel):
                 sys.path.insert(0, dbconn_dir)
                 mod = __import__(dbconn_file)
                 conn = mod.conn
-                scandb = ScanDB(**mod.conn)
-                self.instdb = InstrumentDB(scandb)
+                self.scandb = ScanDB(**mod.conn)
+                self.instdb = InstrumentDB(self.scandb)
                 if self.instdb.get_instrument(self.instname) is None:
                     pvs = self.viewer.config['stages'].keys()
                     self.instdb.add_instrument(self.instname, pvs=pvs)
@@ -475,14 +618,28 @@ class PositionPanel(wx.Panel):
 
 
     def onMicroscopeTransfer(self, event=None):
-        offline =  self.config.get('offline', '')
-        if self.instdb is not None:
+        offline =  self.offline_config.get('instrument', '')
+        if len(offline) > 0 and self.instdb is not None:
             TransferPositionsDialog(offline, instname=self.instname,
                                     instdb=self.instdb, parent=self)
 
     def onMicroscopeCalibrate(self, event=None, **kws):
-        offline = self.config.get('offline', '')
-        print('Calibrate to Offline : ', offline)
+        online = self.config.get('instrument', '')
+        offline = self.offline_config.get('instrument', '')
+        if len(online) > 0 and len(offline) > 0 and self.scandb is not None:
+            offline_xyz = self.offline_config.get('xyz_offline', '')
+            offline_xyz = [s.strip() for s in offline_xyz.split(',')]
+            online_xyz  = self.offline_config.get('xyz_online', '')
+            online_xyz  = [s.strip() for s in online_xyz.split(',')]
+
+            if len(offline_xyz) == 3 an len(online_xyz) == 3:
+                print("calibrate %s to %s " % (offline, online))
+                make_uscope_rotation(self.scandb,
+                                     offline_inst=offline,
+                                     offline_xyz=offline_xyz,
+                                     online_inst=online,
+                                     online_xyz=online_xyz)
+
 
     def onSelect(self, event=None, name=None):
         "Event handler for selecting a named position"

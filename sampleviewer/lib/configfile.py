@@ -47,7 +47,11 @@ host =
 user =
 password =
 port =
-offline =
+#--------------------------#
+[offline]
+instrument =
+xyz_offline =
+xyz_online =
 #--------------------------#
 [stages]
 # index =  motor || group   ||desc || scale || prec || maxstep || show
@@ -65,6 +69,7 @@ conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite'
               'stages': {'ordered':True},
               'overlays': {'ordered':True},
               'scandb': {'ordered':True},
+              'offline': {'ordered':True},
               'positions': {'ordered':True} }
 
 conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
@@ -76,11 +81,11 @@ conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
                                       'calib_x', 'calib_y')),
                           ('scandb', ('instrument', 'dbconn_dir', 'dbconn_file',
                                       'dbname', 'server',
-                                      'host', 'user', 'password', 'port',
-                                      'offline')),
+                                      'host', 'user', 'password', 'port')),
+                          ('offline', ('instrument', 'xyz_offline', 'xyz_online')),
                           ('overlays', ('circle', 'scalebar')),
                           ('stages', None),
-                          ('positions', None)) )
+                          ('positions', None) ) )
 
 conf_files = ('SampleStage.ini',
               'SampleStage_autosave.ini',
