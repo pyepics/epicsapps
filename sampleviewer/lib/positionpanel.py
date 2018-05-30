@@ -399,6 +399,8 @@ class PositionPanel(wx.Panel):
         self.viewer = viewer
         self.config = config
         self.offline_config = offline_config
+        if self.offline_config is None:
+            self.offline_config = {}
         self.poslist_select = None
         self.image_display = None
         self.pos_name =  wx.TextCtrl(self, value="", size=(300, 25),
