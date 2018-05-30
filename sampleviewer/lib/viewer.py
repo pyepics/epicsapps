@@ -128,9 +128,9 @@ class StageFrame(wx.Frame):
             self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, self.cpanel)
 
             ppanel = wx.Panel(self.cpanel.GetPane())
-
+            offline_config = config.get('offline', {})
             self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'],
-                                           offline_config=config['offline'])
+                                           offline_config=offline_config)
             self.pospanel.SetMinSize((250, 700))
 
             self.ctrlpanel = ControlPanel(ppanel,
@@ -210,27 +210,35 @@ class StageFrame(wx.Frame):
     def onInitTimer(self, event=None, **kws):
         if self.imgpanel.full_size is not None:
             if 'overlays' in self.config:
-                olays = self.config['overlays']
-                sbar = [float(x) for x in olays['scalebar'].split()]
-                circ = [float(x) for x in olays['circle'].split()]
-
                 img_x, img_y = self.imgpanel.full_size
                 pix_x = float(self.config['camera']['calib_x'])
-                iscale = 0.5/abs(pix_x * img_x)
+                try:
+                    iscale = 0.5/abs(pix_x * img_x)
+                except ZeroDivisionError:
+                    iscale = 1.0
 
-                ssiz, sx, sy, swid, scolr, scolg, scolb = sbar
-                csiz, cx, cy, cwid, ccolr, ccolg, ccolb = circ
+                olays = self.config['overlays']
+                scalebar = olays.get('scalebar', None)
+                circle = olays.get('circle', None)
+                has_scalebar = scalebar is not None
+                has_circle = circle is not None
+                dobjs = []
+                if has_scalebar:
+                    sbar = [float(x) for x in scalebar.split()]
+                    ssiz, sx, sy, swid, scolr, scolg, scolb = sbar
+                    sargs = [sx - ssiz*iscale, sy, sx + ssiz*iscale, sy]
+                    scol = wx.Colour(int(scolr), int(scolg), int(scolb))
+                    dobjs.append(dict(shape='Line', width=swid,
+                                      style=wx.SOLID, color=scol, args=sargs))
 
-                cargs = [cx, cy, csiz*iscale]
-                sargs = [sx - ssiz*iscale, sy, sx + ssiz*iscale, sy]
+                if has_circle:
+                    circ = [float(x) for x in circle.split()]
+                    csiz, cx, cy, cwid, ccolr, ccolg, ccolb = circ
+                    cargs = [cx, cy, csiz*iscale]
+                    ccol = wx.Colour(int(ccolr), int(ccolg), int(ccolb))
+                    dobjs.append(dict(shape='Circle', width=cwid,
+                                      style=wx.SOLID, color=ccol, args=cargs))
 
-                scol = wx.Colour(int(scolr), int(scolg), int(scolb))
-                ccol = wx.Colour(int(ccolr), int(ccolg), int(ccolb))
-
-                dobjs = [dict(shape='Line', width=swid,
-                              style=wx.SOLID, color=scol, args=sargs),
-                         dict(shape='Circle', width=cwid,
-                              style=wx.SOLID, color=ccol, args=cargs)]
 
                 if self.xhair_pixel is not None:
                     xwid, xcolr, xcolg, xcolb = swid, scolr, scolg, scolb
@@ -242,8 +250,7 @@ class StageFrame(wx.Frame):
 
                     dobjs.append(dict(shape='Line', width=2,
                                       style=wx.SOLID, color=xcol, args=xargs))
-                    #print( "Showing xhair: ", xargs)
-                # print('Draw Objects ', dobjs)
+
                 self.imgpanel.draw_objects = dobjs
             self.init_timer.Stop()
 
@@ -819,19 +826,22 @@ class StageFrame(wx.Frame):
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
     def __init__(self, inifile=None, debug=False, ask_workdir=True,
-                 orientation='landscape', **kws):
+                 orientation='landscape', position=(-1, -1), **kws):
         self.inifile = inifile
         self.orientation = orientation
         self.debug = debug
         self.ask_workdir = ask_workdir
+        self.position = position
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        frame = StageFrame(inifile=self.inifile,
+        self.frame = StageFrame(inifile=self.inifile,
                            orientation=self.orientation,
                            ask_workdir=self.ask_workdir)
-        frame.Show()
-        self.SetTopWindow(frame)
+        self.frame.Show()
+        self.frame.SetPosition(self.position)
+        self.frame.Maximize()
+        self.SetTopWindow(self.frame)
 
     def OnInit(self):
         self.createApp()
