@@ -8,7 +8,7 @@ import shutil
 
 from six import StringIO
 from threading import Thread
-from collections import OrderedDict
+from collections import namedtuple, OrderedDict
 import base64
 import json
 import matplotlib
@@ -22,6 +22,8 @@ from epics.wx.utils import (add_menu, pack, Closure, popup,
                             NumericCombo, SimpleText, FileSave, FileOpen,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
+import larch
+from larch.wxlib import GridPanel, OkCancel
 from scipy.optimize import minimize
 import skimage
 import skimage.filters
@@ -60,6 +62,35 @@ def image_blurriness(imgpanel, full=False):
     img = img[w1:w2, h1:h2]
     sharpness = ((img - img.mean())**2).sum()/(w*h)
     return -sharpness
+
+
+class VideoDialog(wx.Dialog):
+    """dialog for video options"""
+    def __init__(self, parent, name,  **kws):
+        title = "Video Capture"
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title)
+
+        panel = GridPanel(self, ncols=3, nrows=2, pad=2, itemstyle=LCEN)
+
+        self.filename = wx.TextCtrl(panel, -1, 'Capture.avi',  size=(150, -1))
+        self.runtime  = wx.TextCtrl(panel, -1, '15.0',   size=(150, -1))
+
+        panel.Add(SimpleText(panel, 'File Name : '), newrow=True)
+        panel.Add(self.filename)
+        panel.Add(SimpleText(panel, 'Run Time: '), newrow=True)
+        panel.Add(self.runtime)
+        panel.Add(OkCancel(panel), dcol=2, newrow=True)
+        panel.pack()
+
+    def GetResponse(self, newname=None):
+        self.Raise()
+        response = namedtuple('RenameResponse', ('ok', 'runtime', 'filename'))
+        runtime, filename, ok = 0, '', False
+        if self.ShowModal() == wx.ID_OK:
+            filename = self.filename.GetValue()
+            runtime  = float(self.runtime.GetValue())
+            ok = True
+        return response(ok, runtime, filename)
 
 class StageFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
@@ -254,7 +285,6 @@ class StageFrame(wx.Frame):
                 self.imgpanel.draw_objects = dobjs
             self.init_timer.Stop()
 
-
     def onChangeCamera(self, evt=None):
         if not self.cam_type.startswith('area'):
             print('How did that happen?')
@@ -286,6 +316,10 @@ class StageFrame(wx.Frame):
 
         add_menu(self, fmenu, label="&Save Config", text="Save Configuration",
                  action = self.onSaveConfig)
+
+        add_menu(self, fmenu, label="Capture Video",
+                 text="Capture Video",
+                 action = self.onCaptureVideo)
 
         add_menu(self, fmenu, label="Show Projections\tCtrl+G",
                  text="Start Projection Plots",
@@ -798,10 +832,19 @@ class StageFrame(wx.Frame):
 
             self.xplot.panel.axes.set_ylim((ymin, ymax), emit=True)
             self.yplot.panel.axes.set_ylim((ymin, ymax), emit=True)
-
-            # print('X lims: ', self.xplot.panel.conf.zoom_lims, xlims)
-            # self.xplot.panel.set_xylims(xlims)
             # self.yplot.panel.set_xylims(ylims)
+
+    def onCaptureVideo(self, event=None):
+        self.imgpanel.camera.StopCapture()
+        t0 = time.time()
+        dlg = VideoDialog(self, 'Capture.mjpg')
+        res = dlg.GetResponse()
+        print("got response ", time.time()-t0)
+        dlg.Destroy()
+        if res.ok:
+            print(" --> Capture Video!! ", res, (time.time() - t0))
+            self.imgpanel.CaptureVideo(filename=res.filename, runtime=res.runtime)
+            print(" --> Capture done. ", (time.time() - t0))
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',
