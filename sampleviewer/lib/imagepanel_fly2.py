@@ -4,7 +4,7 @@
 import numpy as np
 import wx
 import time
-
+import os
 from epics import PV, Device, caput, poll
 from epics.wx import EpicsFunction
 
@@ -80,6 +80,40 @@ class ImagePanel_Fly2(ImagePanel_Base):
         "turn camera off"
         self.timer.Stop()
         self.camera.StopCapture()
+
+    def CaptureVideo(self, filename='Capture', format='MJPG', runtime=10.0):
+        print(" in Capture Video!! ", runtime, filename)
+        print(" Current folder ", os.getcwd())
+        framerate = 15.0
+        numImages = max(15, 1 + runtime*framerate)
+        self.Stop()
+        time.sleep(0.02)
+        t0 = time.time()
+        avi = PyCapture2.AVIRecorder()
+        self.camera.StartCapture()
+        for i in range(numImages):
+            try:
+                image = self.camera.cam.retrieveBuffer()
+            except PyCapture2.Fc2error as fc2Err:
+                print( "dropped frame:", fc2Err)
+                continue
+            if i == 0:
+                if format == "AVI":
+                    avi.AVIOpen(filename, framerate)
+                elif format == "MJPG":
+                    print(" Open MJPG video")
+                    avi.MJPGOpen(filename, framerate, 75)
+                elif format == "H264":
+                    avi.H264Open(filename, framerate, image.getCols(), image.getRows(), 1000000)
+                else:
+                    print("Specified format is not available.")
+                    return
+            # print(i, image)
+            avi.append(image)
+        print("saved file %s time = %.1f " % (filename, time.time()-t0))
+        avi.close()
+        self.Stop()
+        self.Start()
 
     def SetExposureTime(self, exptime):
         self.camera.SetPropertyValue('shutter', exptime, auto=False)
