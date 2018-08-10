@@ -32,6 +32,9 @@ class ImagePanel_Base(wx.Panel):
         "turn camera off"
         raise NotImplementedError('must provide Stop()')
 
+    def CaptureVideo(self, filename='Capture', format='MJPG', runtime=60.0):
+        pass
+
     def SetExposureTime(self, exptime):
         "set exposure time... overwrite this!"
         raise NotImplementedError('must provide SetExposureTime()')
@@ -162,7 +165,7 @@ class ImagePanel_Base(wx.Panel):
         self.scale = max(self.scale, 0.05)
         try:
             self.image = self.GrabWxImage(scale=self.scale, rgb=True)
-        except ValueError:
+        except: #  ValueError:
             return
 
         if self.image is None:
