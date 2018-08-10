@@ -209,29 +209,27 @@ class ControlPanel(wx.Panel):
         mot['finey'].VAL = 0
 
     def onMove(self, event, name=None, group=None):
-        twkval = float(self.tweak_wids[group].GetStringSelection())
+        twkval = self.tweak_wids[group].GetStringSelection()
+
+        try:
+            twkval = float(twkval)
+        except:
+            print("cannot move ", group, twkval)
+            return
+
         ysign = {'n':1, 's':-1}.get(name[0], 0)
         xsign = {'e':1, 'w':-1}.get(name[1], 0)
 
-        y = None
         mdesc = self.groupmotors[group]
-        x = mdesc[0]
-        if len(mdesc) == 2:
-            y = mdesc[1]
 
-        delta = twkval * xsign * self.scale[x]
-        val   = delta + float(self.motor_wids[x].drive.GetValue())
-        self.motor_wids[x].drive.SetValue("%f" % val)
-        if y is not None:
-            delta = twkval * ysign * self.scale[y]
-            val   = delta + float(self.motor_wids[y].drive.GetValue())
-            self.motor_wids[y].drive.SetValue("%f" % val)
-        try:
-            self.motors[x].TWV = twkval
-            if y is not None:
-                self.motors[y].TWV = twkval
-        except:
-            pass
+        xmot = mdesc[0]
+        xval = self.motors[xmot].VAL + twkval * xsign * self.scale[xmot]
+        self.motor_wids[xmot].drive.SetValue("%f" % xval)
+
+        if len(mdesc) == 2:
+            ymot = mdesc[1]
+            yval = self.motors[ymot].VAL + twkval * ysign * self.scale[ymot]
+            self.motor_wids[ymot].drive.SetValue("%f" % yval)
 
     def current_position(self):
         pos = {}
