@@ -61,4 +61,5 @@ class ConfPanel_URL(wx.Panel):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(title,         0, wx.ALIGN_LEFT|wx.ALL)
+        next_row = self.show_position_info(row=2)
         pack(self, sizer)
