@@ -9,7 +9,8 @@ from six import StringIO
 from six.moves.urllib.request import urlopen
 
 from PIL import Image
-from .imagepanel_base import ImagePanel_Base
+
+from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 from epics.wx.utils import  pack
 
 class ImagePanel_URL(ImagePanel_Base):
@@ -18,7 +19,7 @@ class ImagePanel_URL(ImagePanel_Base):
         super(ImagePanel_URL, self).__init__(parent, -1,
                                              size=(800, 600),
                                              writer=writer,
-                                             autosave_file=autosave_file)
+                                             autosave_file=autosave_file, **kws)
 
         self.url = url
         stream  = StringIO(urlopen(self.url).read())
@@ -27,6 +28,7 @@ class ImagePanel_URL(ImagePanel_Base):
 
         self.img_w = float(width+0.5)
         self.img_h = float(height+0.5)
+        self.img_size = (width, height)
         self.cam_name = url
         self.imgcount = 0
         self.imgcount_start = 0
@@ -53,13 +55,15 @@ class ImagePanel_URL(ImagePanel_Base):
         except:
             pass
 
-class ConfPanel_URL(wx.Panel):
-    def __init__(self, parent, url=None, **kws):
-        super(ConfPanel_URL, self).__init__(parent, -1, size=(280, 300))
+class ConfPanel_URL(ConfPanel_Base):
+    def __init__(self, parent, url=None, center_cb=None, xhair_cb=None, **kws):
+        super(ConfPanel_URL, self).__init__(parent, center_cb=center_cb,
+                                            xhair_cb=xhair_cb,
+                                            size=(280, 300))
 
         title =  wx.StaticText(self, label="Webcam Config", size=(285, 25))
 
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(title,         0, wx.ALIGN_LEFT|wx.ALL)
+        sizer = self.sizer # wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(title,       (0, 0), (1, 3),  wx.ALIGN_LEFT|wx.ALL)
         next_row = self.show_position_info(row=2)
         pack(self, sizer)
