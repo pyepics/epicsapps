@@ -41,7 +41,7 @@ class IonChamber(Device):
         if energy is None:
             energy = 9090.9090
             
-        voltage   = caget(volt_pv)e
+        voltage   = caget(volt_pv)
         amp_num   = float(caget(ampn_pv, as_string=True))
         amp_unit  = int(caget(ampu_pv) )
         
