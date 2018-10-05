@@ -7,11 +7,11 @@ import os
 import sys
 import time
 import wx
-from wx._core import PyDeadObjectError
+# from wx._core import PyDeadObjectError
 import wx.lib.colourselect  as csel
 
 import numpy as np
-import Image
+from PIL import Image
 
 from wxmplot.plotframe import PlotFrame
 from wxmplot.colors import hexcolor
@@ -261,7 +261,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.image.Refresh()
 
     def buildFrame(self):
-        sbar = self.CreateStatusBar(3, wx.CAPTION|wx.THICK_FRAME)
+        sbar = self.CreateStatusBar(3, wx.CAPTION) # |wx.THICK_FRAME)
         sfont = sbar.GetFont()
         sfont.SetWeight(wx.BOLD)
         sfont.SetPointSize(10)
@@ -527,7 +527,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
     def DatatoImage(self):  #,  data, size, mode):
         """convert raw data to image"""
         x = debugtime()
-        
+
         width, height = self.im_size
         d_size = (int(width*self.scale), int(height*self.scale))
         data = self.data.flatten()
@@ -549,10 +549,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
         # x.add('created wximage %s  ' % (repr(self.wximage.GetSize())))
         # print "IMAGE MODE ", self.im_mode, len(data), data.shape
         if self.im_mode == 'L':
-            self.wximage.SetData(self.imbuff.convert('RGB').tostring())
+            self.wximage.SetData(self.imbuff.convert('RGB').tobytes())
         elif self.im_mode == 'RGB':
             data.shape = (3, width, height)
-            
+
             self.wximage = wx.ImageFromData(width, height, data)
         # x.add('set wx image wximage : %i, %i ' % d_size)
         self.image.SetValue(self.wximage)
@@ -594,7 +594,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         else:
             try:
                 self.lineplotter.Raise()
-            except PyDeadObjectError:
+            except: #  PyDeadObjectError:
                 self.lineplotter = PlotFrame(self, title='Image Profile')
 
         if self.colormode == 2:
