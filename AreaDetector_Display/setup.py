@@ -20,5 +20,4 @@ for mod in deps:
     try:
         a = __import__(mod)
     except ImportError:
-        print errmsg % mod
-
+        print(errmsg % mod)

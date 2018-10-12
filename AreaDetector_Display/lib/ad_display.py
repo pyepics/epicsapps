@@ -18,9 +18,8 @@ from wxmplot.colors import hexcolor
 
 ICON_FILE = 'camera.ico'
 
-from debugtime import debugtime
-os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '78777216'
-os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '55577700'
+from .debugtime import debugtime
+os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '60500100'
 
 class Empty:
     pass
@@ -31,8 +30,8 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
 
 from epics.wx.utils import add_menu
 
-IMG_SIZE = (1360, 1024)
-IMG_SIZE = (1928, 1448)
+IMG_SIZE = (900, 650)
+# IMG_SIZE = (1928, 1448)
 
 HAS_OVERLAY_DEVICE = False
 try:
@@ -41,7 +40,13 @@ try:
 except ImportError:
     pass
 
-from imageview import ImageView
+HAS_OVERLAY_DEVICE = False
+from .imageview import ImageView
+
+labstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND
+ctrlstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
+rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
+txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
 
 class AD_Display(wx.Frame):
@@ -97,7 +102,7 @@ class AD_Display(wx.Frame):
 
         self.img_w = 0
         self.img_h = 0
-        self.wximage = wx.EmptyImage(3, 3)
+        self.wximage = wx.Image(3, 3)
         self.buildMenus()
         self.buildFrame()
 
@@ -110,7 +115,7 @@ class AD_Display(wx.Frame):
             name = ''
         if self.known_cameras is None:
             return
-        cam_names = self.known_cameras.keys()
+        cam_names = list(self.known_cameras.keys())
         cam_names.sort()
         dlg = wx.SingleChoiceDialog(self, 'Select Camera',
                                     caption='Select Camera',
@@ -139,7 +144,7 @@ class AD_Display(wx.Frame):
     def onCopyImage(self, event=None):
         "copy bitmap of canvas to system clipboard"
         bmp = wx.BitmapDataObject()
-        bmp.SetBitmap(wx.BitmapFromImage(self.wximage))
+        bmp.SetBitmap(wx.Bitmap(self.wximage))
         wx.TheClipboard.Open()
         wx.TheClipboard.SetData(bmp)
         wx.TheClipboard.Close()
@@ -180,7 +185,7 @@ class AD_Display(wx.Frame):
         self.Destroy()
 
     def onAbout(self, event=None):
-        msg =  """Epics Image Display version 0.2
+        msg =  """Epics Image Display version 0.3
 
 http://pyepics.github.com/epicsapps/
 
@@ -270,27 +275,21 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.SetStatusWidths([-3, -1, -1])
         self.SetStatusText('',0)
 
-        sizer = wx.GridBagSizer(10, 4)
-        panel = wx.Panel(self)
-        self.panel = panel
-        labstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND
-        ctrlstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
+        sizer = wx.GridBagSizer(3, 3)
+        panel = self.panel = wx.Panel(self)
 
-        rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
-
-        txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
         self.wids = {}
-        self.wids['exptime']   = PVFloatCtrl(panel, pv=None, size=(100, -1))
-        self.wids['period']    = PVFloatCtrl(panel, pv=None, size=(100, -1))
-        self.wids['numimages'] = PVFloatCtrl(panel, pv=None, size=(100, -1))
-        self.wids['gain']      = PVFloatCtrl(panel, pv=None, size=(100, -1),
+        self.wids['exptime']   = PVFloatCtrl(panel, pv=None, size=(150, -1))
+        self.wids['period']    = PVFloatCtrl(panel, pv=None, size=(150, -1))
+        self.wids['numimages'] = PVFloatCtrl(panel, pv=None, size=(150, -1))
+        self.wids['gain']      = PVFloatCtrl(panel, pv=None, size=(150, -1),
                                              minval=0, maxval=20)
 
-        self.wids['imagemode']   = PVEnumChoice(panel, pv=None, size=(100, -1))
-        self.wids['triggermode'] = PVEnumChoice(panel, pv=None, size=(100, -1))
-        self.wids['color']       = PVEnumChoice(panel, pv=None, size=(100, -1))
-        self.wids['start']       = wx.Button(panel, -1, label='Start', size=(50, -1))
-        self.wids['stop']        = wx.Button(panel, -1, label='Stop', size=(50,  -1))
+        self.wids['imagemode']   = PVEnumChoice(panel, pv=None, size=(150, -1))
+        self.wids['triggermode'] = PVEnumChoice(panel, pv=None, size=(150, -1))
+        self.wids['color']       = PVEnumChoice(panel, pv=None, size=(150, -1))
+        self.wids['start']       = wx.Button(panel, -1, label='Start', size=(75, -1))
+        self.wids['stop']        = wx.Button(panel, -1, label='Stop', size=(75,  -1))
 
         if HAS_OVERLAY_DEVICE:
             self.wids['o1color']  = csel.ColourSelect(panel,  -1, "", '#FEFEFE', size=(60, 25))
@@ -530,7 +529,16 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         width, height = self.im_size
         d_size = (int(width*self.scale), int(height*self.scale))
-        data = self.data.flatten()
+        data = self.data
+
+        print(" draw data", data.shape, data.dtype, data.sum() )
+        jmin = imin = data.min()
+        jmax = imax = data.max()
+        jmin, jmax = np.percentile(data, [0.5, 99.5])
+        print(imin, jmin, jmax, imax)
+        data = (data - jmin)/(jmax - 1.0*jmin + 1.e-6)
+        data = data.flatten()
+
         # x.add('flatten %i' % len(data))
         if self.imbuff is None or d_size != self.d_size or self.im_mode == 'L':
             try:
@@ -545,7 +553,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             # x.add('resized imbuff')
 
         if self.wximage.GetSize() != self.imbuff.size:
-            self.wximage = wx.EmptyImage(d_size[0], d_size[1])
+            self.wximage = wx.Image(d_size[0], d_size[1])
         # x.add('created wximage %s  ' % (repr(self.wximage.GetSize())))
         # print "IMAGE MODE ", self.im_mode, len(data), data.shape
         if self.im_mode == 'L':
@@ -673,7 +681,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         elif key == 'unzoom':
             self.unZoom()
         else:
-            print 'unknown Entry ? ', key
+            print( 'unknown Entry ? ', key)
 
     @EpicsFunction
     def connect_pvs(self, verbose=True):
@@ -859,8 +867,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
             return
 
         # d.add('refresh img before raw get %i' % arraysize)
-        rawdata = self.ad_img.PV('ArrayData').get(count=arraysize).astype('uint8')
-        # d.add('refresh img after raw get')
+        rawdata = self.ad_img.PV('ArrayData').get(count=arraysize)
+        print("Raw ", rawdata.shape, rawdata.dtype, self.arrsize)
         im_mode = 'L'
         im_size = (self.arrsize[0], self.arrsize[1])
 
@@ -892,29 +900,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.messag(smsg, panel=0)
 
         self.drawing = False
-        # d.add('refresh img done')
-        #d.show()
 
-#         imbuff =  Image.frombuffer(im_mode, im_size, rawdata,
-#                                    'raw', im_mode, 0, 1)
-#         # d.add('refresh after Image.frombuffer')
-#
-#         self.GetImageSize()
-#
-#         if self.img_h < 1 or self.img_w < 1:
-#             return
-#         display_size = (int(self.img_h*self.scale), int(self.img_w*self.scale))
-#
-#         imbuff = imbuff.resize(display_size)
-#         if self.wximage.GetSize() != imbuff.size:
-#             self.wximage = wx.EmptyImage(display_size[0], display_size[1])
-#         # d.add('refresh after sizing')
-#         self.imbuff = imbuff
-#         self.wximage.SetData(imbuff.convert('RGB').tostring())
-#         # d.add('refresh set wximage.tostring')
-#         self.image.SetValue(self.wximage)
-
-        # d.show()
 
 if __name__ == '__main__':
     import sys

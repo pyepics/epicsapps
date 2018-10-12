@@ -2,6 +2,7 @@
 Simple Image Viewing Window
 """
 import wx
+is_wxPhoenix = 'phoenix' in wx.PlatformInfo
 
 class ImageView(wx.Window):
     def __init__(self, parent, id=-1, pos=wx.DefaultPosition,
@@ -30,7 +31,7 @@ class ImageView(wx.Window):
         self.prof_line = None
         self.xy_init = None
         self.win_size = 1, 1
-        
+
     def OnLeftDown(self, event=None):
         if self.cursor_mode in ('zoom', 'profile'):
             self.zoom_box = None
@@ -117,7 +118,8 @@ class ImageView(wx.Window):
         zdc.SetBrush(wx.TRANSPARENT_BRUSH)
         zdc.SetPen(wx.Pen('White', 2, wx.SOLID))
         zdc.ResetBoundingBox()
-        zdc.BeginDrawing()
+        if not is_wxPhoenix:
+            zdc.BeginDrawing()
         if self.cursor_mode == 'profile':
             if self.prof_line is not None:
                 zdc.DrawLine(*self.prof_line)
@@ -130,7 +132,8 @@ class ImageView(wx.Window):
             if not erase:
                 self.zoom_box = bbox
                 zdc.DrawRectangle(*self.zoom_box)
-        zdc.EndDrawing()
+        if not is_wxPhoenix:
+            zdc.EndDrawing()
 
     def SetValue(self, image):
         self.image = image
@@ -143,7 +146,7 @@ class ImageView(wx.Window):
         event.Skip()
 
     def DrawImage(self, event=None, isize=None, size=None):
-        if event is None: 
+        if event is None:
             return
         if not hasattr(self, 'image') or self.image is None:
             return
@@ -189,7 +192,7 @@ class ImageView(wx.Window):
             img = img.Scale(w_scaled, h_scaled)
         #dc = wx.PaintDC(self)
         #dc.DrawBitmap(wx.BitmapFromImage(img), w_pad, h_pad, useMask=True)
-        dc = wx.BufferedPaintDC(self, wx.BitmapFromImage(img))
+        dc = wx.BufferedPaintDC(self, wx.Bitmap(img))
         if self.zoom_box is not None:
             self.updateDynamicBox(self.zoom_box, erase=True)
         elif self.prof_line is not None:
