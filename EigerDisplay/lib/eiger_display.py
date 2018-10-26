@@ -6,6 +6,7 @@
 import os
 import sys
 import time
+import json
 import numpy as np
 
 import wx
@@ -24,6 +25,13 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
                       PVEnumChoice, PVFloatCtrl, PVTextCtrl, PVStaticText)
 from epics import caget, caput
 from epics.wx.utils import add_menu
+
+HAS_ESCAN = False
+try:
+    from epicsscan import ScanDB
+    HAS_ESCAN = True
+except ImportError:
+    HAS_ESCAN = False
 
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 
@@ -91,15 +99,28 @@ class EigerFrame(wx.Frame):
         self.integrator = None
         self.int_panel = None
         self.contrast_levels = None
+        self.scandb = None
         wx.Frame.__init__(self, None, -1, "Eiger500K Area Detector Display",
                           style=wx.DEFAULT_FRAME_STYLE)
 
-        print("Eiger ", self.prefix)
         self.img_w = 0
         self.img_h = 0
         self.wximage = wx.Image(3, 3)
         self.buildMenus()
         self.buildFrame()
+        wx.CallAfter(self.connect_escandb)
+
+    def connect_escandb(self):
+        print("Connect ESCAN DB ",
+              HAS_ESCAN , os.environ.get('ESCAN_CREDENTIALS', '----') )
+        if HAS_ESCAN and os.environ.get('ESCAN_CREDENTIALS', None) is not None:
+            self.scandb = ScanDB()
+            calib_loc = self.scandb.get_info('eiger_calibration')
+            cal = self.scandb.get_detectorconfig(calib_loc)
+            self.setup_calibration(json.loads(cal.text))
+
+
+
 
     def buildFrame(self):
         sbar = self.CreateStatusBar(3, wx.CAPTION) # |wx.THICK_FRAME)
@@ -134,9 +155,13 @@ class EigerFrame(wx.Frame):
         self.wids['start']    = wx.Button(panel, -1, label='Start',    size=wsize)
         self.wids['stop']     = wx.Button(panel, -1, label='Stop',     size=wsize)
         self.wids['freerun']  = wx.Button(panel, -1, label='Free Run', size=wsize)
-
         for key in ('start', 'stop', 'freerun'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onButton, key=key))
+
+        self.wids['show_1dint']  = wx.Button(panel, -1, label='Show 1D Integratin',
+                                             size=lsize)
+        self.wids['show_1dint'].Disable()
+        self.wids['show_1dint'].Bind(wx.EVT_BUTTON, self.onShowIntegration)
 
         self.wids['imagesize']= wx.StaticText(panel, -1, label='?x?',
                                               size=(250, 30), style=txtstyle)
@@ -187,11 +212,15 @@ class EigerFrame(wx.Frame):
         irow += 1
         sizer.Add(self.wids['contrastpanel'], (irow, 0), (1, 3), labstyle)
 
-        self.image = ADImagePanel(self, prefix=self.prefix)
+        irow += 1
+        sizer.Add(self.wids['show_1dint'], (irow, 0), (1, 3), labstyle)
 
 
         panel.SetSizer(sizer)
         sizer.Fit(panel)
+
+        # image panel
+        self.image = ADImagePanel(self, prefix=self.prefix)
 
         mainsizer = wx.BoxSizer(wx.HORIZONTAL)
         mainsizer.Add(panel, 0, wx.LEFT|wx.GROW|wx.ALL, 5)
@@ -222,7 +251,7 @@ class EigerFrame(wx.Frame):
         wx.TheClipboard.Close()
         wx.TheClipboard.Flush()
 
-    def onReadCalib(self, event=None):
+    def onReadCalibFile(self, event=None):
         "read calibration file"
         wcards = "Poni Files(*.poni)|*.poni|All files (*.*)|*.*"
         dlg = wx.FileDialog(None, message='Read Calibration File',
@@ -234,11 +263,18 @@ class EigerFrame(wx.Frame):
             path = os.path.abspath(dlg.GetPath())
 
         if os.path.exists(path):
-            self.calib = read_poni(path)
-            self.integrator = AzimuthalIntegrator(**self.calib)
+            self.setup_calibration(read_poni(path))
+
+    def setup_calibration(self, calib):
+        """set up calibration from calibration dict"""
+        self.calib = calib
+        print("Set calibration to ", calib)
+        self.integrator = AzimuthalIntegrator(**calib)
+        self.wids['show_1dint'].Enable()
 
     def onShowIntegration(self, event=None):
-        print("show 1d integration")
+        if self.calib is None or 'poni1' not in self.calib:
+            return
         shown = False
         try:
             self.int_panel.Raise()
@@ -248,15 +284,18 @@ class EigerFrame(wx.Frame):
         if not shown:
             self.int_panel = PlotFrame(self)
             self.int_panel.Raise()
-        if self.calib is not None and 'poni1' in self.calib:
             self.show_1dpattern(init=True)
+            print("Init 1d")
+        else:
+            self.show_1dpattern()
+
 
     def show_1dpattern(self, init=False):
         img = self.ad_img.PV('ArrayData').get()
         img.shape = self.image.arrsize[0], self.image.arrsize[1]
         img = img[3:-3, 1:-1][:,::-1].transpose()
 
-        print(img.shape)
+        # print(img.shape)
         q, xi = self.integrator.integrate1d(img, 2048, unit='q_A^-1',
                                             correctSolidAngle=True,
                                             polarization_factor=0.999)
@@ -314,7 +353,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         add_menu(self, fmenu, "&Copy\tCtrl+C", "Copy Image to Clipboard",
                  self.onCopyImage)
         add_menu(self, fmenu, "Read Calibration File", "Read PONI Calibration",
-                 self.onReadCalib)
+                 self.onReadCalibFile)
         add_menu(self, fmenu, "Show 1D integration", "Show 1D integration",
                  self.onShowIntegration)
 
@@ -322,7 +361,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         add_menu(self, fmenu, "E&xit\tCtrl+Q",  "Exit Program", self.onExit)
 
         omenu = wx.Menu()
-        add_menu(self, omenu,  "&Rotate Clockwise\tCtrl+R", "Rotate Clockwise", self.onRot90)
+        add_menu(self, omenu,  "&Rotate CCW\tCtrl+R", "Rotate Counter Clockwise", self.onRot90)
         add_menu(self, omenu,  "Flip Up/Down\tCtrl+T", "Flip Up/Down", self.onFlipV)
         add_menu(self, omenu,  "Flip Left/Right\tCtrl+F", "Flip Left/Right", self.onFlipH)
         add_menu(self, omenu,  "Reset Rotations and Flips", "Reset", self.onResetRotFlips)
@@ -343,7 +382,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.image.flipv = self.fliph = False
 
     def onRot90(self, event):
-        self.image.rot90 = (self.image.rot90 + 1) % 4
+        self.image.rot90 = (self.image.rot90 - 1) % 4
 
     def onFlipV(self, event):
         self.image.flipv= not self.image.flipv
