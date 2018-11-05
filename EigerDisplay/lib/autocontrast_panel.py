@@ -5,7 +5,7 @@ from collections import OrderedDict
 
 class ContrastPanel(wx.Panel):
     """auto-contrast panel"""
-    def __init__(self, parent, default=0, callback=None,
+    def __init__(self, parent, default=1, callback=None,
                  title='Auto Contrast', **kws):
 
         self.callback = callback
@@ -30,7 +30,7 @@ class ContrastPanel(wx.Panel):
     def set_level_str(self, choice=None):
         if choice not in self.levels:
             choice = self.levels[0]
-        self.set_level_int(levl=self.levels.index(choice))
+        self.set_level_int(level=self.levels.index(choice))
 
     def set_level_int(self, level=0):
         if level < 0 or level > len(self.levels)-1:
