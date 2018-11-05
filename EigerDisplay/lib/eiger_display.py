@@ -98,6 +98,7 @@ class EigerFrame(wx.Frame):
         self.calib = {}
         self.integrator = None
         self.int_panel = None
+        self.int_lastid = None
         self.contrast_levels = None
         self.scandb = None
         wx.Frame.__init__(self, None, -1, "Eiger500K Area Detector Display",
@@ -108,11 +109,14 @@ class EigerFrame(wx.Frame):
         self.wximage = wx.Image(3, 3)
         self.buildMenus()
         self.buildFrame()
+        self.int_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onIntTimer, self.int_timer)
+
         wx.CallAfter(self.connect_escandb)
 
     def connect_escandb(self):
-        print("Connect ESCAN DB ",
-              HAS_ESCAN , os.environ.get('ESCAN_CREDENTIALS', '----') )
+        # print("Connect ESCAN DB ",
+        #       HAS_ESCAN , os.environ.get('ESCAN_CREDENTIALS', '----') )
         if HAS_ESCAN and os.environ.get('ESCAN_CREDENTIALS', None) is not None:
             self.scandb = ScanDB()
             calib_loc = self.scandb.get_info('eiger_calibration')
@@ -158,10 +162,11 @@ class EigerFrame(wx.Frame):
         for key in ('start', 'stop', 'freerun'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onButton, key=key))
 
-        self.wids['show_1dint']  = wx.Button(panel, -1, label='Show 1D Integratin',
-                                             size=lsize)
+        self.wids['show_1dint'] =  wx.CheckBox(panel, -1, label='Show 1D Integration',
+                                               size=lsize)
+        self.wids['show_1dint'].SetValue(0)
         self.wids['show_1dint'].Disable()
-        self.wids['show_1dint'].Bind(wx.EVT_BUTTON, self.onShowIntegration)
+        self.wids['show_1dint'].Bind(wx.EVT_CHECKBOX, self.onShowIntegration)
 
         self.wids['imagesize']= wx.StaticText(panel, -1, label='?x?',
                                               size=(250, 30), style=txtstyle)
@@ -274,6 +279,10 @@ class EigerFrame(wx.Frame):
         self.wids['show_1dint'].Enable()
 
     def onShowIntegration(self, event=None):
+        if not event.IsChecked():
+            self.int_timer.Stop()
+            return
+
         if self.calib is None or 'poni1' not in self.calib:
             return
         shown = False
@@ -286,12 +295,19 @@ class EigerFrame(wx.Frame):
             self.int_panel = PlotFrame(self)
             self.int_panel.Raise()
             self.show_1dpattern(init=True)
-            print("Init 1d")
         else:
             self.show_1dpattern()
+        self.int_timer.Start(500)
 
+    def onIntTimer(self, evt=None):
+        "timer for integration"
+        if self.calib is not None and self.img_id != self.int_lastid:
+            wx.CallAfter(self.show_1dpattern)
 
     def show_1dpattern(self, init=False):
+        if self.calib is None:
+            return
+
         img = self.ad_img.PV('ArrayData').get()
         img.shape = self.image.arrsize[0], self.image.arrsize[1]
         img = img[3:-3, 1:-1][:,::-1].transpose()
@@ -301,11 +317,12 @@ class EigerFrame(wx.Frame):
                                             correctSolidAngle=True,
                                             polarization_factor=0.999)
         if init:
-            self.int_panel.plot(q, xi, xlabel=r'$Q (\rm\AA^{-1})$', marker='+')
+            self.int_panel.plot(q, xi, xlabel=r'$Q (\rm\AA^{-1})$', marker='+',
+                                title='Image %d' % self.img_id)
 
         else:
             self.int_panel.update_line(0, q, xi, draw=True)
-
+            self.int_panel.set_title('Image %d' % self.img_id)
 
     @EpicsFunction
     def onSaveImage(self, event=None):
@@ -417,7 +434,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     @EpicsFunction
     def connect_pvs(self, verbose=True):
-        print("Connect ", self.prefix)
         if self.prefix is None or len(self.prefix) < 2:
             return
 
@@ -483,9 +499,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
     @DelayedEpicsCallback
     def onArrayCounter(self, pvname=None, value=None, char_value=None, **kw):
         self.write("Image %d" % value, panel=2)
-        # if self.int_panel is not None and self.calib is not None:
-        #    self.show_1dpattern()
-
+        self.img_id = value
 
 class EigerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
     def __init__(self, prefix=None, **kws):
