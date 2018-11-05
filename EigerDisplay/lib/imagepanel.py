@@ -35,12 +35,13 @@ class ADImagePanel(wx.Panel):
                  rot90=0, contrast_level=0, **kws):
         super(ADImagePanel, self).__init__(parent, -1, size=(400, 750))
         self.prefix = prefix
-        self.img_w = 800.5
-        self.img_h = 600.5
+        self.img_w = 800.
+        self.img_h = 600.
         self.writer = writer
         self.leftdown_cb = leftdown_cb
         self.motion_cb   = motion_cb
         self.scale = 0.60
+        self.arrsize   = (0, 0, 0)
         self.contrast_levels = [contrast_level, 100.0-contrast_level]
         self.count = -1
         self.img_id = -1
@@ -98,8 +99,8 @@ class ADImagePanel(wx.Panel):
         w, h = arrsize0, arrsize1
         if self.ad_img.NDimensions_RBV == 3:
             w, h  = arrsize1, arrsize2
-        self.img_w = float(w+0.5)
-        self.img_h = float(h+0.5)
+        self.img_w = float(w+0.05)
+        self.img_h = float(h+0.05)
         return w, h
 
     def onNewImage(self, pvname=None, value=None, **kws):
@@ -139,8 +140,7 @@ class ADImagePanel(wx.Panel):
     def GrabWxImage(self, scale=1):
         if self.ad_img is None or self.ad_cam is None:
             return
-
-        width, height = self.GetImageSize()
+        self.GetImageSize()
         imgcount = self.ad_cam.ArrayCounter_RBV
         now = time.time()
         if (imgcount == self.imgcount or abs(now - self.last_update) < 0.025):
@@ -151,16 +151,12 @@ class ADImagePanel(wx.Panel):
 
         im_mode = 'L'
         im_size = (self.arrsize[1], self.arrsize[0])
-        dcount = self.arrsize[0] * self.arrsize[1]
         imdata = None
         try:
-            imdata = self.ad_img.PV('ArrayData').get(count=dcount)
+            imdata = self.ad_img.PV('ArrayData').get(count=im_size[0]*im_size[1])
             imdata = imdata.reshape(im_size)
         except:
-            pass
-        if imdata is None:
-            return
-
+            return None
         if self.contrast_levels is not None:
             jmin, jmax = np.percentile(imdata, self.contrast_levels)
             imdata = np.clip(imdata, jmin, jmax)
