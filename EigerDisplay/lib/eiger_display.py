@@ -220,7 +220,8 @@ class EigerFrame(wx.Frame):
         sizer.Fit(panel)
 
         # image panel
-        self.image = ADImagePanel(self, prefix=self.prefix)
+        self.image = ADImagePanel(self, prefix=self.prefix, rot90=3)
+
 
         mainsizer = wx.BoxSizer(wx.HORIZONTAL)
         mainsizer.Add(panel, 0, wx.LEFT|wx.GROW|wx.ALL, 5)
@@ -471,6 +472,9 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         self.ad_cam.add_callback('DetectorState_RBV',  self.onDetState)
         self.ad_cam.add_callback('ArrayCounter_RBV',  self.onArrayCounter)
+
+        self.image.SetSize((425, 775))
+        self.wids['contrastpanel'].set_level_str('0.02')
 
     @DelayedEpicsCallback
     def onDetState(self, pvname=None, value=None, char_value=None, **kw):
