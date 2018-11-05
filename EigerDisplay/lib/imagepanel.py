@@ -11,14 +11,9 @@ import math
 from threading import Thread
 from six import StringIO
 import base64
-from PIL import Image
+
 from epics import PV, Device, caput, poll
 from epics.wx import EpicsFunction, DelayedEpicsCallback
-is_wxPhoenix = 'phoenix' in wx.PlatformInfo
-if is_wxPhoenix:
-    Bitmap = wx.Bitmap
-else:
-    Bitmap = wx.BitmapFromImage
 
 from matplotlib.cm import coolwarm, viridis, gray, coolwarm_r, viridis_r, gray_r
 
@@ -36,8 +31,9 @@ class ADImagePanel(wx.Panel):
                  'ArraySizeY_RBV')
 
     def __init__(self, parent, prefix=None, writer=None, leftdown_cb=None,
-                 motion_cb=None, draw_objects=None, callback=None, **kws):
-        super(ADImagePanel, self).__init__(parent, -1, size=(800, 600))
+                 motion_cb=None, draw_objects=None, callback=None,
+                 rot90=0, contrast_level=0, **kws):
+        super(ADImagePanel, self).__init__(parent, -1, size=(400, 750))
         self.prefix = prefix
         self.img_w = 800.5
         self.img_h = 600.5
@@ -45,10 +41,10 @@ class ADImagePanel(wx.Panel):
         self.leftdown_cb = leftdown_cb
         self.motion_cb   = motion_cb
         self.scale = 0.60
-        self.contrast_levels = [0.0, 100.0]
-        self.count = 0
+        self.contrast_levels = [contrast_level, 100.0-contrast_level]
+        self.count = -1
         self.img_id = -1
-        self.rot90 = 0
+        self.rot90 = rot90
         self.flipv = False
         self.fliph = False
         self.image = None
@@ -154,50 +150,43 @@ class ADImagePanel(wx.Panel):
         self.last_update = time.time()
 
         im_mode = 'L'
-        self.im_size = (self.arrsize[0], self.arrsize[1])
+        im_size = (self.arrsize[1], self.arrsize[0])
         dcount = self.arrsize[0] * self.arrsize[1]
-        rawdata = self.ad_img.PV('ArrayData').get(count=dcount)
-
-        if rawdata is None:
+        imdata = None
+        try:
+            imdata = self.ad_img.PV('ArrayData').get(count=dcount)
+            imdata = imdata.reshape(im_size)
+        except:
+            pass
+        if imdata is None:
             return
-        if self.contrast_levels is not None:
-            jmin, jmax = np.percentile(rawdata, self.contrast_levels)
-            rawdata = np.clip(rawdata, jmin, jmax)
 
-        if (self.ad_img.ColorMode_RBV == 0 and
-            isinstance(rawdata, np.ndarray) and
-            rawdata.dtype != np.uint8):
-            im_mode = 'I'
-            rawdata = rawdata.astype(np.uint32)
-        if im_mode in ('L', 'I'):
-            image = wx.Image(width, height)
-            imbuff = Image.frombuffer(im_mode, self.im_size, rawdata,
-                                      'raw',  im_mode, 0, 1)
-            image.SetData(imbuff.convert('RGB').tobytes())
-        elif im_mode == 'RGB':
-            rawdata.shape = (3, width, height)
-            rawdata = rawdata.astype(np.uint8)
-            if is_wxPhoenix:
-                image = wx.Image(width, height, rawdata)
-            else:
-                image = wx.ImageFromData(width, height, rawdata)
+        if self.contrast_levels is not None:
+            jmin, jmax = np.percentile(imdata, self.contrast_levels)
+            imdata = np.clip(imdata, jmin, jmax)
+
+        imin, imax = 1.0*imdata.min(), 1.0*imdata.max()+1.e-9
+        rgb = np.zeros((im_size[0], im_size[1], 3), dtype='uint8')
+        rgb[:, :, 0] = (255*(imdata - imin)/(imax-imin)).astype('uint8')
+        rgb[:, :, 1] = rgb[:, :, 2] = rgb[:, :, 0]
+        image = wx.Image(self.img_w, self.img_h, rgb)
 
         if self.flipv:
             image = image.Mirror(False)
         if self.fliph:
             image = image.Mirror(True)
         if self.rot90 != 0:
-            if self.rot90 in (1, 3):
-                width, height = height, width
             for i in range(self.rot90):
                 image = image.Rotate90(True)
-        return image.Scale(int(scale*width), int(scale*height))
+                self.img_w, self.img_h = self.img_h, self.img_w
+        return image.Scale(int(scale*self.img_w), int(scale*self.img_h))
 
-    def onSize(self, evt):
-        frame_w, frame_h = evt.GetSize()
+    def onSize(self, evt=None):
+        if evt is not None:
+            frame_w, frame_h = evt.GetSize()
+        else:
+            frame_w, frame_h = self.GetSize()
         self.scale = min(frame_w/self.img_w, frame_h/self.img_h)
-        self.Refresh()
-        evt.Skip()
 
     def onLeftDown(self, evt=None):
         """
@@ -247,7 +236,7 @@ class ADImagePanel(wx.Panel):
         self.image = self.GrabWxImage(scale=self.scale)
         if self.image is not None:
             self.full_size = self.image.GetSize()
-            bitmap = Bitmap(self.image)
+            bitmap = wx.Bitmap(self.image)
             img_w, img_h = self.bitmap_size = bitmap.GetSize()
             pan_w, pan_h = self.panel_size  = self.GetSize()
             pad_w, pad_h = int(1+(pan_w-img_w)/2.0), int(1+(pan_h-img_h)/2.0)
