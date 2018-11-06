@@ -158,8 +158,11 @@ class ADImagePanel(wx.Panel):
         except:
             return None
         if self.contrast_levels is not None:
-            jmin, jmax = np.percentile(imdata, self.contrast_levels)
-            imdata = np.clip(imdata, jmin, jmax)
+            try:
+                jmin, jmax = np.percentile(imdata, self.contrast_levels)
+                imdata = np.clip(imdata, jmin, jmax)
+            except:
+                return
 
         imin, imax = 1.0*imdata.min(), 1.0*imdata.max()+1.e-9
         rgb = np.zeros((im_size[0], im_size[1], 3), dtype='uint8')
