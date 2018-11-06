@@ -335,7 +335,7 @@ class EigerFrame(wx.Frame):
 
         img = self.ad_img.PV('ArrayData').get()
         img.shape = self.image.arrsize[1], self.image.arrsize[0]
-        img = img[3:-3, 1:-1][::-1, :] # whoa
+        img = img[3:-3, 1:-1][::-1, :]
 
         # print(img.shape)
         q, xi = self.integrator.integrate1d(img, 2048, unit='q_A^-1',
