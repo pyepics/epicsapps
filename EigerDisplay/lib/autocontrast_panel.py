@@ -3,6 +3,8 @@ from epics.wx.utils import pack
 
 from collections import OrderedDict
 
+labstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND
+
 class ContrastPanel(wx.Panel):
     """auto-contrast panel"""
     def __init__(self, parent, default=1, callback=None,
@@ -16,15 +18,15 @@ class ContrastPanel(wx.Panel):
 
         wx.Panel.__init__(self, parent, -1,  **kws)
 
-        opts = dict(size=(125, -1))
-        title = wx.StaticText(self, label='Auto-Contrast (%):', **opts)
-        self.choice = wx.Choice(self, choices=self.levels, **opts)
+        opts = dict(size=(100, -1))
+        title = wx.StaticText(self, label='Auto-Contrast (%):', size=(150, -1))
+        self.choice = wx.Choice(self, choices=self.levels, size=(100, -1))
         self.choice.Bind(wx.EVT_CHOICE, self.onChoice)
         self.choice.SetSelection(default)
 
         sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(title,       0, wx.ALIGN_LEFT|wx.TOP|wx.EXPAND, 2)
-        sizer.Add(self.choice, 1, wx.ALIGN_LEFT|wx.TOP|wx.EXPAND, 2)
+        sizer.Add(title,       0, labstyle)
+        sizer.Add(self.choice, 0, labstyle)
         pack(self, sizer)
 
     def set_level_str(self, choice=None):
