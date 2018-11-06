@@ -26,6 +26,8 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
 from epics import caget, caput
 from epics.wx.utils import add_menu
 
+from epicsscan.detectors.ad_eiger import EigerSimplon
+
 HAS_ESCAN = False
 try:
     from epicsscan import ScanDB
@@ -80,12 +82,15 @@ class EigerFrame(wx.Frame):
     # plugins to enable
     enabled_plugins = ('image1', 'Over1', 'ROI1', 'JPEG1', 'TIFF1')
 
-    def __init__(self, prefix=None, scale=1.0):
+    def __init__(self, prefix=None, url=None, scale=1.0):
         self.ad_img = None
         self.ad_cam = None
 
         self.prefix = prefix
         self.fname = 'Eiger.tif'
+        self.esimplon = None
+        if url is not None:
+            self.esimplon = EigerSimplon(url, prefix=prefix+'cam1:')
 
         self.im_size = None
         self.last_update = time.time() -1000
@@ -121,10 +126,8 @@ class EigerFrame(wx.Frame):
             self.scandb = ScanDB()
             calib_loc = self.scandb.get_info('eiger_calibration')
             cal = self.scandb.get_detectorconfig(calib_loc)
+            print("Read Calibration ", calib_loc)
             self.setup_calibration(json.loads(cal.text))
-
-
-
 
     def buildFrame(self):
         sbar = self.CreateStatusBar(3, wx.CAPTION) # |wx.THICK_FRAME)
@@ -162,11 +165,16 @@ class EigerFrame(wx.Frame):
         for key in ('start', 'stop', 'freerun'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onButton, key=key))
 
-        self.wids['show_1dint'] =  wx.CheckBox(panel, -1, label='Show 1D Integration',
+        self.wids['show_1dint'] =  wx.Button(panel, -1, label='Show 1D Integration',
                                                size=lsize)
-        self.wids['show_1dint'].SetValue(0)
-        self.wids['show_1dint'].Disable()
-        self.wids['show_1dint'].Bind(wx.EVT_CHECKBOX, self.onShowIntegration)
+        self.wids['show_1dint'].Bind(wx.EVT_BUTTON, self.onShowIntegration)
+
+#         self.wids['auto_1dint'] =  wx.CheckBox(panel, -1,
+#                                                label='Show Live 1D Integration',
+#                                                size=lsize)
+#         self.wids['auto_1dint'].SetValue(0)
+#         self.wids['auto_1dint'].Disable()
+#         self.wids['auto_1dint'].Bind(wx.EVT_CHECKBOX, self.onAutoIntegration)
 
         self.wids['imagesize']= wx.StaticText(panel, -1, label='?x?',
                                               size=(250, 30), style=txtstyle)
@@ -273,12 +281,29 @@ class EigerFrame(wx.Frame):
 
     def setup_calibration(self, calib):
         """set up calibration from calibration dict"""
+        if self.image.rot90 in (1, 3):
+            calib['rot3'] = np.pi/2.0
         self.calib = calib
-        print("Set calibration to ", calib)
         self.integrator = AzimuthalIntegrator(**calib)
         self.wids['show_1dint'].Enable()
 
     def onShowIntegration(self, event=None):
+        if self.calib is None or 'poni1' not in self.calib:
+            return
+        shown = False
+        try:
+            self.int_panel.Raise()
+            shown = True
+        except:
+            self.int_panel = None
+        if not shown:
+            self.int_panel = PlotFrame(self)
+            self.int_panel.Raise()
+            self.show_1dpattern(init=True)
+        else:
+            self.show_1dpattern()
+
+    def onAutoIntegration(self, event=None):
         if not event.IsChecked():
             self.int_timer.Stop()
             return
@@ -309,8 +334,8 @@ class EigerFrame(wx.Frame):
             return
 
         img = self.ad_img.PV('ArrayData').get()
-        img.shape = self.image.arrsize[0], self.image.arrsize[1]
-        img = img[3:-3, 1:-1][:,::-1].transpose()
+        img.shape = self.image.arrsize[1], self.image.arrsize[0]
+        img = img[3:-3, 1:-1][::-1, :] # whoa
 
         # print(img.shape)
         q, xi = self.integrator.integrate1d(img, 2048, unit='q_A^-1',
@@ -502,12 +527,13 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.img_id = value
 
 class EigerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, prefix=None, **kws):
+    def __init__(self, prefix=None, url=None, **kws):
         self.prefix = prefix
+        self.url = url
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        frame = EigerFrame(prefix=self.prefix)
+        frame = EigerFrame(prefix=self.prefix, url=self.url)
         frame.Show()
         self.SetTopWindow(frame)
 
