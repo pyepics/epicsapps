@@ -412,16 +412,17 @@ class StageFrame(wx.Frame):
         mbar.Append(omenu, '&Options')
         mbar.Append(pmenu, 'Positions')
 
-        if len(self.config['offline'].get('instrument', '')):
-            cmenu = wx.Menu()
-            add_menu(self, cmenu, label="Copy Positions from Offline Microscope",
-                     text="Copy Positions from Offline Microscope",
-                     action = self.pospanel.onMicroscopeTransfer)
-            cmenu.AppendSeparator()
-            add_menu(self, cmenu, label="Calibrate to Offline Microscope",
-                     text="Calibrate to Offline Microscope",
-                     action = self.pospanel.onMicroscopeCalibrate)
-            mbar.Append(cmenu, 'Offline Microscope')
+        if 'offline' in self.config:
+            if len(self.config['offline'].get('instrument', '')):
+                cmenu = wx.Menu()
+                add_menu(self, cmenu, label="Copy Positions from Offline Microscope",
+                         text="Copy Positions from Offline Microscope",
+                         action = self.pospanel.onMicroscopeTransfer)
+                cmenu.AppendSeparator()
+                add_menu(self, cmenu, label="Calibrate to Offline Microscope",
+                         text="Calibrate to Offline Microscope",
+                         action = self.pospanel.onMicroscopeCalibrate)
+                mbar.Append(cmenu, 'Offline Microscope')
 
         self.SetMenuBar(mbar)
 
@@ -463,6 +464,7 @@ class StageFrame(wx.Frame):
             if ret is None:
                 self.Destroy()
             os.chdir(ret)
+
         self.cnf = StageConfig(configfile)
         self.config = self.cnf.config
         gui = self.config['gui']
