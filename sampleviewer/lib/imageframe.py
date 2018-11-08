@@ -1,7 +1,7 @@
 import wx
-from six import StringIO
 import base64
 import array
+
 
 class ImageDisplayFrame(wx.Frame):
     """ basic frame for displaying image
@@ -38,12 +38,11 @@ class ImageDisplayFrame(wx.Frame):
         self.Raise()
 
     def showfile(self, fname, title=None, label=None):
-        imdata = StringIO(open(fname, "rb").read())
         if title is not None:
             self.SetTitle(title)
         if label is not None:
             self.label.SetLabel(label)
-        self.wximage = wx.ImageFromStream(imdata)
+        self.wximage = wx.Image(fname, wx.BITMAP_TYPE_ANY)
         self.show_bmp(self.wximage)
 
     def showb64img(self, data, title=None, label=None):
