@@ -1,5 +1,4 @@
 import time
-import cStringIO
 from PIL import Image
 import numpy as np
 

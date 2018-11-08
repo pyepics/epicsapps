@@ -17,7 +17,7 @@ LEFT = wx.ALIGN_LEFT|wx.EXPAND
 HAS_FLY2 = False
 try:
     import PyCapture2
-    import fly2_camera
+    from .fly2_camera import Fly2Camera
     HAS_FLY2 = True
 except ImportError:
     pass
@@ -40,7 +40,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
                                               writer=writer,
                                               autosave_file=autosave_file,
                                               datapush=True, **kws)
-        self.camera = fly2_camera.Fly2Camera(camera_id=camera_id)
+        self.camera = Fly2Camera(camera_id=camera_id)
         self.output_pv = output_pv
         self.output_pvs = {}
         self.img_w = 800.5
@@ -83,7 +83,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
 
     def CaptureVideo(self, filename='Capture', format='MJPG', runtime=10.0):
         print(" in Capture Video!! ", runtime, filename)
-        print(" Current folder ", os.getcwd())
+        # print(" Current folder ", os.getcwd())
         framerate = 15.0
         numImages = max(15, 1 + runtime*framerate)
         self.Stop()
@@ -154,6 +154,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True,
                     quality=wx.IMAGE_QUALITY_HIGH):
+        # print("Fly Grab Wx ", PyCapture2 )
         try:
             img = self.camera.cam.retrieveBuffer()
         except PyCapture2.Fc2error:
@@ -166,6 +167,7 @@ class ImagePanel_Fly2(ImagePanel_Base):
         width, height = int(scale*ncols), int(scale*nrows)
         if rgb:
             img = img.convert(PyCapture2.PIXEL_FORMAT.RGB)
+        # print("Fly Grab Wx ", img, nrows, ncols)
         self.data_shape = (nrows, ncols, 3)
         self.data = np.array(img.getData())
         self.full_image = wx.Image(ncols, nrows, self.data)
