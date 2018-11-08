@@ -67,8 +67,8 @@ def calc_rotmatrix(d1, d2):
     #endfor
     labels.sort()
     if len(labels) < 6:
-        print """Error: need at least 6 saved positions
-  in common to calculate rotation matrix"""
+        print( """Error: need at least 6 saved positions
+  in common to calculate rotation matrix""")
 
         return None, None, None
     #endif
@@ -528,24 +528,24 @@ class PositionPanel(wx.Panel):
         ipos  =  self.pos_list.GetSelection()
         if posname is None or len(posname) < 1:
             return
-        try:
-            self.image_display.Show()
-            self.image_display.Raise()
-        except:
-            del self.image_display
-            self.image_display =  None
-
-        if self.image_display is None:
-            self.image_display = ImageDisplayFrame()
-            self.image_display.Raise()
 
         thispos = self.positions[posname]
         try:
             notes = json.loads(thispos['notes'])
         except:
             notes = {'data_format': ''}
-        if isinstance(notes, basestring):
+        if isinstance(notes, str):
             notes = json.loads(notes)
+
+        if 'data_format' not in notes:
+            print('Cannot show image for %s' % posname)
+            try:
+                self.image_display.Destroy()
+                self.image_display = None
+            except:
+                pass
+            return
+
         label = []
         stages  = self.viewer.config['stages']
         posvals = self.positions[posname]['position']
@@ -559,6 +559,18 @@ class PositionPanel(wx.Panel):
         label = '%s: %s' % (posname, label)
 
         data  = thispos['image']
+
+        if self.image_display is None:
+            self.image_display = ImageDisplayFrame()
+            self.image_display.Raise()
+
+        try:
+            self.image_display.Show()
+            self.image_display.Raise()
+        except:
+            self.image_display =  None
+
+
         if str(notes['data_format']) == 'file':
             self.image_display.showfile(data, title=posname,
                                         label=label)
@@ -566,8 +578,6 @@ class PositionPanel(wx.Panel):
             size = notes.get('image_size', (800, 600))
             self.image_display.showb64img(data, size=size,
                                           title=posname, label=label)
-        else:
-            print('Cannot show image for %s' % posname)
 
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
