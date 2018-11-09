@@ -28,6 +28,8 @@ from epics.wx.utils import add_menu
 
 from epicsscan.detectors.ad_eiger import EigerSimplon
 
+from larch.wxlib import (GridPanel, Button, FloatCtrl, SimpleText, LCEN)
+
 HAS_ESCAN = False
 try:
     from epicsscan import ScanDB
@@ -66,6 +68,87 @@ def read_poni(fname):
             conf[key] = float(val)
     return conf
 
+class CalibrationDialog(wx.Dialog):
+
+    """dialog for calibrating energy"""
+    conv = {'wavelength': (1e10, 'Ang'),
+            'pixel1': (1e6, 'microns'),
+            'pixel2': (1e6, 'microns'),
+            'poni1': (1e3, 'mm'),
+            'poni2': (1e3, 'mm'),
+            'dist': (1e3, 'mm'),
+            'rot1': (180/np.pi, 'deg'),
+            'rot2': (180/np.pi, 'deg'),
+            'rot3': (180/np.pi, 'deg')}
+
+    def __init__(self, parent, calfile, **kws):
+
+        self.parent = parent
+        self.scandb = parent.scandb
+        self.calfile = calfile
+        poni = read_poni(calfile)
+
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(550, 400),
+                           title="Read Calibration File")
+
+
+        panel = GridPanel(self, ncols=3, nrows=4, pad=4, itemstyle=LCEN)
+
+        self.wids = wids = {}
+
+        wids['filename'] = SimpleText(panel, calfile)
+
+        _p, fname = os.path.split(calfile)
+        wids['calname']  = wx.TextCtrl(panel, value=fname, size=(350, -1))
+
+        wids['ok'] = Button(panel, 'OK', size=(150, -1), action=self.on_apply)
+
+        def add_text(text, dcol=1, newrow=True):
+            panel.Add(SimpleText(panel, text), dcol=dcol, newrow=newrow)
+
+        add_text('  Calibration file: ',  newrow=False)
+        panel.Add(wids['filename'], dcol=3)
+        add_text('  Save as : ')
+        panel.Add(wids['calname'], dcol=3)
+
+        opts  = dict(size=(90, -1), digits=5)
+        for wname in ('wavelength', 'dist', 'pixel1', 'pixel2',
+                      'poni1', 'poni2', 'rot1', 'rot2', 'rot3'):
+            scale, units = self.conv[wname]
+            val = scale*float(poni[wname])
+            if wname == 'wavelength':
+                energy = 12398.4193/val
+                units = '%s,  Energy=%.2f' % (units, energy)
+
+            wids[wname] = FloatCtrl(panel, value=val, size=(100, -1), precision=4)
+            wids[wname+'_units'] = SimpleText(panel, units)
+            add_text('  %s:' % wname.title() )
+            panel.Add(wids[wname])
+            panel.Add(wids[wname+'_units'])
+
+        panel.Add((5, 5))
+        panel.Add(wids['ok'], dcol=2, newrow=True)
+        panel.pack()
+
+    def onDone(self, event=None):
+        self.Destroy()
+
+    def on_apply(self, event=None):
+        calname = self.wids['calname'].GetValue()
+
+        calib = {}
+        for wname in ('wavelength', 'dist', 'pixel1', 'pixel2',
+                      'poni1', 'poni2', 'rot1', 'rot2', 'rot3'):
+            scale, units = self.conv[wname]
+            calib[wname] = self.wids[wname].GetValue()/scale
+
+        self.scandb.set_detectorconfig(calname, json.dumps(calib))
+        self.scandb.set_info('eiger_calibration', calname)
+        self.parent.setup_calibration(calib)
+        self.Destroy()
+
+
+################
 class EigerFrame(wx.Frame):
     """AreaDetector Display """
 
@@ -120,8 +203,6 @@ class EigerFrame(wx.Frame):
         wx.CallAfter(self.connect_escandb)
 
     def connect_escandb(self):
-        # print("Connect ESCAN DB ",
-        #       HAS_ESCAN , os.environ.get('ESCAN_CREDENTIALS', '----') )
         if HAS_ESCAN and os.environ.get('ESCAN_CREDENTIALS', None) is not None:
             self.scandb = ScanDB()
             calib_loc = self.scandb.get_info('eiger_calibration')
@@ -166,15 +247,8 @@ class EigerFrame(wx.Frame):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onButton, key=key))
 
         self.wids['show_1dint'] =  wx.Button(panel, -1, label='Show 1D Integration',
-                                               size=lsize)
+                                               size=(200, -1))
         self.wids['show_1dint'].Bind(wx.EVT_BUTTON, self.onShowIntegration)
-
-#         self.wids['auto_1dint'] =  wx.CheckBox(panel, -1,
-#                                                label='Show Live 1D Integration',
-#                                                size=lsize)
-#         self.wids['auto_1dint'].SetValue(0)
-#         self.wids['auto_1dint'].Disable()
-#         self.wids['auto_1dint'].Bind(wx.EVT_CHECKBOX, self.onAutoIntegration)
 
         self.wids['imagesize']= wx.StaticText(panel, -1, label='?x?',
                                               size=(250, 30), style=txtstyle)
@@ -223,11 +297,10 @@ class EigerFrame(wx.Frame):
         sizer.Add(self.wids['imagesize'], (irow, 0), (1, 3), labstyle)
 
         irow += 1
-        sizer.Add(self.wids['contrastpanel'], (irow, 0), (1, 3), labstyle)
+        sizer.Add(self.wids['contrastpanel'], (irow, 0), (1, 2), labstyle)
 
         irow += 1
-        sizer.Add(self.wids['show_1dint'], (irow, 0), (1, 3), labstyle)
-
+        sizer.Add(self.wids['show_1dint'], (irow, 0), (1, 2), labstyle)
 
         panel.SetSizer(sizer)
         sizer.Fit(panel)
@@ -235,10 +308,9 @@ class EigerFrame(wx.Frame):
         # image panel
         self.image = ADImagePanel(self, prefix=self.prefix, rot90=3)
 
-
         mainsizer = wx.BoxSizer(wx.HORIZONTAL)
-        mainsizer.Add(panel, 0, wx.LEFT|wx.GROW|wx.ALL, 5)
-        mainsizer.Add(self.image, 1, wx.CENTER|wx.GROW|wx.ALL, 5)
+        mainsizer.Add(panel, 0, wx.LEFT|wx.GROW|wx.ALL)
+        mainsizer.Add(self.image, 1, wx.CENTER|wx.GROW|wx.ALL)
         self.SetSizer(mainsizer)
         mainsizer.Fit(self)
 
@@ -272,12 +344,15 @@ class EigerFrame(wx.Frame):
                             defaultDir=os.getcwd(),
                             wildcard=wcards,
                             style=wx.FD_OPEN)
-        path = None
+        ppath = None
         if dlg.ShowModal() == wx.ID_OK:
-            path = os.path.abspath(dlg.GetPath())
+            ppath = os.path.abspath(dlg.GetPath())
 
-        if os.path.exists(path):
-            self.setup_calibration(read_poni(path))
+        if os.path.exists(ppath):
+            if self.scandb is not None:
+                CalibrationDialog(self, ppath).Show()
+            else:
+                self.setup_calibration(read_poni(ppath))
 
     def setup_calibration(self, calib):
         """set up calibration from calibration dict"""
