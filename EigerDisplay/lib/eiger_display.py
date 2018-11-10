@@ -40,7 +40,9 @@ except ImportError:
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 
 from .autocontrast_panel import ContrastPanel
+from .calibration_panel import CalibrationDialog, read_poni
 from .imagepanel import ADImagePanel
+from .pvconfig import PVConfigPanel
 
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '4800000'
 ICON_FILE = 'camera.ico'
@@ -53,99 +55,18 @@ txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
 
 
-def read_poni(fname):
-    conf = {}
-    with open(fname, 'r') as fh:
-        for line in fh.readlines():
-            line = line[:-1].strip()
-            if line.startswith('#'):
-                continue
-            key, val = [a.strip() for a in line.split(':')]
-            key = key.lower()
-            if key == 'distance': key='dist'
-            if key == 'pixelsize1': key='pixel1'
-            if key == 'pixelsize2': key='pixel2'
-            conf[key] = float(val)
-    return conf
+##     Label,            PV Name,         Type,   RBV suffix,  Widget Size
+display_pvs = [
+    ('Trigger Mode',     'cam1:TriggerMode',     'pvenum',  '_RBV', 150),
+    ('# Images',         'cam1:NumImages',       'pvfloat', '_RBV', 100),
+    ('Acqure Period',    'cam1:AcquirePeriod',   'pvfloat', '_RBV', 100),
+    ('Acquire Time',     'cam1:AcquireTime',     'pvfloat', '_RBV', 100),
+    ('X-ray Energy',     'cam1:PhotonEnergy',    'pvfloat', '_RBV', 100),
+    ('Energy Threshold', 'cam1:ThresholdEnergy', 'pvfloat', '_RBV', 100),
+    ('File Pattern',     'cam1:FWNamePattern',   'pvtctrl', False,  250),
+    ('File Path',        'cam1:FilePath',        'pvtctrl', False,  250),
+    ]
 
-class CalibrationDialog(wx.Dialog):
-
-    """dialog for calibrating energy"""
-    conv = {'wavelength': (1e10, 'Ang'),
-            'pixel1': (1e6, 'microns'),
-            'pixel2': (1e6, 'microns'),
-            'poni1': (1e3, 'mm'),
-            'poni2': (1e3, 'mm'),
-            'dist': (1e3, 'mm'),
-            'rot1': (180/np.pi, 'deg'),
-            'rot2': (180/np.pi, 'deg'),
-            'rot3': (180/np.pi, 'deg')}
-
-    def __init__(self, parent, calfile, **kws):
-
-        self.parent = parent
-        self.scandb = parent.scandb
-        self.calfile = calfile
-        poni = read_poni(calfile)
-
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(550, 400),
-                           title="Read Calibration File")
-
-
-        panel = GridPanel(self, ncols=3, nrows=4, pad=4, itemstyle=LCEN)
-
-        self.wids = wids = {}
-
-        wids['filename'] = SimpleText(panel, calfile)
-
-        _p, fname = os.path.split(calfile)
-        wids['calname']  = wx.TextCtrl(panel, value=fname, size=(350, -1))
-
-        wids['ok'] = Button(panel, 'OK', size=(150, -1), action=self.on_apply)
-
-        def add_text(text, dcol=1, newrow=True):
-            panel.Add(SimpleText(panel, text), dcol=dcol, newrow=newrow)
-
-        add_text('  Calibration file: ',  newrow=False)
-        panel.Add(wids['filename'], dcol=3)
-        add_text('  Save as : ')
-        panel.Add(wids['calname'], dcol=3)
-
-        opts  = dict(size=(90, -1), digits=5)
-        for wname in ('wavelength', 'dist', 'pixel1', 'pixel2',
-                      'poni1', 'poni2', 'rot1', 'rot2', 'rot3'):
-            scale, units = self.conv[wname]
-            val = scale*float(poni[wname])
-            if wname == 'wavelength':
-                energy = 12398.4193/val
-                units = '%s,  Energy=%.2f' % (units, energy)
-
-            wids[wname] = FloatCtrl(panel, value=val, size=(100, -1), precision=4)
-            wids[wname+'_units'] = SimpleText(panel, units)
-            add_text('  %s:' % wname.title() )
-            panel.Add(wids[wname])
-            panel.Add(wids[wname+'_units'])
-
-        panel.Add((5, 5))
-        panel.Add(wids['ok'], dcol=2, newrow=True)
-        panel.pack()
-
-    def onDone(self, event=None):
-        self.Destroy()
-
-    def on_apply(self, event=None):
-        calname = self.wids['calname'].GetValue()
-
-        calib = {}
-        for wname in ('wavelength', 'dist', 'pixel1', 'pixel2',
-                      'poni1', 'poni2', 'rot1', 'rot2', 'rot3'):
-            scale, units = self.conv[wname]
-            calib[wname] = self.wids[wname].GetValue()/scale
-
-        self.scandb.set_detectorconfig(calname, json.dumps(calib))
-        self.scandb.set_info('eiger_calibration', calname)
-        self.parent.setup_calibration(calib)
-        self.Destroy()
 
 
 ################
@@ -224,22 +145,28 @@ class EigerFrame(wx.Frame):
         panel = self.panel = wx.Panel(self)
 
         self.wids = {}
+
+        pvpanel = PVConfigPanel(self, self.prefix, display_pvs)
+
         wsize = (100, -1)
         lsize = (250, -1)
-        for attr in ('PhotonEnergy', 'ThresholdEnergy', 'AcquireTime',
-                     'AcquirePeriod', 'NumImages'):
-            self.wids[attr] = PVFloatCtrl(panel, pv=None, size=wsize)
+#         for attr in ('PhotonEnergy', 'ThresholdEnergy', 'AcquireTime',
+#                      'AcquirePeriod', 'NumImages'):
+#             self.wids[attr] = PVFloatCtrl(panel, pv=None, size=wsize)
+#
+#         for attr in ('FWNamePattern', 'FilePath'):
+#             self.wids[attr] = PVTextCtrl(panel, pv=None, size=lsize)
+#
+#         for attr in ('AcquireTime', 'AcquirePeriod', 'NumImages',
+#                      'PhotonEnergy', 'ThresholdEnergy',
+#                      'FilePath', 'FWNamePattern'):
+#             size = lsize if attr.startswith('file') else wsize
+#             self.wids[attr + '_RBV'] = PVStaticText(panel, pv=None, size=size)
+#
+#         self.wids['TriggerMode'] = PVEnumChoice(panel, pv=None, size=lsize)
 
-        for attr in ('FWNamePattern', 'FilePath'):
-            self.wids[attr] = PVTextCtrl(panel, pv=None, size=lsize)
 
-        for attr in ('AcquireTime', 'AcquirePeriod', 'NumImages',
-                     'PhotonEnergy', 'ThresholdEnergy',
-                     'FilePath', 'FWNamePattern'):
-            size = lsize if attr.startswith('file') else wsize
-            self.wids[attr + '_RBV'] = PVStaticText(panel, pv=None, size=size)
 
-        self.wids['TriggerMode'] = PVEnumChoice(panel, pv=None, size=lsize)
         self.wids['start']    = wx.Button(panel, -1, label='Start',    size=wsize)
         self.wids['stop']     = wx.Button(panel, -1, label='Stop',     size=wsize)
         self.wids['freerun']  = wx.Button(panel, -1, label='Free Run', size=wsize)
@@ -273,17 +200,20 @@ class EigerFrame(wx.Frame):
             return irow
 
         irow = 0
-        sizer.Add(txt('Trigger Mode '),        (irow, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['TriggerMode'],    (irow, 1), (1, 2), labstyle)
+        sizer.Add(pvpanel,  (irow, 0), (1, 3), labstyle)
 
-        irow = show_with_rbv(irow, '# Images', 'NumImages')
-        irow = show_with_rbv(irow, 'Acquire Period', 'AcquirePeriod')
-        irow = show_with_rbv(irow, 'Exposure Time', 'AcquireTime')
-        irow = show_with_rbv(irow, 'X-ray Energy', 'PhotonEnergy')
-        irow = show_with_rbv(irow, 'Energy Threshold', 'ThresholdEnergy')
-
-        irow = show_with_rbv(irow, 'File Pattern', 'FWNamePattern', nextrow=True)
-        irow = show_with_rbv(irow, 'File Path', 'FilePath', nextrow=True)
+#         irow = 0
+#         sizer.Add(txt('Trigger Mode '),        (irow, 0), (1, 1), labstyle)
+#         sizer.Add(self.wids['TriggerMode'],    (irow, 1), (1, 2), labstyle)
+#
+#         irow = show_with_rbv(irow, '# Images', 'NumImages')
+#         irow = show_with_rbv(irow, 'Acquire Period', 'AcquirePeriod')
+#         irow = show_with_rbv(irow, 'Exposure Time', 'AcquireTime')
+#         irow = show_with_rbv(irow, 'X-ray Energy', 'PhotonEnergy')
+#         irow = show_with_rbv(irow, 'Energy Threshold', 'ThresholdEnergy')
+#
+#         irow = show_with_rbv(irow, 'File Pattern', 'FWNamePattern', nextrow=True)
+#         irow = show_with_rbv(irow, 'File Path', 'FilePath', nextrow=True)
 
         irow += 1
         sizer.Add(self.wids['start'],   (irow, 0), (1, 1), labstyle)
@@ -528,6 +458,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             self.ad_cam.NumImages = 345600
             self.ad_cam.Acquire = 1
         elif key.startswith('start'):
+            self.image.restart_fps_counter()
             self.ad_cam.Acquire = 1
         elif key.startswith('stop'):
             self.ad_cam.Acquire = 0
@@ -566,14 +497,14 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         self.SetTitle("Epics Image Display: %s" % self.prefix)
 
-        for attr in ('AcquireTime', 'AcquirePeriod', 'NumImages',
-                     'FWNamePattern', 'FilePath', 'TriggerMode',
-                     'PhotonEnergy', 'ThresholdEnergy'):
-            if attr in self.wids:
-                self.wids[attr].SetPV(self.ad_cam.PV(attr))
-            rbv = attr + '_RBV'
-            if rbv in self.wids:
-                self.wids[rbv].SetPV(self.ad_cam.PV(rbv))
+#         for attr in ('AcquireTime', 'AcquirePeriod', 'NumImages',
+#                      'FWNamePattern', 'FilePath', 'TriggerMode',
+#                      'PhotonEnergy', 'ThresholdEnergy'):
+#             if attr in self.wids:
+#                 self.wids[attr].SetPV(self.ad_cam.PV(attr))
+#             rbv = attr + '_RBV'
+#             if rbv in self.wids:
+#                 self.wids[rbv].SetPV(self.ad_cam.PV(rbv))
 
         sizex = self.ad_cam.MaxSizeX_RBV
         sizey = self.ad_cam.MaxSizeY_RBV
