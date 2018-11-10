@@ -11,7 +11,7 @@ import math
 from threading import Thread
 from six import StringIO
 import base64
-
+from collections import deque
 from epics import PV, Device, caput, poll
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 
@@ -30,48 +30,36 @@ class ADImagePanel(wx.Panel):
                  'AcquirePeriod', 'ImageMode', 'ArraySizeX_RBV',
                  'ArraySizeY_RBV')
 
-    def __init__(self, parent, prefix=None, writer=None, leftdown_cb=None,
-                 motion_cb=None, draw_objects=None, callback=None,
+    def __init__(self, parent, prefix=None, writer=None,
+                 draw_objects=None,
                  rot90=0, contrast_level=0, **kws):
+        self.drawing = False
         super(ADImagePanel, self).__init__(parent, -1, size=(400, 750))
         self.prefix = prefix
-        self.img_w = 800.
-        self.img_h = 600.
+        self.image_id = -1
         self.writer = writer
-        self.leftdown_cb = leftdown_cb
-        self.motion_cb   = motion_cb
-        self.scale = 0.60
+        self.scale = 0.8
+        self.ad_img = None
         self.arrsize   = (0, 0, 0)
         self.contrast_levels = [contrast_level, 100.0-contrast_level]
-        self.count = -1
-        self.img_id = -1
         self.rot90 = rot90
         self.flipv = False
         self.fliph = False
         self.image = None
-        self.drawing = False
         self.draw_objects = None
-        self.callback = None
         self.SetBackgroundColour("#E4E4E4")
         self.starttime = time.clock()
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
-
         self.Bind(wx.EVT_SIZE, self.onSize)
         self.Bind(wx.EVT_PAINT, self.onPaint)
-        if self.leftdown_cb is not None:
-            self.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
-        if self.motion_cb is not None:
-            self.Bind(wx.EVT_MOTION, self.onMotion)
-
-        self.data = None
-        self.data_shape = (0, 0, 0)
-        self.full_image = None
-        self.full_size = None
 
         self.set_prefix(prefix)
-        self.imgcount = 0
-        self.imgcount_start = 0
-        self.last_update = 0.0
+        self.restart_fps_counter()
+
+    def restart_fps_counter(self, nsamples=100):
+        self.capture_times = deque([], maxlen=nsamples)
+        if self.writer is not None:
+            self.writer("")
 
     def set_prefix(self, prefix):
         if prefix.endswith(':'):
@@ -90,86 +78,37 @@ class ADImagePanel(wx.Panel):
         self.ad_img.add_callback('ArraySize1_RBV', self.onArraySize, dim=1)
 
     def GetImageSize(self):
-        arrsize0 = self.ad_img.ArraySize0_RBV
-        arrsize1 = self.ad_img.ArraySize1_RBV
-        arrsize2 = self.ad_img.ArraySize2_RBV
-        self.arrsize   = (arrsize0, arrsize1, arrsize2)
-        self.colormode = self.ad_img.ColorMode_RBV
-
-        w, h = arrsize0, arrsize1
-        if self.ad_img.NDimensions_RBV == 3:
-            w, h  = arrsize1, arrsize2
-        self.img_w = float(w+0.05)
-        self.img_h = float(h+0.05)
-        return w, h
+        return self.ad_img.ArraySize0_RBV, self.ad_img.ArraySize1_RBV
 
     def onNewImage(self, pvname=None, value=None, **kws):
-        if value != self.img_id:
-            self.img_id = value
-            if not self.drawing:
-                self.Refresh()
+        if value > self.image_id and not self.drawing:
+            self.image_id = value
+            self.Refresh()
 
     @DelayedEpicsCallback
     def onArraySize(self, pvname=None, value=None, dim=None, **kw):
         self.arrsize[dim] = value
 
-    def GrabNumpyImage(self):
-        width, height = self.GetImageSize()
-
-        im_mode = 'L'
-        self.im_size = (self.arrsize[0], self.arrsize[1])
-        if self.ad_img.ColorMode_RBV == 2:
-            im_mode = 'RGB'
-            self.im_size = (self.arrsize[1], self.arrsize[2])
-
-        dcount = self.arrsize[0] * self.arrsize[1]
-        if self.ad_img.NDimensions_RBV == 3:
-            dcount *= self.arrsize[2]
-
-        img = self.ad_img.PV('ArrayData').get(count=dcount)
-        if img is None:
-            time.sleep(0.025)
-            img = self.ad_img.PV('ArrayData').get(count=dcount)
-
-        if self.ad_img.ColorMode_RBV == 2:
-            img = img.reshape((width, height, 3)).sum(axis=2)
-        else:
-            img = img.reshape((width, height))
-        return img
-
-    def GrabWxImage(self, scale=1):
-        if self.ad_img is None or self.ad_cam is None:
-            return
-        self.GetImageSize()
-        imgcount = self.ad_cam.ArrayCounter_RBV
-        now = time.time()
-        if (imgcount == self.imgcount or abs(now - self.last_update) < 0.025):
-            return None
-
-        self.imgcount = imgcount
-        self.last_update = time.time()
-
-        im_mode = 'L'
-        im_size = (self.arrsize[1], self.arrsize[0])
-        imdata = None
+    def GrabWxImage(self):
         try:
-            imdata = self.ad_img.PV('ArrayData').get(count=im_size[0]*im_size[1])
-            imdata = imdata.reshape(im_size)
+            data = self.ad_img.PV('ArrayData').get()
         except:
-            return None
-        if self.contrast_levels is not None:
-            try:
-                jmin, jmax = np.percentile(imdata, self.contrast_levels)
-                imdata = np.clip(imdata, jmin, jmax)
-            except:
-                return
+            return
+        if data is None:
+            return
+        self.capture_times.append(time.time())
 
-        imin, imax = 1.0*imdata.min(), 1.0*imdata.max()+1.e-9
-        rgb = np.zeros((im_size[0], im_size[1], 3), dtype='uint8')
-        rgb[:, :, 0] = (255*(imdata - imin)/(imax-imin)).astype('uint8')
-        rgb[:, :, 1] = rgb[:, :, 2] = rgb[:, :, 0]
-        image = wx.Image(self.img_w, self.img_h, rgb)
+        jmin, jmax = np.percentile(data, self.contrast_levels)
+        data = np.clip(data, jmin, jmax) - jmin
+        data = (data*255./(jmax+0.001)).astype('uint8')
 
+        w, h = self.GetImageSize()
+        data = data.reshape((h, w))
+
+        rgb = np.zeros((h, w, 3), dtype='uint8')
+        rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
+
+        image = wx.Image(w, h, rgb)
         if self.flipv:
             image = image.Mirror(False)
         if self.fliph:
@@ -177,68 +116,30 @@ class ADImagePanel(wx.Panel):
         if self.rot90 != 0:
             for i in range(self.rot90):
                 image = image.Rotate90(True)
-                self.img_w, self.img_h = self.img_h, self.img_w
-        return image.Scale(int(scale*self.img_w), int(scale*self.img_h))
+                w, h = h, w
+        return image.Scale(int(self.scale*w), int(self.scale*h))
 
     def onSize(self, evt=None):
         if evt is not None:
-            frame_w, frame_h = evt.GetSize()
+            fh, fw = evt.GetSize()
         else:
-            frame_w, frame_h = self.GetSize()
-        self.scale = min(frame_w/self.img_w, frame_h/self.img_h)
-
-    def onLeftDown(self, evt=None):
-        """
-        report left down events within image
-        """
-        if self.leftdown_cb is None:
-            return
-
-        evt_x, evt_y = evt.GetX(), evt.GetY()
-        max_x, max_y = self.full_size
-        img_w, img_h = self.bitmap_size
-        pan_w, pan_h = self.panel_size
-        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
-
-        x = int(0.5 + (evt_x - pad_w)/self.scale)
-        y = int(0.5 + (evt_y - pad_h)/self.scale)
-        self.leftdown_cb(x, y, xmax=max_x, ymax=max_y)
-
-    def onMotion(self, evt=None):
-        """
-        report left down events within image
-        """
-        if self.motion_cb is None or self.full_size is None:
-            return
-        evt_x, evt_y = evt.GetX(), evt.GetY()
-        max_x, max_y = self.full_size
-        img_w, img_h = self.bitmap_size
-        pan_w, pan_h = self.panel_size
-        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
-
-        x = int(0.5 + (evt_x - pad_w)/self.scale)
-        y = int(0.5 + (evt_y - pad_h)/self.scale)
-        self.motion_cb(x, y, xmax=max_x, ymax=max_y)
+            fh, fw = self.GetSize()
+        w, h = self.GetImageSize()
+        self.scale = max(0.10, min(fw/(w+5.0), fh/(h+5.0)))
 
     def onPaint(self, event):
-        self.count += 1
         self.drawing = True
+        image = self.GrabWxImage()
+        if image is not None:
+            if len(self.capture_times) > 2 and self.writer is not None:
+                ct = self.capture_times
+                fps = (ct[-1]-ct[0]) / (len(ct)-1)
+                self.writer("Image %d: %.1f fps" % (self.image_id, fps))
 
-        now = time.clock()
-        elapsed = now - self.starttime
-        if elapsed >= 2.0 and self.writer is not None:
-            self.writer("  %.2f fps" % (self.count/elapsed))
-            self.starttime = now
-            self.count = 0
-
-        self.scale = max(self.scale, 0.05)
-        self.image = self.GrabWxImage(scale=self.scale)
-        if self.image is not None:
-            self.full_size = self.image.GetSize()
-            bitmap = wx.Bitmap(self.image)
-            img_w, img_h = self.bitmap_size = bitmap.GetSize()
-            pan_w, pan_h = self.panel_size  = self.GetSize()
-            pad_w, pad_h = int(1+(pan_w-img_w)/2.0), int(1+(pan_h-img_h)/2.0)
+            bitmap = wx.Bitmap(image)
+            bmp_w, bmp_h = bitmap.GetSize()
+            pan_w, pan_h = self.GetSize()
+            pad_w, pad_h = int(1+(pan_w-bmp_w)/2.0), int(1+(pan_h-bmp_h)/2.0)
             dc = wx.AutoBufferedPaintDC(self)
             dc.Clear()
             dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
