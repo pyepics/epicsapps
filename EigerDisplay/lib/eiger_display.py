@@ -57,14 +57,14 @@ txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
 ##     Label,            PV Name,         Type,   RBV suffix,  Widget Size
 display_pvs = [
-    ('Trigger Mode',     'cam1:TriggerMode',     'pvenum',  '_RBV', 150),
+    ('Trigger Mode',     'cam1:TriggerMode',     'pvenum',  '_RBV', 125),
     ('# Images',         'cam1:NumImages',       'pvfloat', '_RBV', 100),
     ('Acqure Period',    'cam1:AcquirePeriod',   'pvfloat', '_RBV', 100),
     ('Acquire Time',     'cam1:AcquireTime',     'pvfloat', '_RBV', 100),
     ('X-ray Energy',     'cam1:PhotonEnergy',    'pvfloat', '_RBV', 100),
     ('Energy Threshold', 'cam1:ThresholdEnergy', 'pvfloat', '_RBV', 100),
-    ('File Pattern',     'cam1:FWNamePattern',   'pvtctrl', False,  250),
-    ('File Path',        'cam1:FilePath',        'pvtctrl', False,  250),
+    ('File Pattern',     'cam1:FWNamePattern',   'pvtctrl', False,  225),
+    ('File Path',        'cam1:FilePath',        'pvtctrl', False,  225),
     ]
 
 
@@ -73,7 +73,7 @@ display_pvs = [
 class EigerFrame(wx.Frame):
     """AreaDetector Display """
 
-    img_attrs = ('ArrayData', 'UniqueId_RBV', 'ArrayCounter_RBV')
+    img_attrs = ('ArrayData', 'UniqueId_RBV')
     cam_attrs = ('Acquire', 'DetectorState_RBV',
                  'ArrayCounter', 'ArrayCounter_RBV',
                  'ThresholdEnergy', 'ThresholdEnergy_RBV',
@@ -96,13 +96,6 @@ class EigerFrame(wx.Frame):
         if url is not None:
             self.esimplon = EigerSimplon(url, prefix=prefix+'cam1:')
 
-        self.im_size = None
-        self.last_update = time.time() -1000
-        self.n_img   = 0
-        self.n_drawn = 0
-        self.img_id = 0
-        self.starttime = time.time()
-        self.drawing = False
         self.lineplotter = None
         self.calib = {}
         self.integrator = None
@@ -113,13 +106,9 @@ class EigerFrame(wx.Frame):
         wx.Frame.__init__(self, None, -1, "Eiger500K Area Detector Display",
                           style=wx.DEFAULT_FRAME_STYLE)
 
-        self.img_w = 0
-        self.img_h = 0
         self.wximage = wx.Image(3, 3)
         self.buildMenus()
         self.buildFrame()
-        self.int_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.onIntTimer, self.int_timer)
 
         wx.CallAfter(self.connect_escandb)
 
@@ -150,22 +139,6 @@ class EigerFrame(wx.Frame):
 
         wsize = (100, -1)
         lsize = (250, -1)
-#         for attr in ('PhotonEnergy', 'ThresholdEnergy', 'AcquireTime',
-#                      'AcquirePeriod', 'NumImages'):
-#             self.wids[attr] = PVFloatCtrl(panel, pv=None, size=wsize)
-#
-#         for attr in ('FWNamePattern', 'FilePath'):
-#             self.wids[attr] = PVTextCtrl(panel, pv=None, size=lsize)
-#
-#         for attr in ('AcquireTime', 'AcquirePeriod', 'NumImages',
-#                      'PhotonEnergy', 'ThresholdEnergy',
-#                      'FilePath', 'FWNamePattern'):
-#             size = lsize if attr.startswith('file') else wsize
-#             self.wids[attr + '_RBV'] = PVStaticText(panel, pv=None, size=size)
-#
-#         self.wids['TriggerMode'] = PVEnumChoice(panel, pv=None, size=lsize)
-
-
 
         self.wids['start']    = wx.Button(panel, -1, label='Start',    size=wsize)
         self.wids['stop']     = wx.Button(panel, -1, label='Stop',     size=wsize)
@@ -181,39 +154,12 @@ class EigerFrame(wx.Frame):
                                               size=(250, 30), style=txtstyle)
         self.wids['contrastpanel'] = ContrastPanel(panel, callback=self.set_contrast_level)
 
-        def txt(label, size=(125, -1)):
-            return wx.StaticText(panel, label=label, size=size, style=labstyle)
-
         def lin(len=200, wid=2, style=wx.LI_HORIZONTAL):
             return wx.StaticLine(panel, size=(len, wid), style=style)
 
-        def show_with_rbv(irow, title, attr, nextrow=False):
-            irow  += 1
-            sizer.Add(txt(title),      (irow, 0), (1, 1), labstyle)
-            if nextrow:
-                sizer.Add(self.wids[attr], (irow, 1), (1, 2), labstyle)
-                irow += 1
-                sizer.Add(self.wids['%s_RBV' % attr],  (irow, 1), (1, 2), labstyle)
-            else:
-                sizer.Add(self.wids[attr], (irow, 1), (1, 1), labstyle)
-                sizer.Add(self.wids['%s_RBV' % attr],  (irow, 2), (1, 1), labstyle)
-            return irow
 
         irow = 0
         sizer.Add(pvpanel,  (irow, 0), (1, 3), labstyle)
-
-#         irow = 0
-#         sizer.Add(txt('Trigger Mode '),        (irow, 0), (1, 1), labstyle)
-#         sizer.Add(self.wids['TriggerMode'],    (irow, 1), (1, 2), labstyle)
-#
-#         irow = show_with_rbv(irow, '# Images', 'NumImages')
-#         irow = show_with_rbv(irow, 'Acquire Period', 'AcquirePeriod')
-#         irow = show_with_rbv(irow, 'Exposure Time', 'AcquireTime')
-#         irow = show_with_rbv(irow, 'X-ray Energy', 'PhotonEnergy')
-#         irow = show_with_rbv(irow, 'Energy Threshold', 'ThresholdEnergy')
-#
-#         irow = show_with_rbv(irow, 'File Pattern', 'FWNamePattern', nextrow=True)
-#         irow = show_with_rbv(irow, 'File Path', 'FilePath', nextrow=True)
 
         irow += 1
         sizer.Add(self.wids['start'],   (irow, 0), (1, 1), labstyle)
@@ -236,7 +182,8 @@ class EigerFrame(wx.Frame):
         sizer.Fit(panel)
 
         # image panel
-        self.image = ADImagePanel(self, prefix=self.prefix, rot90=3)
+        self.image = ADImagePanel(self, prefix=self.prefix, rot90=3,
+                                  writer=self.write)
 
         mainsizer = wx.BoxSizer(wx.HORIZONTAL)
         mainsizer.Add(panel, 0, wx.LEFT|wx.GROW|wx.ALL)
@@ -329,10 +276,6 @@ class EigerFrame(wx.Frame):
             self.show_1dpattern()
         self.int_timer.Start(500)
 
-    def onIntTimer(self, evt=None):
-        "timer for integration"
-        if self.calib is not None and self.img_id != self.int_lastid:
-            wx.CallAfter(self.show_1dpattern)
 
     def show_1dpattern(self, init=False):
         if self.calib is None:
@@ -342,17 +285,19 @@ class EigerFrame(wx.Frame):
         img.shape = self.image.arrsize[1], self.image.arrsize[0]
         img = img[3:-3, 1:-1][::-1, :]
 
+        img_id = self.ad_cam.ArrayCounter_RBV
+
         # print(img.shape)
         q, xi = self.integrator.integrate1d(img, 2048, unit='q_A^-1',
                                             correctSolidAngle=True,
                                             polarization_factor=0.999)
         if init:
             self.int_panel.plot(q, xi, xlabel=r'$Q (\rm\AA^{-1})$', marker='+',
-                                title='Image %d' % self.img_id)
+                                title='Image %d' % img_id)
 
         else:
             self.int_panel.update_line(0, q, xi, draw=True)
-            self.int_panel.set_title('Image %d' % self.img_id)
+            self.int_panel.set_title('Image %d' % img_id)
 
     @EpicsFunction
     def onSaveImage(self, event=None):
@@ -497,15 +442,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         self.SetTitle("Epics Image Display: %s" % self.prefix)
 
-#         for attr in ('AcquireTime', 'AcquirePeriod', 'NumImages',
-#                      'FWNamePattern', 'FilePath', 'TriggerMode',
-#                      'PhotonEnergy', 'ThresholdEnergy'):
-#             if attr in self.wids:
-#                 self.wids[attr].SetPV(self.ad_cam.PV(attr))
-#             rbv = attr + '_RBV'
-#             if rbv in self.wids:
-#                 self.wids[rbv].SetPV(self.ad_cam.PV(rbv))
-
         sizex = self.ad_cam.MaxSizeX_RBV
         sizey = self.ad_cam.MaxSizeY_RBV
 
@@ -518,19 +454,11 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.wids['imagesize'].SetLabel(sizelabel)
 
         self.ad_cam.add_callback('DetectorState_RBV',  self.onDetState)
-        self.ad_cam.add_callback('ArrayCounter_RBV',  self.onArrayCounter)
-
-        self.image.SetSize((425, 775))
-        self.wids['contrastpanel'].set_level_str('0.02')
+        self.wids['contrastpanel'].set_level_str('0.05')
 
     @DelayedEpicsCallback
     def onDetState(self, pvname=None, value=None, char_value=None, **kw):
         self.write(char_value, panel=1)
-
-    @DelayedEpicsCallback
-    def onArrayCounter(self, pvname=None, value=None, char_value=None, **kw):
-        self.write("Image %d" % value, panel=2)
-        self.img_id = value
 
 class EigerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
     def __init__(self, prefix=None, url=None, **kws):
