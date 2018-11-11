@@ -7,9 +7,10 @@ import os
 import sys
 import time
 import json
+from functools import partial
+
 import numpy as np
 import matplotlib.cm as colormap
-
 
 import wx
 import wx.lib.mixins.inspection
@@ -21,10 +22,9 @@ except:
 
 from wxmplot.plotframe import PlotFrame
 
-
 import epics
-from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
-                      PVEnumChoice, PVFloatCtrl, PVTextCtrl, PVStaticText)
+from epics.wx import (DelayedEpicsCallback, EpicsFunction)
+
 from epics import caget, caput
 from epics.wx.utils import add_menu
 
@@ -39,9 +39,9 @@ except ImportError:
 
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 
-from .autocontrast_panel import ContrastPanel
+from .autocontrast_panel import ContrastChoice
 from .calibration_panel import CalibrationDialog, read_poni
-from .imagepanel import ADImagePanel
+from .imagepanel import ADMonoImagePanel
 from .pvconfig import PVConfigPanel
 
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '4800000'
@@ -66,9 +66,8 @@ display_pvs = [
     ('File Path',        'cam1:FilePath',        'pvtctrl', False,  225),
     ]
 
-
-colormaps = ['gray', 'coolwarm', 'viridis', 'inferno', 'plasma', 'magma',
-             'hot', 'jet', 'hsv']
+colormaps = ['gray', 'viridis', 'coolwarm', 'inferno', 'plasma', 'magma',
+             'hot', 'jet']
 
 
 ################
@@ -108,7 +107,6 @@ class EigerFrame(wx.Frame):
         wx.Frame.__init__(self, None, -1, "Eiger500K Area Detector Display",
                           style=wx.DEFAULT_FRAME_STYLE)
 
-        self.wximage = wx.Image(3, 3)
         self.buildMenus()
         self.buildFrame()
 
@@ -119,50 +117,47 @@ class EigerFrame(wx.Frame):
             self.scandb = ScanDB()
             calib_loc = self.scandb.get_info('eiger_calibration')
             cal = self.scandb.get_detectorconfig(calib_loc)
-            print("Read Calibration ", calib_loc)
             self.setup_calibration(json.loads(cal.text))
 
     def buildFrame(self):
         sbar = self.CreateStatusBar(3, wx.CAPTION) # |wx.THICK_FRAME)
+        self.SetStatusWidths([-1, -1, -1])
         sfont = sbar.GetFont()
         sfont.SetWeight(wx.BOLD)
         sfont.SetPointSize(10)
         sbar.SetFont(sfont)
 
-        self.SetStatusWidths([-3, -1, -1])
         self.SetStatusText('',0)
 
         sizer = wx.GridBagSizer(3, 3)
         panel = self.panel = wx.Panel(self)
-
-        self.wids = {}
 
         pvpanel = PVConfigPanel(self, self.prefix, display_pvs)
 
         wsize = (100, -1)
         lsize = (250, -1)
 
-        self.wids['start']    = wx.Button(panel, -1, label='Start',    size=wsize)
-        self.wids['stop']     = wx.Button(panel, -1, label='Stop',     size=wsize)
-        self.wids['freerun']  = wx.Button(panel, -1, label='Free Run', size=wsize)
-        for key in ('start', 'stop', 'freerun'):
-            self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onButton, key=key))
+        start_btn = wx.Button(panel, label='Start',    size=wsize)
+        stop_btn  = wx.Button(panel, label='Stop',     size=wsize)
+        free_btn  = wx.Button(panel, label='Free Run', size=wsize)
+        start_btn.Bind(wx.EVT_BUTTON, partial(self.onButton, key='start'))
+        stop_btn.Bind(wx.EVT_BUTTON,  partial(self.onButton, key='stop'))
+        free_btn.Bind(wx.EVT_BUTTON,  partial(self.onButton, key='free'))
 
-        self.wids['cmap_choice'] = wx.Choice(panel, size=(80, -1),
+        self.cmap_choice = wx.Choice(panel, size=(80, -1),
                                              choices=colormaps)
-        self.wids['cmap_reverse'] = wx.CheckBox(panel, label='Reverse', size=(60, -1))
+        self.cmap_choice.Bind(wx.EVT_CHOICE,  self.onColorMap)
 
-        self.wids['cmap_choice'].Bind(wx.EVT_CHOICE,  self.onColorMap)
-        self.wids['cmap_reverse'].Bind(wx.EVT_CHECKBOX,  self.onColorMap)
+        self.cmap_reverse = wx.CheckBox(panel, label='Reverse', size=(60, -1))
+        self.cmap_reverse.Bind(wx.EVT_CHECKBOX,  self.onColorMap)
 
-        self.wids['show_1dint'] =  wx.Button(panel, -1, label='Show 1D Integration',
-                                               size=(200, -1))
-        self.wids['show_1dint'].Bind(wx.EVT_BUTTON, self.onShowIntegration)
+        self.show1d_btn =  wx.Button(panel, label='Show 1D Integration', size=(200, -1))
+        self.show1d_btn.Bind(wx.EVT_BUTTON, self.onShowIntegration)
 
-        self.wids['imagesize']= wx.StaticText(panel, -1, label='? x ?',
-                                              size=(250, 30), style=txtstyle)
+        self.imagesize = wx.StaticText(panel, label='? x ?',
+                                       size=(250, 30), style=txtstyle)
 
-        self.wids['contrastpanel'] = ContrastPanel(panel, callback=self.set_contrast_level)
+        self.contrast = ContrastChoice(panel, callback=self.set_contrast_level)
 
         def lin(len=200, wid=2, style=wx.LI_HORIZONTAL):
             return wx.StaticLine(panel, size=(len, wid), style=style)
@@ -172,35 +167,37 @@ class EigerFrame(wx.Frame):
         sizer.Add(pvpanel,  (irow, 0), (1, 3), labstyle)
 
         irow += 1
-        sizer.Add(self.wids['start'],   (irow, 0), (1, 1), labstyle)
-        sizer.Add(self.wids['stop'],    (irow, 1), (1, 1), labstyle)
-        sizer.Add(self.wids['freerun'], (irow, 2), (1, 1), labstyle)
+        sizer.Add(start_btn, (irow, 0), (1, 1), labstyle)
+        sizer.Add(stop_btn,  (irow, 1), (1, 1), labstyle)
+        sizer.Add(free_btn,  (irow, 2), (1, 1), labstyle)
 
         irow += 1
         sizer.Add(lin(300),  (irow, 0), (1, 3), labstyle)
 
         irow += 1
-        sizer.Add(self.wids['imagesize'], (irow, 0), (1, 3), labstyle)
+        sizer.Add(self.imagesize, (irow, 0), (1, 3), labstyle)
 
         irow += 1
-        sizer.Add(wx.StaticText(panel, -1, label='Color Map: '),
+        sizer.Add(wx.StaticText(panel, label='Color Map: '),
                   (irow, 0), (1, 1), labstyle)
 
-        sizer.Add(self.wids['cmap_choice'],  (irow, 1), (1, 1), labstyle)
-        sizer.Add(self.wids['cmap_reverse'], (irow, 2), (1, 1), labstyle)
+        sizer.Add(self.cmap_choice,  (irow, 1), (1, 1), labstyle)
+        sizer.Add(self.cmap_reverse, (irow, 2), (1, 1), labstyle)
 
         irow += 1
-        sizer.Add(self.wids['contrastpanel'], (irow, 0), (1, 2), labstyle)
+        sizer.Add(self.contrast.label,  (irow, 0), (1, 1), labstyle)
+        sizer.Add(self.contrast.choice, (irow, 1), (1, 1), labstyle)
 
         irow += 1
-        sizer.Add(self.wids['show_1dint'], (irow, 0), (1, 2), labstyle)
+        sizer.Add(self.show1d_btn, (irow, 0), (1, 2), labstyle)
 
         panel.SetSizer(sizer)
         sizer.Fit(panel)
 
         # image panel
-        self.image = ADImagePanel(self, prefix=self.prefix, rot90=3,
-                                  writer=self.write)
+        self.image = ADMonoImagePanel(self, prefix=self.prefix, rot90=3,
+                                      size=(400, 750),
+                                      writer=partial(self.write, panel=2))
 
         mainsizer = wx.BoxSizer(wx.HORIZONTAL)
         mainsizer.Add(panel, 0, wx.LEFT|wx.GROW|wx.ALL)
@@ -215,24 +212,19 @@ class EigerFrame(wx.Frame):
         except:
             pass
 
-        # self.RefreshImage()
         wx.CallAfter(self.connect_pvs )
 
     def onColorMap(self, event=None):
-        cmap_name = self.wids['cmap_choice'].GetStringSelection()
-        if self.wids['cmap_reverse'].IsChecked():
+        cmap_name = self.cmap_choice.GetStringSelection()
+        if self.cmap_reverse.IsChecked():
             cmap_name = cmap_name + '_r'
         self.image.colormap = getattr(colormap, cmap_name)
         self.image.Refresh()
 
-    def OnLeftUp(self, event):
-        if self.image is not None:
-            self.image.OnLeftUp(event)
-
     def onCopyImage(self, event=None):
         "copy bitmap of canvas to system clipboard"
         bmp = wx.BitmapDataObject()
-        bmp.SetBitmap(wx.Bitmap(self.wximage))
+        bmp.SetBitmap(wx.Bitmap(self.image.GrabWxImage()))
         wx.TheClipboard.Open()
         wx.TheClipboard.SetData(bmp)
         wx.TheClipboard.Close()
@@ -261,7 +253,7 @@ class EigerFrame(wx.Frame):
             calib['rot3'] = np.pi/2.0
         self.calib = calib
         self.integrator = AzimuthalIntegrator(**calib)
-        self.wids['show_1dint'].Enable()
+        self.show1d_btn.Enable()
 
     def onShowIntegration(self, event=None):
         if self.calib is None or 'poni1' not in self.calib:
@@ -299,7 +291,6 @@ class EigerFrame(wx.Frame):
         else:
             self.show_1dpattern()
         self.int_timer.Start(500)
-
 
     def show_1dpattern(self, init=False):
         if self.calib is None:
@@ -412,14 +403,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def write(self, s, panel=0):
         """write a message to the Status Bar"""
-        wx.CallAfter(Closure(self.SetStatusText, text=s, number=panel))
-
-    def onButton(self, evt=None, key='name', **kw):
-        if evt is not None:
-            self.onControl(key)
+        self.SetStatusText(text=s, number=panel)
 
     @EpicsFunction
-    def onControl(self, key='freerun'):
+    def onButton(self, event=None, key='free'):
         key = key.lower()
         if key.startswith('free'):
             self.ad_cam.AcquireTime = 0.25
@@ -475,10 +462,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
         except:
             sizelabel = sizelabel  % (0, 0)
 
-        self.wids['imagesize'].SetLabel(sizelabel)
+        self.imagesize.SetLabel(sizelabel)
 
         self.ad_cam.add_callback('DetectorState_RBV',  self.onDetState)
-        self.wids['contrastpanel'].set_level_str('0.05')
+        self.contrast.set_level_str('0.05')
 
     @DelayedEpicsCallback
     def onDetState(self, pvname=None, value=None, char_value=None, **kw):
