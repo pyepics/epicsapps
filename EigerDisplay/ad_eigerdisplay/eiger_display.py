@@ -43,9 +43,13 @@ try:
 except ImportError:
     HAS_ESCAN = False
 
-from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+try:
+    from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+    HAS_PYFAI = True
+except ImportError:
+    HAS_PYFAI = False
 
-from .autocontrast_panel import ContrastChoice
+from .contrast_control import ContrastChoice
 from .calibration_dialog import CalibrationDialog, read_poni
 from .imagepanel import ADMonoImagePanel
 from .pvconfig import PVConfigPanel
@@ -169,6 +173,7 @@ class EigerFrame(wx.Frame):
 
         self.show1d_btn =  wx.Button(panel, label='Show 1D Integration', size=(200, -1))
         self.show1d_btn.Bind(wx.EVT_BUTTON, self.onShowIntegration)
+        self.show1d_btn.Disable()
 
         self.imagesize = wx.StaticText(panel, label='? x ?',
                                        size=(250, 30), style=txtstyle)
@@ -269,8 +274,9 @@ class EigerFrame(wx.Frame):
         if self.image.rot90 in (1, 3):
             calib['rot3'] = np.pi/2.0
         self.calib = calib
-        self.integrator = AzimuthalIntegrator(**calib)
-        self.show1d_btn.Enable()
+        if HAS_PYFAI:
+            self.integrator = AzimuthalIntegrator(**calib)
+            self.show1d_btn.Enable()
 
     def onShowIntegration(self, event=None):
         if self.calib is None or 'poni1' not in self.calib:
@@ -310,7 +316,7 @@ class EigerFrame(wx.Frame):
         self.int_timer.Start(500)
 
     def show_1dpattern(self, init=False):
-        if self.calib is None:
+        if self.calib is None or not HAS_PYFAI:
             return
 
         img = self.ad_img.PV('ArrayData').get()
