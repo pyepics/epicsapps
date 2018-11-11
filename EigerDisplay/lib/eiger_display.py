@@ -28,7 +28,12 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 from epics import caget, caput
 from epics.wx.utils import add_menu
 
-from epicsscan.detectors.ad_eiger import EigerSimplon
+HAS_SIMPLON = False
+try:
+    from epicsscan.detectors.ad_eiger import EigerSimplon
+    HAS_SIMPLON = True
+except ImportError:
+    HAS_SIMPLON = False
 
 HAS_ESCAN = False
 try:
@@ -94,7 +99,7 @@ class EigerFrame(wx.Frame):
         self.prefix = prefix
         self.fname = 'Eiger.tif'
         self.esimplon = None
-        if url is not None:
+        if url is not None and HAS_SIMPLON:
             self.esimplon = EigerSimplon(url, prefix=prefix+'cam1:')
 
         self.lineplotter = None
