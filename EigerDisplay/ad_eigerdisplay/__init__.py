@@ -22,7 +22,6 @@ def run_adeiger():
 
     (options, args) = parser.parse_args()
 
-    print("options, args: ", options, args)
     # create desktop icons
     if options.makeicons:
         name = 'Eiger Display'
@@ -30,20 +29,18 @@ def run_adeiger():
         icon_ext = 'ico'
         if platform.startswith('darwin'):
             icon_ext = 'icns'
-        icon = "%s.%s" % ('eiger500k', icon_ext)
+
         bindir = 'bin'
         if platform.startswith('win'):
             bindir = 'Scripts'
 
         script = os.path.join(sys.prefix, bindir, script)
-        icondir = os.path.join(__file__, 'icons')
+        topdir, _s = os.path.split(__file__)
+        icon = os.path.join(topdir, 'icons', "%s.%s" % ('eiger500k', icon_ext))
 
-        make_shortcut(script, name=name,
-                      icon=os.path.join(icondir, icon),
-                      terminal=True)
-        print("Make Shortcut: ", script, icondir)
+        make_shortcut(script, name=name, icon=icon, terminal=True)
         if platform.startswith('linux'):
             os.chmod(script, 493)
 
     else:
-        EigerApp(prefix=args[0])
+        EigerApp(prefix=args[0]).MainLoop()

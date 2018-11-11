@@ -4,8 +4,7 @@ import json
 import numpy as np
 
 import wx
-
-from larch.wxlib import (GridPanel, Button, FloatCtrl, SimpleText, LCEN)
+from wxutils import (GridPanel, Button, FloatCtrl, SimpleText, LCEN)
 
 def read_poni(fname):
     conf = {}
@@ -23,7 +22,6 @@ def read_poni(fname):
     return conf
 
 class CalibrationDialog(wx.Dialog):
-
     """dialog for calibrating energy"""
     conv = {'wavelength': (1e10, 'Ang'),
             'pixel1': (1e6, 'microns'),
