@@ -43,4 +43,7 @@ def run_adeiger():
             os.chmod(script, 493)
 
     else:
-        EigerApp(prefix=args[0]).MainLoop()
+        prefix = None
+        if len(args) > 0:
+            prefix = args[0]
+        EigerApp(prefix=prefix).MainLoop()
