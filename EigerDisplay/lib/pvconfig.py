@@ -1,16 +1,21 @@
 import wx
 from epics import get_pv
 from epics.wx.utils import pack
-from epics.wx import (PVEnumChoice, PVFloatCtrl, PVTextCtrl, PVStaticText)
-
-
+from epics.wx import (PVEnumChoice, PVEnumButtons,
+                      PVFloatCtrl, PVTextCtrl, PVStaticText)
 
 labstyle = wx.ALIGN_LEFT|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
 
+
+PVcontrols = dict(pvenum=PVEnumChoice,
+                  pvenumbuttons=PVEnumButtons,
+                  pvfloat=PVFloatCtrl,
+                  pvtctrl=PVTextCtrl,
+                  pvtext=PVStaticText)
+
+
 def pv_control(dtype):
-    ctrls = dict(pvenum=PVEnumChoice, pvfloat=PVFloatCtrl,
-                 pvtctrl=PVTextCtrl, pvtext=PVStaticText)
-    return ctrls.get(dtype, PVStaticText)
+    return PVcontrols.get(dtype, PVStaticText)
 
 
 class PVConfigPanel(wx.Panel):
