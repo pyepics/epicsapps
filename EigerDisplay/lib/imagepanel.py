@@ -40,6 +40,7 @@ class ADImagePanel(wx.Panel):
         self.writer = writer
         self.scale = 0.8
         self.ad_img = None
+        self.colormap = None
         self.arrsize   = (0, 0, 0)
         self.contrast_levels = [contrast_level, 100.0-contrast_level]
         self.rot90 = rot90
@@ -100,15 +101,27 @@ class ADImagePanel(wx.Panel):
 
         jmin, jmax = np.percentile(data, self.contrast_levels)
         data = np.clip(data, jmin, jmax) - jmin
-        data = (data*255./(jmax+0.001)).astype('uint8')
+        data = (data/(jmax+0.001))
 
         w, h = self.GetImageSize()
         data = data.reshape((h, w))
 
-        rgb = np.zeros((h, w, 3), dtype='uint8')
-        rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
 
-        image = wx.Image(w, h, rgb)
+        if callable(self.colormap):
+            data = self.colormap(data)
+            if data.shape[2] == 4:
+                alpha = data[:, :, 3]
+                data  = data[:, :, :3]
+                image = wx.Image(w, h, (data*255).astype('uint8'),
+                                 (alpha*255).astype('uint8'))
+            else:
+                image = wx.Image(w, h, (data*255).astype('uint8'))
+        else:
+            rgb = np.zeros((h, w, 3), dtype='float')
+            rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
+            image = wx.Image(w, h, (rgb*255).astype('uint8'))
+
+
         if self.flipv:
             image = image.Mirror(False)
         if self.fliph:

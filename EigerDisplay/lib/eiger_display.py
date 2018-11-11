@@ -8,6 +8,8 @@ import sys
 import time
 import json
 import numpy as np
+import matplotlib.cm as colormap
+
 
 import wx
 import wx.lib.mixins.inspection
@@ -17,9 +19,9 @@ try:
 except:
     PyDeadObjectError = Exception
 
-import wxmplot
 from wxmplot.plotframe import PlotFrame
-from wxmplot.colors import hexcolor
+
+
 import epics
 from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
                       PVEnumChoice, PVFloatCtrl, PVTextCtrl, PVStaticText)
@@ -27,8 +29,6 @@ from epics import caget, caput
 from epics.wx.utils import add_menu
 
 from epicsscan.detectors.ad_eiger import EigerSimplon
-
-from larch.wxlib import (GridPanel, Button, FloatCtrl, SimpleText, LCEN)
 
 HAS_ESCAN = False
 try:
@@ -54,7 +54,6 @@ rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
 txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
 
-
 ##     Label,            PV Name,         Type,   RBV suffix,  Widget Size
 display_pvs = [
     ('Trigger Mode',     'cam1:TriggerMode',     'pvenum',  '_RBV', 125),
@@ -67,6 +66,9 @@ display_pvs = [
     ('File Path',        'cam1:FilePath',        'pvtctrl', False,  225),
     ]
 
+
+colormaps = ['gray', 'coolwarm', 'viridis', 'inferno', 'plasma', 'magma',
+             'hot', 'jet', 'hsv']
 
 
 ################
@@ -146,12 +148,20 @@ class EigerFrame(wx.Frame):
         for key in ('start', 'stop', 'freerun'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onButton, key=key))
 
+        self.wids['cmap_choice'] = wx.Choice(panel, size=(80, -1),
+                                             choices=colormaps)
+        self.wids['cmap_reverse'] = wx.CheckBox(panel, label='Reverse', size=(60, -1))
+
+        self.wids['cmap_choice'].Bind(wx.EVT_CHOICE,  self.onColorMap)
+        self.wids['cmap_reverse'].Bind(wx.EVT_CHECKBOX,  self.onColorMap)
+
         self.wids['show_1dint'] =  wx.Button(panel, -1, label='Show 1D Integration',
                                                size=(200, -1))
         self.wids['show_1dint'].Bind(wx.EVT_BUTTON, self.onShowIntegration)
 
-        self.wids['imagesize']= wx.StaticText(panel, -1, label='?x?',
+        self.wids['imagesize']= wx.StaticText(panel, -1, label='? x ?',
                                               size=(250, 30), style=txtstyle)
+
         self.wids['contrastpanel'] = ContrastPanel(panel, callback=self.set_contrast_level)
 
         def lin(len=200, wid=2, style=wx.LI_HORIZONTAL):
@@ -171,6 +181,13 @@ class EigerFrame(wx.Frame):
 
         irow += 1
         sizer.Add(self.wids['imagesize'], (irow, 0), (1, 3), labstyle)
+
+        irow += 1
+        sizer.Add(wx.StaticText(panel, -1, label='Color Map: '),
+                  (irow, 0), (1, 1), labstyle)
+
+        sizer.Add(self.wids['cmap_choice'],  (irow, 1), (1, 1), labstyle)
+        sizer.Add(self.wids['cmap_reverse'], (irow, 2), (1, 1), labstyle)
 
         irow += 1
         sizer.Add(self.wids['contrastpanel'], (irow, 0), (1, 2), labstyle)
@@ -200,6 +217,13 @@ class EigerFrame(wx.Frame):
 
         # self.RefreshImage()
         wx.CallAfter(self.connect_pvs )
+
+    def onColorMap(self, event=None):
+        cmap_name = self.wids['cmap_choice'].GetStringSelection()
+        if self.wids['cmap_reverse'].IsChecked():
+            cmap_name = cmap_name + '_r'
+        self.image.colormap = getattr(colormap, cmap_name)
+        self.image.Refresh()
 
     def OnLeftUp(self, event):
         if self.image is not None:
