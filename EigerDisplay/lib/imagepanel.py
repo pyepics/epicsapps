@@ -15,33 +15,26 @@ from collections import deque
 from epics import PV, Device, caput, poll
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 
-from matplotlib.cm import coolwarm, viridis, gray, coolwarm_r, viridis_r, gray_r
+class ADMonoImagePanel(wx.Panel):
+    """Image Panel for monochromatic Area Detector"""
 
-class ADImagePanel(wx.Panel):
-    """Image Panel for Area Detector"""
-
-    img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
-                 'ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
-                 'ColorMode_RBV')
-
-    cam_attrs = ('Acquire', 'ArrayCounter', 'ArrayCounter_RBV',
-                 'DetectorState_RBV', 'NumImages', 'ColorMode',
-                 'ColorMode_RBV', 'DataType_RBV', 'Gain', 'AcquireTime',
-                 'AcquirePeriod', 'ImageMode', 'ArraySizeX_RBV',
-                 'ArraySizeY_RBV')
+    ad_attrs = ('image1:ArrayData',
+                'image1:ArraySize0_RBV',
+                'image1:ArraySize1_RBV',
+                'cam1:ArrayCounter_RBV')
 
     def __init__(self, parent, prefix=None, writer=None,
                  draw_objects=None,
-                 rot90=0, contrast_level=0, **kws):
+                 rot90=0, contrast_level=0, size=(600, 600), **kws):
+        super(ADMonoImagePanel, self).__init__(parent, -1, size=size)
+
         self.drawing = False
-        super(ADImagePanel, self).__init__(parent, -1, size=(400, 750))
-        self.prefix = prefix
+        self.adcam = None
         self.image_id = -1
+
         self.writer = writer
         self.scale = 0.8
-        self.ad_img = None
         self.colormap = None
-        self.arrsize   = (0, 0, 0)
         self.contrast_levels = [contrast_level, 100.0-contrast_level]
         self.rot90 = rot90
         self.flipv = False
@@ -49,12 +42,10 @@ class ADImagePanel(wx.Panel):
         self.image = None
         self.draw_objects = None
         self.SetBackgroundColour("#E4E4E4")
-        self.starttime = time.clock()
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.Bind(wx.EVT_SIZE, self.onSize)
         self.Bind(wx.EVT_PAINT, self.onPaint)
-
-        self.set_prefix(prefix)
+        self.connect_pvs(prefix)
         self.restart_fps_counter()
 
     def restart_fps_counter(self, nsamples=100):
@@ -62,65 +53,66 @@ class ADImagePanel(wx.Panel):
         if self.writer is not None:
             self.writer("")
 
-    def set_prefix(self, prefix):
+    def connect_pvs(self, prefix):
         if prefix.endswith(':'):
             prefix = prefix[:-1]
         if prefix.endswith(':image1'):
             prefix = prefix[:-7]
         if prefix.endswith(':cam1'):
             prefix = prefix[:-5]
-        self.prefix = prefix
+        prefix = prefix + ':'
 
-        self.ad_img = Device(prefix + ':image1:', delim='', attrs=self.img_attrs)
-        self.ad_cam = Device(prefix + ':cam1:', delim='', attrs=self.cam_attrs)
-
-        self.ad_cam._pvs['ArrayCounter_RBV'].add_callback(self.onNewImage)
-        self.ad_img.add_callback('ArraySize0_RBV', self.onArraySize, dim=0)
-        self.ad_img.add_callback('ArraySize1_RBV', self.onArraySize, dim=1)
+        self.adcam = Device(prefix,  delim='', attrs=self.ad_attrs)
+        self.adcam.add_callback('cam1:ArrayCounter_RBV', self.onNewImage)
 
     def GetImageSize(self):
-        return self.ad_img.ArraySize0_RBV, self.ad_img.ArraySize1_RBV
+        return  (self.adcam.get('image1:ArraySize0_RBV'),
+                 self.adcam.get('image1:ArraySize1_RBV'))
 
     def onNewImage(self, pvname=None, value=None, **kws):
         if value > self.image_id and not self.drawing:
             self.image_id = value
             self.Refresh()
 
-    @DelayedEpicsCallback
-    def onArraySize(self, pvname=None, value=None, dim=None, **kw):
-        self.arrsize[dim] = value
+    def GrabNumpyImage(self):
+        """get raw image data, as numpy ndarray, correctly shaped"""
+        try:
+            data = self.adcam.PV('image1:ArrayData').get()
+        except:
+            data = None
+        if data is not None:
+            w, h = self.GetImageSize()
+            data = data.reshape((h, w))
+        return data
 
     def GrabWxImage(self):
-        try:
-            data = self.ad_img.PV('ArrayData').get()
-        except:
-            return
+        """get wx Image:
+        - scaled in size
+        - color table applied
+        - flipped and/or rotated
+        - contrast levels set
+        """
+        data = self.GrabNumpyImage()
         if data is None:
             return
-        self.capture_times.append(time.time())
+        self.capture_times.append(time.clock())
 
         jmin, jmax = np.percentile(data, self.contrast_levels)
-        data = np.clip(data, jmin, jmax) - jmin
-        data = (data/(jmax+0.001))
-
+        data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.001)
         w, h = self.GetImageSize()
-        data = data.reshape((h, w))
-
 
         if callable(self.colormap):
             data = self.colormap(data)
-            if data.shape[2] == 4:
-                alpha = data[:, :, 3]
-                data  = data[:, :, :3]
-                image = wx.Image(w, h, (data*255).astype('uint8'),
-                                 (alpha*255).astype('uint8'))
+            if data.shape[2] == 4: # with alpha channel
+                image = wx.Image(w, h,
+                                 (data[:,:,:3]*255.).astype('uint8'),
+                                 (data[:,:,3]*255.).astype('uint8'))
             else:
-                image = wx.Image(w, h, (data*255).astype('uint8'))
+                image = wx.Image(w, h, (data*255.).astype('uint8'))
         else:
             rgb = np.zeros((h, w, 3), dtype='float')
             rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
-            image = wx.Image(w, h, (rgb*255).astype('uint8'))
-
+            image = wx.Image(w, h, (rgb*255.).astype('uint8'))
 
         if self.flipv:
             image = image.Mirror(False)
@@ -137,6 +129,7 @@ class ADImagePanel(wx.Panel):
             fh, fw = evt.GetSize()
         else:
             fh, fw = self.GetSize()
+
         w, h = self.GetImageSize()
         self.scale = max(0.10, min(fw/(w+5.0), fh/(h+5.0)))
 
