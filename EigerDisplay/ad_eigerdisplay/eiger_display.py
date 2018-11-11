@@ -8,7 +8,7 @@ import sys
 import time
 import json
 from functools import partial
-
+from collections import namedtuple
 import numpy as np
 import matplotlib.cm as colormap
 
@@ -25,8 +25,9 @@ from wxmplot.plotframe import PlotFrame
 import epics
 from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 
-from epics import caget, caput
-from epics.wx.utils import add_menu
+from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel,
+                     SavedParameterDialog)
+
 
 HAS_SIMPLON = False
 try:
@@ -45,18 +46,20 @@ except ImportError:
 from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
 
 from .autocontrast_panel import ContrastChoice
-from .calibration_panel import CalibrationDialog, read_poni
+from .calibration_dialog import CalibrationDialog, read_poni
 from .imagepanel import ADMonoImagePanel
 from .pvconfig import PVConfigPanel
 
 os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '4800000'
-ICON_FILE = 'camera.ico'
 
-IMG_SIZE = (1024, 512)
+topdir, _s = os.path.split(__file__)
+ICONFILE = os.path.join(topdir, 'icons', 'eiger500k.ico')
+
+DEFAULT_ROTATION = 3
 
 labstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
 rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
-txtstyle=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
+txtstyle = wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
 
 ##     Label,            PV Name,         Type,   RBV suffix,  Widget Size
@@ -95,6 +98,14 @@ class EigerFrame(wx.Frame):
     def __init__(self, prefix=None, url=None, scale=1.0):
         self.ad_img = None
         self.ad_cam = None
+        if prefix is None:
+            dlg = SavedParameterDialog(label='Detector Prefix',
+                                       title='Connect to Eiger Detector',
+                                       configfile='.ad_eigerdisplay.dat')
+            res = dlg.GetResponse()
+            dlg.Destroy()
+            if res.ok:
+                prefix = res.value
 
         self.prefix = prefix
         self.fname = 'Eiger.tif'
@@ -200,7 +211,8 @@ class EigerFrame(wx.Frame):
         sizer.Fit(panel)
 
         # image panel
-        self.image = ADMonoImagePanel(self, prefix=self.prefix, rot90=3,
+        self.image = ADMonoImagePanel(self, prefix=self.prefix,
+                                      rot90=DEFAULT_ROTATION,
                                       size=(400, 750),
                                       writer=partial(self.write, panel=2))
 
@@ -213,7 +225,7 @@ class EigerFrame(wx.Frame):
         self.SetAutoLayout(True)
 
         try:
-            self.SetIcon(wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO))
+            self.SetIcon(wx.Icon(ICONFILE, wx.BITMAP_TYPE_ICO))
         except:
             pass
 
@@ -327,21 +339,21 @@ class EigerFrame(wx.Frame):
         dlg = wx.FileDialog(None, message='Save Image as',
                             defaultDir=os.getcwd(),
                             defaultFile=self.fname,
-                            style=wx.SAVE)
+                            style=wx.FD_SAVE)
         path = None
         if dlg.ShowModal() == wx.ID_OK:
             path = os.path.abspath(dlg.GetPath())
 
 
         root, fname = os.path.split(path)
-        caput("%sTIFF1:FileName" % self.prefix, fname)
-        caput("%sTIFF1:FileWriteMode" % self.prefix, 0)
+        epics.caput("%sTIFF1:FileName" % self.prefix, fname)
+        epics.caput("%sTIFF1:FileWriteMode" % self.prefix, 0)
         time.sleep(0.05)
-        caput("%sTIFF1:WriteFile" % self.prefix, 1)
+        epics.caput("%sTIFF1:WriteFile" % self.prefix, 1)
         time.sleep(0.05)
 
         print("Saved TIFF File ",
-              caget("%sTIFF1:FullFileName_RBV" % self.prefix, as_string=True))
+              epics.caget("%sTIFF1:FullFileName_RBV" % self.prefix, as_string=True))
 
 
     def onExit(self, event=None):
@@ -362,26 +374,23 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def buildMenus(self):
         fmenu = wx.Menu()
-        add_menu(self, fmenu, "&Save\tCtrl+S", "Save Image", self.onSaveImage)
-        add_menu(self, fmenu, "&Copy\tCtrl+C", "Copy Image to Clipboard",
+        MenuItem(self, fmenu, "&Save\tCtrl+S", "Save Image", self.onSaveImage)
+        MenuItem(self, fmenu, "&Copy\tCtrl+C", "Copy Image to Clipboard",
                  self.onCopyImage)
-        add_menu(self, fmenu, "Read Calibration File", "Read PONI Calibration",
+        MenuItem(self, fmenu, "Read Calibration File", "Read PONI Calibration",
                  self.onReadCalibFile)
-        add_menu(self, fmenu, "Show 1D integration", "Show 1D integration",
-                 self.onShowIntegration)
-
         fmenu.AppendSeparator()
-        add_menu(self, fmenu, "E&xit\tCtrl+Q",  "Exit Program", self.onExit)
+        MenuItem(self, fmenu, "E&xit\tCtrl+Q",  "Exit Program", self.onExit)
 
         omenu = wx.Menu()
-        add_menu(self, omenu,  "&Rotate CCW\tCtrl+R", "Rotate Counter Clockwise", self.onRot90)
-        add_menu(self, omenu,  "Flip Up/Down\tCtrl+T", "Flip Up/Down", self.onFlipV)
-        add_menu(self, omenu,  "Flip Left/Right\tCtrl+F", "Flip Left/Right", self.onFlipH)
-        add_menu(self, omenu,  "Reset Rotations and Flips", "Reset", self.onResetRotFlips)
+        MenuItem(self, omenu,  "&Rotate CCW\tCtrl+R", "Rotate Counter Clockwise", self.onRot90)
+        MenuItem(self, omenu,  "Flip Up/Down\tCtrl+T", "Flip Up/Down", self.onFlipV)
+        MenuItem(self, omenu,  "Flip Left/Right\tCtrl+F", "Flip Left/Right", self.onFlipH)
+        MenuItem(self, omenu,  "Reset Rotations and Flips", "Reset", self.onResetRotFlips)
         omenu.AppendSeparator()
 
         hmenu = wx.Menu()
-        add_menu(self, hmenu, "About", "About Epics AreadDetector Display", self.onAbout)
+        MenuItem(self, hmenu, "About", "About Epics AreadDetector Display", self.onAbout)
 
         mbar = wx.MenuBar()
         mbar.Append(fmenu, "File")
@@ -391,7 +400,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.SetMenuBar(mbar)
 
     def onResetRotFlips(self, event):
-        self.image.rot90 = 0
+        self.image.rot90 = DEFAULT_ROTATION
         self.image.flipv = self.fliph = False
 
     def onRot90(self, event):
@@ -442,10 +451,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.ad_cam = epics.Device(self.prefix + ':cam1:', delim='',
                                    attrs=self.cam_attrs)
 
-        caput("%s:TIFF1:EnableCallbacks" % self.prefix, 1)
-        caput("%s:TIFF1:AutoSave" % self.prefix, 0)
-        caput("%s:TIFF1:AutoIncrement" % self.prefix, 0)
-        caput("%s:TIFF1:FileWriteMode" % self.prefix, 0)
+        epics.caput("%s:TIFF1:EnableCallbacks" % self.prefix, 1)
+        epics.caput("%s:TIFF1:AutoSave" % self.prefix, 0)
+        epics.caput("%s:TIFF1:AutoIncrement" % self.prefix, 0)
+        epics.caput("%s:TIFF1:FileWriteMode" % self.prefix, 0)
 
         time.sleep(0.002)
         if not self.ad_img.PV('UniqueId_RBV').connected:
