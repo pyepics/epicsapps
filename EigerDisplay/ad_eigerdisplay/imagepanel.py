@@ -69,10 +69,13 @@ class ADMonoImagePanel(wx.Panel):
         return  (self.adcam.get('image1:ArraySize0_RBV'),
                  self.adcam.get('image1:ArraySize1_RBV'))
 
+    @DelayedEpicsCallback
     def onNewImage(self, pvname=None, value=None, **kws):
         if value > self.image_id and not self.drawing:
+            self.drawing = True
             self.image_id = value
             self.Refresh()
+            self.drawing = False
 
     def GrabNumpyImage(self):
         """get raw image data, as numpy ndarray, correctly shaped"""
@@ -83,6 +86,7 @@ class ADMonoImagePanel(wx.Panel):
         if data is not None:
             w, h = self.GetImageSize()
             data = data.reshape((h, w))
+        poll()
         return data
 
     def GrabWxImage(self):
@@ -95,7 +99,7 @@ class ADMonoImagePanel(wx.Panel):
         data = self.GrabNumpyImage()
         if data is None:
             return
-        self.capture_times.append(time.clock())
+        self.capture_times.append(time.time())
 
         jmin, jmax = np.percentile(data, self.contrast_levels)
         data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.001)
@@ -134,12 +138,11 @@ class ADMonoImagePanel(wx.Panel):
         self.scale = max(0.10, min(fw/(w+5.0), fh/(h+5.0)))
 
     def onPaint(self, event):
-        self.drawing = True
         image = self.GrabWxImage()
         if image is not None:
             if len(self.capture_times) > 2 and self.writer is not None:
                 ct = self.capture_times
-                fps = (ct[-1]-ct[0]) / (len(ct)-1)
+                fps = (len(ct)-1) / (ct[-1]-ct[0])
                 self.writer("Image %d: %.1f fps" % (self.image_id, fps))
 
             bitmap = wx.Bitmap(image)
@@ -150,7 +153,6 @@ class ADMonoImagePanel(wx.Panel):
             dc.Clear()
             dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
             # self.__draw_objects(dc, img_w, img_h, pad_w, pad_h)
-        self.drawing = False
 
     def __draw_objects(self, dc, img_w, img_h, pad_w, pad_h):
         dc.SetBrush(wx.Brush('Black', wx.BRUSHSTYLE_TRANSPARENT))
