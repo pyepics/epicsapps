@@ -40,11 +40,11 @@ class CalibrationDialog(wx.Dialog):
         self.calfile = calfile
         poni = read_poni(calfile)
 
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(550, 400),
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(600, 525),
                            title="Read Calibration File")
 
 
-        panel = GridPanel(self, ncols=3, nrows=4, pad=4, itemstyle=LCEN)
+        panel = GridPanel(self, ncols=3, nrows=4, pad=2, itemstyle=LCEN)
 
         self.wids = wids = {}
 
