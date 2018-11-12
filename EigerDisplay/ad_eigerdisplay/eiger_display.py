@@ -78,7 +78,7 @@ display_pvs = [
     ('File Path',        'cam1:FilePath',        'pvtctrl', False,  225),
     ]
 
-colormaps = ['gray', 'viridis', 'coolwarm', 'inferno', 'plasma', 'magma',
+colormaps = ['gray', 'magma', 'plasma', 'inferno', 'viridis', 'coolwarm',
              'hot', 'jet']
 
 
@@ -280,6 +280,7 @@ class EigerFrame(wx.Frame):
             self.show1d_btn.Enable()
 
     def onShowIntegration(self, event=None):
+
         if self.calib is None or 'poni1' not in self.calib:
             return
         shown = False
@@ -290,7 +291,6 @@ class EigerFrame(wx.Frame):
             self.int_panel = None
         if not shown:
             self.int_panel = PlotFrame(self)
-            self.int_panel.Raise()
             self.show_1dpattern(init=True)
         else:
             self.show_1dpattern()
@@ -310,7 +310,6 @@ class EigerFrame(wx.Frame):
             self.int_panel = None
         if not shown:
             self.int_panel = PlotFrame(self)
-            self.int_panel.Raise()
             self.show_1dpattern(init=True)
         else:
             self.show_1dpattern()
@@ -323,19 +322,19 @@ class EigerFrame(wx.Frame):
         img = self.ad_img.PV('ArrayData').get()
 
 
-        img.shape = self.image.GetImageSize()
+        h, w = self.image.GetImageSize()
+        img.shape = (w, h)
         img = img[3:-3, 1:-1][::-1, :]
 
         img_id = self.ad_cam.ArrayCounter_RBV
-
-        # print(img.shape)
         q, xi = self.integrator.integrate1d(img, 2048, unit='q_A^-1',
                                             correctSolidAngle=True,
                                             polarization_factor=0.999)
         if init:
             self.int_panel.plot(q, xi, xlabel=r'$Q (\rm\AA^{-1})$', marker='+',
                                 title='Image %d' % img_id)
-
+            self.int_panel.Raise()
+            self.int_panel.Show()
         else:
             self.int_panel.update_line(0, q, xi, draw=True)
             self.int_panel.set_title('Image %d' % img_id)
@@ -363,7 +362,6 @@ class EigerFrame(wx.Frame):
 
         print("Saved TIFF File ",
               epics.caget("%sTIFF1:FullFileName_RBV" % self.prefix, as_string=True))
-
 
     def onExit(self, event=None):
         try:
