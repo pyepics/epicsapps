@@ -320,7 +320,9 @@ class EigerFrame(wx.Frame):
             return
 
         img = self.ad_img.PV('ArrayData').get()
-        img.shape = self.image.arrsize[1], self.image.arrsize[0]
+
+
+        img.shape = self.image.GetImageSize()
         img = img[3:-3, 1:-1][::-1, :]
 
         img_id = self.ad_cam.ArrayCounter_RBV
