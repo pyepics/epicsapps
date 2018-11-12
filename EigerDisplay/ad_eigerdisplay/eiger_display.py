@@ -68,14 +68,18 @@ txtstyle = wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
 ##     Label,            PV Name,         Type,   RBV suffix,  Widget Size
 display_pvs = [
-    ('Trigger Mode',     'cam1:TriggerMode',     'pvenum',  '_RBV', 125),
-    ('# Images',         'cam1:NumImages',       'pvfloat', '_RBV', 100),
-    ('Acqure Period',    'cam1:AcquirePeriod',   'pvfloat', '_RBV', 100),
-    ('Acquire Time',     'cam1:AcquireTime',     'pvfloat', '_RBV', 100),
-    ('X-ray Energy',     'cam1:PhotonEnergy',    'pvfloat', '_RBV', 100),
-    ('Energy Threshold', 'cam1:ThresholdEnergy', 'pvfloat', '_RBV', 100),
-    ('File Pattern',     'cam1:FWNamePattern',   'pvtctrl', False,  225),
-    ('File Path',        'cam1:FilePath',        'pvtctrl', False,  225),
+    ('Trigger Mode',      'cam1:TriggerMode',       'pvenum',  '_RBV', 125),
+    ('# Images',          'cam1:NumImages',         'pvfloat', '_RBV', 100),
+    ('Acqure Period',     'cam1:AcquirePeriod',     'pvfloat', '_RBV', 100),
+    ('Acquire Time',      'cam1:AcquireTime',       'pvfloat', '_RBV', 100),
+    ('X-ray Energy',      'cam1:PhotonEnergy',      'pvfloat', '_RBV', 100),
+    ('Energy Threshold',  'cam1:ThresholdEnergy',   'pvfloat', '_RBV', 100),
+    ('TIFF File Path',    'TIFF1:FilePath',         'pvtctrl', False,  225),
+    ('Acquire Status',    'cam1:Acquire',           'pvtext',  False,  225),
+    ('Acquire Busy',      'cam1:AcquireBusy',       'pvtext',  False,  225),
+    ('Acquire Message',   'cam1:StatusMessage_RBV', 'pvtext',  False,  225),
+    ('Detector Armed',    'cam1:Armed',             'pvtext',  False,  225),
+    ('Free Disk Space (Gb)', 'cam1:FWFree_RBV',     'pvtext',  False,  225),
     ]
 
 colormaps = ['gray', 'magma', 'plasma', 'inferno', 'viridis', 'coolwarm',
