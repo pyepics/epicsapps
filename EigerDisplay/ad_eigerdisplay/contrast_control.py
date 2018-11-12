@@ -2,12 +2,12 @@ import wx
 
 class ContrastChoice():
     """auto-contrast widgets"""
-    def __init__(self, parent, default=1):
+    def __init__(self, parent, default=1, callback=None):
         self.levels = ['None']
         for scale in (0.01, 0.1, 1.0):
             for step in (1, 2, 5):
                 self.levels.append(str(scale*step))
-
+        self.callback = callback
         self.label = wx.StaticText(parent, label='Contrast Level (%):',
                                    size=(150, -1))
         self.choice = wx.Choice(parent, choices=self.levels, size=(100, -1))
