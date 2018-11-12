@@ -152,7 +152,7 @@ class EigerFrame(wx.Frame):
         sizer = wx.GridBagSizer(3, 3)
         panel = self.panel = wx.Panel(self)
 
-        pvpanel = PVConfigPanel(self, self.prefix, display_pvs)
+        pvpanel = PVConfigPanel(panel, self.prefix, display_pvs)
 
         wsize = (100, -1)
         lsize = (250, -1)
@@ -166,6 +166,7 @@ class EigerFrame(wx.Frame):
 
         self.cmap_choice = wx.Choice(panel, size=(80, -1),
                                              choices=colormaps)
+        self.cmap_choice.SetSelection(0)
         self.cmap_choice.Bind(wx.EVT_CHOICE,  self.onColorMap)
 
         self.cmap_reverse = wx.CheckBox(panel, label='Reverse', size=(60, -1))
@@ -431,6 +432,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
     def onButton(self, event=None, key='free'):
         key = key.lower()
         if key.startswith('free'):
+            self.image.restart_fps_counter()
             self.ad_cam.AcquireTime = 0.25
             self.ad_cam.AcquirePeriod = 0.25
             self.ad_cam.NumImages = 345600
