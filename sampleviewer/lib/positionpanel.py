@@ -366,10 +366,8 @@ class TransferPositionsDialog(wx.Frame):
                 poslist = idb.get_positionlist(self.instname)
 
             pos0 = idb.get_position_vals(self.instname, poslist[0])
-            pvs = pos0.keys()
-            pvs.sort()
             spos = OrderedDict()
-            for pvname in pvs:
+            for pvname in sorted(pos0.keys()):
                 spos[pvname] = 0.000
 
             xoffset = self.xoff.GetValue()
