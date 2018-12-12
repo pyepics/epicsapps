@@ -1,19 +1,26 @@
 """
 Base Image Panel to be inherited by other ImagePanels
 """
-
 import wx
 import time
 import numpy as np
-import os
-import shutil
-import math
-from threading import Thread
-from six import StringIO
-import base64
+
 from collections import deque
-from epics import PV, Device, caput, poll
+from epics import PV, Device, poll
 from epics.wx import EpicsFunction, DelayedEpicsCallback
+
+def fix_ad_prefix(prefix):
+    """fix areaDetector prefix to not end with
+    'image1:' or 'cam1:', but to end with ':'
+    """
+    if prefix.endswith(':'):
+        prefix = prefix[:-1]
+    if prefix.endswith(':image1'):
+        prefix = prefix[:-7]
+    if prefix.endswith(':cam1'):
+        prefix = prefix[:-5]
+    return prefix + ':'
+
 
 class ADMonoImagePanel(wx.Panel):
     """Image Panel for monochromatic Area Detector"""
@@ -23,9 +30,9 @@ class ADMonoImagePanel(wx.Panel):
                 'image1:ArraySize1_RBV',
                 'cam1:ArrayCounter_RBV')
 
-    def __init__(self, parent, prefix=None, writer=None,
-                 draw_objects=None,
+    def __init__(self, parent, prefix=None, writer=None, draw_objects=None,
                  rot90=0, contrast_level=0, size=(600, 600), **kws):
+
         super(ADMonoImagePanel, self).__init__(parent, -1, size=size)
 
         self.drawing = False
@@ -54,14 +61,7 @@ class ADMonoImagePanel(wx.Panel):
             self.writer("")
 
     def connect_pvs(self, prefix):
-        if prefix.endswith(':'):
-            prefix = prefix[:-1]
-        if prefix.endswith(':image1'):
-            prefix = prefix[:-7]
-        if prefix.endswith(':cam1'):
-            prefix = prefix[:-5]
-        prefix = prefix + ':'
-
+        prefix = fix_ad_prefix(prefix)
         self.adcam = Device(prefix,  delim='', attrs=self.ad_attrs)
         self.adcam.add_callback('cam1:ArrayCounter_RBV', self.onNewImage)
 
@@ -144,7 +144,6 @@ class ADMonoImagePanel(wx.Panel):
                 ct = self.capture_times
                 fps = (len(ct)-1) / (ct[-1]-ct[0])
                 self.writer("Image %d: %.1f fps" % (self.image_id, fps))
-
             bitmap = wx.Bitmap(image)
             bmp_w, bmp_h = bitmap.GetSize()
             pan_w, pan_h = self.GetSize()
@@ -152,6 +151,7 @@ class ADMonoImagePanel(wx.Panel):
             dc = wx.AutoBufferedPaintDC(self)
             dc.Clear()
             dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
+
             # self.__draw_objects(dc, img_w, img_h, pad_w, pad_h)
 
     def __draw_objects(self, dc, img_w, img_h, pad_w, pad_h):
@@ -165,19 +165,19 @@ class ADMonoImagePanel(wx.Panel):
                 color = wx.Colour(*color)
                 width = obj.get('width', 1.0)
                 style = obj.get('style', wx.SOLID)
-                args  = obj.get('args', [])
+                args  = obj.get('args', [0, 0, 0, 0])
                 kws   = obj.get('kws', {})
 
                 method = getattr(dc, 'Draw%s' % (shape.title()), None)
                 if shape.title() == 'Line':
-                    args = [pad_w + args[0]*img_w,
-                            pad_h + args[1]*img_h,
-                            pad_w + args[2]*img_w,
-                            pad_h + args[3]*img_h]
+                    margs = [pad_w + args[0]*img_w,
+                             pad_h + args[1]*img_h,
+                             pad_w + args[2]*img_w,
+                             pad_h + args[3]*img_h]
                 elif shape.title() == 'Circle':
-                    args = [pad_w + args[0]*img_w,
-                            pad_h + args[1]*img_h,  args[2]*img_w]
+                    margs = [pad_w + args[0]*img_w,
+                             pad_h + args[1]*img_h,  args[2]*img_w]
 
                 if method is not None:
                     dc.SetPen(wx.Pen(color, width, style))
-                    method(*args, **kws)
+                    method(*margs, **kws)
