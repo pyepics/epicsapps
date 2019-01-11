@@ -6,10 +6,11 @@ areaDetector Display
 import os
 import sys
 import time
-import json
 
 from functools import partial
 from collections import namedtuple
+
+
 
 import numpy as np
 import matplotlib.cm as colormap
@@ -30,7 +31,6 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel,
                      FileOpen, SavedParameterDialog)
 
-
 try:
     from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
     HAS_PYFAI = True
@@ -41,81 +41,35 @@ from .contrast_control import ContrastControl
 from .calibration_dialog import CalibrationDialog, read_poni
 from .imagepanel import ADMonoImagePanel
 from .pvconfig import PVConfigPanel
-
-os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '4800000'
+from .ad_config import read_adconfig
 
 topdir, _s = os.path.split(__file__)
 ICONFILE = os.path.join(topdir, 'icons', 'camera.ico')
-
-DEFAULT_ROTATION = 3
 
 labstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
 rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
 txtstyle = wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
-
-##     Label,            PV Name,         Type,   RBV suffix,  Widget Size
-display_pvs = [
-    ('Trigger Mode',      'cam1:TriggerMode',       'pvenum',  '_RBV', 125),
-    ('# Images',          'cam1:NumImages',         'pvfloat', '_RBV', 100),
-    ('Acqure Period',     'cam1:AcquirePeriod',     'pvfloat', '_RBV', 100),
-    ('Acquire Time',      'cam1:AcquireTime',       'pvfloat', '_RBV', 100),
-    ('X-ray Energy',      'cam1:PhotonEnergy',      'pvfloat', '_RBV', 100),
-    ('Energy Threshold',  'cam1:ThresholdEnergy',   'pvfloat', '_RBV', 100),
-    ('TIFF File Path',    'TIFF1:FilePath',         'pvtctrl', False,  225),
-    ('Acquire Status',    'cam1:Acquire',           'pvtext',  False,  225),
-    ('Acquire Busy',      'cam1:AcquireBusy',       'pvtext',  False,  225),
-    ('Acquire Message',   'cam1:StatusMessage_RBV', 'pvtext',  False,  225),
-    ('Detector Armed',    'cam1:Armed',             'pvtext',  False,  225),
-    ('Free Disk Space (Gb)', 'cam1:FWFree_RBV',     'pvtext',  False,  225),
-    ]
-
-colormaps = ['gray', 'magma', 'inferno', 'plasma',
-             'viridis', 'coolwarm', 'hot', 'jet']
-
-
-################
-
 class ADFrame(wx.Frame):
     """
     AreaDetector Display Frame
     """
-    img_attrs = ('ArrayData', 'UniqueId_RBV')
-    cam_attrs = ('Acquire', 'DetectorState_RBV',
-                 'ArrayCounter', 'ArrayCounter_RBV',
-                 'ThresholdEnergy', 'ThresholdEnergy_RBV',
-                 'PhotonEnergy', 'PhotonEnergy_RBV',
-                 'NumImages', 'NumImages_RBV',
-                 'AcquireTime', 'AcquireTime_RBV',
-                 'AcquirePeriod', 'AcquirePeriod_RBV',
-                 'TriggerMode', 'TriggerMode_RBV')
-
-    # plugins to enable
-    enabled_plugins = ('image1', 'Over1', 'ROI1', 'JPEG1', 'TIFF1')
-
-    def __init__(self, prefix=None, scale=1.0):
+    def __init__(self, configfile):
+        self.config = read_adconfig(configfile)
+        self.prefix = self.config['general']['prefix']
+        self.fname = self.config['general']['name']
+        self.colormode = self.config['general']['colormode'].lower()
+        self.cam_attrs = self.config['cam_attributes']
+        self.img_attrs = self.config['img_attributes']
+        self.calib = {}
         self.ad_img = None
         self.ad_cam = None
-        if prefix is None:
-            dlg = SavedParameterDialog(label='Load Detector Configuration File',
-                                       title='Connect to areaDetector',
-                                       configfile='.ad_display.dat')
-            res = dlg.GetResponse()
-            dlg.Destroy()
-            if res.ok:
-                prefix = res.value
-
-        self.prefix = prefix
-        self.fname = 'areaDetector.tif'
-
-        self.calib = {}
         self.lineplotter = None
         self.integrator = None
         self.int_panel = None
         self.int_lastid = None
         self.contrast_levels = None
-        self.scandb = None
-        wx.Frame.__init__(self, None, -1, "Epics areaDetector Display",
+        wx.Frame.__init__(self, None, -1, self.config['general']['title'],
                           style=wx.DEFAULT_FRAME_STYLE)
 
         self.buildMenus()
@@ -133,8 +87,7 @@ class ADFrame(wx.Frame):
 
         sizer = wx.GridBagSizer(3, 3)
         panel = self.panel = wx.Panel(self)
-
-        pvpanel = PVConfigPanel(panel, self.prefix, display_pvs)
+        pvpanel = PVConfigPanel(panel, self.prefix, self.config['controls'])
 
         wsize = (100, -1)
         lsize = (250, -1)
@@ -146,22 +99,12 @@ class ADFrame(wx.Frame):
         stop_btn.Bind(wx.EVT_BUTTON,  partial(self.onButton, key='stop'))
         free_btn.Bind(wx.EVT_BUTTON,  partial(self.onButton, key='free'))
 
-        self.cmap_choice = wx.Choice(panel, size=(80, -1),
-                                             choices=colormaps)
-        self.cmap_choice.SetSelection(0)
-        self.cmap_choice.Bind(wx.EVT_CHOICE,  self.onColorMap)
 
-        self.cmap_reverse = wx.CheckBox(panel, label='Reverse', size=(60, -1))
-        self.cmap_reverse.Bind(wx.EVT_CHECKBOX,  self.onColorMap)
-
-        self.show1d_btn =  wx.Button(panel, label='Show 1D Integration', size=(200, -1))
-        self.show1d_btn.Bind(wx.EVT_BUTTON, self.onShowIntegration)
-        self.show1d_btn.Disable()
+        self.contrast = ContrastControl(panel, callback=self.set_contrast_level)
 
         self.imagesize = wx.StaticText(panel, label='? x ?',
                                        size=(250, 30), style=txtstyle)
 
-        self.contrast = ContrastControl(panel, callback=self.set_contrast_level)
 
         def lin(len=200, wid=2, style=wx.LI_HORIZONTAL):
             return wx.StaticLine(panel, size=(len, wid), style=style)
@@ -181,26 +124,40 @@ class ADFrame(wx.Frame):
         irow += 1
         sizer.Add(self.imagesize, (irow, 0), (1, 3), labstyle)
 
-        irow += 1
-        sizer.Add(wx.StaticText(panel, label='Color Map: '),
-                  (irow, 0), (1, 1), labstyle)
+        if self.colormode.startswith('mono'):
+            self.cmap_choice = wx.Choice(panel, size=(80, -1),
+                                         choices=self.config['colormaps'])
+            self.cmap_choice.SetSelection(0)
+            self.cmap_choice.Bind(wx.EVT_CHOICE,  self.onColorMap)
+            self.cmap_reverse = wx.CheckBox(panel, label='Reverse', size=(60, -1))
+            self.cmap_reverse.Bind(wx.EVT_CHECKBOX,  self.onColorMap)
 
-        sizer.Add(self.cmap_choice,  (irow, 1), (1, 1), labstyle)
-        sizer.Add(self.cmap_reverse, (irow, 2), (1, 1), labstyle)
+            irow += 1
+            sizer.Add(wx.StaticText(panel, label='Color Map: '),
+                      (irow, 0), (1, 1), labstyle)
+
+            sizer.Add(self.cmap_choice,  (irow, 1), (1, 1), labstyle)
+            sizer.Add(self.cmap_reverse, (irow, 2), (1, 1), labstyle)
 
         irow += 1
         sizer.Add(self.contrast.label,  (irow, 0), (1, 1), labstyle)
         sizer.Add(self.contrast.choice, (irow, 1), (1, 1), labstyle)
 
-        irow += 1
-        sizer.Add(self.show1d_btn, (irow, 0), (1, 2), labstyle)
+        if self.config['general']['show_1dintegration']:
+            self.show1d_btn = wx.Button(panel, label='Show 1D Integration',
+                                         size=(200, -1))
+            self.show1d_btn.Bind(wx.EVT_BUTTON, self.onShowIntegration)
+            self.show1d_btn.Disable()
+
+            irow += 1
+            sizer.Add(self.show1d_btn, (irow, 0), (1, 2), labstyle)
 
         panel.SetSizer(sizer)
         sizer.Fit(panel)
 
         # image panel
         self.image = ADMonoImagePanel(self, prefix=self.prefix,
-                                      rot90=DEFAULT_ROTATION,
+                                      rot90=self.config['general']['default_rotation'],
                                       size=(400, 750),
                                       writer=partial(self.write, panel=2))
 
@@ -215,7 +172,7 @@ class ADFrame(wx.Frame):
             self.SetIcon(wx.Icon(ICONFILE, wx.BITMAP_TYPE_ICO))
         except:
             pass
-        wx.CallAfter(self.connect_pvs )
+        self.connect_pvs()
 
     def onColorMap(self, event=None):
         cmap_name = self.cmap_choice.GetStringSelection()
@@ -245,10 +202,7 @@ class ADFrame(wx.Frame):
             ppath = os.path.abspath(dlg.GetPath())
 
         if os.path.exists(ppath):
-            if self.scandb is not None:
-                CalibrationDialog(self, ppath).Show()
-            else:
-                self.setup_calibration(read_poni(ppath))
+            self.setup_calibration(read_poni(ppath))
 
     def setup_calibration(self, calib):
         """set up calibration from calibration dict"""
@@ -304,7 +258,7 @@ class ADFrame(wx.Frame):
 
         h, w = self.image.GetImageSize()
         img.shape = (w, h)
-        img = img[3:-3, 1:-1][::-1, :]
+        # img = img[3:-3, 1:-1][::-1, :]
 
         img_id = self.ad_cam.ArrayCounter_RBV
         q, xi = self.integrator.integrate1d(img, 2048, unit='q_A^-1',
@@ -410,10 +364,11 @@ Matt Newville <newville@cars.uchicago.edu>"""
     def onButton(self, event=None, key='free'):
         key = key.lower()
         if key.startswith('free'):
+            ftime = self.config['general']['free_run_time']
             self.image.restart_fps_counter()
-            self.ad_cam.AcquireTime   = self.config.free_run_time
-            self.ad_cam.AcquirePeriod = self.config.free_run_time
-            self.ad_cam.NumImages = int((3*86400.)/self.config.free_run_time)
+            self.ad_cam.AcquireTime   = ftime
+            self.ad_cam.AcquirePeriod = ftime
+            self.ad_cam.NumImages = int((3*86400.)/ftime)
             self.ad_cam.Acquire = 1
         elif key.startswith('start'):
             self.image.restart_fps_counter()
@@ -434,6 +389,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             self.prefix = self.prefix[:-5]
 
         self.write('Connecting to areaDetector %s' % self.prefix)
+
         self.ad_img = epics.Device(self.prefix + ':image1:', delim='',
                                    attrs=self.img_attrs)
         self.ad_cam = epics.Device(self.prefix + ':cam1:', delim='',
@@ -474,12 +430,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.write(char_value, panel=1)
 
 class areaDetectorApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, prefix=None,  **kws):
-        self.prefix = prefix
+    def __init__(self, config,  **kws):
+        self.config = config
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        frame = ADFrame(prefix=self.prefix)
+        frame = ADFrame(self.config)
         frame.Show()
         self.SetTopWindow(frame)
 
@@ -488,4 +444,4 @@ class areaDetectorApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         return True
 
 if __name__ == '__main__':
-    areaDetectorApp(prefix=sys.argv[1]).MainLoop()
+    areaDetectorApp(sys.argv[1]).MainLoop()
