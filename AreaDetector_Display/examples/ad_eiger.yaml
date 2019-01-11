@@ -1,0 +1,27 @@
+##
+##  areaDetector configuration file
+
+##
+general:
+   prefix: '13EIG1:'
+   name: 'eiger'
+   filesaver: 'TIFF1:'
+   default_rotation: 3
+   free_run_time: 0.2
+   show_1dintegration: true
+
+## control widgets
+controls:
+  #  Displayed Title         PV suffix             PV type, RBV suffix, width
+  - ['Trigger Mode',         'cam1:TriggerMode',       pvenum, _RBV, 125]
+  - ['# Images',             'cam1:NumImages',         pvfloat, _RBV, 100]
+  - ['Acqure Period',        'cam1:AcquirePeriod',     pvfloat, _RBV, 100]
+  - ['Acquire Time',         'cam1:AcquireTime',       pvfloat, _RBV, 100]
+  - ['X-ray Energy',         'cam1:PhotonEnergy',      pvfloat, _RBV, 100]
+  - ['Energy Threshold',     'cam1:ThresholdEnergy',   pvfloat, _RBV, 100]
+  - ['TIFF File Path',       'TIFF1:FilePath',         pvtctrl, false, 225]
+  - ['Acquire Status',       'cam1:Acquire',           pvtext, false, 225]
+  - ['Acquire Busy',         'cam1:AcquireBusy',       pvtext, false, 225]
+  - ['Acquire Message',      'cam1:StatusMessage_RBV', pvtext, false, 225]
+  - ['Detector Armed',       'cam1:Armed',             pvtext, false, 225]
+  - ['Free Disk Space (Gb)', 'cam1:FWFree_RBV',        pvtext, false, 225]
