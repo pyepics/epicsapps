@@ -11,15 +11,11 @@ import wx
 import wx.lib.colourselect  as csel
 
 import numpy as np
-from PIL import Image
+# from PIL import Image
 
 from wxmplot.plotframe import PlotFrame
 from wxmplot.colors import hexcolor
 
-ICON_FILE = 'camera.ico'
-
-from .debugtime import debugtime
-os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '60500100'
 
 class Empty:
     pass
@@ -29,6 +25,11 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
                       PVEnumChoice, PVFloatCtrl, PVTextCtrl)
 
 from epics.wx.utils import add_menu
+
+from .contrast_control import ContrastControl
+from .debugtime import debugtime
+os.environ['EPICS_CA_MAX_ARRAY_BYTES'] = '60500100'
+ICON_FILE = 'camera.ico'
 
 IMG_SIZE = (900, 650)
 # IMG_SIZE = (1928, 1448)
@@ -67,9 +68,9 @@ class AD_Display(wx.Frame):
 
     stat_msg = 'Read %.1f%% of images: rate=%.1f frames/sec'
 
-    def __init__(self, prefix=None, app=None, scale=1.0, approx_height=1200,
+    def __init__(self, prefix=None, scale=1.0, approx_height=1200,
                  known_cameras=None):
-        self.app = app
+
         self.ad_img = None
         self.ad_cam = None
         self.imgcount = 0
@@ -91,20 +92,18 @@ class AD_Display(wx.Frame):
         self.drawing = False
         self.lineplotter = None
         self.zoom_lims = []
-
+        self.contrast_levels = None
         wx.Frame.__init__(self, None, -1, "Epics Area Detector Display",
                           style=wx.DEFAULT_FRAME_STYLE)
-
-        if known_cameras is not None:
-            self.ConnectToCamera(name=self.prefix)
-        else:
-            self.ConnectToPV(name=self.prefix)
 
         self.img_w = 0
         self.img_h = 0
         self.wximage = wx.Image(3, 3)
         self.buildMenus()
         self.buildFrame()
+
+        if prefix is not None:
+            wx.CallAfter(self.connect_pvs )
 
     def OnLeftUp(self, event):
         if self.image is not None:
@@ -129,7 +128,6 @@ class AD_Display(wx.Frame):
         dlg.Destroy()
 
     def ConnectToPV(self, event=None, name=None):
-        # print 'Connect To PV ', name , event
         if name is None:
             name = ''
         dlg = wx.TextEntryDialog(self, 'Enter PV for Area Detector',
@@ -291,26 +289,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.wids['start']       = wx.Button(panel, -1, label='Start', size=(75, -1))
         self.wids['stop']        = wx.Button(panel, -1, label='Stop', size=(75,  -1))
 
-        if HAS_OVERLAY_DEVICE:
-            self.wids['o1color']  = csel.ColourSelect(panel,  -1, "", '#FEFEFE', size=(60, 25))
-            self.wids['o1color'].Bind(csel.EVT_COLOURSELECT, Closure(self.onColor, item=1))
-            self.wids['o1posx']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
-            self.wids['o1posy']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
-            self.wids['o1sizx']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
-            self.wids['o1sizy']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
-            self.wids['o1shape']  = PVEnumChoice(panel, pv=None, size=(100, -1))
-            self.wids['o1use']    = PVEnumChoice(panel, pv=None, size=(50, -1))
-            self.wids['o1name']  = PVTextCtrl(panel, pv=None, size=(100, -1))
-
-            self.wids['o2color']  = csel.ColourSelect(panel,  -1, "", '#FEFEFE', size=(60, 25))
-            self.wids['o2color'].Bind(csel.EVT_COLOURSELECT, Closure(self.onColor, item=2))
-            self.wids['o2posx']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
-            self.wids['o2posy']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
-            self.wids['o2sizx']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
-            self.wids['o2sizy']  = PVFloatCtrl(panel, pv=None, size=(50, -1), minval=0)
-            self.wids['o2shape']  = PVEnumChoice(panel, pv=None, size=(100, -1))
-            self.wids['o2use']    = PVEnumChoice(panel, pv=None, size=(50, -1))
-            self.wids['o2name']  = PVTextCtrl(panel, pv=None, size=(100, -1))
+        # self.wids['contrastpanel'] = ContrastPanel(panel, callback=self.set_contrast_level)
 
         for key in ('start', 'stop'):
             self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onEntry, key=key))
@@ -354,44 +333,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
         sizer.Add(self.wids['fullsize'],    (12, 0), (1, 3), labstyle)
         sizer.Add(self.wids['zoomsize'],    (13, 0), (1, 3), labstyle)
 
-        sizer.Add(lin(75),                 (15, 0), (1, 3), labstyle)
+        sizer.Add(lin(75),                   (15, 0), (1, 3), labstyle)
 
-        if HAS_OVERLAY_DEVICE:
-            ir = 16
-            sizer.Add(txt('Overlay 1:'),        (ir+0, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o1use'],       (ir+0, 1), (1, 2), ctrlstyle)
-            sizer.Add(txt('Shape:'),            (ir+1, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o1shape'],     (ir+1, 1), (1, 2), ctrlstyle)
-            sizer.Add(txt('Name:'),             (ir+2, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o1name'],      (ir+2, 1), (1, 2), ctrlstyle)
+        ir = 16
 
-            sizer.Add(txt('Position '),         (ir+3, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o1posx'],      (ir+3, 1), (1, 1), ctrlstyle)
-            sizer.Add(self.wids['o1posy'],      (ir+3, 2), (1, 1), ctrlstyle)
-            sizer.Add(txt('Size '),             (ir+4, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o1sizx'],      (ir+4, 1), (1, 1), ctrlstyle)
-            sizer.Add(self.wids['o1sizy'],      (ir+4, 2), (1, 1), ctrlstyle)
-            sizer.Add(txt('Color '),            (ir+5, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o1color'],     (ir+5, 1), (1, 2), ctrlstyle)
-            sizer.Add(lin(75),                  (ir+6, 0), (1, 3), labstyle)
+        # sizer.Add(self.wids['contrastpanel'], (ir, 0), (1, 3), labstyle)
 
-            ir = ir + 7
-            sizer.Add(txt('Overlay 1:'),        (ir+0, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o2use'],       (ir+0, 1), (1, 2), ctrlstyle)
-            sizer.Add(txt('Shape:'),            (ir+1, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o2shape'],     (ir+1, 1), (1, 2), ctrlstyle)
-            sizer.Add(txt('Name:'),             (ir+2, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o2name'],      (ir+2, 1), (1, 2), ctrlstyle)
-
-            sizer.Add(txt('Position '),         (ir+3, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o2posx'],      (ir+3, 1), (1, 1), ctrlstyle)
-            sizer.Add(self.wids['o2posy'],      (ir+3, 2), (1, 1), ctrlstyle)
-            sizer.Add(txt('Size '),             (ir+4, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o2sizx'],      (ir+4, 1), (1, 1), ctrlstyle)
-            sizer.Add(self.wids['o2sizy'],      (ir+4, 2), (1, 1), ctrlstyle)
-            sizer.Add(txt('Color '),            (ir+5, 0), (1, 1), labstyle)
-            sizer.Add(self.wids['o2color'],     (ir+5, 1), (1, 2), ctrlstyle)
-            sizer.Add(lin(75),                  (ir+6, 0), (1, 3), labstyle)
 
         self.image = ImageView(self, size=IMG_SIZE, onzoom=self.onZoom,
                                onprofile=self.onProfile, onshow=self.onShowXY)
@@ -414,6 +361,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         self.RefreshImage()
         wx.CallAfter(self.connect_pvs )
+
+    def set_contrast_level(self, contrast_level=0):
+        print("contrast level ", contrast_level)
+        self.contrast_levels = [contrast_level, 100.0-contrast_level]
 
     def messag(self, s, panel=0):
         """write a message to the Status Bar"""
@@ -448,7 +399,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.ad_cam.SizeX = width
         self.ad_cam.SizeY = height
         self.zoom_lims.append((xmin, ymin, width, height))
-        time.sleep(0.05)
+        time.sleep(0.025)
         self.showZoomsize()
         if self.ad_cam.Acquire == 0 and self.im_size is not None:
             self.img_w = width
@@ -464,7 +415,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
                 pass
             self.data = zdata #self.data.flatten()
             self.im_size = (width, height)
-            # print zdata.shape, width, height, self.im_mode
             self.DatatoImage()   # zdata, (width, height), self.im_mode)
 
         self.RefreshImage()
@@ -482,7 +432,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
     @EpicsFunction
     def showZoomsize(self):
         try:
-            msg  = 'Showing:  %i x %i pixels' % (self.ad_cam.SizeX, self.ad_cam.SizeY)
+            msg  = 'Showing:  %i x %i pixels' % (self.ad_cam.SizeX,
+                                                 self.ad_cam.SizeY)
             self.wids['zoomsize'].SetLabel(msg)
         except:
             pass
@@ -506,7 +457,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             self.zoom_lims = []
         self.zoom_lims.append((xmin, ymin, width, height))
 
-        time.sleep(0.05)
+        time.sleep(0.025)
         self.showZoomsize()
 
         if self.ad_cam.Acquire == 0:
@@ -531,13 +482,15 @@ Matt Newville <newville@cars.uchicago.edu>"""
         d_size = (int(width*self.scale), int(height*self.scale))
         data = self.data
 
-        print(" draw data", data.shape, data.dtype, data.sum() )
+        # print(" draw data", data.shape, data.dtype, data.max(), data.sum())
         jmin = imin = data.min()
         jmax = imax = data.max()
-        jmin, jmax = np.percentile(data, [0.5, 99.5])
-        print(imin, jmin, jmax, imax)
-        data = (data - jmin)/(jmax - 1.0*jmin + 1.e-6)
-        data = data.flatten()
+        if self.contrast_levels is not None:
+            jmin, jmax = np.percentile(data, self.contrast_levels)
+            data = np.clip((data - jmin)/(jmax - jmin + 1.e-5), 0, 1)
+            print("use contrast levels, " , self.contrast_levels, data.sum())
+        else:
+            data = (data - jmin)/(jmax - jmin + 1.e-5)
 
         # x.add('flatten %i' % len(data))
         if self.imbuff is None or d_size != self.d_size or self.im_mode == 'L':
@@ -675,6 +628,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             self.n_drawn = 0
             self.starttime = time.time()
             self.imgcount_start = self.ad_cam.ArrayCounter_RBV
+            print(" onEntry .. Start detector ")
             self.ad_cam.Acquire = 1
         elif key == 'stop':
             self.ad_cam.Acquire = 0
@@ -688,7 +642,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
         # print "Connect PVS"
         if self.prefix is None or len(self.prefix) < 2:
             return
-
         try:
             self.ad_cam.Acquire = 0
         except:
@@ -713,7 +666,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
                 pvn ='%s:Over1:%i:' % (self.prefix, ix)
                 self.ad_overlays.append(AD_OverlayPlugin(pvn))
 
-        time.sleep(0.010)
+        time.sleep(0.002)
         if not self.ad_img.PV('UniqueId_RBV').connected:
             epics.poll()
             if not self.ad_img.PV('UniqueId_RBV').connected:
@@ -789,11 +742,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
         epics.caput("%s:TIFF1:NDArrayPort" % self.prefix, "OVER1")
         epics.caput("%s:image1:NDArrayPort"% self.prefix, "OVER1")
 
-        self.ad_cam.Acquire = 1
         self.GetImageSize()
         self.unZoom()
-
-        epics.poll()
         self.RefreshImage()
 
     @EpicsFunction
@@ -849,7 +799,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.drawing = True
         self.n_drawn += 1
         self.n_img = imgcount - self.imgcount_start
-        # print 'ImgCount, n_drawn: ', imgcount, self.n_img, self.n_drawn
 
         self.last_update = time.time()
         self.image.can_resize = False
@@ -866,19 +815,18 @@ Matt Newville <newville@cars.uchicago.edu>"""
             self.drawing = False
             return
 
-        # d.add('refresh img before raw get %i' % arraysize)
-        rawdata = self.ad_img.PV('ArrayData').get(count=arraysize)
-        print("Raw ", rawdata.shape, rawdata.dtype, self.arrsize)
+        self.data = self.ad_img.PV('ArrayData').get(count=arraysize)
+        # print("Raw ", self.data.shape, self.data.dtype, self.arrsize)
         im_mode = 'L'
         im_size = (self.arrsize[0], self.arrsize[1])
 
         if self.colormode == 2:
             im_mode = 'RGB'
             im_size = [self.arrsize[1], self.arrsize[2]]
-        if (self.colormode == 0 and isinstance(rawdata, np.ndarray) and
-            rawdata.dtype != np.uint8):
+        if (self.colormode == 0 and isinstance(self.data, np.ndarray) and
+            self.data.dtype != np.uint8):
             im_mode = 'I'
-            rawdata = rawdata.astype(np.uint32)
+            self.data = self.data.astype(np.uint32)
 
         # d.add('refresh img before msg')
         self.messag(' Image # %i ' % self.ad_cam.ArrayCounter_RBV, panel=2)
@@ -887,7 +835,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
         self.im_size = im_size
         self.im_mode = im_mode
-        self.data = rawdata
         # d.add('refresh img before data to image')
         self.DatatoImage()
         # d.add('refresh img after data to image')
