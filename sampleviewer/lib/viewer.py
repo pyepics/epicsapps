@@ -25,8 +25,6 @@ from epics.wx.utils import (add_menu, pack, Closure, popup,
 import larch
 from larch.wxlib import GridPanel, OkCancel
 from scipy.optimize import minimize
-import skimage
-import skimage.filters
 
 from .configfile import StageConfig
 from .icons import icons
@@ -34,7 +32,7 @@ from .controlpanel import ControlPanel
 from .positionpanel import PositionPanel
 from .overlayframe import OverlayFrame
 
-from .imagepanel_fly2 import ImagePanel_Fly2, ConfPanel_Fly2
+from .imagepanel_pyspin import ImagePanel_PySpin, ConfPanel_PySpin
 from .imagepanel_fly2 import ImagePanel_Fly2AD, ConfPanel_Fly2AD
 from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
 from .imagepanel_weburl import ImagePanel_URL, ConfPanel_URL
@@ -137,6 +135,10 @@ class StageFrame(wx.Frame):
             opts['camera_id'] = int(self.cam_fly2id)
             opts['output_pv'] = config['camera'].get('output_pv', None)
             ImagePanel, ConfPanel = ImagePanel_Fly2, ConfPanel_Fly2
+        elif self.cam_type.startswith('pyspin'):
+            opts['camera_id'] = int(self.cam_fly2id)
+            opts['output_pv'] = config['camera'].get('output_pv', None)
+            ImagePanel, ConfPanel = ImagePanel_PySpin, ConfPanel_PySpin
         elif self.cam_type.startswith('adfly'):
             opts['prefix'] = self.cam_adpref
             ImagePanel, ConfPanel = ImagePanel_Fly2AD, ConfPanel_Fly2AD
