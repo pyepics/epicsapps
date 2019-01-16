@@ -82,6 +82,8 @@ class PySpinCamera(object):
 
     def GetWhiteBalance(self):
         """ Get White Balance (red, blue)"""
+        wb_auto = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceWhiteAuto'))
+        wb_auto.SetIntValue(wb_auto.GetEntryByName('Off').GetValue())
         wb_ratio = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceRatioSelector'))
 
         # Blue
@@ -116,14 +118,12 @@ class PySpinCamera(object):
         auto     whether to set auto [default=False]
 
         """
-        print('pyspin SetWhiteBalance ', blue, red, auto)
         wb_auto = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceWhiteAuto'))
         sauto = 'Off'
         if auto:
-            wb_auto.SetIntValue(wb_auto.GetEntryByName('Continuous').GetValue())
+            wb_auto.SetIntValue(wb_auto.GetEntryByName('Once').GetValue())
         else:
             wb_auto.SetIntValue(wb_auto.GetEntryByName('Off').GetValue())
-
             wb_ratio = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceRatioSelector'))
 
             # set Blue
@@ -157,6 +157,7 @@ class PySpinCamera(object):
         node_auto.SetIntValue(node_auto.GetEntryByName(sauto).GetValue())
         if (not auto) and value is not None:
             PySpin.CFloatPtr(node_main).SetValue(value)
+        node_auto.SetIntValue(node_auto.GetEntryByName('Off').GetValue())
 
     def SetExposureTime(self, value=None, auto=False):
         """Set Exposure Time
@@ -174,6 +175,7 @@ class PySpinCamera(object):
         if (not auto) and value is not None:
             value *= 1.e3   # exposure time is in microseconds
             PySpin.CFloatPtr(node_main).SetValue(value)
+        node_auto.SetIntValue(node_auto.GetEntryByName('Off').GetValue())
 
     def SaveImageFile(self, filename, format="jpg"):
         """save image to disk"""

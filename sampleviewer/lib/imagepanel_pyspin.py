@@ -59,14 +59,11 @@ class ImagePanel_PySpin(ImagePanel_Base):
 
     def Start(self):
         "turn camera on"
-        print("impan pyspin start")
         self.camera.Connect()
         self.cam_name = self.camera.device_name
-
         try:
             self.camera.StartCapture()
             height, width = self.camera.GetSize()
-            print("Start , GetSize  = ", width, height)
             self.img_w = float(width+0.5)
             self.img_h = float(height+0.5)
         except:
@@ -183,7 +180,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
 
         for color in ('blue', 'red'):
             key = 'wb_%s' % color
-            wids[key] = FloatCtrl(self, value=0, maxval=1024,
+            wids[key] = FloatCtrl(self, value=0, minval=0.3, maxval=4,
                                   precision=3,
                                   action=self.onValue,
                                   act_on_losefocus=True,
@@ -228,6 +225,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
 
         self.wids['gain'].SetValue(self.camera.GetGain())
         self.wids['gain_auto'].SetValue(0)
+        self.wids['gain_auto'].Disable()
 
         blue, red = self.camera.GetWhiteBalance()
         self.wids['wb_red'].SetValue(red)
@@ -246,22 +244,25 @@ class ConfPanel_PySpin(ConfPanel_Base):
         # self.camera.GetGain(),
         #       self.camera.GetWhiteBalance())
 
-        if self.wids['exposure_auto']:
+        if self.wids['exposure_auto'].GetValue():
             cam_val = self.camera.GetExposureTime()
             wid_val = self.wids['exposure'].GetValue()
             if int(100.0*abs(cam_val - wid_val)) > 3:
                 self.wids['exposure'].SetValue(cam_val)
 
-        if self.wids['gain_auto']:
+        if self.wids['gain_auto'].GetValue():
             cam_val = self.camera.GetGain()
             wid_val = self.wids['gain'].GetValue()
             if int(100.0*abs(cam_val - wid_val)) > 3:
                 self.wids['gain'].SetValue(cam_val)
 
-        if self.wids['wb_auto']:
+        if self.wids['wb_auto'].GetValue():
             blue, red = self.camera.GetWhiteBalance()
             wblue = self.wids['wb_blue'].GetValue()
             wred = self.wids['wb_red'].GetValue()
+            if self.wids['wb_auto'].GetValue(): # force setting
+                wblue = wred = -100.
+                self.wids['wb_auto'].SetValue(0)
             if int(100.0*abs(blue - wblue)) > 3:
                 self.wids['wb_blue'].SetValue(blue)
             if int(100.0*abs(red - wred)) > 3:
@@ -279,15 +280,14 @@ class ConfPanel_PySpin(ConfPanel_Base):
             gain = self.camera.GetGain()
             self.camera.SetGain(gain, auto=True)
             time.sleep(0.1)
-            self.wids['gain'].SetValue(self.camera.GetGain())
-
+            self.wids['gain'].SetValue(gain)
         elif prop in ('wb_red', 'wb_blue', 'wb_auto'):
-            blue, red = self.camera.GetWhiteBalance()
-            # self.camera.SetWhiteBalance(blue, red, auto=True)
-            time.sleep(0.1)
-            blue, red = self.camera.GetWhiteBalance()
-            self.wids['wb_red'].SetValue(red)
-            self.wids['wb_blue'].SetValue(blue)
+            red = self.wids['wb_red'].GetValue()
+            blue = self.wids['wb_blue'].GetValue()
+            try:
+                self.camera.SetWhiteBalance(blue, red, auto=True)
+            except:
+                pass
 
     def onValue(self, prop=None, value=None,  **kws):
         if self.__initializing:
@@ -306,4 +306,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
             self.wids['wb_auto'].SetValue(0)
             red =  self.wids['wb_red'].GetValue()
             blue = self.wids['wb_blue'].GetValue()
-            # self.camera.SetWhiteBalance(blue, red, auto=False)
+            try:
+                self.camera.SetWhiteBalance(blue, red, auto=False)
+            except:
+                pass
