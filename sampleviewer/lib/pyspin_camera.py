@@ -43,7 +43,8 @@ class PySpinCamera(object):
         self.cam = self._cameras[camera_id]
         self.cam.Init()
         self.device_id = self.cam.TLDevice.DeviceID.GetValue()
-        self.device_name = self.cam.TLDevice.DeviceDisplayName.GetValue()
+        self.device_name = self.cam.TLDevice.DeviceModelName.GetValue()
+        self.device_version = self.cam.TLDevice.DeviceVersion.GetValue()
         self.nodemap_tldevice = self.cam.GetTLDeviceNodeMap()
         self.nodemap = self.cam.GetNodeMap()
         self.SetFullSize()
@@ -77,7 +78,7 @@ class PySpinCamera(object):
             prop.SetValue(0)
         self.SetGamma(1.0)
         self.SetGain(1, auto=False)
-        self.SetExposureTime(0.05, auto=False)
+        self.SetExposureTime(50.0, auto=False)
 
     def GetWhiteBalance(self):
         """ Get White Balance (red, blue)"""
@@ -115,10 +116,11 @@ class PySpinCamera(object):
         auto     whether to set auto [default=False]
 
         """
+        print('pyspin SetWhiteBalance ', blue, red, auto)
         wb_auto = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceWhiteAuto'))
         sauto = 'Off'
         if auto:
-            wb_auto.SetIntValue(wb_auto.GetEntryByName('On').GetValue())
+            wb_auto.SetIntValue(wb_auto.GetEntryByName('Continuous').GetValue())
         else:
             wb_auto.SetIntValue(wb_auto.GetEntryByName('Off').GetValue())
 
@@ -151,12 +153,10 @@ class PySpinCamera(object):
         node_auto = PySpin.CEnumerationPtr(self.nodemap.GetNode('GainAuto'))
         sauto = 'Off'
         if auto:
-            sauto = 'On'
+            sauto = 'Continuous'
         node_auto.SetIntValue(node_auto.GetEntryByName(sauto).GetValue())
-
         if (not auto) and value is not None:
             PySpin.CFloatPtr(node_main).SetValue(value)
-
 
     def SetExposureTime(self, value=None, auto=False):
         """Set Exposure Time
@@ -169,9 +169,8 @@ class PySpinCamera(object):
         node_auto = PySpin.CEnumerationPtr(self.nodemap.GetNode('ExposureAuto'))
         sauto = 'Off'
         if auto:
-            sauto = 'On'
+            sauto = 'Continuous'
         node_auto.SetIntValue(node_auto.GetEntryByName(sauto).GetValue())
-
         if (not auto) and value is not None:
             value *= 1.e3   # exposure time is in microseconds
             PySpin.CFloatPtr(node_main).SetValue(value)
@@ -217,17 +216,25 @@ class PySpinCamera(object):
         """returns a wximage
         optionally specifying scale and color
         """
+        t0 = time.time()
         img = self.cam.GetNextImage()
+        t1 = time.time() -t0
         ncols, nrows = img.GetHeight(), img.GetWidth()
         scale = max(scale, 0.05)
-        width, height = int(scale*ncols), int(scale*nrows)
+        width, height = int(scale*nrows), int(scale*ncols)
         format = 'mono'
         if rgb:
             format = 'rgb'
         out = img.Convert(pixel_formats[format])
         img.Release()
-        return wx.Image(ncols, nrows, np.array(out.GetData())).Rescale(width, height,
-                                                                       quality=quality)
+        t2 = time.time() - t0
+        wxim =  wx.Image(nrows, ncols, np.array(out.GetData())).Rescale(width, height)
+        t3 = time.time() - t0
+        return wxim
+
+    #
+    #,
+    #                                                                  quality=quality)
     def GrabPILImage(self):
         """"""
         # We import PIL here so that PIL is only a requirement if you need PIL
