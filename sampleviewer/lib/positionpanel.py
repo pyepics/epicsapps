@@ -442,17 +442,13 @@ class PositionPanel(wx.Panel):
         dbconn = self.config
         if dbconn is not None:
             self.instname = dbconn.get('instrument', 'microscope_stages')
-            dbconn_dir  = dbconn.get('dbconn_dir', '')
-            dbconn_file = dbconn.get('dbconn_file', '')
-            if os.path.exists(dbconn_dir) and len(dbconn_file) > 0:
-                sys.path.insert(0, dbconn_dir)
-                mod = __import__(dbconn_file)
-                conn = mod.conn
-                self.scandb = ScanDB(**mod.conn)
-                self.instdb = InstrumentDB(self.scandb)
-                if self.instdb.get_instrument(self.instname) is None:
-                    pvs = self.viewer.config['stages'].keys()
-                    self.instdb.add_instrument(self.instname, pvs=pvs)
+            self.scandb = ScanDB()
+            self.instdb = InstrumentDB(self.scandb)
+            print("Connect ScanDB ", self.scandb, self.instdb,
+                  self.instdb.get_instrument(self.instname))
+            if self.instdb.get_instrument(self.instname) is None:
+                pvs = self.viewer.config['stages'].keys()
+                self.instdb.add_instrument(self.instname, pvs=pvs)
 
     def onSave1(self, event):
         "save from text enter"
