@@ -29,7 +29,7 @@ import epics
 from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel,
-                     FileOpen, SavedParameterDialog)
+                     FileOpen, SavedParameterDialog, Font)
 
 try:
     from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
@@ -45,6 +45,7 @@ from .ad_config import read_adconfig
 
 topdir, _s = os.path.split(__file__)
 ICONFILE = os.path.join(topdir, 'icons', 'camera.ico')
+DEFAULT_ROTATION = 0
 
 labstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
 rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
@@ -61,6 +62,8 @@ class ADFrame(wx.Frame):
         self.colormode = self.config['general']['colormode'].lower()
         self.cam_attrs = self.config['cam_attributes']
         self.img_attrs = self.config['img_attributes']
+        self.fsaver = self.config['general']['filesaver']
+
         self.calib = {}
         self.ad_img = None
         self.ad_cam = None
@@ -76,13 +79,10 @@ class ADFrame(wx.Frame):
         self.buildFrame()
 
     def buildFrame(self):
+        self.SetFont(Font(11))
+
         sbar = self.CreateStatusBar(3, wx.CAPTION)
         self.SetStatusWidths([-1, -1, -1])
-        sfont = sbar.GetFont()
-        sfont.SetWeight(wx.BOLD)
-        sfont.SetPointSize(10)
-        sbar.SetFont(sfont)
-
         self.SetStatusText('',0)
 
         sizer = wx.GridBagSizer(3, 3)
@@ -158,8 +158,9 @@ class ADFrame(wx.Frame):
         # image panel
         self.image = ADMonoImagePanel(self, prefix=self.prefix,
                                       rot90=self.config['general']['default_rotation'],
-                                      size=(400, 750),
-                                      writer=partial(self.write, panel=2))
+                                      size=(750, 750),
+                                      writer=partial(self.write, panel=1),
+                                      motion_writer=partial(self.write, panel=2))
 
         mainsizer = wx.BoxSizer(wx.HORIZONTAL)
         mainsizer.Add(panel, 0, wx.LEFT|wx.GROW|wx.ALL)
@@ -255,7 +256,6 @@ class ADFrame(wx.Frame):
 
         img = self.ad_img.PV('ArrayData').get()
 
-
         h, w = self.image.GetImageSize()
         img.shape = (w, h)
         # img = img[3:-3, 1:-1][::-1, :]
@@ -288,14 +288,14 @@ class ADFrame(wx.Frame):
 
 
         root, fname = os.path.split(path)
-        epics.caput("%sTIFF1:FileName" % self.prefix, fname)
-        epics.caput("%sTIFF1:FileWriteMode" % self.prefix, 0)
+        epics.caput("%s%sFileName" % self.prefix, self.fsaver, fname)
+        epics.caput("%s%sFileWriteMode" % self.prefix, self.fsaver, 0)
         time.sleep(0.05)
-        epics.caput("%sTIFF1:WriteFile" % self.prefix, 1)
+        epics.caput("%s%sWriteFile" % self.prefix, self.fsaver, 1)
         time.sleep(0.05)
 
-        print("Saved TIFF File ",
-              epics.caget("%sTIFF1:FullFileName_RBV" % self.prefix, as_string=True))
+        file_pv = "%s%sFullFileName_RBV" % (self.prefix, self.prefix)
+        print("Saved image File ", epics.caget(file_pv,  as_string=True))
 
     def onExit(self, event=None):
         try:
@@ -355,6 +355,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def set_contrast_level(self, contrast_level=0):
         self.image.contrast_levels = [contrast_level, 100.0-contrast_level]
+        self.image.Refresh()
 
     def write(self, s, panel=0):
         """write a message to the Status Bar"""
@@ -380,25 +381,19 @@ Matt Newville <newville@cars.uchicago.edu>"""
     def connect_pvs(self, verbose=True):
         if self.prefix is None or len(self.prefix) < 2:
             return
-
-        if self.prefix.endswith(':'):
-            self.prefix = self.prefix[:-1]
-        if self.prefix.endswith(':image1'):
-            self.prefix = self.prefix[:-7]
-        if self.prefix.endswith(':cam1'):
-            self.prefix = self.prefix[:-5]
-
         self.write('Connecting to areaDetector %s' % self.prefix)
 
-        self.ad_img = epics.Device(self.prefix + ':image1:', delim='',
+        self.ad_img = epics.Device(self.prefix + 'image1:', delim='',
                                    attrs=self.img_attrs)
-        self.ad_cam = epics.Device(self.prefix + ':cam1:', delim='',
+        self.ad_cam = epics.Device(self.prefix + 'cam1:', delim='',
                                    attrs=self.cam_attrs)
 
-        epics.caput("%s:TIFF1:EnableCallbacks" % self.prefix, 1)
-        epics.caput("%s:TIFF1:AutoSave" % self.prefix, 0)
-        epics.caput("%s:TIFF1:AutoIncrement" % self.prefix, 0)
-        epics.caput("%s:TIFF1:FileWriteMode" % self.prefix, 0)
+
+        if self.config['general']['use_filesaver']:
+            epics.caput("%s%sEnableCallbacks" % (self.prefix, self.fsaver), 1)
+            epics.caput("%s%sAutoSave" % (self.prefix, self.fsaver), 0)
+            epics.caput("%s%sAutoIncrement" % (self.prefix, self.fsaver), 0)
+            epics.caput("%s%sFileWriteMode" % (self.prefix, self.fsaver), 0)
 
         time.sleep(0.002)
         if not self.ad_img.PV('UniqueId_RBV').connected:
@@ -427,7 +422,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     @DelayedEpicsCallback
     def onDetState(self, pvname=None, value=None, char_value=None, **kw):
-        self.write(char_value, panel=1)
+        self.write(char_value, panel=0)
 
 class areaDetectorApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
     def __init__(self, config,  **kws):
