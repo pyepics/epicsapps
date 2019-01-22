@@ -1,0 +1,35 @@
+##
+##  areaDetector configuration file
+
+##
+general:
+   prefix: '13PIL3:'
+   name: 'GSE_Pilatus1M'
+   filesaver: 'TIFF:'
+   use_filesaver: false
+   default_rotation: 0
+   free_run_time: 0.5
+   show_1dintegration: true
+
+## control widgets
+controls:
+  #  Displayed Title         PV suffix             PV type, RBV suffix, width
+  - ['Trigger Mode',         'cam1:TriggerMode',       pvenum,  _RBV, 125]
+  - ['# Images',             'cam1:NumImages',         pvfloat, _RBV, 100]
+  - ['Acqure Period',        'cam1:AcquirePeriod',     pvfloat, _RBV, 100]
+  - ['Acquire Time',         'cam1:AcquireTime',       pvfloat, _RBV, 100]
+  - ['Delay Time',           'cam1:DelayTime',         pvfloat, _RBV, 100]
+  - ['Image Counter',        'cam1:ArrayCounter',      pvfloat, _RBV, 100]
+  - ['Acquire Status',       'cam1:Acquire',           pvtext, false, 225]
+  - ['Acquire Busy',         'cam1:AcquireBusy',       pvtext, false, 225]
+  - ['Armed Status',         'cam1:Armed',             pvtext, false, 225]
+  - ['X-ray Energy',         'cam1:Energy',            pvfloat, _RBV, 100]
+  - ['Energy Threshold',     'cam1:ThresholdEnergy',   pvfloat, _RBV, 100]
+  - ['Status Message',       'cam1:StatusMessage_RBV', pvtext, false, 225]
+  - ['Server Command',       'cam1:StringToServer_RBV', pvtext, false, 225]
+  - ['Server Response',      'cam1:StringFromServer_RBV', pvtext, false, 225]
+  - ['TIFF File Path',       'TIFF1:FilePath',         pvtctrl, false, 225]
+  - ['TIFF File Name',       'TIFF1:FileName',         pvtctrl, false, 225]
+  - ['Next File Number',     'TIFF1:FileNumber',       pvtctrl, _RBV,  100]
+  - ['Histogram Max',        'Stats1:HistMax',         pvfloat, _RBV,  100]
+  - ['Histogram # > Max',    'Stats1:HistAbove_RBV',   pvtext, false,  100]
