@@ -2,6 +2,6 @@
 
 from epicsad_display import areaDetectorApp
 
-config_file = 'ad_eiger.yaml'
+config_file = 'gse_eiger500.yaml'
 
 areaDetectorApp(config_file).MainLoop()
