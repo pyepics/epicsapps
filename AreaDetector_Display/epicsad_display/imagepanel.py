@@ -30,8 +30,9 @@ class ADMonoImagePanel(wx.Panel):
                 'image1:ArraySize1_RBV',
                 'cam1:ArrayCounter_RBV')
 
-    def __init__(self, parent, prefix=None, writer=None, draw_objects=None,
-                 rot90=0, contrast_level=0, size=(600, 600), **kws):
+    def __init__(self, parent, prefix=None, writer=None,
+                 motion_writer=None, draw_objects=None, rot90=0,
+                 contrast_level=0, size=(600, 600), **kws):
 
         super(ADMonoImagePanel, self).__init__(parent, -1, size=size)
 
@@ -40,6 +41,7 @@ class ADMonoImagePanel(wx.Panel):
         self.image_id = -1
 
         self.writer = writer
+        self.motion_writer = motion_writer
         self.scale = 0.8
         self.colormap = None
         self.contrast_levels = [contrast_level, 100.0-contrast_level]
@@ -52,6 +54,9 @@ class ADMonoImagePanel(wx.Panel):
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.Bind(wx.EVT_SIZE, self.onSize)
         self.Bind(wx.EVT_PAINT, self.onPaint)
+        if self.motion_writer is not None:
+            self.Bind(wx.EVT_MOTION, self.onMotion)
+
         self.connect_pvs(prefix)
         self.restart_fps_counter()
 
@@ -68,6 +73,24 @@ class ADMonoImagePanel(wx.Panel):
     def GetImageSize(self):
         return  (self.adcam.get('image1:ArraySize0_RBV'),
                  self.adcam.get('image1:ArraySize1_RBV'))
+
+    def onMotion(self, evt=None):
+        """report motion events within image"""
+        if self.motion_writer is None: #  or self.full_size is None:
+            return
+        try:
+            evt_x, evt_y = evt.GetX(), evt.GetY()
+            max_x, max_y = self.full_size
+            img_w, img_h = self.bitmap_size
+            pan_w, pan_h = self.panel_size
+            pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
+
+            x = int(0.5 + (evt_x - pad_w)/self.scale)
+            y = int(0.5 + (evt_y - pad_h)/self.scale)
+            fmt = "Pixel (%d, %d) Intensity=%.1f"
+            self.motion_writer(fmt %(x, y, self.data[y, x]))
+        except:
+            pass
 
     @DelayedEpicsCallback
     def onNewImage(self, pvname=None, value=None, **kws):
@@ -100,7 +123,7 @@ class ADMonoImagePanel(wx.Panel):
         if data is None:
             return
         self.capture_times.append(time.time())
-
+        self.data = data
         jmin, jmax = np.percentile(data, self.contrast_levels)
         data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.001)
         w, h = self.GetImageSize()
@@ -134,8 +157,9 @@ class ADMonoImagePanel(wx.Panel):
         else:
             fh, fw = self.GetSize()
 
-        w, h = self.GetImageSize()
-        self.scale = max(0.10, min(fw/(w+5.0), fh/(h+5.0)))
+        h, w = self.GetImageSize()
+        self.scale = max(0.10, min(0.98*fw/(w+0.1), 0.98*fh/(h+0.1)))
+        wx.CallAfter(self.Refresh)
 
     def onPaint(self, event):
         image = self.GrabWxImage()
@@ -145,8 +169,9 @@ class ADMonoImagePanel(wx.Panel):
                 fps = (len(ct)-1) / (ct[-1]-ct[0])
                 self.writer("Image %d: %.1f fps" % (self.image_id, fps))
             bitmap = wx.Bitmap(image)
-            bmp_w, bmp_h = bitmap.GetSize()
-            pan_w, pan_h = self.GetSize()
+            self.full_size = image.GetSize()
+            bmp_w, bmp_h = self.bitmap_size = bitmap.GetSize()
+            pan_w, pan_h = self.panel_size = self.GetSize()
             pad_w, pad_h = int(1+(pan_w-bmp_w)/2.0), int(1+(pan_h-bmp_h)/2.0)
             dc = wx.AutoBufferedPaintDC(self)
             dc.Clear()
