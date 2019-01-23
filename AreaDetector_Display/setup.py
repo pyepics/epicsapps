@@ -2,7 +2,6 @@
 
 from setuptools import setup
 
-deps = ('wx', 'epics', 'numpy')
 setup(name = 'epicsad_display',
       version = '0.2',
       author = 'Matthew Newville',
