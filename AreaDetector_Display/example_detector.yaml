@@ -1,0 +1,37 @@
+##
+##  areaDetector configuration file
+
+##
+general:
+   prefix: '13PIL3:'
+   name: 'GSE_Pilatus1M'
+   filesaver: 'TIFF1:'
+   use_filesaver: false
+   default_rotation: 0
+   free_run_time: 0.5
+   show_1dintegration: true
+
+## control widgets
+controls:
+  #  Displayed Title       PV suffix                   UsePrefx, PV type, RBVsuffix, width, fontsize
+  - ['Trigger Mode',       'cam1:TriggerMode',         true,     pvenum,  _RBV,   125, 11]
+  - ['# Images',           'cam1:NumImages',           true,     pvfloat, _RBV,   100, 11]
+  - ['Acqure Period',      'cam1:AcquirePeriod',       true,     pvfloat, _RBV,   100, 11]
+  - ['Acquire Time',       'cam1:AcquireTime',         true,     pvfloat, _RBV,   100, 11]
+  - ['Delay Time',         'cam1:DelayTime',           true,     pvfloat, _RBV,   100, 11]
+  - ['Image Counter',      'cam1:ArrayCounter',        true,     pvfloat, _RBV,   100, 11]
+  - ['X-ray Energy',       'cam1:Energy',              true,     pvfloat, _RBV,   100, 11]
+  - ['Energy Threshold',   'cam1:ThresholdEnergy',     true,     pvfloat, _RBV,   100, 11]
+  - ['Acquire Status',     'cam1:Acquire',             true,     pvtext,  false,  225, 11]
+  - ['Acquire Busy',       'cam1:AcquireBusy',         true,     pvtext,  false,  225, 11]
+  - ['Armed Status',       'cam1:Armed',               true,     pvtext,  false,  225, 11]
+  - ['Status Message',     'cam1:StatusMessage_RBV',   true,     pvtext,  false,  225,  9]
+  - ['Server Command',     'cam1:StringToServer_RBV',  true,     pvtext,  false,  225,  9]
+  - ['Server Response',    'cam1:StringFromServer_RBV', true,    pvtext,  false,  225,  9]
+  - ['TIFF File Path',     'TIFF1:FilePath',           true,     pvtctrl, false,  225, 11]
+  - ['TIFF File Name',     'TIFF1:FileName',           true,     pvtctrl, false,  225, 11]
+  - ['Next File Number',   'TIFF1:FileNumber',         true,     pvtctrl, _RBV,   100, 11]
+  - ['Histogram Max',      '13PIL3:Stats1:HistMax',    false,    pvfloat, _RBV,   100, 11]
+  - ['Histogram # > Max',  '13PIL3:Stats1:HistAbove_RBV', false, pvtext,  false,  100, 11]
+  - ['Ring Current',       'S:SRcurrentAI.VAL',       false,     pvtext,  false,  100, 11]
+  - ['Mono Energy',        '13IDA:CDEn:E_RBV',        false,     pvtext,  false,  100, 11]
