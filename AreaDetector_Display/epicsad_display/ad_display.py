@@ -45,7 +45,6 @@ from .ad_config import read_adconfig
 
 topdir, _s = os.path.split(__file__)
 ICONFILE = os.path.join(topdir, 'icons', 'camera.ico')
-DEFAULT_ROTATION = 0
 
 labstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
 rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
@@ -55,7 +54,18 @@ class ADFrame(wx.Frame):
     """
     AreaDetector Display Frame
     """
-    def __init__(self, configfile):
+    def __init__(self, configfile=None):
+        wx.Frame.__init__(self, None, -1, 'AreaDetector Viewer',
+                          style=wx.DEFAULT_FRAME_STYLE)
+
+        if configfile is None:
+            wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
+            configfile = FileOpen(self, "Read Detector Configuration File",
+                                  default_file='det.yaml',
+                                  wildcard=wcard)
+        if configfile is None:
+            sys.exit()
+
         self.config = read_adconfig(configfile)
         self.prefix = self.config['general']['prefix']
         self.fname = self.config['general']['name']
@@ -63,6 +73,8 @@ class ADFrame(wx.Frame):
         self.cam_attrs = self.config['cam_attributes']
         self.img_attrs = self.config['img_attributes']
         self.fsaver = self.config['general']['filesaver']
+
+        self.SetTitle(self.config['general']['title'])
 
         self.calib = {}
         self.ad_img = None
@@ -72,8 +84,6 @@ class ADFrame(wx.Frame):
         self.int_panel = None
         self.int_lastid = None
         self.contrast_levels = None
-        wx.Frame.__init__(self, None, -1, self.config['general']['title'],
-                          style=wx.DEFAULT_FRAME_STYLE)
 
         self.buildMenus()
         self.buildFrame()
@@ -341,8 +351,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.SetMenuBar(mbar)
 
     def onResetRotFlips(self, event):
-        self.image.rot90 = DEFAULT_ROTATION
-        self.image.flipv = self.fliph = False
+        self.image.rot90 = 0
+        self.image.flipv = self.image.fliph = False
 
     def onRot90(self, event):
         self.image.rot90 = (self.image.rot90 - 1) % 4
@@ -425,12 +435,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.write(char_value, panel=0)
 
 class areaDetectorApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, config,  **kws):
-        self.config = config
+    def __init__(self, configfile=None,  **kws):
+        self.configfile = configfile
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        frame = ADFrame(self.config)
+        frame = ADFrame(configfile=self.configfile)
         frame.Show()
         self.SetTopWindow(frame)
 
@@ -439,4 +449,7 @@ class areaDetectorApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         return True
 
 if __name__ == '__main__':
-    areaDetectorApp(sys.argv[1]).MainLoop()
+    configfile = None
+    if len(sys.argv) > 1:
+        configfile = sys.argv[1]
+    areaDetectorApp(configfile=configfile).MainLoop()
