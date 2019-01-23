@@ -80,13 +80,16 @@ class ADMonoImagePanel(wx.Panel):
             return
         try:
             evt_x, evt_y = evt.GetX(), evt.GetY()
-            max_x, max_y = self.full_size
             img_w, img_h = self.bitmap_size
+            if self.rot90 in (1, 3):
+                img_w, img_h = img_h, img_w
             pan_w, pan_h = self.panel_size
             pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
 
             x = int(0.5 + (evt_x - pad_w)/self.scale)
             y = int(0.5 + (evt_y - pad_h)/self.scale)
+            if self.rot90 in (1, 3):
+                x, y = y, x
             fmt = "Pixel (%d, %d) Intensity=%.1f"
             self.motion_writer(fmt %(x, y, self.data[y, x]))
         except:
@@ -109,6 +112,17 @@ class ADMonoImagePanel(wx.Panel):
         if data is not None:
             w, h = self.GetImageSize()
             data = data.reshape((h, w))
+            if self.flipv:
+                data = data[::-1, :]
+            if self.fliph:
+                data = data[:, ::-1]
+            if self.rot90 == 1:
+                data = data.transpose()
+            elif self.rot90 == 2:
+                data = data[::-1, ::-1]
+            elif self.rot90 == 3:
+                data = data[::-1, ::-1].transpose()
+
         poll()
         return data
 
@@ -126,7 +140,8 @@ class ADMonoImagePanel(wx.Panel):
         self.data = data
         jmin, jmax = np.percentile(data, self.contrast_levels)
         data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.001)
-        w, h = self.GetImageSize()
+        h, w = data.shape # self.GetImageSize()
+        # print("flipv, fliph, rot90, w, h ", self.flipv, self.fliph, self.rot90, w, h)
 
         if callable(self.colormap):
             data = self.colormap(data)
@@ -141,14 +156,6 @@ class ADMonoImagePanel(wx.Panel):
             rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
             image = wx.Image(w, h, (rgb*255.).astype('uint8'))
 
-        if self.flipv:
-            image = image.Mirror(False)
-        if self.fliph:
-            image = image.Mirror(True)
-        if self.rot90 != 0:
-            for i in range(self.rot90):
-                image = image.Rotate90(True)
-                w, h = h, w
         return image.Scale(int(self.scale*w), int(self.scale*h))
 
     def onSize(self, evt=None):
@@ -158,6 +165,11 @@ class ADMonoImagePanel(wx.Panel):
             fh, fw = self.GetSize()
 
         h, w = self.GetImageSize()
+        if self.rot90 in (1, 3):
+            w, h = h, w
+
+        # print(' onSize ', w, h, self.rot90, self.data.shape)
+
         self.scale = max(0.10, min(0.98*fw/(w+0.1), 0.98*fh/(h+0.1)))
         wx.CallAfter(self.Refresh)
 
