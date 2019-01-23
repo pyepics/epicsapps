@@ -1,7 +1,13 @@
 This application displays an image from an Epics Area Detector
 
-This really wants the development version of pyepics (version > 3.1.4).
-
 There are lots of potential features to add here!
 
+To install, use
 
+   python setup.py install
+
+then to run use
+
+  ad_viewer
+
+An example configuration file in in example_detector.yaml.
