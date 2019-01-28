@@ -44,7 +44,7 @@ from .pvconfig import PVConfigPanel
 from .ad_config import read_adconfig
 
 topdir, _s = os.path.split(__file__)
-ICONFILE = os.path.join(topdir, 'icons', 'camera.ico')
+DEFAULT_ICONFILE = os.path.join(topdir, 'icons', 'camera.ico')
 
 labstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
 rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
@@ -104,21 +104,16 @@ class ADFrame(wx.Frame):
 
         start_btn = wx.Button(panel, label='Start',    size=wsize)
         stop_btn  = wx.Button(panel, label='Stop',     size=wsize)
-        free_btn  = wx.Button(panel, label='Free Run', size=wsize)
         start_btn.Bind(wx.EVT_BUTTON, partial(self.onButton, key='start'))
         stop_btn.Bind(wx.EVT_BUTTON,  partial(self.onButton, key='stop'))
-        free_btn.Bind(wx.EVT_BUTTON,  partial(self.onButton, key='free'))
-
 
         self.contrast = ContrastControl(panel, callback=self.set_contrast_level)
-
         self.imagesize = wx.StaticText(panel, label='? x ?',
-                                       size=(250, 30), style=txtstyle)
+                                       size=(150, 30), style=txtstyle)
 
 
         def lin(len=200, wid=2, style=wx.LI_HORIZONTAL):
             return wx.StaticLine(panel, size=(len, wid), style=style)
-
 
         irow = 0
         sizer.Add(pvpanel,  (irow, 0), (1, 3), labstyle)
@@ -126,10 +121,15 @@ class ADFrame(wx.Frame):
         irow += 1
         sizer.Add(start_btn, (irow, 0), (1, 1), labstyle)
         sizer.Add(stop_btn,  (irow, 1), (1, 1), labstyle)
-        sizer.Add(free_btn,  (irow, 2), (1, 1), labstyle)
+
+        if self.config['general'].get('show_free_run', False):
+            free_btn  = wx.Button(panel, label='Free Run', size=wsize)
+            free_btn.Bind(wx.EVT_BUTTON,  partial(self.onButton, key='free'))
+            irow += 1
+            sizer.Add(free_btn,  (irow, 0), (1, 2), labstyle)
 
         irow += 1
-        sizer.Add(lin(300),  (irow, 0), (1, 3), labstyle)
+        sizer.Add(lin(200, wid=4),  (irow, 0), (1, 3), labstyle)
 
         irow += 1
         sizer.Add(self.imagesize, (irow, 0), (1, 3), labstyle)
@@ -179,8 +179,12 @@ class ADFrame(wx.Frame):
         mainsizer.Fit(self)
 
         self.SetAutoLayout(True)
+        iconfile = self.config['general'].get('iconfile', None)
+        if iconfile is None or not os.path.exists(iconfile):
+            iconfile = DEFAULT_ICONFILE
+        print("IconFile ", iconfile)
         try:
-            self.SetIcon(wx.Icon(ICONFILE, wx.BITMAP_TYPE_ICO))
+            self.SetIcon(wx.Icon(iconfile, wx.BITMAP_TYPE_ICO))
         except:
             pass
         self.connect_pvs()
