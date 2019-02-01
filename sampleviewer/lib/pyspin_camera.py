@@ -32,15 +32,20 @@ all_props = balance_props + float_props + integer_props
 
 class PySpinCamera(object):
     """PySpin Camera object"""
-    def __init__(self, camera_id=0):
+    def __init__(self, camera_id=1):
         self._system = PySpin.System.GetInstance()
         self._cameras = self._system.GetCameras()
-        if camera_id is not None:
-            self.Connect(camera_id=camera_id)
+        self.device_id = None
+        self.camera_id = camera_id
+        if self.camera_id is not None:
+            self.Connect()
         atexit.register(self.Exit)
 
-    def Connect(self, camera_id=0):
-        self.cam = self._cameras[camera_id]
+    def Connect(self):
+        if self.device_id is not None:
+            return
+        self.cam = self._cameras[self.camera_id]
+        # print(" @@ CONNECT --> Cam Init")
         self.cam.Init()
         self.device_id = self.cam.TLDevice.DeviceID.GetValue()
         self.device_name = self.cam.TLDevice.DeviceModelName.GetValue()
@@ -58,7 +63,10 @@ class PySpinCamera(object):
 
     def StopCapture(self):
         """"""
-        self.cam.EndAcquisition()
+        try:
+            self.cam.EndAcquisition()
+        except:
+            print('could not end acq')
 
     def Exit(self):
         self.StopCapture()
@@ -79,6 +87,7 @@ class PySpinCamera(object):
         self.SetGamma(1.0)
         self.SetGain(1, auto=False)
         self.SetExposureTime(50.0, auto=False)
+
 
     def GetWhiteBalance(self):
         """ Get White Balance (red, blue)"""
@@ -204,7 +213,7 @@ class PySpinCamera(object):
         """
         img = self.cam.GetNextImage()
         ncols, nrows = img.GetHeight(), img.GetWidth()
-        print(ncols, nrows)
+        # print(ncols, nrows)
         size = ncols * nrows
         shape = (ncols, nrows)
         if format in ('rgb', 'bgr'):
