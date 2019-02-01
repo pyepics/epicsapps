@@ -6,10 +6,9 @@ areaDetector Display
 import os
 import sys
 import time
-
+import json
 from functools import partial
 from collections import namedtuple
-
 
 
 import numpy as np
@@ -30,6 +29,11 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel,
                      FileOpen, SavedParameterDialog, Font)
+
+try:
+    from epicsscan import ScanDB
+except:
+    ScanDB = None
 
 try:
     from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
@@ -75,8 +79,13 @@ class ADFrame(wx.Frame):
         self.fsaver = self.config['general']['filesaver']
 
         self.SetTitle(self.config['general']['title'])
+        self.scandb = None
+        if ScanDB is not None::
+            self.scandb = ScanDB()
+            if scandb.engine is None: # not connected to running scandb server
+                self.scandb = None
 
-        self.calib = {}
+        self.calib = None
         self.ad_img = None
         self.ad_cam = None
         self.lineplotter = None
@@ -217,16 +226,24 @@ class ADFrame(wx.Frame):
             ppath = os.path.abspath(dlg.GetPath())
 
         if os.path.exists(ppath):
-            self.setup_calibration(read_poni(ppath))
+            self.setup_calibration(ppath)
 
-    def setup_calibration(self, calib):
-        """set up calibration from calibration dict"""
-        if self.image.rot90 in (1, 3):
-            calib['rot3'] = np.pi/2.0
+    def setup_calibration(self, ponifile):
+        """set up calibration from PONI file"""
+        calib = read_poni(ponifile)
+        # if self.image.rot90 in (1, 3):
+        #     calib['rot3'] = np.pi/2.0
         self.calib = calib
         if HAS_PYFAI:
             self.integrator = AzimuthalIntegrator(**calib)
             self.show1d_btn.Enable()
+        else:
+            self.write('Warning: PyFAI is not installed')
+
+        if self.scandb is not None:
+            _, calname  = os.path.split(ponifile)
+            self.scandb.set_detectorconfig(calname, json.dumps(calib))
+            self.scandb.set_info('xrd_calibration', calname)
 
     def onShowIntegration(self, event=None):
 
