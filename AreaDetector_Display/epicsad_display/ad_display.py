@@ -42,7 +42,7 @@ except ImportError:
     HAS_PYFAI = False
 
 from .contrast_control import ContrastControl
-from .calibration_dialog import CalibrationDialog, read_poni
+from .calibration_dialog import read_poni
 from .imagepanel import ADMonoImagePanel
 from .pvconfig import PVConfigPanel
 from .ad_config import read_adconfig
@@ -80,9 +80,9 @@ class ADFrame(wx.Frame):
 
         self.SetTitle(self.config['general']['title'])
         self.scandb = None
-        if ScanDB is not None::
+        if ScanDB is not None:
             self.scandb = ScanDB()
-            if scandb.engine is None: # not connected to running scandb server
+            if self.scandb.engine is None: # not connected to running scandb server
                 self.scandb = None
 
         self.calib = None
@@ -191,7 +191,6 @@ class ADFrame(wx.Frame):
         iconfile = self.config['general'].get('iconfile', None)
         if iconfile is None or not os.path.exists(iconfile):
             iconfile = DEFAULT_ICONFILE
-        print("IconFile ", iconfile)
         try:
             self.SetIcon(wx.Icon(iconfile, wx.BITMAP_TYPE_ICO))
         except:
@@ -289,7 +288,27 @@ class ADFrame(wx.Frame):
 
         h, w = self.image.GetImageSize()
         img.shape = (w, h)
-        # img = img[3:-3, 1:-1][::-1, :]
+
+        # may need to trim outer pixels (int1d_trimx/int1d_trimy in config)
+        xstride = 1
+        if self.config['general'].get('int1d_flipx', False):
+            xstride = -1
+
+        xslice = slice(None, None, xstride)
+        trimx = int(self.config['general'].get('int1d_trimx', 0))
+        if trimx != 0:
+            xslice = slice(trimx*xstride, -trimx*xstride, xstride)
+
+        ystride = 1
+        if self.config['general'].get('int1d_flipy', True):
+            ystride = -1
+
+        yslice = slice(None, None, ystride)
+        trimy = int(self.config['general'].get('int1d_trimy', 0))
+        if trimy > 0:
+            yslice = slice(trimy*ystride, -trimy*ystride, ystride)
+
+        img = img[yslice, xslice]
 
         img_id = self.ad_cam.ArrayCounter_RBV
         q, xi = self.integrator.integrate1d(img, 2048, unit='q_A^-1',
