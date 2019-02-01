@@ -94,7 +94,8 @@ class CalibrationDialog(wx.Dialog):
             scale, units = self.conv[wname]
             calib[wname] = self.wids[wname].GetValue()/scale
 
-        self.scandb.set_detectorconfig(calname, json.dumps(calib))
-        self.scandb.set_info('eiger_calibration', calname)
+        if self.scandb is not None:
+            self.scandb.set_detectorconfig(calname, json.dumps(calib))
+            self.scandb.set_info('xrd_calibration', calname)
         self.parent.setup_calibration(calib)
         self.Destroy()
