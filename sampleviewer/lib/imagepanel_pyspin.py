@@ -43,9 +43,6 @@ class ImagePanel_PySpin(ImagePanel_Base):
                                               autosave_file=autosave_file,
                                               datapush=True, **kws)
         self.camera = PySpinCamera(camera_id=camera_id)
-        # self.camera.Connect()
-        #self.cam_name = self.camera.device_name
-        # self.camera.StartCapture()
 
         self.output_pv = output_pv
         self.output_pvs = {}

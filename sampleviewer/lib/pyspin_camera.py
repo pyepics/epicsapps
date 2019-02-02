@@ -32,25 +32,33 @@ all_props = balance_props + float_props + integer_props
 
 class PySpinCamera(object):
     """PySpin Camera object"""
-    def __init__(self, camera_id=1):
+    def __init__(self, camera_id=0):
         self._system = PySpin.System.GetInstance()
-        self._cameras = self._system.GetCameras()
+        self.cam = None
         self.device_id = None
         self.camera_id = camera_id
-        if self.camera_id is not None:
-            self.Connect()
+        self.Connect()
         atexit.register(self.Exit)
 
     def Connect(self):
-        if self.device_id is not None:
+        if self.cam is not None:
             return
-        self.cam = self._cameras[self.camera_id]
-        # print(" @@ CONNECT --> Cam Init")
-        self.cam.Init()
-        self.device_id = self.cam.TLDevice.DeviceID.GetValue()
-        self.device_name = self.cam.TLDevice.DeviceModelName.GetValue()
+        self._cameras = self._system.GetCameras()
+        for cam in self._cameras:
+            dev_id = cam.TLDevice.DeviceID.GetValue()
+            dev_name = cam.TLDevice.DeviceModelName.GetValue()
+            if int(dev_id) == int(self.camera_id):
+                self.device_id = dev_id
+                self.device_name = dev_name
+                self.cam = cam
+                break
+
+        if self.cam is None:
+            raise ValueError("PySpin camera %s not found!!" % repr(self.camera_id))
+
         self.device_version = self.cam.TLDevice.DeviceVersion.GetValue()
         self.nodemap_tldevice = self.cam.GetTLDeviceNodeMap()
+        self.cam.Init()
         self.nodemap = self.cam.GetNodeMap()
         self.SetFullSize()
 
@@ -202,7 +210,7 @@ class PySpinCamera(object):
     def GrabColor(self, format='rgb'):
         img = self.cam.GetNextImage()
         if format in pixel_formats:
-            out = img.Convert(pixel_formats[format], PySpin.HQ_LINEAR)
+            out = img.Convert(pixel_formats[format], PySpin.DEFAULT)
             img.Release()
             img = out
         return img
@@ -219,7 +227,9 @@ class PySpinCamera(object):
         if format in ('rgb', 'bgr'):
             shape = (ncols, nrows, 3)
 
-        out = img.Convert(pixel_formats[format], PySpin.HQ_LINEAR)
+        # DEFAULT, NO_COLOR_PROCESSING, NEAREST_NEIGHBOR, EDGE_SENSING, HQ_LINEAR,
+        # RIGOROUS, IPP, DIRECTIONAL_FILTER, WEIGHTED_DIRECTIONAL_FILTER
+        out = img.Convert(pixel_formats[format], PySpin.DEFAULT)
         img.Release()
         return out.GetData().reshape(shape)
 
