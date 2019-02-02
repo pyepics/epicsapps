@@ -27,6 +27,7 @@ center_with_fine_stages = 1
 #--------------------------#
 [camera]
 type       = areadetector
+cam_id     = -1
 fly2_id    = 0
 ad_prefix  = 13IDEPS1:
 ad_format  = JPEG
@@ -76,7 +77,7 @@ conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
                                    'autosave_file', 'verify_move',
                                    'verify_erase', 'verify_overwrite',
                                    'center_with_fine_stages')),
-                          ('camera', ('type', 'image_folder', 'fly2_id',
+                          ('camera', ('type', 'image_folder', 'fly2_id', 'cam_id',
                                       'ad_prefix', 'ad_format', 'web_url',
                                       'calib_x', 'calib_y')),
                           ('scandb', ('instrument', 'dbname', 'server',

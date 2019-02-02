@@ -136,7 +136,7 @@ class StageFrame(wx.Frame):
             opts['output_pv'] = config['camera'].get('output_pv', None)
             ImagePanel, ConfPanel = ImagePanel_Fly2, ConfPanel_Fly2
         elif self.cam_type.startswith('pyspin'):
-            opts['camera_id'] = int(self.cam_fly2id)
+            opts['camera_id'] = int(self.cam_id)
             opts['output_pv'] = config['camera'].get('output_pv', None)
             ImagePanel, ConfPanel = ImagePanel_PySpin, ConfPanel_PySpin
         elif self.cam_type.startswith('adfly'):
@@ -483,6 +483,7 @@ class StageFrame(wx.Frame):
         self.imgdir     = cam.get('image_folder', 'Sample_Images')
         self.cam_type   = cam.get('type', 'fly2').lower()
         self.cam_fly2id = cam.get('fly2_id', 0)
+        self.cam_id     = cam.get('cam_id', 0)
         self.cam_adpref = cam.get('ad_prefix', '')
         self.cam_adform = cam.get('ad_format', 'JPEG')
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
