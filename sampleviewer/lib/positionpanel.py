@@ -444,8 +444,7 @@ class PositionPanel(wx.Panel):
             self.instname = dbconn.get('instrument', 'microscope_stages')
             self.scandb = ScanDB()
             self.instdb = InstrumentDB(self.scandb)
-            print("Connect ScanDB ", self.scandb, self.instdb,
-                  self.instdb.get_instrument(self.instname))
+            print("Connect ScanDB ", self.scandb.engine, self.instname)
             if self.instdb.get_instrument(self.instname) is None:
                 pvs = self.viewer.config['stages'].keys()
                 self.instdb.add_instrument(self.instname, pvs=pvs)
