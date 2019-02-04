@@ -80,7 +80,7 @@ class PySpinCamera(object):
         try:
             self.cam.EndAcquisition()
         except:
-            print('could not end acq')
+            pass
 
     def Exit(self):
         self.StopCapture()

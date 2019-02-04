@@ -143,10 +143,12 @@ class ConfPanel_PySpin(ConfPanel_Base):
 
         self.title = self.txt("PySpinnaker: ", size=285)
         self.title2 = self.txt(" ", size=285)
+        self.title3 = self.txt(" ", size=285)
 
         sizer.Add(self.title, (0, 0), (1, 3), LEFT)
         sizer.Add(self.title2,(1, 0), (1, 3), LEFT)
-        next_row = self.show_position_info(row=2)
+        sizer.Add(self.title3,(2, 0), (1, 3), LEFT)
+        next_row = self.show_position_info(row=3)
 
         self.__initializing = True
         i = next_row + 1
@@ -228,7 +230,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
         wx.CallAfter(self.onConnect)
 
     def onColorConv(self, event=None):
-        val = self.wids['color_conv'].GetStringSelection()
+        # val = self.wids['color_conv'].GetStringSelection()
         self.camera.SetConvertMethod(val)
 
 
@@ -237,7 +239,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.wids['exposure_auto'].SetValue(0)
 
         self.wids['gamma'].SetValue(self.camera.GetGamma())
-        self.wids['color_conv'].SetSelection(0)
+        # self.wids['color_conv'].SetSelection(0)
 
         self.wids['gain'].SetValue(self.camera.GetGain())
         self.wids['gain_auto'].SetValue(0)
@@ -249,8 +251,8 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.wids['wb_auto'].SetValue(0)
         self.read_props_timer.Start(4000)
         self.title.SetLabel("Camera Model: %s" % (self.camera.device_name))
-        self.title2.SetLabel("Serial %s, Firmware %s" % (self.camera.device_id,
-                                                         self.camera.device_version))
+        self.title2.SetLabel("Serial #: %s" % (self.camera.device_id))
+        self.title3.SetLabel("Firmware: %s" % (self.camera.device_version))
 
     def onEnableDataPush(self, evt=None, **kws):
         self.image_panel.datapush = evt.IsChecked()
