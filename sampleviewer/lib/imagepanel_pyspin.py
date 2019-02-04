@@ -105,7 +105,7 @@ class ImagePanel_PySpin(ImagePanel_Base):
             if imgmax > 250:
                 if  pgain > 4.0:
                     pgain = 0.75 * pgain
-                    self.camera.SetGaain(pgain, auto=False)
+                    self.camera.SetGain(pgain, auto=False)
                     self.confpanel.wids['gain'].SetValue(pgain)
                 else:
                     self.SetExposureTime(0.75*atime)
@@ -204,6 +204,19 @@ class ConfPanel_PySpin(ConfPanel_Base):
         sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)
         sizer.Add(wids['dpush_time'],  (i, 1), (1, 1), LEFT)
 
+#         conv_choices = ('DEFAULT', 'NO_COLOR_PROCESSING', 'NEAREST_NEIGHBOR',
+#                         'EDGE_SENSING', 'HQ_LINEAR', 'RIGOROUS', 'IPP',
+#                         'DIRECTIONAL_FILTER', 'WEIGHTED_DIRECTIONAL_FILTER')
+#
+#
+#         wids['color_conv'] = wx.Choice(self, -1, choices=conv_choices, size=(150, -1))
+#         wids['color_conv'].Bind(wx.EVT_CHOICE, self.onColorConv)
+#
+#         i += 1
+#         sizer.Add(self.txt('Conversion: '), (i, 0), (1, 1), LEFT)
+#         sizer.Add(wids['color_conv'],       (i, 1), (1, 1), LEFT)
+
+
         # wids['datapush'].SetValue(1)
         # wids['datapush'].Bind(wx.EVT_CHECKBOX, self.onEnableDataPush)
         # sizer.Add(wids['datapush'], (i+1, 0), (1, 3), LEFT)
@@ -214,11 +227,17 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.Bind(wx.EVT_TIMER, self.onTimer, self.read_props_timer)
         wx.CallAfter(self.onConnect)
 
+    def onColorConv(self, event=None):
+        val = self.wids['color_conv'].GetStringSelection()
+        self.camera.SetConvertMethod(val)
+
+
     def onConnect(self, **kws):
         self.wids['exposure'].SetValue(min(MAX_EXPOSURE_TIME, self.camera.GetExposureTime()))
         self.wids['exposure_auto'].SetValue(0)
 
         self.wids['gamma'].SetValue(self.camera.GetGamma())
+        self.wids['color_conv'].SetSelection(0)
 
         self.wids['gain'].SetValue(self.camera.GetGain())
         self.wids['gain_auto'].SetValue(0)

@@ -19,8 +19,12 @@ def map_attrs(object):
     return out
 
 pixel_formats = {'bgr': PySpin.PixelFormat_BGR8,
+                 'rgb8': PySpin.PixelFormat_RGB8,
                  'rgb': PySpin.PixelFormat_RGB8,
                  'mono': PySpin.PixelFormat_Mono8}
+
+pixel_formats['rgb'] = PySpin.PixelFormat_RGB8
+# pixel_formats['rgb'] = PySpin.PixelFormat_BayerRG8
 
 
 integer_props = ['Width', 'Height', 'OffsetX', 'OffsetY']
@@ -37,8 +41,10 @@ class PySpinCamera(object):
         self.cam = None
         self.device_id = None
         self.camera_id = camera_id
+        self.convert_method = PySpin.DEFAULT
         self.Connect()
         atexit.register(self.Exit)
+
 
     def Connect(self):
         if self.cam is not None:
@@ -194,6 +200,14 @@ class PySpinCamera(object):
             PySpin.CFloatPtr(node_main).SetValue(value)
         node_auto.SetIntValue(node_auto.GetEntryByName('Off').GetValue())
 
+    def SetConvertMethod(self, method='DEFAULT'):
+        # DEFAULT, NO_COLOR_PROCESSING, NEAREST_NEIGHBOR, EDGE_SENSING, HQ_LINEAR,
+        # RIGOROUS, IPP, DIRECTIONAL_FILTER, WEIGHTED_DIRECTIONAL_FILTER
+        # PySpin.NEAREST_NEIGHBOR)
+        self.convert_method = getattr(PySpin, method, PySpin.DEFAULT)
+        print("Set Convert Method ", method, self.convert_method)
+
+
     def SaveImageFile(self, filename, format="jpg"):
         """save image to disk"""
         img = self.cam.GetNextImage()
@@ -208,12 +222,7 @@ class PySpinCamera(object):
         return size
 
     def GrabColor(self, format='rgb'):
-        img = self.cam.GetNextImage()
-        if format in pixel_formats:
-            out = img.Convert(pixel_formats[format], PySpin.DEFAULT)
-            img.Release()
-            img = out
-        return img
+        return GrabNumPyImage(format=format)
 
     def GrabNumPyImage(self, format='rgb'):
         """return an image as a NumPy array
@@ -226,10 +235,8 @@ class PySpinCamera(object):
         shape = (ncols, nrows)
         if format in ('rgb', 'bgr'):
             shape = (ncols, nrows, 3)
-
-        # DEFAULT, NO_COLOR_PROCESSING, NEAREST_NEIGHBOR, EDGE_SENSING, HQ_LINEAR,
-        # RIGOROUS, IPP, DIRECTIONAL_FILTER, WEIGHTED_DIRECTIONAL_FILTER
-        out = img.Convert(pixel_formats[format], PySpin.DEFAULT)
+        # print("Grab  ", pixel_formats[format], format, self.convert_method)
+        out = img.Convert(pixel_formats[format], self.convert_method)
         img.Release()
         return out.GetData().reshape(shape)
 
@@ -246,12 +253,12 @@ class PySpinCamera(object):
         format = 'mono'
         if rgb:
             format = 'rgb'
-        out = img.Convert(pixel_formats[format])
-        img.Release()
+        out = img.Convert(pixel_formats[format], self.convert_method)
         t2 = time.time() - t0
-        wxim =  wx.Image(nrows, ncols, np.array(out.GetData())).Rescale(width, height)
-        t3 = time.time() - t0
-        return wxim
+        img.Release()
+        return wx.Image(nrows, ncols, out.GetData()).Rescale(width, height)
+        # t3 = time.time() - t0
+        # return wxim
 
     #
     #,
