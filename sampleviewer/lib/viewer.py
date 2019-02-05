@@ -22,8 +22,7 @@ from epics.wx.utils import (add_menu, pack, Closure, popup,
                             NumericCombo, SimpleText, FileSave, FileOpen,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
-import larch
-from larch.wxlib import GridPanel, OkCancel
+from wxutils import GridPanel, OkCancel
 from scipy.optimize import minimize
 
 from .configfile import StageConfig
