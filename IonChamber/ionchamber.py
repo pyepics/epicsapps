@@ -85,7 +85,6 @@ def start_ionchamber(prefix='13XRM:ION:'):
     fpid = open(PIDFILE, 'w')
     fpid.write("%d\n" % os.getpid() )
     fpid.close()
-
     ion = IonChamber(prefix=prefix)
     ion.run()
 
@@ -93,28 +92,22 @@ def get_lastupdate(prefix='13XRM:ION:'):
     xtime = caget("%sTimeStamp" % prefix)
     xtime = xtime.strip()
     if len(xtime) > 1:
-        try:
-            for i in (':','-'):
-                xtime = xtime.replace(i, ' ')
-            xtime = [int(i) for i in xtime.split()]
-            ltime = list(time.localtime())
-            for i in range(len(xtime)):
-                ltime[i] = xtime[i]
-            return time.mktime(ltime)
-        except:
-            pass
+        for i in (':','-'):
+            xtime = xtime.replace(i, ' ')
+        xtime = [int(i) for i in xtime.split()]
+        ltime = list(time.localtime())
+        for i in range(len(xtime)):
+            ltime[i] = xtime[i]
+        return time.mktime(tuple(ltime))
     return time.time() - 100000.
 
 def kill_old_process():
-    try:
-        finp = open(pidfile)
-        pid = int(finp.readlines()[0][:-1])
-        finp.close()
-        cmd = "kill -9 %d" % pid
-        os.system(cmd)
-        print(' killing pid=', pid, ' at ', time.ctime())
-    except:
-        pass
+    finp = open(pidfile)
+    pid = int(finp.readlines()[0][:-1])
+    finp.close()
+    cmd = "kill -9 %d" % pid
+    os.system(cmd)
+    print(' killing pid=', pid, ' at ', time.ctime())
 
 if __name__ == '__main__':
     oldtime = get_lastupdate()
