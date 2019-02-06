@@ -16,13 +16,13 @@ PIDFILE = '/tmp/ionchamber.pid'
 
 class IonChamber(Device):
     """Epics Device for Ion Chamber Flux Calculation"""
-    
+
     attrs = ('Amp', 'Desc', 'Volts', 'Length', 'AbsPercent',
              'Gas', 'Current', 'FluxAbs', 'FluxOut', 'EnergyPV',
              'Energy', 'TimeStamp' )
 
     gasMapping = {'He': 2, 'N2': 7, 'Ar': 18, 'Kr': 36}
-    
+
     def __init__(self, prefix='13XRM:ION:'):
         Device.__init__(self, prefix, attrs=self.attrs)
 
@@ -31,20 +31,20 @@ class IonChamber(Device):
         gas       = self.get('Gas', as_string=True)
         length    = self.get('Length')
 
-        energy_pv = self.get('EnergyPV')        
+        energy_pv = self.get('EnergyPV')
         volt_pv   = self.get('Volts')
         amp_pv    = self.get('Amp')
         ampn_pv   = '%ssens_num'  % amp_pv
         ampu_pv   = '%ssens_unit' % amp_pv
-        
+
         energy    = caget(energy_pv)
         if energy is None:
             energy = 9090.9090
-            
+
         voltage   = caget(volt_pv)
         amp_num   = float(caget(ampn_pv, as_string=True))
         amp_unit  = int(caget(ampu_pv) )
-        
+
         # this is fairly magic:
         #  amp_unit = 0 for pA/V, 1 for nA/V, 2 for microA/V, 3 for mA/V
         #  Thus, 10 ** (3*amp_unit-12)  !!
@@ -80,7 +80,7 @@ class IonChamber(Device):
             self.calculate()
             time.sleep(0.25)
 
-def start_ionchamber(prefix='13XRM:ION:'):    
+def start_ionchamber(prefix='13XRM:ION:'):
     """ save pid for later killing """
     fpid = open(PIDFILE, 'w')
     fpid.write("%d\n" % os.getpid() )
@@ -88,7 +88,7 @@ def start_ionchamber(prefix='13XRM:ION:'):
 
     ion = IonChamber(prefix=prefix)
     ion.run()
- 
+
 def get_lastupdate(prefix='13XRM:ION:'):
     xtime = caget("%sTimeStamp" % prefix)
     xtime = xtime.strip()
@@ -96,7 +96,6 @@ def get_lastupdate(prefix='13XRM:ION:'):
         try:
             for i in (':','-'):
                 xtime = xtime.replace(i, ' ')
-            print 'x: ', xtime, xtime.split()
             xtime = [int(i) for i in xtime.split()]
             ltime = list(time.localtime())
             for i in range(len(xtime)):
@@ -113,16 +112,15 @@ def kill_old_process():
         finp.close()
         cmd = "kill -9 %d" % pid
         os.system(cmd)
-        print ' killing pid=', pid, ' at ', time.ctime()
+        print(' killing pid=', pid, ' at ', time.ctime())
     except:
         pass
-    
+
 if __name__ == '__main__':
     oldtime = get_lastupdate()
-    print oldtime, time.time()
     if abs(time.time() - oldtime) > 5.0:
         kill_old_process()
         time.sleep(1.0)
         start()
     else:
-        print 'IonChamber running OK at ', time.ctime()
+        print('IonChamber running OK at ', time.ctime())

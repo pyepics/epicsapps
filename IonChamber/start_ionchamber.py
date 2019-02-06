@@ -10,12 +10,11 @@ import time
 prefix = '13XRM:ION:'
 if len(sys.argv) > 1:
     prefix = sys.argv[1]
-    
+
 last_time = get_lastupdate(prefix=prefix)
 if abs(time.time() - last_time) > 5.0:
     kill_old_process()
     time.sleep(1.0)
     start_ionchamber(prefix=prefix)
 else:
-    print 'IonChamber running OK at ', time.ctime()
-
+    print('IonChamber running OK at ', time.ctime())
