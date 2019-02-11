@@ -21,6 +21,65 @@ def fix_ad_prefix(prefix):
         prefix = prefix[:-5]
     return prefix + ':'
 
+class ThumbNailImagePanel(wx.Panel):
+    def __init__(self, parent, imgsize=100, size=(200, 200), **kws):
+        self.imgsize = max(10, imgsize)
+        super(ThumbNailImagePanel, self).__init__(parent, -1, size=size)
+        self.contrast_levels = [1, 99.0]
+        self.SetBackgroundColour("#CCBBAAA")
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+        self.SetSize(size)
+        self.data, self.x, self.y = None, 0, 0
+        self.Bind(wx.EVT_PAINT, self.onPaint)
+
+    def onPaint(self, evt=None):
+        data, x, y = self.data, self.x, self.y
+        if data is None or x is None or y is None:
+            return
+        jmin, jmax = np.percentile(data, self.contrast_levels)
+        data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.001)
+        h, w = data.shape
+
+        if y < self.imgsize/2.0:
+            hmin, hmax = 0, self.imgsize
+        elif y > h - self.imgsize/2.0:
+            hmin, hmax = h-self.imgsize, h
+        else:
+            hmin = int(y-self.imgsize/2.0)
+            hmax = int(y+self.imgsize/2.0)
+        if x < self.imgsize/2.0:
+            wmin, wmax = 0, self.imgsize
+        elif x > w - self.imgsize/2.0:
+            wmin, wmax = w-self.imgsize, w
+        else:
+            wmin = int(x-self.imgsize/2.0)
+            wmax = int(x+self.imgsize/2.0)
+
+        data = data[hmin:hmax, wmin:wmax]
+        h, w = data.shape
+
+        if callable(self.colormap):
+            data = self.colormap(data)
+            if data.shape[2] == 4: # with alpha channel
+                image = wx.Image(w, h,
+                                 (data[:,:,:3]*255.).astype('uint8'),
+                                 (data[:,:,3]*255.).astype('uint8'))
+            else:
+                image = wx.Image(w, h, (data*255.).astype('uint8'))
+        else:
+            rgb = np.zeros((self.imgsize, self.imgsize, 3), dtype='float')
+            rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
+            image = wx.Image(self.imgsize, self.imgsize, (rgb*255.).astype('uint8'))
+        fh, fw = self.GetSize()
+        scale = max(0.10, min(0.98*fw/(w+0.1), 0.98*fh/(h+0.1)))
+        image = image.Scale(int(scale*w), int(scale*h))
+        bitmap = wx.Bitmap(image)
+        bw, bh = bitmap.GetSize()
+        pad_w, pad_h = int(1+(fw-bw)/2.0), int(1+(fh-bh)/2.0)
+        dc = wx.AutoBufferedPaintDC(self)
+        dc.Clear()
+        dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
+
 
 class ADMonoImagePanel(wx.Panel):
     """Image Panel for monochromatic Area Detector"""
@@ -32,6 +91,7 @@ class ADMonoImagePanel(wx.Panel):
 
     def __init__(self, parent, prefix=None, writer=None,
                  motion_writer=None, draw_objects=None, rot90=0,
+                 thumbnail=None,
                  contrast_level=0, size=(600, 600), **kws):
 
         super(ADMonoImagePanel, self).__init__(parent, -1, size=size)
@@ -42,6 +102,7 @@ class ADMonoImagePanel(wx.Panel):
 
         self.writer = writer
         self.motion_writer = motion_writer
+        self.thumbnail = thumbnail
         self.scale = 0.8
         self.colormap = None
         self.contrast_levels = [contrast_level, 100.0-contrast_level]
@@ -49,6 +110,9 @@ class ADMonoImagePanel(wx.Panel):
         self.flipv = False
         self.fliph = False
         self.image = None
+        self.bitmap_size = (2, 2)
+        self.data = np.arange(25).reshape(5, 5)
+        self.panel_size = self.GetSize()
         self.draw_objects = None
         self.SetBackgroundColour("#E4E4E4")
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
@@ -76,9 +140,9 @@ class ADMonoImagePanel(wx.Panel):
 
     def onMotion(self, evt=None):
         """report motion events within image"""
-        if self.motion_writer is None: #  or self.full_size is None:
+        if self.motion_writer is None and self.thumbnail is None:
             return
-        try:
+        if True: # try:
             evt_x, evt_y = evt.GetX(), evt.GetY()
             img_w, img_h = self.bitmap_size
             if self.rot90 in (1, 3):
@@ -91,8 +155,18 @@ class ADMonoImagePanel(wx.Panel):
             if self.rot90 in (1, 3):
                 x, y = y, x
             fmt = "Pixel (%d, %d) Intensity=%.1f"
-            self.motion_writer(fmt %(x, y, self.data[y, x]))
-        except:
+            dh, dw = self.data.shape
+            if y > -1 and y <  dh and x > -1 and x < dw:
+                self.motion_writer(fmt %(x, y, self.data[y, x]))
+                if self.thumbnail is not None:
+                    self.thumbnail.x = x
+                    self.thumbnail.y = y
+                    self.thumbnail.Refresh()
+            else:
+                self.motion_writer('')
+
+
+        else:# except:
             pass
 
     @DelayedEpicsCallback
@@ -102,6 +176,7 @@ class ADMonoImagePanel(wx.Panel):
             self.image_id = value
             self.Refresh()
             self.drawing = False
+
 
     def GrabNumpyImage(self):
         """get raw image data, as numpy ndarray, correctly shaped"""
@@ -139,6 +214,10 @@ class ADMonoImagePanel(wx.Panel):
         self.capture_times.append(time.time())
         self.data = data
         jmin, jmax = np.percentile(data, self.contrast_levels)
+        if self.thumbnail is not None:
+            self.thumbnail.contrast_levels = self.contrast_levels
+            self.thumbnail.colormap = self.colormap
+
         data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.001)
         h, w = data.shape # self.GetImageSize()
         # print("flipv, fliph, rot90, w, h ", self.flipv, self.fliph, self.rot90, w, h)
@@ -188,8 +267,10 @@ class ADMonoImagePanel(wx.Panel):
             dc = wx.AutoBufferedPaintDC(self)
             dc.Clear()
             dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
+            if self.thumbnail is not None:
+                self.thumbnail.data = self.data
+                self.thumbnail.Refresh()
 
-            # self.__draw_objects(dc, img_w, img_h, pad_w, pad_h)
 
     def __draw_objects(self, dc, img_w, img_h, pad_w, pad_h):
         dc.SetBrush(wx.Brush('Black', wx.BRUSHSTYLE_TRANSPARENT))

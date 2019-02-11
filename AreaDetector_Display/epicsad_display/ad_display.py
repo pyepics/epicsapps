@@ -28,7 +28,7 @@ import epics
 from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel,
-                     FileOpen, SavedParameterDialog, Font)
+                     FileOpen, SavedParameterDialog, Font, FloatSpin)
 
 try:
     from epicsscan import ScanDB
@@ -43,7 +43,7 @@ except ImportError:
 
 from .contrast_control import ContrastControl
 from .calibration_dialog import read_poni
-from .imagepanel import ADMonoImagePanel
+from .imagepanel import ADMonoImagePanel, ThumbNailImagePanel
 from .pvconfig import PVConfigPanel
 from .ad_config import read_adconfig
 
@@ -93,6 +93,7 @@ class ADFrame(wx.Frame):
         self.int_panel = None
         self.int_lastid = None
         self.contrast_levels = None
+        self.thumbnail = None
 
         self.buildMenus()
         self.buildFrame()
@@ -167,9 +168,27 @@ class ADFrame(wx.Frame):
                                          size=(200, -1))
             self.show1d_btn.Bind(wx.EVT_BUTTON, self.onShowIntegration)
             self.show1d_btn.Disable()
-
             irow += 1
             sizer.Add(self.show1d_btn, (irow, 0), (1, 2), labstyle)
+
+        if self.config['general']['show_thumbnail']:
+            t_size=self.config['general'].get('thumbnail_size', 100)
+
+            self.thumbnail = ThumbNailImagePanel(panel, imgsize=t_size,
+                                                 size=(350, 350))
+
+            label = wx.StaticText(panel, label='Thumbnail size (pixels): ',
+                                       size=(200, -1), style=txtstyle)
+
+            self.thumbsize = FloatSpin(panel, value=100, min_val=10, increment=5,
+                                       action=self.onThumbSize,
+                                       size=(150, -1), style=txtstyle)
+
+            irow += 1
+            sizer.Add(label,          (irow, 0), (1, 1), labstyle)
+            sizer.Add(self.thumbsize, (irow, 1), (1, 1), labstyle)
+            irow += 1
+            sizer.Add(self.thumbnail, (irow, 0), (1, 2), labstyle)
 
         panel.SetSizer(sizer)
         sizer.Fit(panel)
@@ -179,6 +198,7 @@ class ADFrame(wx.Frame):
                                       rot90=self.config['general']['default_rotation'],
                                       size=(750, 750),
                                       writer=partial(self.write, panel=1),
+                                      thumbnail=self.thumbnail,
                                       motion_writer=partial(self.write, panel=2))
 
         mainsizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -196,6 +216,10 @@ class ADFrame(wx.Frame):
         except:
             pass
         self.connect_pvs()
+
+
+    def onThumbSize(self, event=None):
+        self.thumbnail.imgsize = int(self.thumbsize.GetValue())
 
     def onColorMap(self, event=None):
         cmap_name = self.cmap_choice.GetStringSelection()
@@ -437,7 +461,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
                                    attrs=self.img_attrs)
         self.ad_cam = epics.Device(self.prefix + 'cam1:', delim='',
                                    attrs=self.cam_attrs)
-
 
         if self.config['general']['use_filesaver']:
             epics.caput("%s%sEnableCallbacks" % (self.prefix, self.fsaver), 1)
