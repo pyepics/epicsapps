@@ -54,19 +54,8 @@ def read_adconfig(fname):
     prefix = conf['general'].get('prefix', None)
     if prefix is None:
         raise ValueError('prefix required in config file')
-    if prefix.endswith(':'):
-        prefix = prefix[:-1]
-    if prefix.endswith(':image1'):
-        prefix = prefix[:-7]
-    if prefix.endswith(':cam1'):
-        prefix = prefix[:-5]
-
-    conf['general']['prefix'] = prefix + ':'
+    conf['general']['prefix'] = prefix
 
     fsaver = conf['general'].get('filesaver', 'TIFF1:')
-    if fsaver.endswith(':'):
-        fsaver = fsaver[:-1]
-    if fsaver.startswith(':'):
-        fsaver = fsaver[1:]
-    conf['general']['filesaver'] = fsaver + ':'
+    conf['general']['filesaver'] = fsaver
     return conf
