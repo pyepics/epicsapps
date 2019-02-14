@@ -50,7 +50,7 @@ class InstrumentFrame(wx.Frame):
                  server='sqlite', user='', password='', host='', port=None,
                  **kwds):
         self.config = InstrumentConfig(name=conf)
-
+        
         wx.Frame.__init__(self, parent=parent, title='Epics Instruments',
                           size=(925, -1), **kwds)
 
@@ -58,12 +58,12 @@ class InstrumentFrame(wx.Frame):
         t0 = self.t0 = time.time()
 
         self.pvlist = EpicsPVList(self)
-        # print(" connect db? ", dbname, server, user, host)
 
         self.db, self.dbname = self.connect_db(dbname, server=server,
                                                host=host, port=port,
                                                user=user, password=password)
-        # print(" A ", self.db, self.dbname)
+        print("Connected to ", self.db.engine)
+        
         if self.db is None:
             return
         self.connected = {}
@@ -75,12 +75,12 @@ class InstrumentFrame(wx.Frame):
         self.SetBackgroundColour(self.colors.bg)
 
         self.Bind(wx.EVT_CLOSE, self.onClose)
-        # print(" B ")
+
         self.create_Statusbar()
         self.create_Menus()
         self.create_Frame()
         # self.enable_epics_server()
-        # print(" C")
+
 
     def connect_db(self, dbname=None, new=False, server='sqlite',
                    user='', password='', host='', port=None):
