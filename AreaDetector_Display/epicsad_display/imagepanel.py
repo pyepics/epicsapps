@@ -130,10 +130,10 @@ class ADMonoImagePanel(wx.Panel):
             self.writer("")
 
     def connect_pvs(self, prefix):
-        prefix = fix_ad_prefix(prefix)
         self.adcam = Device(prefix,  delim='', attrs=self.ad_attrs)
         self.adcam.add_callback('cam1:ArrayCounter_RBV', self.onNewImage)
-
+       
+        
     def GetImageSize(self):
         return  (self.adcam.get('image1:ArraySize0_RBV'),
                  self.adcam.get('image1:ArraySize1_RBV'))
@@ -180,9 +180,9 @@ class ADMonoImagePanel(wx.Panel):
 
     def GrabNumpyImage(self):
         """get raw image data, as numpy ndarray, correctly shaped"""
-        try:
+        if True:
             data = self.adcam.PV('image1:ArrayData').get()
-        except:
+        else: # except:
             data = None
         if data is not None:
             w, h = self.GetImageSize()
@@ -220,7 +220,6 @@ class ADMonoImagePanel(wx.Panel):
 
         data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.001)
         h, w = data.shape # self.GetImageSize()
-        # print("flipv, fliph, rot90, w, h ", self.flipv, self.fliph, self.rot90, w, h)
 
         if callable(self.colormap):
             data = self.colormap(data)
@@ -246,8 +245,6 @@ class ADMonoImagePanel(wx.Panel):
         h, w = self.GetImageSize()
         if self.rot90 in (1, 3):
             w, h = h, w
-
-        # print(' onSize ', w, h, self.rot90, self.data.shape)
 
         self.scale = max(0.10, min(0.98*fw/(w+0.1), 0.98*fh/(h+0.1)))
         wx.CallAfter(self.Refresh)
