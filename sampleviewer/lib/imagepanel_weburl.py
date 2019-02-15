@@ -38,7 +38,7 @@ class ImagePanel_URL(ImagePanel_Base):
 
     def read_url(self):
         return io.BytesIO(urllib.request.urlopen(self.url).read())
-    
+
     def Start(self):
         "turn camera on"
         self.timer.Start(65)
@@ -49,6 +49,10 @@ class ImagePanel_URL(ImagePanel_Base):
         "turn camera off"
         self.timer.Stop()
         self.autosave = False
+
+    def GrabNumpyImage(self):
+        pimg = Image.open(self.read_url())
+        return np.array(pimg.getdata()).reshape(pimg.size[0], pimg.size[1], 3)
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         try:
