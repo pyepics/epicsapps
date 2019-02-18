@@ -198,7 +198,7 @@ class PySpinCamera(object):
         if (not auto) and value is not None:
             value *= 1.e3   # exposure time is in microseconds
             PySpin.CFloatPtr(node_main).SetValue(value)
-        node_auto.SetIntValue(node_auto.GetEntryByName('Off').GetValue())
+        # node_auto.SetIntValue(node_auto.GetEntryByName('Off').GetValue())
 
     def SetConvertMethod(self, method='DEFAULT'):
         # DEFAULT, NO_COLOR_PROCESSING, NEAREST_NEIGHBOR, EDGE_SENSING, HQ_LINEAR,
