@@ -8,78 +8,88 @@ import numpy as np
 from collections import deque
 from epics import PV, Device, poll
 from epics.wx import EpicsFunction, DelayedEpicsCallback
+from wxutils import MenuItem
 
-def fix_ad_prefix(prefix):
-    """fix areaDetector prefix to not end with
-    'image1:' or 'cam1:', but to end with ':'
-    """
-    if prefix.endswith(':'):
-        prefix = prefix[:-1]
-    if prefix.endswith(':image1'):
-        prefix = prefix[:-7]
-    if prefix.endswith(':cam1'):
-        prefix = prefix[:-5]
-    return prefix + ':'
+PIXEL_FMT = "Pixel (%d, %d) Intensity=%.1f"
 
 class ThumbNailImagePanel(wx.Panel):
-    def __init__(self, parent, imgsize=100, size=(200, 200), **kws):
+    def __init__(self, parent, imgsize=50, size=(200, 200),
+                 motion_writer=None, **kws):
         self.imgsize = max(10, imgsize)
+        self.motion_writer = motion_writer
         super(ThumbNailImagePanel, self).__init__(parent, -1, size=size)
         self.contrast_levels = [1, 99.0]
         self.SetBackgroundColour("#CCBBAAA")
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.SetSize(size)
-        self.data, self.x, self.y = None, 0, 0
+        self.data = None
+        self.scale = 1.0
+        self.xcen = self.ycen = self.x = self.y = 0
         self.Bind(wx.EVT_PAINT, self.onPaint)
+        self.Bind(wx.EVT_MOTION, self.onMotion)
 
     def onPaint(self, evt=None):
-        data, x, y = self.data, self.x, self.y
-        if data is None or x is None or y is None:
+        data, xcen, ycen = self.data, self.xcen, self.ycen
+        if data is None or xcen is None or ycen is None:
             return
         jmin, jmax = np.percentile(data, self.contrast_levels)
         data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.001)
         h, w = data.shape
 
-        if y < self.imgsize/2.0:
+        if ycen < self.imgsize/2.0:
             hmin, hmax = 0, self.imgsize
-        elif y > h - self.imgsize/2.0:
+        elif ycen > h - self.imgsize/2.0:
             hmin, hmax = h-self.imgsize, h
         else:
-            hmin = int(y-self.imgsize/2.0)
-            hmax = int(y+self.imgsize/2.0)
-        if x < self.imgsize/2.0:
+            hmin = int(ycen-self.imgsize/2.0)
+            hmax = int(ycen+self.imgsize/2.0)
+        if xcen < self.imgsize/2.0:
             wmin, wmax = 0, self.imgsize
-        elif x > w - self.imgsize/2.0:
+        elif xcen > w - self.imgsize/2.0:
             wmin, wmax = w-self.imgsize, w
         else:
-            wmin = int(x-self.imgsize/2.0)
-            wmax = int(x+self.imgsize/2.0)
+            wmin = int(xcen-self.imgsize/2.0)
+            wmax = int(xcen+self.imgsize/2.0)
 
         data = data[hmin:hmax, wmin:wmax]
-        h, w = data.shape
-
+        hs, ws = data.shape
+        self.lims = (hmin, wmin)
         if callable(self.colormap):
             data = self.colormap(data)
             if data.shape[2] == 4: # with alpha channel
-                image = wx.Image(w, h,
+                image = wx.Image(ws, hs,
                                  (data[:,:,:3]*255.).astype('uint8'),
                                  (data[:,:,3]*255.).astype('uint8'))
             else:
-                image = wx.Image(w, h, (data*255.).astype('uint8'))
+                image = wx.Image(ws, hs, (data*255.).astype('uint8'))
         else:
             rgb = np.zeros((self.imgsize, self.imgsize, 3), dtype='float')
             rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
             image = wx.Image(self.imgsize, self.imgsize, (rgb*255.).astype('uint8'))
         fh, fw = self.GetSize()
-        scale = max(0.10, min(0.98*fw/(w+0.1), 0.98*fh/(h+0.1)))
-        image = image.Scale(int(scale*w), int(scale*h))
+        scale = max(0.10, min(0.98*fw/(ws+0.1), 0.98*fh/(hs+0.1)))
+        self.scale = scale
+        image = image.Scale(int(scale*ws), int(scale*hs))
         bitmap = wx.Bitmap(image)
         bw, bh = bitmap.GetSize()
         pad_w, pad_h = int(1+(fw-bw)/2.0), int(1+(fh-bh)/2.0)
+        self.pad = pad_h, pad_w
         dc = wx.AutoBufferedPaintDC(self)
         dc.Clear()
         dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
 
+        if (self.y > -1 and self.y <  h and self.x > -1 and self.x < w and
+            self.motion_writer is not None):
+            self.motion_writer(PIXEL_FMT %(self.x, self.y, self.data[self.y, self.x]))
+
+    def onMotion(self, evt=None):
+        """report motion events within image"""
+        evt_x, evt_y = evt.GetX(), evt.GetY()
+
+        self.x = int(0.5 + (evt_x - self.pad[1])/self.scale) + self.lims[1]
+        self.y = int(0.5 + (evt_y - self.pad[0])/self.scale) + self.lims[0]
+        if self.motion_writer is not None:
+            self.motion_writer(PIXEL_FMT %(self.x, self.y, self.data[self.y, self.x]))
 
 class ADMonoImagePanel(wx.Panel):
     """Image Panel for monochromatic Area Detector"""
@@ -99,10 +109,11 @@ class ADMonoImagePanel(wx.Panel):
         self.drawing = False
         self.adcam = None
         self.image_id = -1
-
+        self.x = self.y = 0
         self.writer = writer
         self.motion_writer = motion_writer
         self.thumbnail = thumbnail
+        self.thumbmode = 'click'
         self.scale = 0.8
         self.colormap = None
         self.contrast_levels = [contrast_level, 100.0-contrast_level]
@@ -120,9 +131,13 @@ class ADMonoImagePanel(wx.Panel):
         self.Bind(wx.EVT_PAINT, self.onPaint)
         if self.motion_writer is not None:
             self.Bind(wx.EVT_MOTION, self.onMotion)
+        self.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
+        self.Bind(wx.EVT_RIGHT_DOWN, self.onRightDown)
 
+        self.build_popupmenu()
         self.connect_pvs(prefix)
         self.restart_fps_counter()
+
 
     def restart_fps_counter(self, nsamples=100):
         self.capture_times = deque([], maxlen=nsamples)
@@ -130,7 +145,6 @@ class ADMonoImagePanel(wx.Panel):
             self.writer("")
 
     def connect_pvs(self, prefix):
-        prefix = fix_ad_prefix(prefix)
         self.adcam = Device(prefix,  delim='', attrs=self.ad_attrs)
         self.adcam.add_callback('cam1:ArrayCounter_RBV', self.onNewImage)
 
@@ -142,32 +156,48 @@ class ADMonoImagePanel(wx.Panel):
         """report motion events within image"""
         if self.motion_writer is None and self.thumbnail is None:
             return
-        if True: # try:
-            evt_x, evt_y = evt.GetX(), evt.GetY()
-            img_w, img_h = self.bitmap_size
-            if self.rot90 in (1, 3):
-                img_w, img_h = img_h, img_w
-            pan_w, pan_h = self.panel_size
-            pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
+        if self.thumbmode == 'live':
+            self.show_thumbnail(evt.GetX(), evt.GetY())
 
-            x = int(0.5 + (evt_x - pad_w)/self.scale)
-            y = int(0.5 + (evt_y - pad_h)/self.scale)
-            if self.rot90 in (1, 3):
-                x, y = y, x
-            fmt = "Pixel (%d, %d) Intensity=%.1f"
-            dh, dw = self.data.shape
-            if y > -1 and y <  dh and x > -1 and x < dw:
-                self.motion_writer(fmt %(x, y, self.data[y, x]))
-                if self.thumbnail is not None:
-                    self.thumbnail.x = x
-                    self.thumbnail.y = y
-                    self.thumbnail.Refresh()
-            else:
-                self.motion_writer('')
+    def show_thumbnail(self, evt_x, evt_y):
+        img_w, img_h = self.bitmap_size
+        if self.rot90 in (1, 3):
+            img_w, img_h = img_h, img_w
+        pan_w, pan_h = self.panel_size
+        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
 
+        x = int(0.5 + (evt_x - pad_w)/self.scale)
+        y = int(0.5 + (evt_y - pad_h)/self.scale)
+        if self.rot90 in (1, 3):
+            x, y = y, x
+        self.x, self.y = x, y
+        dh, dw = self.data.shape
+        if y > -1 and y <  dh and x > -1 and x < dw:
+            self.motion_writer(PIXEL_FMT %(x, y, self.data[y, x]))
+            if self.thumbnail is not None:
+                self.thumbnail.xcen = x
+                self.thumbnail.ycen = y
+                self.thumbnail.Refresh()
+        else:
+            self.motion_writer('')
 
-        else:# except:
-            pass
+    def build_popupmenu(self):
+        self.popup_menu = popup = wx.Menu()
+        MenuItem(self, popup, 'Follow Cursor for Thumbnail', '', self.thumb_motion_mode)
+        MenuItem(self, popup, 'Left Click to Show Thumbnail', '',  self.thumb_click_mode)
+
+    def thumb_motion_mode(self, evt=None):
+        self.thumbmode = 'live'
+
+    def thumb_click_mode(self, evt=None):
+        self.thumbmode = 'click'
+
+    def onLeftDown(self, evt=None):
+        if self.thumbmode == 'click':
+            self.show_thumbnail(evt.GetX(), evt.GetY())
+
+    def onRightDown(self, evt=None):
+        wx.CallAfter(self.PopupMenu, self.popup_menu, evt.GetPosition())
 
     @DelayedEpicsCallback
     def onNewImage(self, pvname=None, value=None, **kws):
@@ -254,22 +284,27 @@ class ADMonoImagePanel(wx.Panel):
 
     def onPaint(self, event):
         image = self.GrabWxImage()
-        if image is not None:
-            if len(self.capture_times) > 2 and self.writer is not None:
-                ct = self.capture_times
-                fps = (len(ct)-1) / (ct[-1]-ct[0])
-                self.writer("Image %d: %.1f fps" % (self.image_id, fps))
-            bitmap = wx.Bitmap(image)
-            self.full_size = image.GetSize()
-            bmp_w, bmp_h = self.bitmap_size = bitmap.GetSize()
-            pan_w, pan_h = self.panel_size = self.GetSize()
-            pad_w, pad_h = int(1+(pan_w-bmp_w)/2.0), int(1+(pan_h-bmp_h)/2.0)
-            dc = wx.AutoBufferedPaintDC(self)
-            dc.Clear()
-            dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
-            if self.thumbnail is not None:
-                self.thumbnail.data = self.data
-                self.thumbnail.Refresh()
+        if image is None:
+            return
+        if len(self.capture_times) > 2 and self.writer is not None:
+            ct = self.capture_times
+            fps = (len(ct)-1) / (ct[-1]-ct[0])
+            self.writer("Image %d: %.1f fps" % (self.image_id, fps))
+        bitmap = wx.Bitmap(image)
+        self.full_size = image.GetSize()
+        bmp_w, bmp_h = self.bitmap_size = bitmap.GetSize()
+        pan_w, pan_h = self.panel_size = self.GetSize()
+        pad_w, pad_h = int(1+(pan_w-bmp_w)/2.0), int(1+(pan_h-bmp_h)/2.0)
+        dc = wx.AutoBufferedPaintDC(self)
+        dc.Clear()
+        dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
+        x, y = self.x, self.y
+        dh, dw = self.data.shape
+        if y > -1 and y <  dh and x > -1 and x < dw:
+            self.motion_writer(PIXEL_FMT %(x, y, self.data[y, x]))
+        if self.thumbnail is not None:
+            self.thumbnail.data = self.data
+            self.thumbnail.Refresh()
 
 
     def __draw_objects(self, dc, img_w, img_h, pad_w, pad_h):
