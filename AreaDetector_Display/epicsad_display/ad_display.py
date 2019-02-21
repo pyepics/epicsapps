@@ -175,7 +175,8 @@ class ADFrame(wx.Frame):
             t_size=self.config['general'].get('thumbnail_size', 100)
 
             self.thumbnail = ThumbNailImagePanel(panel, imgsize=t_size,
-                                                 size=(350, 350))
+                                                 size=(350, 350),
+                                                 motion_writer=partial(self.write, panel=0))
 
             label = wx.StaticText(panel, label='Thumbnail size (pixels): ',
                                        size=(200, -1), style=txtstyle)
