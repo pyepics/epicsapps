@@ -24,11 +24,10 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
                  'ColorMode_RBV')
 
     cam_attrs = ('Acquire', 'ArrayCounter', 'ArrayCounter_RBV',
-                 'DetectorState_RBV',  'NumImages', 'ColorMode',
-                 'ColorMode_RBV',
-                 'DataType_RBV',  'Gain',
-                 'AcquireTime', 'AcquirePeriod', 'ImageMode',
-                 'ArraySizeX_RBV', 'ArraySizeY_RBV')
+                 'DetectorState_RBV', 'NumImages', 'ColorMode',
+                 'ColorMode_RBV', 'DataType_RBV', 'Gain', 'AcquireTime',
+                 'AcquirePeriod', 'ImageMode', 'ArraySizeX_RBV',
+                 'ArraySizeY_RBV')
 
     """Image Panel for FlyCapture2 camera"""
     def __init__(self, parent, prefix=None, format='JPEG',

@@ -6,8 +6,9 @@ import time
 import os
 import numpy as np
 from six import StringIO
-from six.moves.urllib.request import urlopen
-
+# from six.moves.urllib.request import urlopen
+import io
+import urllib
 from PIL import Image
 
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
@@ -22,8 +23,7 @@ class ImagePanel_URL(ImagePanel_Base):
                                              autosave_file=autosave_file, **kws)
 
         self.url = url
-        stream  = StringIO(urlopen(self.url).read())
-        pil_image = Image.open(stream)
+        pil_image = Image.open(self.read_url())
         width, height = pil_image.size
 
         self.img_w = float(width+0.5)
@@ -36,9 +36,12 @@ class ImagePanel_URL(ImagePanel_Base):
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
 
+    def read_url(self):
+        return io.BytesIO(urllib.request.urlopen(self.url).read())
+
     def Start(self):
         "turn camera on"
-        self.timer.Start(50)
+        self.timer.Start(65)
         #if self.autosave_thread is not None:
         #    self.autosave_thread.start()
 
@@ -47,9 +50,14 @@ class ImagePanel_URL(ImagePanel_Base):
         self.timer.Stop()
         self.autosave = False
 
+    def GrabNumpyImage(self):
+        pimg = Image.open(self.read_url())
+        return np.array(pimg.getdata()).reshape(pimg.size[0], pimg.size[1], 3)
+
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         try:
-            wximage = wx.Image(StringIO(urlopen(self.url).read()))
+            wximage = wx.Image(self.read_url())
+            time.sleep(0.025)
             # wximage = wx.ImageFromStream(StringIO(urlopen(self.url).read()))
             return wximage.Scale(int(scale*self.img_w), int(scale*self.img_h))
         except:

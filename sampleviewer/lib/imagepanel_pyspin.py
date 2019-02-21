@@ -29,7 +29,7 @@ if is_wxPhoenix:
 else:
     Image = wx.ImageFromData
 
-MAX_EXPOSURE_TIME=120
+MAX_EXPOSURE_TIME=65
 
 class ImagePanel_PySpin(ImagePanel_Base):
     """Image Panel for Spinnaker camera"""
@@ -237,6 +237,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
     def onConnect(self, **kws):
         self.wids['exposure'].SetValue(min(MAX_EXPOSURE_TIME, self.camera.GetExposureTime()))
         self.wids['exposure_auto'].SetValue(0)
+        #         self.wids['exposure_auto'].Disable()
 
         self.wids['gamma'].SetValue(self.camera.GetGamma())
         # self.wids['color_conv'].SetSelection(0)
@@ -259,7 +260,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
 
     def onTimer(self, evt=None, **kws):
         # print(" Timer ",  self.camera.GetExposureTime(),
-        # self.camera.GetGain(),
+        #       self.camera.GetGain(),
         #       self.camera.GetWhiteBalance())
 
         if self.wids['exposure_auto'].GetValue():
@@ -290,10 +291,12 @@ class ConfPanel_PySpin(ConfPanel_Base):
         if not evt.IsChecked():
             return
         if prop == 'exposure':
-            val = min(MAX_EXPOSURE_TIME, self.camera.GetExposureTime())
-            self.camera.SetExposureTime(val, auto=True)
-            time.sleep(0.1)
-            self.wids['exposure'].SetValue(self.camera.GetExposureTime())
+            for i in range(4):
+                val = min(MAX_EXPOSURE_TIME, self.camera.GetExposureTime()) - 1.0
+                self.camera.SetExposureTime(val, auto=True)
+                time.sleep(0.250)
+                self.wids['exposure'].SetValue(self.camera.GetExposureTime())
+            self.camera.SetExposureTime(val, auto=False)
         elif prop == 'gain':
             gain = self.camera.GetGain()
             self.camera.SetGain(gain, auto=True)

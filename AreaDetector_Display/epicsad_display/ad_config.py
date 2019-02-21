@@ -54,4 +54,9 @@ def read_adconfig(fname):
     prefix = conf['general'].get('prefix', None)
     if prefix is None:
         raise ValueError('prefix required in config file')
+
+    conf['general']['prefix'] = prefix
+
+    fsaver = conf['general'].get('filesaver', 'TIFF1:')
+    conf['general']['filesaver'] = fsaver
     return conf
