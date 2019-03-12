@@ -31,6 +31,7 @@ from .controlpanel import ControlPanel
 from .positionpanel import PositionPanel
 from .overlayframe import OverlayFrame
 
+from .imagepanel_base import ZoomPanel
 from .imagepanel_pyspin import ImagePanel_PySpin, ConfPanel_PySpin
 from .imagepanel_fly2 import ImagePanel_Fly2AD, ConfPanel_Fly2AD
 from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
@@ -173,10 +174,13 @@ class StageFrame(wx.Frame):
             self.confpanel = ConfPanel(ppanel,
                                        image_panel=self.imgpanel, **opts)
 
+            self.zoompanel = ZoomPanel(ppanel, size=(325, 325), **opts)
+            self.imgpanel.zoompanel = self.zoompanel
             msizer = wx.GridBagSizer(2, 2)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
+            msizer.Add(self.zoompanel, (2, 0), (1, 1), LEFT_TOP, 2)
 
             pack(ppanel, msizer)
 

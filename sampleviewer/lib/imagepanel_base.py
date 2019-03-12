@@ -13,6 +13,7 @@ from six import StringIO
 import base64
 
 from epics.wx.utils import  Closure, add_button
+from wxutils import MenuItem
 
 is_wxPhoenix = 'phoenix' in wx.PlatformInfo
 
@@ -53,7 +54,8 @@ class ImagePanel_Base(wx.Panel):
 
     def __init__(self, parent,  camera_id=0, writer=None, output_pv=None,
                  leftdown_cb=None, motion_cb=None, grab_data=True,
-                 autosave_file=None, datapush=True, draw_objects=None, **kws):
+                 autosave_file=None, datapush=True, draw_objects=None,
+                 zoompanel=None, **kws):
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
         self.img_w = 800.5
         self.img_h = 600.5
@@ -68,6 +70,8 @@ class ImagePanel_Base(wx.Panel):
         self.count = 0
         self.image = None
         self.draw_objects = None
+        self.zoompanel = zoompanel
+        self.zoommode = 'click'
         self.SetBackgroundColour("#E4E4E4")
         self.starttime = time.clock()
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
@@ -78,6 +82,7 @@ class ImagePanel_Base(wx.Panel):
             self.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
         if self.motion_cb is not None:
             self.Bind(wx.EVT_MOTION, self.onMotion)
+        self.Bind(wx.EVT_RIGHT_DOWN, self.onRightDown)
 
         self.data = None
         self.data_shape = (0, 0, 0)
@@ -93,6 +98,7 @@ class ImagePanel_Base(wx.Panel):
         self.autosave_time = 2.0
         self.autosave_thread = None
         self.full_size = None
+        self.build_popupmenu()
 #         if autosave_file is not None:
 #             path, tmp = os.path.split(autosave_file)
 #             self.autosave_file = autosave_file
@@ -152,6 +158,41 @@ class ImagePanel_Base(wx.Panel):
         x = int(0.5 + (evt_x - pad_w)/self.scale)
         y = int(0.5 + (evt_y - pad_h)/self.scale)
         self.motion_cb(x, y, xmax=max_x, ymax=max_y)
+        if self.zoommode == 'live' and self.zoompanel is not None:
+            self.show_zoompanel(evt_x, evt_y)
+
+    def show_zoompanel(self, evt_x, evt_y):
+        img_w, img_h = self.bitmap_size
+        pan_w, pan_h = self.panel_size
+        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
+
+        x = int(0.5 + (evt_x - pad_w)/self.scale)
+        y = int(0.5 + (evt_y - pad_h)/self.scale)
+        self.x, self.y = x, y
+        dh, dw, dc = self.data.shape
+        if y > -1 and y <  dh and x > -1 and x < dw:
+            if self.zoompanel is not None:
+                self.zoompanel.xcen = x
+                self.zoompanel.ycen = y
+                self.zoompanel.Refresh()
+
+    def build_popupmenu(self):
+        self.popup_menu = popup = wx.Menu()
+        MenuItem(self, popup, 'ZoomBox follows Cursor', '', self.zoom_motion_mode)
+        MenuItem(self, popup, 'ZoomBox on Left Click', '',  self.zoom_click_mode)
+
+    def zoom_motion_mode(self, evt=None):
+        self.zoommode = 'live'
+
+    def zoom_click_mode(self, evt=None):
+        self.zoommode = 'click'
+
+    def onLeftDown(self, evt=None):
+        if self.zoommode == 'click':
+            self.show_zoompanel(evt.GetX(), evt.GetY())
+
+    def onRightDown(self, evt=None):
+        wx.CallAfter(self.PopupMenu, self.popup_menu, evt.GetPosition())
 
     def onPaint(self, event):
         self.count += 1
@@ -180,14 +221,18 @@ class ImagePanel_Base(wx.Panel):
             bitmap = Bitmap(self.image)
         except ValueError:
             return
-
+        t2 = time.clock()
         img_w, img_h = self.bitmap_size = bitmap.GetSize()
         pan_w, pan_h = self.panel_size  = self.GetSize()
         pad_w, pad_h = int(1+(pan_w-img_w)/2.0), int(1+(pan_h-img_h)/2.0)
         dc = wx.AutoBufferedPaintDC(self)
+
         dc.Clear()
         dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
         self.__draw_objects(dc, img_w, img_h, pad_w, pad_h)
+        if self.zoompanel is not None:
+            self.zoompanel.data = self.data
+            self.zoompanel.Refresh()
 
     def __draw_objects(self, dc, img_w, img_h, pad_w, pad_h):
         dc.SetBrush(wx.Brush('Black', wx.BRUSHSTYLE_TRANSPARENT))
@@ -366,3 +411,65 @@ class ConfPanel_Base(wx.Panel):
         self.show_xhair = not self.show_xhair
         if self.xhair_cb is not None:
             self.xhair_cb(event=event, show=self.show_xhair, **kws)
+
+
+class ZoomPanel(wx.Panel):
+    def __init__(self, parent, imgsize=200, size=(400, 400), **kws):
+        super(ZoomPanel, self).__init__(parent, size=size)
+        self.imgsize = max(10, imgsize)
+        self.SetBackgroundColour("#CCBBAAA")
+        self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
+        self.SetSize(size)
+        self.data = None
+        self.scale = 1.0
+        self.xcen = self.ycen = self.x = self.y = 0
+        self.Bind(wx.EVT_PAINT, self.onPaint)
+
+    def onPaint(self, evt=None):
+        data, xcen, ycen = self.data, self.xcen, self.ycen
+        if data is None or xcen is None or ycen is None:
+            return
+
+        # print("ZoomPanel onPaint ", data.shape)
+        h, w, x = data.shape
+
+        if ycen < self.imgsize/2.0:
+            hmin, hmax = 0, self.imgsize
+        elif ycen > h - self.imgsize/2.0:
+            hmin, hmax = h-self.imgsize, h
+        else:
+            hmin = int(ycen-self.imgsize/2.0)
+            hmax = int(ycen+self.imgsize/2.0)
+        if xcen < self.imgsize/2.0:
+            wmin, wmax = 0, self.imgsize
+        elif xcen > w - self.imgsize/2.0:
+            wmin, wmax = w-self.imgsize, w
+        else:
+            wmin = int(xcen-self.imgsize/2.0)
+            wmax = int(xcen+self.imgsize/2.0)
+
+        data = data[hmin:hmax, wmin:wmax, :]
+        dshape = data.shape
+        if len(dshape) == 3:
+            hs, ws, nc = data.shape
+        else:
+            hs, ws = data.shape
+        self.lims = (hmin, wmin)
+        if len(dshape) == 3:
+            rgb = data
+        else:
+            rgb = np.zeros((self.imgsize, self.imgsize, 3), dtype='float')
+            rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
+        fh, fw = self.GetSize()
+        scale = max(0.10, min(0.98*fw/(ws+0.1), 0.98*fh/(hs+0.1)))
+        self.scale = scale
+
+        image = wx.Image(self.imgsize, self.imgsize, rgb.flatten())
+        image = image.Scale(int(scale*ws), int(scale*hs))
+        bitmap = wx.Bitmap(image)
+        bw, bh = bitmap.GetSize()
+        pad_w, pad_h = int(1+(fw-bw)/2.0), int(1+(fh-bh)/2.0)
+        self.pad = pad_h, pad_w
+        dc = wx.AutoBufferedPaintDC(self)
+        dc.Clear()
+        dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
