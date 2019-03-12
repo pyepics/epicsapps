@@ -82,7 +82,7 @@ class ControlPanel(wx.Panel):
 
         if autofocus is not None:
             self.af_button = add_button(self, "AutoFocus",
-                                        action=autofocus, size=(150, -1))
+                                        action=autofocus, size=(125, -1))
             self.af_message = wx.StaticText(self, label="", size=(200,-1))
             sizer.Add(self.af_button, 0, LEFT_TOP)
             sizer.Add(self.af_message, 0, LEFT_TOP)

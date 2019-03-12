@@ -140,21 +140,24 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.image_panel = image_panel
         self.camera_id = camera_id
         self.camera = self.image_panel.camera
-
         wids = self.wids
         sizer = self.sizer
+
+
 
         self.title = self.txt("PySpinnaker: ", size=285)
         self.title2 = self.txt(" ", size=285)
         self.title3 = self.txt(" ", size=285)
+        btn_start = add_button(self, "Restart Camera", action=self.onRestart,
+                               size=(250, -1))
+        next_row = self.show_position_info(row=0)
 
-        sizer.Add(self.title, (0, 0), (1, 3), LEFT)
-        sizer.Add(self.title2,(1, 0), (1, 3), LEFT)
-        sizer.Add(self.title3,(2, 0), (1, 3), LEFT)
-        next_row = self.show_position_info(row=3)
-
+        sizer.Add(self.title, (next_row,   0), (1, 3), LEFT)
+        sizer.Add(self.title2,(next_row+1, 0), (1, 3), LEFT)
+        sizer.Add(self.title3,(next_row+2, 0), (1, 3), LEFT)
         self.__initializing = True
-        i = next_row + 1
+        i = next_row + 3
+
         for dat in (('exposure', 'ms',  50, 0.03, MAX_EXPOSURE_TIME),
                     ('gain', 'dB',      5,  0, 40)):
             # ('gamma', '',       1, 0.5, 4)):
@@ -206,8 +209,9 @@ class ConfPanel_PySpin(ConfPanel_Base):
                                         action_kw={'prop':'autosave_time'}, size=(75, -1))
 
         label = 'AutoSave Time (sec)'
-        sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)
-        sizer.Add(wids['dpush_time'],  (i, 1), (1, 1), LEFT)
+        sizer.Add(self.txt(label),    (i, 0), (1, 1), LEFT)
+        sizer.Add(wids['dpush_time'], (i, 1), (1, 1), LEFT)
+        sizer.Add(btn_start,          (i+1, 0), (1, 2), LEFT)
 
 #         conv_choices = ('DEFAULT', 'NO_COLOR_PROCESSING', 'NEAREST_NEIGHBOR',
 #                         'EDGE_SENSING', 'HQ_LINEAR', 'RIGOROUS', 'IPP',
@@ -231,6 +235,13 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.read_props_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.read_props_timer)
         wx.CallAfter(self.onConnect)
+
+    def onRestart(self, event=None, **kws):
+        self.camera.cam.EndAcquisition()
+        time.sleep(0.5)
+        self.camera.cam.BeginAcquisition()
+
+
 
     def onColorConv(self, event=None):
         # val = self.wids['color_conv'].GetStringSelection()

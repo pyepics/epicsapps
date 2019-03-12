@@ -78,6 +78,7 @@ class ImagePanel_Base(wx.Panel):
 
         self.Bind(wx.EVT_SIZE, self.onSize)
         self.Bind(wx.EVT_PAINT, self.onPaint)
+
         if self.leftdown_cb is not None:
             self.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
         if self.motion_cb is not None:
@@ -99,13 +100,6 @@ class ImagePanel_Base(wx.Panel):
         self.autosave_thread = None
         self.full_size = None
         self.build_popupmenu()
-#         if autosave_file is not None:
-#             path, tmp = os.path.split(autosave_file)
-#             self.autosave_file = autosave_file
-#             self.autosave_tmpf = autosave_file + '_tmp'
-#             self.autosave_thread = Thread(target=self.onAutosave)
-#             self.autosave_thread.daemon = True
-#             self.autosave_thread.start()
 
         self.datapush_thread = Thread(target=self.onDatapush)
         self.datapush_thread.daemon = True
@@ -130,18 +124,22 @@ class ImagePanel_Base(wx.Panel):
         """
         report left down events within image
         """
-        if self.leftdown_cb is None:
-            return
+        if self.zoommode == 'click':
+            self.show_zoompanel(evt.GetX(), evt.GetY())
 
-        evt_x, evt_y = evt.GetX(), evt.GetY()
-        max_x, max_y = self.full_size
-        img_w, img_h = self.bitmap_size
-        pan_w, pan_h = self.panel_size
-        pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
+        if self.leftdown_cb is not None:
+            evt_x, evt_y = evt.GetX(), evt.GetY()
+            max_x, max_y = self.full_size
+            img_w, img_h = self.bitmap_size
+            pan_w, pan_h = self.panel_size
+            pad_w, pad_h = (pan_w-img_w)/2.0, (pan_h-img_h)/2.0
 
-        x = int(0.5 + (evt_x - pad_w)/self.scale)
-        y = int(0.5 + (evt_y - pad_h)/self.scale)
-        self.leftdown_cb(x, y, xmax=max_x, ymax=max_y)
+            x = int(0.5 + (evt_x - pad_w)/self.scale)
+            y = int(0.5 + (evt_y - pad_h)/self.scale)
+            self.leftdown_cb(x, y, xmax=max_x, ymax=max_y)
+
+
+
 
     def onMotion(self, evt=None):
         """
@@ -187,9 +185,6 @@ class ImagePanel_Base(wx.Panel):
     def zoom_click_mode(self, evt=None):
         self.zoommode = 'click'
 
-    def onLeftDown(self, evt=None):
-        if self.zoommode == 'click':
-            self.show_zoompanel(evt.GetX(), evt.GetY())
 
     def onRightDown(self, evt=None):
         wx.CallAfter(self.PopupMenu, self.popup_menu, evt.GetPosition())
@@ -388,7 +383,7 @@ class ConfPanel_Base(wx.Panel):
         sel_label = self.txt("Selected Pixel:")
         cen_label = self.txt("Distance to Center(um):")
         ctr_button = add_button(self, "Bring Selected Pixel to Center",
-                                action=self.onBringToCenter, size=(240, -1))
+                                action=self.onBringToCenter, size=(250, -1))
         #xhair_button = add_button(self, "Toggle Crosshair at Selected Pixel",
         #                          action=self.onToggleCrosshair, size=(240, -1))
         # xhair_button.Disable()
@@ -399,9 +394,14 @@ class ConfPanel_Base(wx.Panel):
         sizer.Add(self.sel_pixel, (row+1, 1), (1, 2), LEFT)
         sizer.Add(cen_label,      (row+2, 0), (1, 1), LEFT)
         sizer.Add(self.cen_dist,  (row+2, 1), (1, 2), LEFT)
-        # sizer.Add(xhair_button,   (row+3, 0), (1, 3), wx.ALIGN_LEFT)
         sizer.Add(ctr_button,     (row+3, 0), (1, 3), wx.ALIGN_LEFT)
-        return row+3
+        return row+4
+
+    def onStart(self, event=None, **kws):
+        pass
+
+    def onStop(self, event=None, **kws):
+        pass
 
     def onBringToCenter(self, event=None,  **kws):
         if self.center_cb is not None:
