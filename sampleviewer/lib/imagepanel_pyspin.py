@@ -29,7 +29,7 @@ if is_wxPhoenix:
 else:
     Image = wx.ImageFromData
 
-MAX_EXPOSURE_TIME=65
+MAX_EXPOSURE_TIME=59
 
 class ImagePanel_PySpin(ImagePanel_Base):
     """Image Panel for Spinnaker camera"""
@@ -123,11 +123,14 @@ class ImagePanel_PySpin(ImagePanel_Base):
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True,
                     quality=wx.IMAGE_QUALITY_HIGH):
-        return self.camera.GrabWxImage(scale=scale, rgb=rgb,
-                                       quality=quality)
+        wximg = self.camera.GrabWxImage(scale=scale, rgb=rgb,
+                                        quality=quality)
+        self.data = self.camera.data
+        return wximg
 
     def GrabNumpyImage(self):
-        return self.camera.GrabNumPyImage(format='rgb')
+        self.data = self.camera.GrabNumPyImage(format='rgb')
+        return self.data
 
 class ConfPanel_PySpin(ConfPanel_Base):
     def __init__(self, parent, image_panel=None, camera_id=0,
@@ -152,9 +155,9 @@ class ConfPanel_PySpin(ConfPanel_Base):
 
         self.__initializing = True
         i = next_row + 1
-        for dat in (('exposure', 'ms',  50 , 0.1, MAX_EXPOSURE_TIME),
-                    ('gain', 'dB',      0, -2, 24),
-                    ('gamma', '',       1, 0.5, 4)):
+        for dat in (('exposure', 'ms',  50, 0.03, MAX_EXPOSURE_TIME),
+                    ('gain', 'dB',      5,  0, 40)):
+            # ('gamma', '',       1, 0.5, 4)):
 
             key, units, defval, minval, maxval = dat
             wids[key] = FloatCtrl(self, value=defval,
@@ -184,10 +187,10 @@ class ConfPanel_PySpin(ConfPanel_Base):
                                   action=self.onValue,
                                   act_on_losefocus=True,
                                   action_kw={'prop': key}, size=(75, -1))
+            wids[key].Disable()
             label = 'White Balance (%s)' % (color)
             sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)
             sizer.Add(wids[key],  (i, 1), (1, 1), LEFT)
-
             if color == 'blue':
                 akey = 'wb_auto'
                 wids[akey] =  wx.CheckBox(self, -1, label='auto')
@@ -239,7 +242,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.wids['exposure_auto'].SetValue(0)
         #         self.wids['exposure_auto'].Disable()
 
-        self.wids['gamma'].SetValue(self.camera.GetGamma())
+        # self.wids['gamma'].SetValue(self.camera.GetGamma())
         # self.wids['color_conv'].SetSelection(0)
 
         self.wids['gain'].SetValue(self.camera.GetGain())
@@ -260,8 +263,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
 
     def onTimer(self, evt=None, **kws):
         # print(" Timer ",  self.camera.GetExposureTime(),
-        #       self.camera.GetGain(),
-        #       self.camera.GetWhiteBalance())
+        #       self.camera.GetGain())
 
         if self.wids['exposure_auto'].GetValue():
             cam_val = self.camera.GetExposureTime()
@@ -321,8 +323,8 @@ class ConfPanel_PySpin(ConfPanel_Base):
         elif prop == 'gain':
             self.wids['%s_auto' % prop].SetValue(0)
             self.camera.SetGain(float(value), auto=False)
-        elif prop == 'gamma':
-            self.camera.SetGamma(float(value))
+        # elif prop == 'gamma':
+        #     self.camera.SetGamma(float(value))
         elif prop in ('wb_red', 'wb_blue'):
             self.wids['wb_auto'].SetValue(0)
             red =  self.wids['wb_red'].GetValue()

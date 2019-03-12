@@ -30,6 +30,7 @@ pixel_formats['rgb'] = PySpin.PixelFormat_RGB8
 integer_props = ['Width', 'Height', 'OffsetX', 'OffsetY']
 
 float_props = ['Gain', 'Gamma', 'ExposureTime']
+float_props = ['Gain', 'ExposureTime']
 balance_props = ['WhiteBalance']
 
 all_props = balance_props + float_props + integer_props
@@ -41,7 +42,11 @@ class PySpinCamera(object):
         self.cam = None
         self.device_id = None
         self.camera_id = camera_id
+        # DEFAULT, NO_COLOR_PROCESSING, NEAREST_NEIGHBOR, EDGE_SENSING, HQ_LINEAR,
+        # RIGOROUS, IPP, DIRECTIONAL_FILTER, WEIGHTED_DIRECTIONAL_FILTER
+        # PySpin.NEAREST_NEIGHBOR)
         self.convert_method = PySpin.DEFAULT
+        self.convert_method = PySpin.NEAREST_NEIGHBOR # HQ_LINEAR
         self.Connect()
         atexit.register(self.Exit)
 
@@ -50,9 +55,11 @@ class PySpinCamera(object):
         if self.cam is not None:
             return
         self._cameras = self._system.GetCameras()
+        # print("Cameras : ", self._cameras, self.camera_id)
         for cam in self._cameras:
             dev_id = cam.TLDevice.DeviceID.GetValue()
             dev_name = cam.TLDevice.DeviceModelName.GetValue()
+            # print(dev_name, dev_id, int(dev_id) == int(self.camera_id))
             if int(dev_id) == int(self.camera_id):
                 self.device_id = dev_id
                 self.device_name = dev_name
@@ -98,29 +105,36 @@ class PySpinCamera(object):
         for name in ('OffsetX', 'OffsetY'):
             prop = ptr(self.nodemap.GetNode(name))
             prop.SetValue(0)
-        self.SetGamma(1.0)
+        # self.SetGamma(1.0)
         self.SetGain(1, auto=False)
-        self.SetExposureTime(50.0, auto=False)
+        self.SetExposureTime(30.0, auto=False)
 
 
     def GetWhiteBalance(self):
         """ Get White Balance (red, blue)"""
-        wb_auto = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceWhiteAuto'))
-        wb_auto.SetIntValue(wb_auto.GetEntryByName('Off').GetValue())
-        wb_ratio = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceRatioSelector'))
+        try:
+            wb_auto = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceWhiteAuto'))
+            wb_auto.SetIntValue(wb_auto.GetEntryByName('Off').GetValue())
+            wb_ratio = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceRatioSelector'))
 
-        # Blue
-        wb_ratio.SetIntValue(wb_ratio.GetEntryByName('Blue').GetValue())
-        blue = PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatioRaw')).GetValue()
+            # Blue
+            wb_ratio.SetIntValue(wb_ratio.GetEntryByName('Blue').GetValue())
+            blue = PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatioRaw')).GetValue()
 
-        # Red
-        wb_ratio.SetIntValue(wb_ratio.GetEntryByName('Red').GetValue())
-        red = PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatioRaw')).GetValue()
-        return blue, red
+            # Red
+            wb_ratio.SetIntValue(wb_ratio.GetEntryByName('Red').GetValue())
+            red = PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatioRaw')).GetValue()
+            return blue, red
+        except:
+            print("Could not get White Balance ")
+            return 1, 1
 
     def GetGamma(self):
         """ Get Gamma"""
-        return PySpin.CFloatPtr(self.nodemap.GetNode('Gamma')).GetValue()
+        try:
+            return PySpin.CFloatPtr(self.nodemap.GetNode('Gamma')).GetValue()
+        except:
+            return 0
 
     def GetGain(self):
         """ Get Gain"""
@@ -163,7 +177,11 @@ class PySpinCamera(object):
         ---------
         value      gain value
         """
-        PySpin.CFloatPtr(self.nodemap.GetNode('Gamma')).SetValue(value)
+        pass
+        # try:
+        #     PySpin.CFloatPtr(self.nodemap.GetNode('Gamma')).SetValue(value)
+        # except:
+        #     pass # print(" no set gamma?")
 
     def SetGain(self, value=None, auto=False):
         """Set Gain
@@ -205,7 +223,7 @@ class PySpinCamera(object):
         # RIGOROUS, IPP, DIRECTIONAL_FILTER, WEIGHTED_DIRECTIONAL_FILTER
         # PySpin.NEAREST_NEIGHBOR)
         self.convert_method = getattr(PySpin, method, PySpin.DEFAULT)
-        print("Set Convert Method ", method, self.convert_method)
+        # print("Set Convert Method ", method, self.convert_method)
 
 
     def SaveImageFile(self, filename, format="jpg"):
@@ -230,7 +248,6 @@ class PySpinCamera(object):
         """
         img = self.cam.GetNextImage()
         ncols, nrows = img.GetHeight(), img.GetWidth()
-        # print(ncols, nrows)
         size = ncols * nrows
         shape = (ncols, nrows)
         if format in ('rgb', 'bgr'):
@@ -254,14 +271,11 @@ class PySpinCamera(object):
         if rgb:
             format = 'rgb'
         out = img.Convert(pixel_formats[format], self.convert_method)
-        t2 = time.time() - t0
+        self.data = out.GetData()
+        self.data.shape = (ncols, nrows, 3)
         img.Release()
-        return wx.Image(nrows, ncols, out.GetData()).Rescale(width, height)
-        # t3 = time.time() - t0
-        # return wxim
+        return wx.Image(nrows, ncols, self.data).Rescale(width, height)
 
-    #
-    #,
     #                                                                  quality=quality)
     def GrabPILImage(self):
         """"""
