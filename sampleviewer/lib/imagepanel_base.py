@@ -139,8 +139,6 @@ class ImagePanel_Base(wx.Panel):
             self.leftdown_cb(x, y, xmax=max_x, ymax=max_y)
 
 
-
-
     def onMotion(self, evt=None):
         """
         report left down events within image
@@ -352,8 +350,10 @@ class ImagePanel_Base(wx.Panel):
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
 class ConfPanel_Base(wx.Panel):
-    def __init__(self, parent,  center_cb=None, xhair_cb=None, size=(300, 350), **kws):
+    def __init__(self, parent,  center_cb=None,
+                 image_panel=None, xhair_cb=None, size=(300, 350), **kws):
         super(ConfPanel_Base, self).__init__(parent, -1, size=size, **kws)
+        self.image_panel = image_panel
         self.center_cb = center_cb
         self.xhair_cb = xhair_cb
         self.wids = wids = {}
@@ -406,6 +406,14 @@ class ConfPanel_Base(wx.Panel):
     def onBringToCenter(self, event=None,  **kws):
         if self.center_cb is not None:
             self.center_cb(event=event, **kws)
+
+        if self.image_panel is not None:
+            zoompanel = getattr(self.image_panel, 'zoompanel', None)
+            if zoompanel is not None:
+                mx, my = self.image_panel.full_size
+                zoompanel.xcen = int(mx/2.0)
+                zoompanel.ycen = int(my/2.0)
+                zoompanel.Refresh()
 
     def onToggleCrosshair(self, event=None,  **kws):
         self.show_xhair = not self.show_xhair
