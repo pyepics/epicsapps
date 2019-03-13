@@ -46,7 +46,7 @@ class PySpinCamera(object):
         # RIGOROUS, IPP, DIRECTIONAL_FILTER, WEIGHTED_DIRECTIONAL_FILTER
         # PySpin.NEAREST_NEIGHBOR)
         self.convert_method = PySpin.DEFAULT
-        self.convert_method = PySpin.NEAREST_NEIGHBOR # HQ_LINEAR
+        
         self.Connect()
         atexit.register(self.Exit)
 
@@ -252,7 +252,7 @@ class PySpinCamera(object):
         shape = (ncols, nrows)
         if format in ('rgb', 'bgr'):
             shape = (ncols, nrows, 3)
-        # print("Grab  ", pixel_formats[format], format, self.convert_method)
+        #print("Grab  ", pixel_formats[format], format, self.convert_method)
         out = img.Convert(pixel_formats[format], self.convert_method)
         img.Release()
         return out.GetData().reshape(shape)

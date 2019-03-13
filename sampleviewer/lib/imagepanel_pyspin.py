@@ -136,13 +136,13 @@ class ConfPanel_PySpin(ConfPanel_Base):
     def __init__(self, parent, image_panel=None, camera_id=0,
                  center_cb=None, xhair_cb=None, **kws):
         super(ConfPanel_PySpin, self).__init__(parent, center_cb=center_cb,
-                                             xhair_cb=xhair_cb)
+                                             xhair_cb=xhair_cb, **kws)
         self.image_panel = image_panel
         self.camera_id = camera_id
         self.camera = self.image_panel.camera
         wids = self.wids
         sizer = self.sizer
-
+        with_color_conv = False
 
 
         self.title = self.txt("PySpinnaker: ", size=285)
@@ -211,19 +211,18 @@ class ConfPanel_PySpin(ConfPanel_Base):
         label = 'AutoSave Time (sec)'
         sizer.Add(self.txt(label),    (i, 0), (1, 1), LEFT)
         sizer.Add(wids['dpush_time'], (i, 1), (1, 1), LEFT)
-        sizer.Add(btn_start,          (i+1, 0), (1, 2), LEFT)
+        i = i + 1
+        sizer.Add(btn_start,          (i, 0), (1, 2), LEFT)
 
-#         conv_choices = ('DEFAULT', 'NO_COLOR_PROCESSING', 'NEAREST_NEIGHBOR',
-#                         'EDGE_SENSING', 'HQ_LINEAR', 'RIGOROUS', 'IPP',
-#                         'DIRECTIONAL_FILTER', 'WEIGHTED_DIRECTIONAL_FILTER')
-#
-#
-#         wids['color_conv'] = wx.Choice(self, -1, choices=conv_choices, size=(150, -1))
-#         wids['color_conv'].Bind(wx.EVT_CHOICE, self.onColorConv)
-#
-#         i += 1
-#         sizer.Add(self.txt('Conversion: '), (i, 0), (1, 1), LEFT)
-#         sizer.Add(wids['color_conv'],       (i, 1), (1, 1), LEFT)
+        if with_color_conv:
+            conv_choices = ('DEFAULT', 'NO_COLOR_PROCESSING', 'NEAREST_NEIGHBOR',
+                        'EDGE_SENSING', 'HQ_LINEAR', 'RIGOROUS', 'IPP',
+                        'DIRECTIONAL_FILTER', 'WEIGHTED_DIRECTIONAL_FILTER')
+            wids['color_conv'] = wx.Choice(self, -1, choices=conv_choices, size=(150, -1))
+            wids['color_conv'].Bind(wx.EVT_CHOICE, self.onColorConv)
+            i += 1
+            sizer.Add(self.txt('Conversion: '), (i, 0), (1, 1), LEFT)
+            sizer.Add(wids['color_conv'],       (i, 1), (1, 1), LEFT)
 
 
         # wids['datapush'].SetValue(1)
@@ -241,12 +240,13 @@ class ConfPanel_PySpin(ConfPanel_Base):
         time.sleep(0.5)
         self.camera.cam.BeginAcquisition()
 
-
-
     def onColorConv(self, event=None):
-        # val = self.wids['color_conv'].GetStringSelection()
-        self.camera.SetConvertMethod(val)
-
+        try: 
+            val = self.wids['color_conv'].GetStringSelection()
+            self.camera.SetConvertMethod(val)
+        except:
+            pass
+            
 
     def onConnect(self, **kws):
         self.wids['exposure'].SetValue(min(MAX_EXPOSURE_TIME, self.camera.GetExposureTime()))
