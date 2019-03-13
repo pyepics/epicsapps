@@ -171,6 +171,7 @@ class StageFrame(wx.Frame):
                                           config=config['stages'],
                                           autofocus=autofocus_cb)
 
+                                           
             self.confpanel = ConfPanel(ppanel,
                                        image_panel=self.imgpanel, **opts)
 
@@ -201,9 +202,11 @@ class StageFrame(wx.Frame):
                                           groups=config['stage_groups'],
                                           config=config['stages'],
                                           autofocus=autofocus_cb)
-
-            self.confpanel = ConfPanel(ppanel,
-                                       image_panel=self.imgpanel, **opts)
+                                          
+            if len(self.cam_lenses) > 1:
+                opts['lens_choices'] = self.cam_lenses
+                opts['lens_default'] = self.cam_calibmag 
+            self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel, **opts)
 
             msizer = wx.GridBagSizer(3, 3)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
@@ -396,10 +399,6 @@ class StageFrame(wx.Frame):
 
         omenu.AppendSeparator()
 
-        # print( 'Create Menus ',      self.ctrlpanel.subpanels)
-        # for key, val in self.config['stages'].items():
-        #     print( key, val)
-
         for name, panel in self.ctrlpanel.subpanels.items():
             show = 0
             label = 'Enable %s' % name
@@ -491,6 +490,7 @@ class StageFrame(wx.Frame):
         self.cam_adform = cam.get('ad_format', 'JPEG')
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
         self.get_cam_calib()
+
         try:
             pref = self.imgdir.split('_')[0]
         except:
@@ -514,9 +514,14 @@ class StageFrame(wx.Frame):
             self.stages[mname] = data
 
     def get_cam_calib(self):
-        cam = self.config['camera']
-        cx = self.cam_calibx = float(cam.get('calib_x', 0.001))
-        cy = self.cam_caliby = float(cam.get('calib_y', 0.001))
+        cam = self.config['camera'] 
+        cx = self.cam_calibx = float(cam.get('calib_x', 0.100))
+        cy = self.cam_caliby = float(cam.get('calib_y', 0.100))
+        cmag = self.cam_calibmag = float(cam.get('calib_mag', 10))
+        self.cam_lenses = [cmag]
+        clenses = cam.get('calib_lenses', '10')
+        if ', ' in clenses:
+             self.cam_lenses = [float(i) for i in clenses.split(', ')]
         return cx, cy
 
     def begin_htmllog(self):
@@ -687,8 +692,14 @@ class StageFrame(wx.Frame):
         p = self.last_pixel
         if p is None:
             return
-
+    
         cal_x, cal_y = self.get_cam_calib()
+        if self.confpanel.choice_lens is not None:
+            cam_lens = self.confpanel.choice_lens.GetStringSelection()
+            cam_lens = float(cam_lens.replace('x', ''))  
+            cal_x = cal_x * self.cam_calibmag / cam_lens
+            cal_y = cal_y * self.cam_calibmag / cam_lens
+        
         dx = 0.001*cal_x*(p['x']-p['xmax']/2.0)
         dy = 0.001*cal_y*(p['y']-p['ymax']/2.0)
 

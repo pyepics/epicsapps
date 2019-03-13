@@ -13,7 +13,7 @@ from six import StringIO
 import base64
 
 from epics.wx.utils import  Closure, add_button
-from wxutils import MenuItem
+from wxutils import MenuItem, Choice
 
 is_wxPhoenix = 'phoenix' in wx.PlatformInfo
 
@@ -351,11 +351,19 @@ LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
 class ConfPanel_Base(wx.Panel):
     def __init__(self, parent,  center_cb=None,
-                 image_panel=None, xhair_cb=None, size=(300, 350), **kws):
-        super(ConfPanel_Base, self).__init__(parent, -1, size=size, **kws)
+                 image_panel=None, xhair_cb=None,
+                 size=(300, 350), **kws):
+        self.lens_choices = None
+        if 'lens_choices' in kws:
+             self.lens_choices = kws.pop('lens_choices')
+        self.lens_default = None
+        if 'lens_default' in kws:
+             self.lens_default = kws.pop('lens_default')
+        super(ConfPanel_Base, self).__init__(parent, -1, size=size)
         self.image_panel = image_panel
         self.center_cb = center_cb
         self.xhair_cb = xhair_cb
+
         self.wids = wids = {}
         self.sizer = wx.GridBagSizer(10, 4)
         self.sizer.SetVGap(3)
@@ -383,19 +391,36 @@ class ConfPanel_Base(wx.Panel):
         sel_label = self.txt("Selected Pixel:")
         cen_label = self.txt("Distance to Center(um):")
         ctr_button = add_button(self, "Bring Selected Pixel to Center",
-                                action=self.onBringToCenter, size=(250, -1))
+                                action=self.onBringToCenter, size=(200, -1))
         #xhair_button = add_button(self, "Toggle Crosshair at Selected Pixel",
         #                          action=self.onToggleCrosshair, size=(240, -1))
         # xhair_button.Disable()
         sizer = self.sizer
         sizer.Add(img_label,      (row,   0), (1, 1), LEFT)
         sizer.Add(self.img_size,  (row,   1), (1, 2), LEFT)
-        sizer.Add(sel_label,      (row+1, 0), (1, 1), LEFT)
-        sizer.Add(self.sel_pixel, (row+1, 1), (1, 2), LEFT)
-        sizer.Add(cen_label,      (row+2, 0), (1, 1), LEFT)
-        sizer.Add(self.cen_dist,  (row+2, 1), (1, 2), LEFT)
-        sizer.Add(ctr_button,     (row+3, 0), (1, 3), wx.ALIGN_LEFT)
-        return row+4
+        row += 1
+        sizer.Add(sel_label,      (row, 0), (1, 1), LEFT)
+        sizer.Add(self.sel_pixel, (row, 1), (1, 2), LEFT)
+        row += 1
+        sizer.Add(cen_label,      (row, 0), (1, 1), LEFT)
+        sizer.Add(self.cen_dist,  (row, 1), (1, 2), LEFT)
+        row += 1
+        sizer.Add(ctr_button,     (row, 0), (1, 2), wx.ALIGN_LEFT)
+        self.choice_lens = None
+        if self.lens_choices is not None and len(self.lens_choices) > 1:
+            lenses = ['%ix' % i for i in self.lens_choices]
+            ldef = '%ix' % self.lens_default
+            default = 1
+            if ldef in lenses:
+                  default = lenses.index(ldef)     
+            self.choice_lens = Choice(self, choices=lenses, default=default,
+                                       size=(100, -1))
+            row += 1
+            _label = self.txt("Current Lens:")
+            sizer.Add(_label,            (row, 0), (1, 1), wx.ALIGN_LEFT)
+            sizer.Add(self.choice_lens,  (row, 1), (1, 2), wx.ALIGN_LEFT)
+             
+        return row+1
 
     def onStart(self, event=None, **kws):
         pass

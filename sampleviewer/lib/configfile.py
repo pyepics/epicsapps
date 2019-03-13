@@ -33,6 +33,8 @@ ad_prefix  = 13IDEPS1:
 ad_format  = JPEG
 web_url    = http://164.54.160.115/jpg/2/image.jpg
 image_folder = Sample_Images
+calib_lenses = 10
+calib_mag  = 10
 calib_x    = 0.001
 calib_y    = 0.001
 #--------------------------#
@@ -78,8 +80,8 @@ conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
                                    'verify_erase', 'verify_overwrite',
                                    'center_with_fine_stages')),
                           ('camera', ('type', 'image_folder', 'fly2_id', 'cam_id',
-                                      'ad_prefix', 'ad_format', 'web_url',
-                                      'calib_x', 'calib_y')),
+                                      'ad_prefix', 'ad_format', 'web_url', 'calib_lenses',
+                                      'calib_mag', 'calib_x', 'calib_y')),
                           ('scandb', ('instrument', 'dbname', 'server',
                                       'host', 'user', 'password', 'port')),
                           ('offline', ('instrument', 'xyz_offline', 'xyz_online')),
