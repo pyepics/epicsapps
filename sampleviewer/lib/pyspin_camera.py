@@ -46,7 +46,7 @@ class PySpinCamera(object):
         # RIGOROUS, IPP, DIRECTIONAL_FILTER, WEIGHTED_DIRECTIONAL_FILTER
         # PySpin.NEAREST_NEIGHBOR)
         self.convert_method = PySpin.DEFAULT
-        
+
         self.Connect()
         atexit.register(self.Exit)
 
@@ -78,9 +78,8 @@ class PySpinCamera(object):
     def StartCapture(self):
         """start capture"""
         self.cam.Init()
-        acq_mode = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionMode'))
-        acq_mode.SetIntValue(acq_mode.GetEntryByName('Continuous').GetValue())
         self.cam.BeginAcquisition()
+        self.SetFramerate(15.5)
 
     def StopCapture(self):
         """"""
@@ -88,6 +87,13 @@ class PySpinCamera(object):
             self.cam.EndAcquisition()
         except:
             pass
+
+    def SetFramerate(self, framerate=14.5):
+        acq_mode = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionMode'))
+        acq_mode.SetIntValue(acq_mode.GetEntryByName('Continuous').GetValue())
+
+        arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
+        arate.SetValue(framerate*1.0)
 
     def Exit(self):
         self.StopCapture()
@@ -112,20 +118,20 @@ class PySpinCamera(object):
 
     def GetWhiteBalance(self):
         """ Get White Balance (red, blue)"""
-        try:
+        if True: # try:
             wb_auto = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceWhiteAuto'))
             wb_auto.SetIntValue(wb_auto.GetEntryByName('Off').GetValue())
             wb_ratio = PySpin.CEnumerationPtr(self.nodemap.GetNode('BalanceRatioSelector'))
 
             # Blue
             wb_ratio.SetIntValue(wb_ratio.GetEntryByName('Blue').GetValue())
-            blue = PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatioRaw')).GetValue()
+            blue = PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatio')).GetValue()
 
             # Red
             wb_ratio.SetIntValue(wb_ratio.GetEntryByName('Red').GetValue())
-            red = PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatioRaw')).GetValue()
+            red = PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatio')).GetValue()
             return blue, red
-        except:
+        else: # except:
             print("Could not get White Balance ")
             return 1, 1
 
@@ -165,11 +171,11 @@ class PySpinCamera(object):
 
             # set Blue
             wb_ratio.SetIntValue(wb_ratio.GetEntryByName('Blue').GetValue())
-            PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatioRaw')).SetValue(blue)
+            PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatio')).SetValue(blue)
 
             # set Red
             wb_ratio.SetIntValue(wb_ratio.GetEntryByName('Red').GetValue())
-            PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatioRaw')).SetValue(red)
+            PySpin.CFloatPtr(self.nodemap.GetNode('BalanceRatio')).SetValue(red)
 
     def SetGamma(self, value):
         """Set Gamma
@@ -198,7 +204,7 @@ class PySpinCamera(object):
         node_auto.SetIntValue(node_auto.GetEntryByName(sauto).GetValue())
         if (not auto) and value is not None:
             PySpin.CFloatPtr(node_main).SetValue(value)
-        node_auto.SetIntValue(node_auto.GetEntryByName('Off').GetValue())
+        node_auto.SetIntValue(node_auto.GetEntryByName(sauto).GetValue())
 
     def SetExposureTime(self, value=None, auto=False):
         """Set Exposure Time
@@ -216,7 +222,7 @@ class PySpinCamera(object):
         if (not auto) and value is not None:
             value *= 1.e3   # exposure time is in microseconds
             PySpin.CFloatPtr(node_main).SetValue(value)
-        # node_auto.SetIntValue(node_auto.GetEntryByName('Off').GetValue())
+        node_auto.SetIntValue(node_auto.GetEntryByName(sauto).GetValue())
 
     def SetConvertMethod(self, method='DEFAULT'):
         # DEFAULT, NO_COLOR_PROCESSING, NEAREST_NEIGHBOR, EDGE_SENSING, HQ_LINEAR,

@@ -29,7 +29,7 @@ if is_wxPhoenix:
 else:
     Image = wx.ImageFromData
 
-MAX_EXPOSURE_TIME=59
+MAX_EXPOSURE_TIME = 58
 
 class ImagePanel_PySpin(ImagePanel_Base):
     """Image Panel for Spinnaker camera"""
@@ -115,7 +115,7 @@ class ImagePanel_PySpin(ImagePanel_Base):
                     self.camera.SetGain(pgain, auto=False)
                     self.confpanel.wids['gain'].SetValue(pgain)
                 else:
-                    etime = max(10, min(64, 1.75*atime))
+                    etime = max(10, min(50, 1.75*atime))
                     self.SetExposureTime(etime)
             else:
                 break
@@ -143,6 +143,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
         wids = self.wids
         sizer = self.sizer
         with_color_conv = False
+        self.framerate_set_count = 0
 
 
         self.title = self.txt("PySpinnaker: ", size=285)
@@ -190,7 +191,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
                                   action=self.onValue,
                                   act_on_losefocus=True,
                                   action_kw={'prop': key}, size=(75, -1))
-            wids[key].Disable()
+            # wids[key].Disable()
             label = 'White Balance (%s)' % (color)
             sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)
             sizer.Add(wids[key],  (i, 1), (1, 1), LEFT)
@@ -224,11 +225,6 @@ class ConfPanel_PySpin(ConfPanel_Base):
             sizer.Add(self.txt('Conversion: '), (i, 0), (1, 1), LEFT)
             sizer.Add(wids['color_conv'],       (i, 1), (1, 1), LEFT)
 
-
-        # wids['datapush'].SetValue(1)
-        # wids['datapush'].Bind(wx.EVT_CHECKBOX, self.onEnableDataPush)
-        # sizer.Add(wids['datapush'], (i+1, 0), (1, 3), LEFT)
-
         pack(self, sizer)
         self.__initializing = False
         self.read_props_timer = wx.Timer(self)
@@ -237,44 +233,54 @@ class ConfPanel_PySpin(ConfPanel_Base):
 
     def onRestart(self, event=None, **kws):
         self.camera.cam.EndAcquisition()
-        time.sleep(0.5)
+        time.sleep(0.25)
         self.camera.cam.BeginAcquisition()
+        self.onConnect()
 
     def onColorConv(self, event=None):
-        try: 
+        try:
             val = self.wids['color_conv'].GetStringSelection()
             self.camera.SetConvertMethod(val)
         except:
             pass
-            
 
     def onConnect(self, **kws):
         self.wids['exposure'].SetValue(min(MAX_EXPOSURE_TIME, self.camera.GetExposureTime()))
         self.wids['exposure_auto'].SetValue(0)
-        #         self.wids['exposure_auto'].Disable()
-
-        # self.wids['gamma'].SetValue(self.camera.GetGamma())
-        # self.wids['color_conv'].SetSelection(0)
-
         self.wids['gain'].SetValue(self.camera.GetGain())
         self.wids['gain_auto'].SetValue(0)
-        self.wids['gain_auto'].Disable()
 
         blue, red = self.camera.GetWhiteBalance()
         self.wids['wb_red'].SetValue(red)
         self.wids['wb_blue'].SetValue(blue)
         self.wids['wb_auto'].SetValue(0)
-        self.read_props_timer.Start(4000)
+        self.read_props_timer.Start(3000)
         self.title.SetLabel("Camera Model: %s" % (self.camera.device_name))
         self.title2.SetLabel("Serial #: %s" % (self.camera.device_id))
         self.title3.SetLabel("Firmware: %s" % (self.camera.device_version))
+
+        self.camera.SetFramerate(15.0)
+        self.framerate_set_count = 0
+
+        for i in range(2):
+             val = min(MAX_EXPOSURE_TIME, self.camera.GetExposureTime()) - 1.0
+             self.camera.SetExposureTime(val, auto=True)
+             time.sleep(0.50)
+             self.wids['exposure'].SetValue(self.camera.GetExposureTime())
+        self.camera.SetExposureTime(val, auto=False)
 
     def onEnableDataPush(self, evt=None, **kws):
         self.image_panel.datapush = evt.IsChecked()
 
     def onTimer(self, evt=None, **kws):
         # print(" Timer ",  self.camera.GetExposureTime(),
-        #       self.camera.GetGain())
+        #       self.camera.GetGain(), self.image_panel.fps_current)
+
+        if (self.image_panel.fps_current > 16.0 and
+            self.framerate_set_count < 2):
+            self.camera.SetFramerate(15.0)
+            self.framerate_set_count += 1
+            time.sleep(0.5)
 
         if self.wids['exposure_auto'].GetValue():
             cam_val = self.camera.GetExposureTime()
@@ -293,7 +299,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
             wblue = self.wids['wb_blue'].GetValue()
             wred = self.wids['wb_red'].GetValue()
             if self.wids['wb_auto'].GetValue(): # force setting
-                wblue = wred = -100.
+                wblue = wred = -1.
                 self.wids['wb_auto'].SetValue(0)
             if int(100.0*abs(blue - wblue)) > 3:
                 self.wids['wb_blue'].SetValue(blue)
@@ -307,21 +313,23 @@ class ConfPanel_PySpin(ConfPanel_Base):
             for i in range(4):
                 val = min(MAX_EXPOSURE_TIME, self.camera.GetExposureTime()) - 1.0
                 self.camera.SetExposureTime(val, auto=True)
-                time.sleep(0.250)
+                time.sleep(0.25)
                 self.wids['exposure'].SetValue(self.camera.GetExposureTime())
             self.camera.SetExposureTime(val, auto=False)
         elif prop == 'gain':
             gain = self.camera.GetGain()
             self.camera.SetGain(gain, auto=True)
             time.sleep(0.1)
-            self.wids['gain'].SetValue(gain)
         elif prop in ('wb_red', 'wb_blue', 'wb_auto'):
-            red = self.wids['wb_red'].GetValue()
-            blue = self.wids['wb_blue'].GetValue()
-            try:
-                self.camera.SetWhiteBalance(blue, red, auto=True)
-            except:
-                pass
+            for i in range(4):
+                red = self.wids['wb_red'].GetValue()
+                blue = self.wids['wb_blue'].GetValue()
+                try:
+                    self.camera.SetWhiteBalance(blue, red, auto=True)
+                except:
+                    pass
+                time.sleep(0.25)
+                self.camera.SetWhiteBalance(blue, red, auto=False)
 
     def onValue(self, prop=None, value=None,  **kws):
         if self.__initializing:
@@ -334,8 +342,6 @@ class ConfPanel_PySpin(ConfPanel_Base):
         elif prop == 'gain':
             self.wids['%s_auto' % prop].SetValue(0)
             self.camera.SetGain(float(value), auto=False)
-        # elif prop == 'gamma':
-        #     self.camera.SetGamma(float(value))
         elif prop in ('wb_red', 'wb_blue'):
             self.wids['wb_auto'].SetValue(0)
             red =  self.wids['wb_red'].GetValue()
