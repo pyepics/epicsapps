@@ -84,14 +84,13 @@ class ImagePanel_Base(wx.Panel):
         if self.motion_cb is not None:
             self.Bind(wx.EVT_MOTION, self.onMotion)
         self.Bind(wx.EVT_RIGHT_DOWN, self.onRightDown)
-
+        self.fps_current = 1.0
         self.data = None
         self.data_shape = (0, 0, 0)
         self.datapush = datapush
         self.datapush_lasttime = 0
         self.datapush_delay = 5.0
         self.full_image = None
-
         self.autosave = True
         self.last_autosave = 0
         self.autosave_tmpf = None
@@ -192,6 +191,7 @@ class ImagePanel_Base(wx.Panel):
         now = time.clock()
         elapsed = now - self.starttime
         if elapsed >= 2.0 and self.writer is not None:
+            self.fps_current = (self.count/elapsed)
             self.writer("  %.2f fps" % (self.count/elapsed))
             self.starttime = now
             self.count = 0
@@ -412,14 +412,14 @@ class ConfPanel_Base(wx.Panel):
             ldef = '%ix' % self.lens_default
             default = 1
             if ldef in lenses:
-                  default = lenses.index(ldef)     
+                  default = lenses.index(ldef)
             self.choice_lens = Choice(self, choices=lenses, default=default,
                                        size=(100, -1))
             row += 1
             _label = self.txt("Current Lens:")
             sizer.Add(_label,            (row, 0), (1, 1), wx.ALIGN_LEFT)
             sizer.Add(self.choice_lens,  (row, 1), (1, 2), wx.ALIGN_LEFT)
-             
+
         return row+1
 
     def onStart(self, event=None, **kws):
@@ -455,6 +455,7 @@ class ZoomPanel(wx.Panel):
         self.SetSize(size)
         self.data = None
         self.scale = 1.0
+        # print("ZoomPanel ", imgsize, size)
         self.xcen = self.ycen = self.x = self.y = 0
         self.Bind(wx.EVT_PAINT, self.onPaint)
 
