@@ -36,6 +36,7 @@ from .imagepanel_pyspin import ImagePanel_PySpin, ConfPanel_PySpin
 from .imagepanel_fly2 import ImagePanel_Fly2AD, ConfPanel_Fly2AD
 from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
 from .imagepanel_weburl import ImagePanel_URL, ConfPanel_URL
+from .imagepanel_zmqjpeg import ImagePanel_ZMQ, ConfPanel_ZMQ
 
 ALL_EXP  = wx.ALL|wx.EXPAND|wx.GROW
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
@@ -149,6 +150,10 @@ class StageFrame(wx.Frame):
         elif self.cam_type.startswith('webcam'):
             opts['url'] = self.cam_weburl
             ImagePanel, ConfPanel = ImagePanel_URL, ConfPanel_URL
+        elif self.cam_type.startswith('zmq'):
+            ImagePanel, ConfPanel = ImagePanel_ZMQ, ConfPanel_ZMQ
+            opts['host'] = self.cam_zmqhost
+            opts['port'] = self.cam_zmqport
 
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
@@ -490,6 +495,8 @@ class StageFrame(wx.Frame):
         self.cam_adpref = cam.get('ad_prefix', '')
         self.cam_adform = cam.get('ad_format', 'JPEG')
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
+        self.cam_zmqhost = cam.get('zmq_host', '164.54.160.93')
+        self.cam_zmqport = cam.get('zmq_port', '17166')
         self.get_cam_calib()
 
         try:
