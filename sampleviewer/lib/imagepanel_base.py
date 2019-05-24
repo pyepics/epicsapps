@@ -45,13 +45,14 @@ class JpegPublisher(object):
         if  (now - self.last_publish) < self.interval:
             return
         self.last_publish = now
-        pimg = Image.frombytes('L', (ncols, nrows), data)
+
         tmp = io.BytesIO()
-        pimg.save(tmp, 'JPEG')
+        Image.frombytes('RGB', (nrows, ncols), data).save(tmp, 'JPEG')
         tmp.seek(0)
-        bindat = base64.b64encode(tmp.read())
-        self.socket.send(bindat)
-        print("Sent JPEG DATA %d %.4f" % (len(bindat), time.time()-self.t0))
+        bindat = base64.b64encode(tmp.read()).decode('utf-8')
+        self.socket.send_json({'format':'jpeg', 'image':bindat,
+                               'shape': data.shape})
+        # print("Sent JPEG DATA %d %.4f" % (len(bindat), time.time()-self.t0))
 
 class ImagePanel_Base(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
@@ -130,7 +131,6 @@ class ImagePanel_Base(wx.Panel):
         self.jpeg_thread = Thread(target=self.onJpegPublish)
         self.jpeg_thread.daemon = True
         self.jpeg_thread.start()
-        atexit.register(self.jpeg_thread.stop)
 
     def grab_data(self):
         self.data = self.GrabNumpyImage()
@@ -290,7 +290,6 @@ class ImagePanel_Base(wx.Panel):
             else:
                 time.sleep(0.1*self.publish_delay)
                 self.publisher.publish(self.data)
-
 
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
