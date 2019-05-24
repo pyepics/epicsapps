@@ -171,7 +171,7 @@ class StageFrame(wx.Frame):
                                           config=config['stages'],
                                           autofocus=autofocus_cb)
 
-                                           
+
             self.confpanel = ConfPanel(ppanel,
                                        image_panel=self.imgpanel, **opts)
 
@@ -202,10 +202,10 @@ class StageFrame(wx.Frame):
                                           groups=config['stage_groups'],
                                           config=config['stages'],
                                           autofocus=autofocus_cb)
-                                          
+
             if len(self.cam_lenses) > 1:
                 opts['lens_choices'] = self.cam_lenses
-                opts['lens_default'] = self.cam_calibmag 
+                opts['lens_default'] = self.cam_calibmag
             self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel, **opts)
 
             msizer = wx.GridBagSizer(3, 3)
@@ -514,7 +514,7 @@ class StageFrame(wx.Frame):
             self.stages[mname] = data
 
     def get_cam_calib(self):
-        cam = self.config['camera'] 
+        cam = self.config['camera']
         cx = self.cam_calibx = float(cam.get('calib_x', 0.100))
         cy = self.cam_caliby = float(cam.get('calib_y', 0.100))
         cmag = self.cam_calibmag = float(cam.get('calib_mag', 10))
@@ -692,14 +692,14 @@ class StageFrame(wx.Frame):
         p = self.last_pixel
         if p is None:
             return
-    
+
         cal_x, cal_y = self.get_cam_calib()
         if self.confpanel.choice_lens is not None:
             cam_lens = self.confpanel.choice_lens.GetStringSelection()
-            cam_lens = float(cam_lens.replace('x', ''))  
+            cam_lens = float(cam_lens.replace('x', ''))
             cal_x = cal_x * self.cam_calibmag / cam_lens
             cal_y = cal_y * self.cam_calibmag / cam_lens
-        
+
         dx = 0.001*cal_x*(p['x']-p['xmax']/2.0)
         dy = 0.001*cal_y*(p['y']-p['ymax']/2.0)
 
@@ -715,7 +715,6 @@ class StageFrame(wx.Frame):
                 xscale = stage_info['scale']
             if stage_info['desc'].lower() == ymotor:
                 yscale = stage_info['scale']
-
         mots[xmotor].VAL += dx*xscale
         mots[ymotor].VAL += dy*yscale
         self.onSelectPixel(p['xmax']/2.0, p['ymax']/2.0,
