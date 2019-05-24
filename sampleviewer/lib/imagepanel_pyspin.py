@@ -203,16 +203,16 @@ class ConfPanel_PySpin(ConfPanel_Base):
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
 
-        datapush_time = "%.1f" % self.image_panel.datapush_delay
-        wids['dpush_time'] =  FloatCtrl(self, value=datapush_time, maxval=1e6,
-                                        precision=1, minval=0,
-                                        action=self.onValue, act_on_losefocus=True,
-                                        action_kw={'prop':'autosave_time'}, size=(75, -1))
+        # datapush_time = "%.1f" % self.image_panel.datapush_delay
+        # wids['dpush_time'] =  FloatCtrl(self, value=datapush_time, maxval=1e6,
+        #                                         precision=1, minval=0,
+        #                                         action=self.onValue, act_on_losefocus=True,
+        #                                         action_kw={'prop':'autosave_time'}, size=(75, -1))
 
-        label = 'AutoSave Time (sec)'
-        sizer.Add(self.txt(label),    (i, 0), (1, 1), LEFT)
-        sizer.Add(wids['dpush_time'], (i, 1), (1, 1), LEFT)
-        i = i + 1
+        # label = 'AutoSave Time (sec)'
+        # sizer.Add(self.txt(label),    (i, 0), (1, 1), LEFT)
+        # sizer.Add(wids['dpush_time'], (i, 1), (1, 1), LEFT)
+        # i = i + 1
         sizer.Add(btn_start,          (i, 0), (1, 2), LEFT)
 
         if with_color_conv:
@@ -259,15 +259,9 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.title2.SetLabel("Serial #: %s" % (self.camera.device_id))
         self.title3.SetLabel("Firmware: %s" % (self.camera.device_version))
 
-        self.camera.SetFramerate(15.0)
+        self.camera.SetFramerate(14.5)
         self.framerate_set_count = 0
-
-        for i in range(2):
-             val = min(MAX_EXPOSURE_TIME, self.camera.GetExposureTime()) - 1.0
-             self.camera.SetExposureTime(val, auto=True)
-             time.sleep(0.50)
-             self.wids['exposure'].SetValue(self.camera.GetExposureTime())
-        self.camera.SetExposureTime(val, auto=False)
+        self.camera.SetExposureTime(30, auto=False)
 
     def onEnableDataPush(self, evt=None, **kws):
         self.image_panel.datapush = evt.IsChecked()
@@ -278,7 +272,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
 
         if (self.image_panel.fps_current > 16.0 and
             self.framerate_set_count < 2):
-            self.camera.SetFramerate(15.0)
+            self.camera.SetFramerate(14.5)
             self.framerate_set_count += 1
             time.sleep(0.5)
 
@@ -312,7 +306,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
         if prop == 'exposure':
             for i in range(4):
                 val = min(MAX_EXPOSURE_TIME, self.camera.GetExposureTime()) - 1.0
-                self.camera.SetExposureTime(val, auto=True)
+                self.camera.SetExposureTime(val, auto=False)
                 time.sleep(0.25)
                 self.wids['exposure'].SetValue(self.camera.GetExposureTime())
             self.camera.SetExposureTime(val, auto=False)
