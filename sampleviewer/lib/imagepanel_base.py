@@ -2,15 +2,19 @@
 Base Image Panel to be inherited by other ImagePanels
 """
 
+import io
 import wx
 import time
 import numpy as np
 import os
 import shutil
 import math
+import atexit
 from threading import Thread
 from six import StringIO
 import base64
+import zmq
+from PIL import Image
 
 from epics.wx.utils import  Closure, add_button
 from wxutils import MenuItem, Choice
@@ -21,6 +25,33 @@ if is_wxPhoenix:
     Bitmap = wx.Bitmap
 else:
     Bitmap = wx.BitmapFromImage
+
+
+class JpegPublisher(object):
+    def __init__(self, port=17166, interval=0.1):
+        self.interval = interval
+        self.t0 = time.time()
+        self.last_publish  = 0
+        ctx = zmq.Context()
+        self.socket = ctx.socket(zmq.PUB)
+        self.socket.bind("tcp://*:%d" % port)
+
+    def publish(self, data):
+        try:
+            ncols, nrows, nx = data.shape
+        except:
+            return
+        now = time.time()
+        if  (now - self.last_publish) < self.interval:
+            return
+        self.last_publish = now
+        pimg = Image.frombytes('L', (ncols, nrows), data)
+        tmp = io.BytesIO()
+        pimg.save(tmp, 'JPEG')
+        tmp.seek(0)
+        bindat = base64.b64encode(tmp.read())
+        self.socket.send(bindat)
+        print("Sent JPEG DATA %d %.4f" % (len(bindat), time.time()-self.t0))
 
 class ImagePanel_Base(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
@@ -52,10 +83,11 @@ class ImagePanel_Base(wx.Panel):
         """auto set exposure time"""
         raise NotImplementedError('must provide AutoSetExposure')
 
-    def __init__(self, parent,  camera_id=0, writer=None, output_pv=None,
-                 leftdown_cb=None, motion_cb=None, grab_data=True,
-                 autosave_file=None, datapush=True, draw_objects=None,
-                 zoompanel=None, **kws):
+    def __init__(self, parent, camera_id=0, writer=None, output_pv=None,
+                 leftdown_cb=None, motion_cb=None, publish_jpeg=True,
+                 publish_delay=0.2, draw_objects=None, zoompanel=None,
+                 **kws):
+
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
         self.img_w = 800.5
         self.img_h = 600.5
@@ -87,23 +119,18 @@ class ImagePanel_Base(wx.Panel):
         self.fps_current = 1.0
         self.data = None
         self.data_shape = (0, 0, 0)
-        self.datapush = datapush
-        self.datapush_lasttime = 0
-        self.datapush_delay = 5.0
+
         self.full_image = None
-        self.autosave = True
-        self.last_autosave = 0
-        self.autosave_tmpf = None
-        self.autosave_file = None
-        self.autosave_time = 2.0
-        self.autosave_thread = None
         self.full_size = None
         self.build_popupmenu()
 
-        self.datapush_thread = Thread(target=self.onDatapush)
-        self.datapush_thread.daemon = True
-        self.datapush_thread.start()
-
+        self.publish_jpeg = publish_jpeg
+        self.publish_delay = publish_delay
+        self.publisher = JpegPublisher(interval=publish_delay)
+        self.jpeg_thread = Thread(target=self.onJpegPublish)
+        self.jpeg_thread.daemon = True
+        self.jpeg_thread.start()
+        atexit.register(self.jpeg_thread.stop)
 
     def grab_data(self):
         self.data = self.GrabNumpyImage()
@@ -255,51 +282,14 @@ class ImagePanel_Base(wx.Panel):
                     dc.SetPen(wx.Pen(color, width, style))
                     method(*args, **kws)
 
-    def onAutosave(self):
-        "autosave process, run in separate thread"
-        # set autosave to True/False to enable/disable autosaving
-        return
-#         while True:
-#             time.sleep(0.05)
-#             if not self.autosave:
-#                 time.sleep(0.5)
-#                 continue
-#             now = time.time()
-#             dtsave = now - (self.last_autosave + self.autosave_time)
-#             if dtsave > 0:
-#                 self.last_autosave = now
-#                 try:
-#                     fullimage = self.GrabWxImage(scale=1.0, rgb=True)
-#                     fullimage.SaveFile(self.autosave_tmpf, wx.BITMAP_TYPE_JPEG)
-#                     shutil.copy(self.autosave_tmpf, self.autosave_file)
-#                     time.sleep(self.autosave_time/2.0)
-#                 except:
-#                     pass
-
-    def onDatapush(self):
+    def onJpegPublish(self):
         while True:
-            time.sleep(0.1)
-            if not self.datapush:
-                time.sleep(0.5)
+            if not self.publish_jpeg or self.data is None:
+                time.sleep(10.0*self.publish_delay)
                 continue
-            now = time.time()
-            dt = now - (self.datapush_lasttime + self.datapush_delay)
-            # print(" datapush? ", self.datapush, self.datapush_delay)
-
-            # 'ArrayData' in self.output_pvs, self.data_shape)
-            if (dt > 0 and 'ArrayData' in self.output_pvs and
-                self.data_shape[0] > 0):
-                nx, ny, nc = self.data_shape
-                nbin = 2
-                d = 1.00*self.data.reshape(nx/nbin, nbin, ny/nbin, nbin, nc)
-                d = d.sum(axis=3).sum(axis=1)/(nbin*nbin)
-                d = d.astype(self.data.dtype)
-                nx, ny, nc = d.shape
-                self.output_pvs['ArrayData'].put(d.flatten())
-                self.output_pvs['ArraySize0_RBV'].put(nc)
-                self.output_pvs['ArraySize1_RBV'].put(ny)
-                self.output_pvs['ArraySize2_RBV'].put(nx)
-                self.datapush_lasttime = now
+            else:
+                time.sleep(0.1*self.publish_delay)
+                self.publisher.publish(self.data)
 
 
     def SaveImage(self, fname, filetype='jpeg'):
