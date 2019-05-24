@@ -27,32 +27,31 @@ else:
     Bitmap = wx.BitmapFromImage
 
 
-class JpegPublisher(object):
-    def __init__(self, port=17166, interval=0.1):
-        self.interval = interval
-        self.t0 = time.time()
-        self.last_publish  = 0
+class JpegServer(object):
+    def __init__(self, port=17166, delay=0.05):
+        self.delay = delay
         ctx = zmq.Context()
-        self.socket = ctx.socket(zmq.PUB)
+        self.socket = ctx.socket(zmq.REP)
         self.socket.bind("tcp://*:%d" % port)
+        self.data = None
 
-    def publish(self, data):
-        try:
-            ncols, nrows, nx = data.shape
-        except:
-            return
-        now = time.time()
-        if  (now - self.last_publish) < self.interval:
-            return
-        self.last_publish = now
-
-        tmp = io.BytesIO()
-        Image.frombytes('RGB', (nrows, ncols), data).save(tmp, 'JPEG')
-        tmp.seek(0)
-        bindat = base64.b64encode(tmp.read()).decode('utf-8')
-        self.socket.send_json({'format':'jpeg', 'image':bindat,
-                               'shape': data.shape})
-        # print("Sent JPEG DATA %d %.4f" % (len(bindat), time.time()-self.t0))
+    def serve(self):
+        while True:
+            try:
+                message = self.socket.recv()
+            except:
+                continue
+            try:
+                ncols, nrows, nx = self.data.shape
+            except:
+                continue
+            tmp = io.BytesIO()
+            Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG')
+            tmp.seek(0)
+            bindat = base64.b64encode(tmp.read()).decode('utf-8')
+            self.socket.send_json({'format':'jpeg', 'image':bindat,
+                                   'shape': self.data.shape})
+            time.sleep(self.delay)
 
 class ImagePanel_Base(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
@@ -86,8 +85,8 @@ class ImagePanel_Base(wx.Panel):
 
     def __init__(self, parent, camera_id=0, writer=None, output_pv=None,
                  leftdown_cb=None, motion_cb=None, publish_jpeg=True,
-                 publish_delay=0.2, draw_objects=None, zoompanel=None,
-                 **kws):
+                 publish_delay=0.2, publish_port=17166, draw_objects=None,
+                 zoompanel=None, **kws):
 
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
         self.img_w = 800.5
@@ -126,11 +125,9 @@ class ImagePanel_Base(wx.Panel):
         self.build_popupmenu()
 
         self.publish_jpeg = publish_jpeg
-        self.publish_delay = publish_delay
-        self.publisher = JpegPublisher(interval=publish_delay)
-        self.jpeg_thread = Thread(target=self.onJpegPublish)
-        self.jpeg_thread.daemon = True
-        self.jpeg_thread.start()
+        self.publisher = None
+        if publish_jpeg:
+            self.create_publisher(publish_delay, publish_port)
 
     def grab_data(self):
         self.data = self.GrabNumpyImage()
@@ -224,10 +221,12 @@ class ImagePanel_Base(wx.Panel):
             self.count = 0
 
         self.scale = max(self.scale, 0.05)
-        try:
-            self.image = self.GrabWxImage(scale=self.scale, rgb=True)
-        except: #  ValueError:
-            return
+        # try:
+        self.image = self.GrabWxImage(scale=self.scale, rgb=True)
+        if self.publisher is not None:
+            self.publisher.data = self.data
+        # except: #  ValueError:
+        #    return
 
         if self.image is None:
             return
@@ -282,14 +281,13 @@ class ImagePanel_Base(wx.Panel):
                     dc.SetPen(wx.Pen(color, width, style))
                     method(*args, **kws)
 
-    def onJpegPublish(self):
-        while True:
-            if not self.publish_jpeg or self.data is None:
-                time.sleep(10.0*self.publish_delay)
-                continue
-            else:
-                time.sleep(0.1*self.publish_delay)
-                self.publisher.publish(self.data)
+    def create_publisher(self, delay, port):
+        self.publish_jpeg = True
+        self.publish_delay = delay
+        self.publisher = JpegServer(port=port)
+        self.jpeg_thread = Thread(target=self.publisher.serve)
+        self.jpeg_thread.daemon = True
+        self.jpeg_thread.start()
 
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
