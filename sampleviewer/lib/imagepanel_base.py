@@ -380,10 +380,8 @@ class ConfPanel_Base(wx.Panel):
         sel_label = self.txt("Selected Pixel:")
         cen_label = self.txt("Distance to Center(um):")
         ctr_button = add_button(self, "Bring Selected Pixel to Center",
-                                action=self.onBringToCenter, size=(200, -1))
-        #xhair_button = add_button(self, "Toggle Crosshair at Selected Pixel",
-        #                          action=self.onToggleCrosshair, size=(240, -1))
-        # xhair_button.Disable()
+                                action=self.onBringToCenter, size=(250, -1))
+
         sizer = self.sizer
         sizer.Add(img_label,      (row,   0), (1, 1), LEFT)
         sizer.Add(self.img_size,  (row,   1), (1, 2), LEFT)

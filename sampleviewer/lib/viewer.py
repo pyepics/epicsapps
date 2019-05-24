@@ -164,7 +164,7 @@ class StageFrame(wx.Frame):
             offline_config = config.get('offline', {})
             self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'],
                                            offline_config=offline_config)
-            self.pospanel.SetMinSize((250, 700))
+            self.pospanel.SetMinSize((275, 600))
 
             self.ctrlpanel = ControlPanel(ppanel,
                                           groups=config['stage_groups'],
@@ -180,8 +180,9 @@ class StageFrame(wx.Frame):
             msizer = wx.GridBagSizer(2, 2)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
             msizer.Add(self.zoompanel, (2, 0), (1, 1), LEFT_TOP, 2)
+            msizer.Add(self.pospanel,  (0, 1), (3, 1), ALL_EXP|LEFT_TOP, 2)
+            msizer.Add((20, 20),       (3, 0), (2, 1), ALL_EXP|LEFT_TOP, 2)
 
             pack(ppanel, msizer)
 

@@ -48,12 +48,10 @@ class PySpinCamera(object):
         self.Connect()
         atexit.register(self.Exit)
 
-
     def Connect(self):
         if self.cam is not None:
             return
         self._cameras = self._system.GetCameras()
-        print("Cameras : ", self._cameras, self.camera_id)
         for cam in self._cameras:
             dev_id = cam.TLDevice.DeviceID.GetValue()
             dev_name = cam.TLDevice.DeviceModelName.GetValue()
