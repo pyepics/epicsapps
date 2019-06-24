@@ -124,6 +124,7 @@ class StageFrame(wx.Frame):
         config = self.config
 
         opts = dict(writer=self.write_framerate,
+                    publish_jpeg=bool(self.cam_zmqpush),
                     leftdown_cb=self.onSelectPixel,
                     motion_cb=self.onPixelMotion,
                     xhair_cb=self.onShowCrosshair,
@@ -154,6 +155,9 @@ class StageFrame(wx.Frame):
             ImagePanel, ConfPanel = ImagePanel_ZMQ, ConfPanel_ZMQ
             opts['host'] = self.cam_zmqhost
             opts['port'] = self.cam_zmqport
+        # print('Image Panel ', ImagePanel, self.cam_zmqpush)
+        # for k, v in opts.items():
+        #    print(k, v)
 
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
@@ -497,6 +501,7 @@ class StageFrame(wx.Frame):
         self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
         self.cam_zmqhost = cam.get('zmq_host', '164.54.160.93')
         self.cam_zmqport = cam.get('zmq_port', '17166')
+        self.cam_zmqpush = cam.get('zmq_push', 'False').lower() not in ('false', 'no', '0')
         self.get_cam_calib()
 
         try:
