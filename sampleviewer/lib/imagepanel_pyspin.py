@@ -213,18 +213,17 @@ class ConfPanel_PySpin(ConfPanel_Base):
         # sizer.Add(self.txt(label),    (i, 0), (1, 1), LEFT)
         # sizer.Add(wids['dpush_time'], (i, 1), (1, 1), LEFT)
         # i = i + 1
+#         if with_color_conv:
+#             conv_choices = ('DEFAULT', 'NO_COLOR_PROCESSING', 'NEAREST_NEIGHBOR',
+#                             'EDGE_SENSING', 'HQ_LINEAR', 'RIGOROUS', 'IPP',
+#                             'DIRECTIONAL_FILTER', 'WEIGHTED_DIRECTIONAL_FILTER')
+#             wids['color_conv'] = wx.Choice(self, -1, choices=conv_choices, size=(150, -1))
+#             wids['color_conv'].Bind(wx.EVT_CHOICE, self.onColorConv)
+#             i += 1
+#             sizer.Add(self.txt('Conversion: '), (i, 0), (1, 1), LEFT)
+#             sizer.Add(wids['color_conv'],       (i, 1), (1, 1), LEFT)
+
         sizer.Add(btn_start,          (i, 0), (1, 2), LEFT)
-
-        if with_color_conv:
-            conv_choices = ('DEFAULT', 'NO_COLOR_PROCESSING', 'NEAREST_NEIGHBOR',
-                        'EDGE_SENSING', 'HQ_LINEAR', 'RIGOROUS', 'IPP',
-                        'DIRECTIONAL_FILTER', 'WEIGHTED_DIRECTIONAL_FILTER')
-            wids['color_conv'] = wx.Choice(self, -1, choices=conv_choices, size=(150, -1))
-            wids['color_conv'].Bind(wx.EVT_CHOICE, self.onColorConv)
-            i += 1
-            sizer.Add(self.txt('Conversion: '), (i, 0), (1, 1), LEFT)
-            sizer.Add(wids['color_conv'],       (i, 1), (1, 1), LEFT)
-
         pack(self, sizer)
         self.__initializing = False
         self.read_props_timer = wx.Timer(self)
