@@ -432,8 +432,11 @@ class ConfPanel_Base(wx.Panel):
 
 
 class ZoomPanel(wx.Panel):
-    def __init__(self, parent, imgsize=200, size=(400, 400), **kws):
+    def __init__(self, parent, imgsize=200, size=(400, 400),
+                 sharpness_label=None, **kws):
         super(ZoomPanel, self).__init__(parent, size=size)
+        self.sharpness_label = sharpness_label
+        self.sharpness_data = []
         self.imgsize = max(10, imgsize)
         self.SetBackgroundColour("#CCBBAAA")
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
@@ -483,6 +486,7 @@ class ZoomPanel(wx.Panel):
         scale = max(0.10, min(0.98*fw/(ws+0.1), 0.98*fh/(hs+0.1)))
         self.scale = scale
 
+
         image = wx.Image(self.imgsize, self.imgsize, rgb.flatten())
         image = image.Scale(int(scale*ws), int(scale*hs))
         bitmap = wx.Bitmap(image)
@@ -492,3 +496,8 @@ class ZoomPanel(wx.Panel):
         dc = wx.AutoBufferedPaintDC(self)
         dc.Clear()
         dc.DrawBitmap(bitmap, pad_w, pad_h, useMask=True)
+
+        if self.sharpness_label is not None:
+            rgb = rgb.sum(axis=2)
+            sharpness = ((rgb - rgb.mean())**2).sum()/(fw*fh*rgb.mean())
+            self.sharpness_label.SetLabel("%.3f" % sharpness)
