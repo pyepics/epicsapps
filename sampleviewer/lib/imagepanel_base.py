@@ -13,7 +13,7 @@ import atexit
 from threading import Thread
 from six import StringIO
 import base64
-import zmq
+
 from PIL import Image
 
 from epics.wx.utils import  Closure, add_button
@@ -26,6 +26,11 @@ if is_wxPhoenix:
 else:
     Bitmap = wx.BitmapFromImage
 
+try:
+    import zmq
+    HAS_ZMQ = True
+except ImportError:
+    HAS_ZMQ = False     
 
 class JpegServer(object):
     def __init__(self, port=17166, delay=0.05):
@@ -124,7 +129,7 @@ class ImagePanel_Base(wx.Panel):
         self.full_size = None
         self.build_popupmenu()
 
-        self.publish_jpeg = publish_jpeg
+        self.publish_jpeg = publish_jpeg and HAS_ZMQ
         self.publisher = None
         if publish_jpeg:
             self.create_publisher(publish_delay, publish_port)
@@ -282,6 +287,8 @@ class ImagePanel_Base(wx.Panel):
                     method(*args, **kws)
 
     def create_publisher(self, delay, port):
+        if not HAS_ZMQ:
+            return
         self.publish_jpeg = True
         self.publish_delay = delay
         self.publisher = JpegServer(port=port)

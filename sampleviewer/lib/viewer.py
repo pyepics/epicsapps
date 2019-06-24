@@ -37,8 +37,13 @@ from .imagepanel_pyspin import ImagePanel_PySpin, ConfPanel_PySpin
 from .imagepanel_fly2 import ImagePanel_Fly2AD, ConfPanel_Fly2AD
 from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
 from .imagepanel_weburl import ImagePanel_URL, ConfPanel_URL
-from .imagepanel_zmqjpeg import ImagePanel_ZMQ, ConfPanel_ZMQ
-
+try:
+    from .imagepanel_zmqjpeg import ImagePanel_ZMQ, ConfPanel_ZMQ
+except ImportError:
+    ImagePanel_ZMQ = ImagePanel_URL 
+    ConfPanel_ZMQ = ConfPanel_URL
+    
+    
 ALL_EXP  = wx.ALL|wx.EXPAND|wx.GROW
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
 LEFT_CEN = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL
