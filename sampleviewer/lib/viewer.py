@@ -22,7 +22,8 @@ from epics.wx.utils import (add_menu, pack, Closure, popup,
                             NumericCombo, SimpleText, FileSave, FileOpen,
                             SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
-from wxutils import GridPanel, OkCancel
+from wxutils import (GridPanel, OkCancel, FloatSpin)
+
 from scipy.optimize import minimize
 
 from .configfile import StageConfig
@@ -46,6 +47,7 @@ LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
 
+txtstyle = wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
 def image_blurriness(imgpanel, full=False):
     """ get image blurriness of central half of intensity
@@ -180,18 +182,38 @@ class StageFrame(wx.Frame):
                                           config=config['stages'],
                                           autofocus=autofocus_cb)
 
-
             self.confpanel = ConfPanel(ppanel,
                                        image_panel=self.imgpanel, **opts)
 
-            self.zoompanel = ZoomPanel(ppanel, size=(325, 325), **opts)
-            self.imgpanel.zoompanel = self.zoompanel
+            zpanel = wx.Panel(ppanel)
+            zlab1 = wx.StaticText(zpanel, label='ZoomBox size (\u03bCm):',
+                                  size=(150, -1), style=txtstyle)
+            zlab2 = wx.StaticText(zpanel, label='ZoomBox Sharpness:',
+                                  size=(150, -1), style=txtstyle)
+            zsharp = wx.StaticText(zpanel, label='=',
+                                  size=(100, -1), style=txtstyle)
+            self.zoomsize = FloatSpin(zpanel, value=150, min_val=5, increment=5,
+                                      action=self.onZoomSize,
+                                      size=(80, -1), style=txtstyle)
+            self.imgpanel.zoompanel = ZoomPanel(zpanel, imgsize=150,
+                                                size=(275, 275),
+                                                sharpness_label=zsharp,
+                                                **opts)
+            zsizer = wx.GridBagSizer(2, 2)
+            zsizer.Add(zlab1,         (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            zsizer.Add(self.zoomsize, (0, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            zsizer.Add(zlab2,         (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            zsizer.Add(zsharp,        (1, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            zsizer.Add(self.imgpanel.zoompanel, (2, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
+            zpanel.SetSizer(zsizer)
+            zsizer.Fit(zpanel)
+
             msizer = wx.GridBagSizer(2, 2)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            msizer.Add(self.zoompanel, (2, 0), (1, 1), LEFT_TOP, 2)
+            msizer.Add(zpanel,         (2, 0), (1, 1), ALL_EXP|LEFT_TOP, 2)
             msizer.Add(self.pospanel,  (0, 1), (3, 1), ALL_EXP|LEFT_TOP, 2)
-            msizer.Add((20, 20),       (3, 0), (2, 1), ALL_EXP|LEFT_TOP, 2)
+            # msizer.Add((20, 20),       (3, 0), (2, 1), ALL_EXP|LEFT_TOP, 2)
 
             pack(ppanel, msizer)
 
@@ -247,6 +269,10 @@ class StageFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.onInitTimer, self.init_timer)
         self.init_timer.Start(1000)
 
+    def onZoomSize(self, event=None):
+        cal = min(10, abs(self.cam_calibx))
+        self.imgpanel.zoompanel.imgsize = int(self.zoomsize.GetValue()/cal)
+
     def OnPaneChanged(self, evt=None):
         self.Layout()
         if self.cpanel.IsExpanded():
@@ -301,6 +327,7 @@ class StageFrame(wx.Frame):
                                       style=wx.SOLID, color=xcol, args=xargs))
 
                 self.imgpanel.draw_objects = dobjs
+                self.onZoomSize()
             self.init_timer.Stop()
 
     def onChangeCamera(self, evt=None):
