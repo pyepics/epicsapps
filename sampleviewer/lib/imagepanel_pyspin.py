@@ -10,7 +10,9 @@ from epics.wx import EpicsFunction
 
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 from epics.wx.utils import pack, FloatCtrl, Closure, add_button
-from epics.wx import DelayedEpicsCallback
+from epics.wx import DelayedEpicsCallback, EpicsFunction
+
+from wxutils import FloatSpin
 
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
@@ -134,12 +136,14 @@ class ImagePanel_PySpin(ImagePanel_Base):
 
 class ConfPanel_PySpin(ConfPanel_Base):
     def __init__(self, parent, image_panel=None, camera_id=0,
-                 center_cb=None, xhair_cb=None, **kws):
+                 center_cb=None, xhair_cb=None, lamp=None, **kws):
         super(ConfPanel_PySpin, self).__init__(parent, center_cb=center_cb,
                                              xhair_cb=xhair_cb, **kws)
         self.image_panel = image_panel
         self.camera_id = camera_id
         self.camera = self.image_panel.camera
+        self.lamp = lamp
+
         wids = self.wids
         sizer = self.sizer
         with_color_conv = False
@@ -224,11 +228,31 @@ class ConfPanel_PySpin(ConfPanel_Base):
 #             sizer.Add(wids['color_conv'],       (i, 1), (1, 1), LEFT)
 
         sizer.Add(btn_start,          (i, 0), (1, 2), LEFT)
+        if self.lamp is not None:
+            i += 1
+            self.lampval = FloatSpin(self, value=1.5, digits=2,
+                                min_val=self.lamp['min_val'],
+                                max_val=self.lamp['max_val'],
+                                increment=self.lamp['step'],
+                                action=self.onLampVal,
+                                size=(80, -1),
+                                style=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER)
+            self.lamp_pv = PV(self.lamp['ctrl_pv'])
+
+            sizer.Add(self.txt('Lamp Intensity:'), (i, 0), (1, 1), LEFT)
+            sizer.Add(self.lampval,                (i, 1), (1, 1), LEFT)
+
+
         pack(self, sizer)
         self.__initializing = False
         self.read_props_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.read_props_timer)
         wx.CallAfter(self.onConnect)
+
+    # @EpicsFunction
+    def onLampVal(self, evt=None):
+        print("Set Lamp PV ", float(self.lampval.GetValue()))
+        self.lamp_pv.put(float(self.lampval.GetValue()))
 
     def onRestart(self, event=None, **kws):
         self.camera.cam.EndAcquisition()

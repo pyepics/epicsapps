@@ -40,10 +40,10 @@ from .imagepanel_weburl import ImagePanel_URL, ConfPanel_URL
 try:
     from .imagepanel_zmqjpeg import ImagePanel_ZMQ, ConfPanel_ZMQ
 except ImportError:
-    ImagePanel_ZMQ = ImagePanel_URL 
+    ImagePanel_ZMQ = ImagePanel_URL
     ConfPanel_ZMQ = ConfPanel_URL
-    
-    
+
+
 ALL_EXP  = wx.ALL|wx.EXPAND|wx.GROW
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
 LEFT_CEN = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL
@@ -136,9 +136,11 @@ class StageFrame(wx.Frame):
                     motion_cb=self.onPixelMotion,
                     xhair_cb=self.onShowCrosshair,
                     center_cb=self.onMoveToCenter,
-                    autosave_file=self.autosave_file)
+                    autosave_file=self.autosave_file,
+                    lamp=self.lamp)
 
         autofocus_cb = self.onAutoFocus
+
 
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
@@ -162,9 +164,6 @@ class StageFrame(wx.Frame):
             ImagePanel, ConfPanel = ImagePanel_ZMQ, ConfPanel_ZMQ
             opts['host'] = self.cam_zmqhost
             opts['port'] = self.cam_zmqport
-        # print('Image Panel ', ImagePanel, self.cam_zmqpush)
-        # for k, v in opts.items():
-        #    print(k, v)
 
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
@@ -536,6 +535,16 @@ class StageFrame(wx.Frame):
         self.cam_zmqpush = cam.get('zmq_push', 'False').lower() not in ('false', 'no', '0')
         self.get_cam_calib()
 
+        self.lamp = None
+        lamp = self.config.get('lamp', None)
+        if lamp is not None:
+            ctrl_pv = lamp.get('ctrl_pv', None)
+            min_val = lamp.get('min_val', 0.0)
+            max_val = lamp.get('max_val', 5.0)
+            step    = lamp.get('step', 0.25)
+            self.lamp = dict(ctrl_pv=ctrl_pv, min_val=min_val, max_val=max_val, step=step)
+        # print(" LAMP : ", lamp)
+        self.imgdir     = cam.get('image_folder', 'Sample_Images')
         try:
             pref = self.imgdir.split('_')[0]
         except:

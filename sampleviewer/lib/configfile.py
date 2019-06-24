@@ -71,6 +71,7 @@ conf_sects = {'gui': {'bools': ('verify_move','verify_erase', 'verify_overwrite'
               'camera': {'ordered':False},
               'stages': {'ordered':True},
               'overlays': {'ordered':True},
+              'lamp': {'ordered':True},
               'scandb': {'ordered':True},
               'offline': {'ordered':True},
               'positions': {'ordered':True} }
@@ -87,6 +88,7 @@ conf_objs = OrderedDict( (('gui', ('title', 'workdir_file', 'icon_file',
                                       'host', 'user', 'password', 'port')),
                           ('offline', ('instrument', 'xyz_offline', 'xyz_online')),
                           ('overlays', ('circle', 'scalebar')),
+                          ('lamp', None),
                           ('stages', None),
                           ('positions', None) ) )
 
