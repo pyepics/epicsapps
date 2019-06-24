@@ -84,7 +84,7 @@ class ImagePanel_Base(wx.Panel):
         raise NotImplementedError('must provide AutoSetExposure')
 
     def __init__(self, parent, camera_id=0, writer=None, output_pv=None,
-                 leftdown_cb=None, motion_cb=None, publish_jpeg=True,
+                 leftdown_cb=None, motion_cb=None, publish_jpeg=False,
                  publish_delay=0.2, publish_port=17166, draw_objects=None,
                  zoompanel=None, **kws):
 
