@@ -30,7 +30,7 @@ try:
     import zmq
     HAS_ZMQ = True
 except ImportError:
-    HAS_ZMQ = False     
+    HAS_ZMQ = False
 
 class JpegServer(object):
     def __init__(self, port=17166, delay=0.05):
@@ -506,5 +506,5 @@ class ZoomPanel(wx.Panel):
 
         if self.sharpness_label is not None:
             rgb = rgb.sum(axis=2)
-            sharpness = ((rgb - rgb.mean())**2).sum()/(fw*fh*rgb.mean())
+            sharpness = ((rgb - rgb.mean())**2).mean()
             self.sharpness_label.SetLabel("%.3f" % sharpness)
