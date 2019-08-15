@@ -20,7 +20,7 @@ from datetime import datetime
 from .utils import backup_versions, save_backup, get_pvtypes, normalize_pvname
 from .creator import make_newdb
 
-from sqlalchemy import MetaData, create_engine, and_
+from sqlalchemy import MetaData, create_engine, and_, text
 from sqlalchemy.orm import sessionmaker,  mapper, clear_mappers, relationship
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import  NoResultFound
@@ -314,7 +314,7 @@ class InstrumentDB(object):
         if len(vals) < 1:
             table.insert().execute(key=key, value=value)
         else:
-            table.update(whereclause="key='%s'" % key).execute(value=value)
+            table.update(whereclause=text("key='%s'" % key)).execute(value=value)
 
     def set_hostpid(self, clear=False):
         """set hostname and process ID, as on intial set up"""
@@ -432,7 +432,7 @@ arguments
             if out is not None:
                 # update pv name to end in '.VAL' here!
                 idx = out[0].id
-                self.tables['pv'].update(whereclause="id=%i" % idx).execute(name="%s.VAL" % name)
+                self.tables['pv'].update(whereclause=text("id=%i" % idx)).execute(name="%s.VAL" % name)
             ret = None_or_one(out, 'get_pv expected 1 or None PV')
         return ret
 
