@@ -1,7 +1,7 @@
 # This database contains fields used to calculate ion chamber currents
 grecord(stringin,"$(P)$(Q):Amp") {
-	field(DESC, "IonChSRS570 Amp")
-	field(VAL,  "13IDC:A1")
+	field(DESC, "IonCh SRS570 Amp")
+	field(VAL,  "xxx:A1")
 }
 
 grecord(stringin,"$(P)$(Q):Desc") {
