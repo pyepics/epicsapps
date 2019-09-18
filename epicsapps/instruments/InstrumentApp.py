@@ -11,7 +11,7 @@ import wx
 import wx.lib.agw.flatnotebook as flat_nb
 import wx.lib.mixins.inspection
 import wx.lib.agw.advancedsplash as AS
-
+import wx.adv
 
 import epics
 from epics.wx import finalize_epics, EpicsFunction
@@ -402,7 +402,7 @@ class InstrumentFrame(wx.Frame):
 
     def onAbout(self, event=None):
         # First we create and fill the info object
-        info = wx.AboutDialogInfo()
+        info = wx.adv.AboutDialogInfo()
         info.Name = "Epics Instruments"
         info.Version = "0.5"
         info.Copyright = "2019, Matt Newville, University of Chicago"
@@ -412,8 +412,7 @@ class InstrumentFrame(wx.Frame):
         For each Instrument, any number of Positions can be
         saved and later restored simply by selecting that name.
         """
-
-        wx.AboutBox(info)
+        wx.adv.AboutBox(info)
 
     def onOpen(self, event=None):
         dbname = FileOpen(self, 'Open Instrument File',
