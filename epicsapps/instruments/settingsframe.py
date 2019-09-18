@@ -111,9 +111,8 @@ class SettingsFrame(wx.Frame) :
             self.db.set_info('epics_use',    1)
             self.parent.enable_epics_server()
         elif not self.epics_use.IsChecked():
-            self.parent.server_timer.Stop()
-
-
+            if self.parent.server_timer is not None:
+                self.parent.server_timer.Stop()
         self.Destroy()
 
     def OnCancel(self, event=None):

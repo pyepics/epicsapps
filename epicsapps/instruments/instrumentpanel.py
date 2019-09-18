@@ -222,22 +222,20 @@ class InstrumentPanel(wx.Panel):
         self.inst_title = SimpleText(toprow,  ' %s ' % inst.name,
                                      font=titlefont,
                                      colour=colors.title,
-                                     minsize=(150, -1),
-                                     style=wx.ALIGN_LEFT|wx.ALIGN_BOTTOM)
+                                     minsize=(175, -1),
+                                     style=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
 
-
-        self.pos_name =  wx.TextCtrl(toprow, value="", size=(250, 25),
+        self.pos_name =  wx.TextCtrl(toprow, value="", size=(300, 25),
                                      style= wx.TE_PROCESS_ENTER)
         self.pos_name.Bind(wx.EVT_TEXT_ENTER, self.onSavePosition)
 
         topsizer = wx.BoxSizer(wx.HORIZONTAL)
-        topsizer.Add(self.inst_title, 0, wx.ALIGN_CENTER|wx.ALIGN_CENTER_VERTICAL, 1)
-        topsizer.Add(SimpleText(toprow, 'Save Current Position:',
-                                minsize=(180, -1),
-                                style=wx.ALIGN_CENTER), 1,
-                     wx.ALIGN_CENTER_VERTICAL|wx.ALL, 1)
+        topsizer.Add(self.inst_title, 1, wx.ALIGN_CENTER|wx.ALIGN_CENTER_VERTICAL, 1)
+        topsizer.Add(SimpleText(toprow, 'Save Position:', size=(150, -1),
+                                style=wx.ALIGN_RIGHT), 0,
+                     wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 1)
 
-        topsizer.Add(self.pos_name, 0,
+        topsizer.Add(self.pos_name, 1,
                      wx.GROW|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 1)
 
         pack(toprow, topsizer)
@@ -274,7 +272,7 @@ class InstrumentPanel(wx.Panel):
 
         self.pos_list.Clear()
         for pos in inst.positions:
-            self.pos_list.Append(pos.name)o
+            self.pos_list.Append(pos.name)
 
         rsizer.Add(brow,          0, wx.ALIGN_LEFT|wx.ALL)
         rsizer.Add(self.pos_list, 1, wx.EXPAND|wx.ALIGN_CENTER, 1)
