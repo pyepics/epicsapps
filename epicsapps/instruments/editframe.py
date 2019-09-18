@@ -86,8 +86,6 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
         titlefont.PointSize += 1
         titlefont.SetWeight(wx.BOLD)
 
-        panel.SetBackgroundColour(colors.bg)
-
         self.parent = parent
         self.page = page
         self.db = db
@@ -204,8 +202,6 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         titlefont  = font
         titlefont.PointSize += 1
         titlefont.SetWeight(wx.BOLD)
-
-        panel.SetBackgroundColour(self.colors.bg)
 
         self.parent = parent
         self.db = db
@@ -500,6 +496,110 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
             opv.display_order = i
             i = i + 1
         db.commit()
+
+        self.Destroy()
+
+    def onCancel(self, event=None):
+        self.Destroy()
+
+class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
+    """ Edit / Add Instrument"""
+    def __init__(self, parent, page, pos=(-1, -1)):
+        self.parent = parent
+        self.db = db = parent.db
+        self.page = page
+        inst = page.inst
+
+        if inst is None:
+            return
+        title = "Erase Positions for '%s'" % inst.name
+
+        style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
+        wx.Frame.__init__(self, None, -1, title, size=(350, 450),
+                          style=style, pos=pos)
+        self.Handle_FocusEvents()
+        panel = scrolled.ScrolledPanel(self, size=(400, 500),
+                                       style=wx.GROW|wx.TAB_TRAVERSAL)
+
+        colors = GUIColors()
+        font = self.GetFont()
+        if parent is not None:
+            font = parent.GetFont()
+        titlefont  = font
+        titlefont.PointSize += 1
+        titlefont.SetWeight(wx.BOLD)
+
+
+        self.inst = db.get_instrument(inst)
+        posnames = [p.name for p in db.get_positions(inst)]
+
+        ALL_EXP  = wx.ALL|wx.EXPAND
+        CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
+        LEFT_CEN = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL
+
+        self.checkboxes = {}
+        sizer = wx.GridBagSizer(len(posnames)+5, 4)
+        sizer.SetVGap(2)
+        sizer.SetHGap(3)
+        bkws = dict(size=(125, -1))
+        btn_ok     = add_button(panel, "Erase Selected",   action=self.onOK, **bkws)
+        btn_all    = add_button(panel, "Select All",    action=self.onAll, **bkws)
+        btn_none   = add_button(panel, "Select None",   action=self.onNone,  **bkws)
+
+        brow = wx.BoxSizer(wx.HORIZONTAL)
+        brow.Add(btn_all ,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        brow.Add(btn_none,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
+        brow.Add(btn_ok ,   0, ALL_EXP|wx.ALIGN_LEFT, 1)
+
+        sizer.Add(SimpleText(panel, ' Note: Erasing Positions Cannot be Undone!',
+                             colour=wx.Colour(200, 0, 0)), (1, 0), (1, 2),  LEFT_CEN, 2)
+
+
+        sizer.Add(brow,   (2, 0), (1, 3),  LEFT_CEN, 2)
+
+        sizer.Add(SimpleText(panel, ' Position Name'), (3, 0), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, 'Erase?'),         (3, 1), (1, 1),  LEFT_CEN, 2)
+        sizer.Add(wx.StaticLine(panel, size=(500, 2)), (4, 0), (1, 4),  LEFT_CEN, 2)
+
+        irow = 4
+        for ip, pname in enumerate(posnames):
+            cbox = self.checkboxes[pname] = wx.CheckBox(panel, -1, "")
+            cbox.SetValue(False)
+            irow += 1
+            sizer.Add(SimpleText(panel, "  %s  "%pname), (irow, 0), (1, 1),  LEFT_CEN, 2)
+            sizer.Add(cbox,                              (irow, 1), (1, 1),  LEFT_CEN, 2)
+        irow += 1
+        sizer.Add(wx.StaticLine(panel, size=(500, 2)), (irow, 0), (1, 4),  LEFT_CEN, 2)
+
+        pack(panel, sizer)
+        panel.SetMinSize((700, 550))
+
+        panel.SetupScrolling()
+
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
+        mainsizer.Add(panel, 1,  ALL_EXP|wx.GROW|wx.ALIGN_LEFT, 1)
+        pack(self, mainsizer)
+
+        self.SetMinSize((700, 550))
+        self.Raise()
+        self.Show()
+
+    def onAll(self, event=None):
+        for cbox in self.checkboxes.values():
+            cbox.SetValue(True)
+
+    def onNone(self, event=None):
+        for cbox in self.checkboxes.values():
+            cbox.SetValue(False)
+
+    def onOK(self, event=None):
+        if self.inst is not None and self.db is not None:
+            for pname, cbox in self.checkboxes.items():
+                if cbox.IsChecked():
+                     self.db.remove_position(pname, self.inst)
+        self.page.pos_list.Clear()
+        for pos in self.inst.positions:
+            self.page.pos_list.Append(pos.name)
 
         self.Destroy()
 
