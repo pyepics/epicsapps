@@ -16,8 +16,11 @@ try:
 except ImportError:
     pass
 
+here, _ = os.path.split(__file__)
+icondir = os.path.join(here, 'icons')
+
 def use_mpl_wxagg():
-    """import matplotlib, set backend to wxAgg"""
+    """import matplotlib, set backend to WXAgg"""
     if HAS_WXPYTHON:
         try:
             import matplotlib
@@ -72,16 +75,14 @@ class EpicsApp:
 
     def create_shortcut(self):
         script =os.path.join(self.bindir, self.script)
-        try:
-            scut = make_shortcut(script, name=self.name,
-                                 icon=os.path.join(icondir, self.icon),
-                                 terminal=self.terminal,
-                                 folder=self.folder)
+        scut = make_shortcut(script, name=self.name,
+                             icon=os.path.join(icondir, self.icon),
+                             terminal=self.terminal,
+                             folder=self.folder)
 
-            if platform == 'linux':
-                os.chmod(scut.target, 493)
-        except:
-            print("Warning: could not create shortcut to ", script)
+        if platform == 'linux':
+            os.chmod(scut.target, 493)
+
         if platform == 'darwin' and HAS_CONDA:
             try:
                 fix_darwin_shebang(script)
@@ -89,8 +90,8 @@ class EpicsApp:
                 print("Warning: could not fix Mac exe for ", script)
 
 APPS = (EpicsApp('Instruments', 'instruments', icon='instruments'),
-        EpicsApp('Sample Viewer', 'sampleviewer', icon='microscope'),
-        EpicsApp('EpicsApps', 'epicsapps', terminal=True, icon='epics'))
+        EpicsApp('Sample Viewer', 'sampleviewer', icon='microscope'))
+        # EpicsApp('EpicsApps', 'epicsapps', terminal=True, icon='epics'))
 
 
 def make_desktop_shortcuts():
