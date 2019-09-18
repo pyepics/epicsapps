@@ -34,7 +34,8 @@ from .pvconnector import EpicsPVList
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON|flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS
 FNB_STYLE |= flat_nb.FNB_DROPDOWN_TABS_LIST|flat_nb.FNB_NO_NAV_BUTTONS
 
-ICON_FILE = 'instrument.ico'
+thisdir, _ = os.path.split(__file__)
+ICON_FILE = os.path.join(thisdir, '..', 'icons', 'instrument.ico')
 
 FILE_IN_USE_MSG = """The instrument file  %s
 may be in use:
@@ -153,10 +154,8 @@ class InstrumentFrame(wx.Frame):
         self.SetMinSize((875, 350))
 
         pack(self, sizer)
-        try:
-            self.SetIcon(wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO))
-        except:
-            pass
+        self.SetIcon(wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO))
+
         self.Refresh()
 
     def create_nbpages(self):
