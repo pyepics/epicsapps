@@ -268,7 +268,8 @@ class InstrumentPanel(wx.Panel):
         brow.Add(btn_erase,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
 
         self.pos_list  = wx.ListBox(rpanel, size=(225, -1))
-        self.pos_list.SetBackgroundColour((230, 230, 230))
+        self.pos_list.SetBackgroundColour((240, 240, 240))
+        self.pos_list.SetForegroundColour((10, 10, 10))
         self.pos_list.Bind(wx.EVT_RIGHT_DOWN, self.onRightClick)
         self.pos_list.Bind(wx.EVT_LISTBOX, self.onPosSelect)
         self.pos_list.Bind(wx.EVT_LEFT_DCLICK, self.OnMove)
@@ -289,7 +290,6 @@ class InstrumentPanel(wx.Panel):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(splitter, 1, wx.GROW|wx.ALL, 0)
-
 
         pack(self, sizer)
         self.redraw_leftpanel()

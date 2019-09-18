@@ -20,6 +20,7 @@ from epics.wx.utils import  (empty_bitmap, add_button, add_menu, pack, popup,
 
 from .configfile import InstrumentConfig
 from .instrument import isInstrumentDB, InstrumentDB
+from .creator import make_newdb
 
 from .utils import GUIColors, ConnectDialog, set_font_with_children, EIN_WILDCARD
 from .instrumentpanel import InstrumentPanel
@@ -47,14 +48,13 @@ Would you like this application to use this instrument file?
 
 class InstrumentFrame(wx.Frame):
     def __init__(self, parent=None, conf=None, dbname=None,
-                 server='sqlite', user='', password='', host='', port=None,
-                 **kwds):
+                 server='sqlite', user='', password='', host='',
+                 port=None, **kwds):
         self.config = InstrumentConfig(name=conf)
-        
+
         wx.Frame.__init__(self, parent=parent, title='Epics Instruments',
                           size=(925, -1), **kwds)
 
-        # splash = AS.AdvancedSplash(self, timeout=5000
         t0 = self.t0 = time.time()
 
         self.pvlist = EpicsPVList(self)
@@ -62,8 +62,7 @@ class InstrumentFrame(wx.Frame):
         self.db, self.dbname = self.connect_db(dbname, server=server,
                                                host=host, port=port,
                                                user=user, password=password)
-        print("Connected to ", self.db.engine)
-        
+
         if self.db is None:
             return
         self.connected = {}
@@ -85,30 +84,35 @@ class InstrumentFrame(wx.Frame):
     def connect_db(self, dbname=None, new=False, server='sqlite',
                    user='', password='', host='', port=None):
         """connects to a db, possibly creating a new one"""
-        dlg = None
-        # print("connect db top %.3f sec " % (time.time()-self.t0))
         if dbname is None:
             filelist = self.config.get_dblist()
             if new:
                 filelist = None
             dlg = ConnectDialog(filelist=filelist)
-            dlg.Raise()
-            if dlg.ShowModal() == wx.ID_OK:
-                dbname = dlg.filebrowser.GetValue()
-                if not dbname.endswith('.ein'):
-                    dbname = "%s.ein" % dbname
-            else:
-                # print(" ... Dlg Destroy")
-                dlg.Destroy()
-                return None, dbname
+            response = dlg.GetResponse()
+            dlg.Destroy()
+            if not response.ok:
+                return None, response.dbname
+
+            server = response.server
+            host = response.host
+            port = response.port
+            user = response.user
+            password = response.password
+            dbname = response.dbname
+            if (response.server.startswith('sqlite') and
+                not dbname.endswith('.ein')):
+                dbname = "%s.ein" % dbname
+
+        if (server.startswith('sqlite') and
+            not os.path.exists(dbname)):
+            make_newdb(dbname)
+            time.sleep(0.25)
 
         db = InstrumentDB(dbname=dbname, server=server, user=user,
                           password=password, host=host, port=port)
-        # print("connect db %.3f sec " % (time.time()-self.t0))
-        # print(" Instruments:  ",  isInstrumentDB(dbname))
-        # for inst in db.get_all_instruments():
-        #    print("##  ", inst)
-        if server=='sqlite':
+
+        if server.startswith('sqlite'):
             if isInstrumentDB(dbname):
                 db.connect(dbname)
                 set_hostpid = True
@@ -126,14 +130,9 @@ class InstrumentFrame(wx.Frame):
             else:
                 db.create_newdb(dbname, connect=True)
             self.config.set_current_db(dbname)
-        if dlg is not None:
-            dlg.message.SetLabel("Connecting to Epics PVs in database")
 
-        # print("connect to PVs ", len(db.get_allpvs()))
         for pv in db.get_allpvs():
-            self.pvlist.init_connect(pv.name) # , is_motor=(4==pv.pvtype_id))
-
-        # print(" --> ", len(self.pvlist.in_progress))
+            self.pvlist.init_connect(pv.name)
         return db, dbname
 
     def create_Frame(self):
@@ -397,8 +396,8 @@ class InstrumentFrame(wx.Frame):
         # First we create and fill the info object
         info = wx.AboutDialogInfo()
         info.Name = "Epics Instruments"
-        info.Version = "0.4"
-        info.Copyright = "2013, Matt Newville, University of Chicago"
+        info.Version = "0.5"
+        info.Copyright = "2019, Matt Newville, University of Chicago"
         info.Description = """
         Epics Instruments is an application to manage Epics PVs.
         An Instrument is defined as a collection of Epics PV.
@@ -422,20 +421,17 @@ class InstrumentFrame(wx.Frame):
             self.config.write()
             self.create_nbpages()
 
-#     def onNew(self, event=None):
-#         fname = FileOpen(self, 'New Instrument File',
-#                          wildcard=EIN_WILDCARD,
-#                          default_file=self.dbname)
-#
-#         self.db.close()
-#         time.sleep(1)
-#         self.dbname = fname
-#
-#         self.connect_db(dbname=fname, new=True)
-#         self.config.set_current_db(fname)
-#         self.config.write()
-#         self.create_nbpages()
-#
+    def onNew(self, event=None):
+        fname = FileOpen(self, 'New Instrument File',
+                         wildcard=EIN_WILDCARD,
+                         default_file=self.dbname)
+        self.db.close()
+        time.sleep(1)
+        self.dbname = fname
+        self.connect_db(dbname=fname, new=True)
+        self.config.set_current_db(fname)
+        self.config.write()
+        self.create_nbpages()
 
     def onSave(self, event=None):
         outfile = FileSave(self, 'Save Instrument File As',

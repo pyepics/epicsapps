@@ -25,8 +25,6 @@ from sqlalchemy.orm import sessionmaker,  mapper, clear_mappers, relationship
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import  NoResultFound
 from sqlalchemy.pool import SingletonThreadPool
-
-# needed for py2exe?
 import sqlalchemy.dialects.sqlite
 
 # import logging
@@ -247,7 +245,6 @@ class InstrumentDB(object):
             pass
 
         mapper(Info,     tables['info'])
-        # mapper(Command,  tables['command'])
         mapper(PV,       tables['pv'])
 
         mapper(Instrument, tables['instrument'],
@@ -271,16 +268,6 @@ class InstrumentDB(object):
         mapper(Position_PV, tables['position_pv'],
                properties={'pv':relationship(PV)})
 
-#         mapper(Instrument_Precommand,  tables['instrument_precommand'],
-#                properties={'instrument': relationship(Instrument,
-#                                                       backref='precommands'),
-#                            'command':   relationship(Command,
-#                                                      backref='inst_precoms')})
-#         mapper(Instrument_Postcommand,   tables['instrument_postcommand'],
-#                properties={'instrument': relationship(Instrument,
-#                                                       backref='postcommands'),
-#                            'command':   relationship(Command,
-#                                                      backref='inst_postcoms')})
 
     def commit(self):
         "commit session state"

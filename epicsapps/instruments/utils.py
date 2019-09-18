@@ -1,11 +1,17 @@
-import wx
-import wx.lib.filebrowsebutton as filebrowse
 import os
 import shutil
 import time
+from collections import namedtuple
+import wx
+import wx.lib.filebrowsebutton as filebrowse
+
 import epics
 
-from epics.wx.utils import  SimpleText, pack
+
+from wxutils import (GridPanel, BitmapButton, FloatCtrl, FloatSpin,
+                     FloatSpinWithPin, get_icon, SimpleText, Choice,
+                     SetTip, Check, Button, HLine, OkCancel, LCEN,
+                     RCEN, pack)
 
 FileBrowser = filebrowse.FileBrowseButtonWithHistory
 
@@ -114,7 +120,6 @@ def set_font_with_children(widget, font, dsize=None):
     for child in widget.GetChildren():
         set_font_with_children(child, font, dsize=dsize)
 
-
 class GUIColors(object):
     def __init__(self):
         self.bg = wx.Colour(240,240,230)
@@ -153,25 +158,24 @@ class YesNo(wx.Choice):
             self.SetSelection(self.choices.index(choice))
 
 class ConnectDialog(wx.Dialog):
-    """Connect to a recent or existing DB File, or create a new one"""
-    msg = '''Select Recent Instrument File, or type a new file name to create a new Instrument File'''
+    """
+    Connect to a recent or existing DB File, or create a new one
+    """
+    msg = """Select Instruments SQLite File or Connect to PostgresQL DB"""
     def __init__(self, parent=None, filelist=None,
-                 title='Select Instruments File'):
+                 title='Select Instruments Database'):
 
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title)
-
-        #panel = wx.Panel(self)
-        self.colors = GUIColors()
-        self.SetBackgroundColour(self.colors.bg)
-        if parent is not None:
-            self.SetFont(parent.GetFont())
-
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(525, 450),
+                           title=title)
         flist = []
         for fname in filelist:
             if os.path.exists(fname):
                 flist.append(fname)
 
-        self.filebrowser = FileBrowser(self, size=(600, -1))
+        self.server = Choice(self, choices=('SQLite', 'PostgresQL'),
+                             size=(200, -1), action=self.onServer)
+
+        self.filebrowser = FileBrowser(self, size=(400, -1))
         self.filebrowser.SetHistory(flist)
         self.filebrowser.SetLabel('File:')
         self.filebrowser.fileMask = EIN_WILDCARD
@@ -179,31 +183,79 @@ class ConnectDialog(wx.Dialog):
         if filelist is not None:
             self.filebrowser.SetValue(filelist[0])
 
-        self.message = SimpleText(self, 'Select DB File', size=(500,-1))
+        panel = GridPanel(self, ncols=5, nrows=6, pad=3,
+                          itemstyle=wx.ALIGN_LEFT)
 
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(self.message, 0, wx.ALIGN_CENTER|wx.ALL|wx.GROW, 1)
-        sizer.Add(self.filebrowser, 1, wx.ALIGN_CENTER|wx.ALL|wx.GROW, 1)
+        panel.Add(SimpleText(self, ' Database Type:'), dcol=1, newrow=True)
+        panel.Add(self.server, dcol=3)
 
-        line = wx.StaticLine(self, -1, size=(20,-1), style=wx.LI_HORIZONTAL)
-        sizer.Add(line, 0, wx.GROW|wx.ALIGN_CENTER_VERTICAL|wx.RIGHT|wx.TOP, 5)
+        panel.Add(HLine(self, size=(400, -1)), dcol=5, newrow=True)
+
+        panel.Add(SimpleText(self, ' SQLite database file'), dcol=2, newrow=True)
+        panel.Add(self.filebrowser, dcol=3, newrow=True)
+
+        panel.Add(HLine(self, size=(400, -1)), dcol=5, newrow=True)
+        panel.Add(SimpleText(self, ' PostgresQL database connection'),
+                  dcol=3, newrow=True)
+
+        self.dbname = wx.TextCtrl(self, -1, '', size=(200, -1))
+        self.host = wx.TextCtrl(self, -1, '', size=(200, -1))
+        self.port = wx.TextCtrl(self, -1, '5432', size=(200, -1))
+        self.user = wx.TextCtrl(self, -1, '', size=(200, -1))
+        self.password = wx.TextCtrl(self, -1, '', size=(200, -1))
+
+        panel.Add(SimpleText(self, ' Database Name:'), newrow=True)
+        panel.Add(self.dbname)
+        panel.Add(SimpleText(self, ' Host:'), newrow=True)
+        panel.Add(self.host)
+        panel.Add(SimpleText(self, ' Port:'), newrow=True)
+        panel.Add(self.port)
+        panel.Add(SimpleText(self, ' User:'), newrow=True)
+        panel.Add(self.user)
+        panel.Add(SimpleText(self, ' Password:'), newrow=True)
+        panel.Add(self.password)
 
         btnsizer = wx.StdDialogButtonSizer()
-
-        if wx.Platform != "__WXMSW__":
-            btn = wx.ContextHelpButton(self)
-            btnsizer.AddButton(btn)
-
-        btn = wx.Button(self, wx.ID_OK)
-        btn.SetHelpText("Use this Instruments File")
-        btn.SetDefault()
-        btnsizer.AddButton(btn)
-
-        btn = wx.Button(self, wx.ID_CANCEL)
-        btnsizer.AddButton(btn)
+        btnsizer.AddButton(wx.Button(self, wx.ID_OK))
+        btnsizer.AddButton(wx.Button(self, wx.ID_CANCEL))
         btnsizer.Realize()
 
-        sizer.Add(btnsizer, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 5)
+        panel.Add(HLine(self, size=(400, -1)), dcol=5, newrow=True)
+        panel.Add(btnsizer, dcol=3, newrow=True)
+        panel.pack()
+        self.onServer(server='sqlite')
 
-        self.SetSizer(sizer)
-        sizer.Fit(self)
+
+    def onServer(self, event=None, server=None, **kws):
+        if server is None:
+            server = self.server.GetStringSelection().lower()
+
+        is_pg = server.startswith('postgres')
+        self.filebrowser.Enable(not is_pg)
+        self.dbname.Enable(is_pg)
+        self.host.Enable(is_pg)
+        self.port.Enable(is_pg)
+        self.user.Enable(is_pg)
+        self.password.Enable(is_pg)
+
+    def GetResponse(self, newname=None):
+        self.Raise()
+        response = namedtuple('dbconnect', ('ok', 'server',
+                                            'dbname', 'host', 'port',
+                                            'user', 'password'))
+        ok = False
+        server, dbname, host, port, user, password = ['']*6
+        if self.ShowModal() == wx.ID_OK:
+            ok = True
+            server = self.server.GetStringSelection().lower()
+            dbname = self.dbname.GetValue()
+            if server.startswith('sqlite'):
+                dbname = self.filebrowser.GetValue()
+            else:
+                host = self.host.GetValue()
+                port = self.port.GetValue()
+                user = self.user.GetValue()
+                password = self.password.GetValue()
+
+        return response(ok, server, dbname,
+                        host, port, user, password)
