@@ -2,7 +2,8 @@ import os
 import sys
 import numpy
 import time
-from pyshortcuts import make_shortcut, get_homedir
+from pyshortcuts import make_shortcut
+from pyshortcuts.utils import get_homedir
 from pyshortcuts.shortcut import Shortcut
 
 # from .utils import icondir, home_dir, uname
@@ -75,10 +76,10 @@ class EpicsApp:
     def create_shortcut(self):
         script =os.path.join(self.bindir, self.script)
         try:
-            scut = Shortcut(script, name=self.name, folder=self.folder)
-            make_shortcut(script, name=self.name,
-                          icon=os.path.join(icondir, self.icon),
-                          terminal=self.terminal, folder=self.folder)
+            scut = make_shortcut(script, name=self.name,
+                                 icon=os.path.join(icondir, self.icon),
+                                 terminal=self.terminal,
+                                 folder=self.folder)
 
             if uname == 'linux':
                 os.chmod(scut.target, 493)
@@ -90,17 +91,8 @@ class EpicsApp:
             except:
                 print("Warning: could not fix Mac exe for ", script)
 
-
-APPS = (EpicsApp('Larch CLI', 'larch', terminal=True),
-        LarchApp('Larch GUI', 'larch --wxgui'),
-        LarchApp('XAS Viewer',  'xas_viewer',  icon='onecone'),
-        LarchApp('GSE Mapviewer', 'gse_mapviewer',  icon='gse_xrfmap'),
-        LarchApp('GSE DTCorrect', 'gse_dtcorrect'),
-        LarchApp('XRF Display',  'xrfdisplay',  icon='ptable'),
-        LarchApp('Dioptas', 'dioptas_larch', icon='dioptas'),
-        LarchApp('2D XRD Viewer', 'xrd2d_viewer'),
-        LarchApp('1D XRD Viewer', 'xrd1d_viewer') )
-
+APPS = (EpicsApp('Instruments', 'instruments', icon='instruments'),
+        Epicspp('Sample Viewer', 'sampleviewer', icon='microscope'))
 
 def make_desktop_shortcuts():
     """make desktop shortcuts for Larch apps"""
@@ -119,58 +111,6 @@ def run_sampleviewer():
     use_mpl_wxagg()
     from epicsapps.sampleviewer import SampleViewerApp
     SampleViewerApp().MainLoop()
-
-def run_xas_viewer():
-    """XAS Viewer """
-    use_mpl_wxagg()
-    from larch.wxxas import XASViewer
-    XASViewer().MainLoop()
-
-
-def run_xrfdisplay():
-    """ XRF Display"""
-    use_mpl_wxagg()
-    from larch.wxlib import XRFApp
-    XRFApp().MainLoop()
-
-
-def run_xrfdisplay_epics():
-    """XRF Display for Epics Detectors"""
-    use_mpl_wxagg()
-    from larch.epics import EpicsXRFApp
-    EpicsXRFApp().MainLoop()
-
-
-def run_xrd1d_viewer():
-    """XRD Display for 1D patternss"""
-    use_mpl_wxagg()
-    from larch.wxxrd import XRD1DViewer
-    XRD1DViewer().MainLoop()
-
-def run_xrd2d_viewer():
-    """XRD Display for 2D patternss"""
-    use_mpl_wxagg()
-    from larch.wxxrd import XRD2DViewer
-    XRD2DViewer().MainLoop()
-
-def run_dioptas_larch():
-    """XRD Display for 2D patternss"""
-    from dioptas import main
-    main()
-
-def run_feff6l():
-    "run feff6l"
-    from larch.xafs.feffrunner import feff6l_cli
-    feff6l_cli()
-
-def run_feff8l():
-    "run feff8l"
-    from larch.xafs.feffrunner import feff8l_cli
-    feff8l_cli()
-
-def run_larch_server():
-    "run larch XMLRPC server"
-    larch_server_cli()
 
 ## main larch cli or wxgui
 def run_larch():
