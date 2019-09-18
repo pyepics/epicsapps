@@ -6,42 +6,7 @@ import numpy as np
 import wx
 from wxutils import (GridPanel, Button, FloatCtrl, SimpleText, LCEN)
 
-
-def read_poni(fname):
-    conf = dict(dist=None, wavelength=None, pixel1=None, pixel2=None,
-                poni1=None, poni2=None, rot1=None, rot2=None, rot3=None)
-    with open(fname, 'r') as fh:
-        for line in fh.readlines():
-            line = line[:-1].strip()
-            if line.startswith('#'):
-                continue
-            key, val = [a.strip() for a in line.split(':', 1)]
-            key = key.lower()
-            if key == 'detector_config':
-                confdict = json.loads(val)
-                for k, v in confdict.items():
-                    k = k.lower()
-                    if k in conf:
-                        conf[k] = float(v)
-
-            else:
-                if key == 'distance':
-                    key='dist'
-                elif key == 'pixelsize1':
-                    key='pixel1'
-                elif key == 'pixelsize2':
-                    key='pixel2'
-                if key in conf:
-                    conf[key] = float(val)
-    missing = []
-    for key, val in conf.items():
-        if val is None:
-            missing.append(key)
-    if len(missing)>0:
-        msg = "'%s' is not a valid PONI file: missing '%s'"
-        raise ValueError(msg % (fname, ', '.join(missing)))
-    return conf
-
+from .xrd_integrator import read_poni
 
 class CalibrationDialog(wx.Dialog):
     """dialog for calibrating energy"""
@@ -58,7 +23,6 @@ class CalibrationDialog(wx.Dialog):
     def __init__(self, parent, calfile, **kws):
 
         self.parent = parent
-        self.scandb = parent.scandb
         self.calfile = calfile
         poni = read_poni(calfile)
 

@@ -30,19 +30,8 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel,
                      FileOpen, SavedParameterDialog, Font, FloatSpin)
 
-try:
-    from epicsscan import ScanDB
-except:
-    ScanDB = None
-
-try:
-    from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
-    HAS_PYFAI = True
-except ImportError:
-    HAS_PYFAI = False
-
 from .contrast_control import ContrastControl
-from .calibration_dialog import read_poni
+from .xrd_integrator import XRD_Integrator
 from .imagepanel import ADMonoImagePanel, ThumbNailImagePanel
 from .pvconfig import PVConfigPanel
 from .ad_config import read_adconfig
@@ -58,7 +47,7 @@ class ADFrame(wx.Frame):
     """
     AreaDetector Display Frame
     """
-    def __init__(self, configfile=None):
+    def __init__(self, configfile=None, calibration_callback=None):
         wx.Frame.__init__(self, None, -1, 'AreaDetector Viewer',
                           style=wx.DEFAULT_FRAME_STYLE)
 
@@ -249,29 +238,13 @@ class ADFrame(wx.Frame):
         if dlg.ShowModal() == wx.ID_OK:
             ppath = os.path.abspath(dlg.GetPath())
 
-        if os.path.exists(ppath):
-            self.setup_calibration(ppath)
-
-    def setup_calibration(self, ponifile):
-        """set up calibration from PONI file"""
-        calib = read_poni(ponifile)
-        # if self.image.rot90 in (1, 3):
-        #     calib['rot3'] = np.pi/2.0
-        self.calib = calib
-        if HAS_PYFAI:
-            self.integrator = AzimuthalIntegrator(**calib)
-            self.show1d_btn.Enable()
-        else:
-            self.write('Warning: PyFAI is not installed')
-
-        if self.scandb is not None:
-            _, calname  = os.path.split(ponifile)
-            self.scandb.set_detectorconfig(calname, json.dumps(calib))
-            self.scandb.set_info('xrd_calibration', calname)
+        if os.path.exists(ppath) and HAS_PYFAI:
+            self.integrator = XRD_Integrator(ppath,
+                                 calibration_callback=calibration_callback)
+            self.show1d_btn.Enable(self.integrator.enabled)
 
     def onShowIntegration(self, event=None):
-
-        if self.calib is None or 'poni1' not in self.calib:
+        if self.calib is None or self.integrator is None:
             return
         shown = False
         try:
@@ -281,32 +254,10 @@ class ADFrame(wx.Frame):
             self.int_panel = None
         if not shown:
             self.int_panel = PlotFrame(self)
-            self.show_1dpattern(init=True)
-        else:
-            self.show_1dpattern()
-
-    def onAutoIntegration(self, event=None):
-        if not event.IsChecked():
-            self.int_timer.Stop()
-            return
-
-        if self.calib is None or 'poni1' not in self.calib:
-            return
-        shown = False
-        try:
-            self.int_panel.Raise()
-            shown = True
-        except:
-            self.int_panel = None
-        if not shown:
-            self.int_panel = PlotFrame(self)
-            self.show_1dpattern(init=True)
-        else:
-            self.show_1dpattern()
-        self.int_timer.Start(500)
+        self.show_1dpattern(init=(not shown))
 
     def show_1dpattern(self, init=False):
-        if self.calib is None or not HAS_PYFAI:
+        if self.calib is None or self.integrator is None:
             return
 
         img = self.ad_img.PV('ArrayData').get()
@@ -336,17 +287,16 @@ class ADFrame(wx.Frame):
         img = img[yslice, xslice]
 
         img_id = self.ad_cam.ArrayCounter_RBV
-        q, xi = self.integrator.integrate1d(img, 2048, unit='q_A^-1',
-                                            correctSolidAngle=True,
-                                            polarization_factor=0.999)
+        title = 'Image %d' % img_id
+        q, xi = self.integrator.integrate1d(img, 2048)
         if init:
-            self.int_panel.plot(q, xi, xlabel=r'$Q (\rm\AA^{-1})$', marker='+',
-                                title='Image %d' % img_id)
+            self.int_panel.plot(q, xi, xlabel=r'$Q (\rm\AA^{-1})$',
+                                marker='+', title=title)
             self.int_panel.Raise()
             self.int_panel.Show()
         else:
             self.int_panel.update_line(0, q, xi, draw=True)
-            self.int_panel.set_title('Image %d' % img_id)
+            self.int_panel.set_title(title)
 
     @EpicsFunction
     def onSaveImage(self, event=None):
@@ -459,7 +409,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.write('Connecting to areaDetector %s' % self.prefix)
 
         self.ad_img = epics.Device(self.prefix + 'image1:', delim='',
-                                   attrs=self.img_attrs)
+e                                   attrs=self.img_attrs)
         self.ad_cam = epics.Device(self.prefix + 'cam1:', delim='',
                                    attrs=self.cam_attrs)
 

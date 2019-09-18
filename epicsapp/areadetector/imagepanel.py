@@ -65,7 +65,8 @@ class ThumbNailImagePanel(wx.Panel):
         else:
             rgb = np.zeros((self.imgsize, self.imgsize, 3), dtype='float')
             rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
-            image = wx.Image(self.imgsize, self.imgsize, (rgb*255.).astype('uint8'))
+            image = wx.Image(self.imgsize, self.imgsize,
+                             (rgb*255.).astype('uint8'))
         fh, fw = self.GetSize()
         scale = max(0.10, min(0.98*fw/(ws+0.1), 0.98*fh/(hs+0.1)))
         self.scale = scale
@@ -80,7 +81,12 @@ class ThumbNailImagePanel(wx.Panel):
 
         if (self.y > -1 and self.y <  h and self.x > -1 and self.x < w and
             self.motion_writer is not None):
-            self.motion_writer(PIXEL_FMT %(self.x, self.y, self.data[self.y, self.x]))
+            self.show_motion()
+
+    def show_motion(self):
+        if self.motion_writer is not None:
+            message = PIXEL_FMT % (self.x, self.y, self.data[self.y, self.x])
+            self.motion_writer(message)
 
     def onMotion(self, evt=None):
         """report motion events within image"""
@@ -88,16 +94,14 @@ class ThumbNailImagePanel(wx.Panel):
 
         self.x = int(0.5 + (evt_x - self.pad[1])/self.scale) + self.lims[1]
         self.y = int(0.5 + (evt_y - self.pad[0])/self.scale) + self.lims[0]
-        if self.motion_writer is not None:
-            self.motion_writer(PIXEL_FMT %(self.x, self.y, self.data[self.y, self.x]))
+        self.show_motion()
+
 
 class ADMonoImagePanel(wx.Panel):
     """Image Panel for monochromatic Area Detector"""
 
-    ad_attrs = ('image1:ArrayData',
-                'image1:ArraySize0_RBV',
-                'image1:ArraySize1_RBV',
-                'cam1:ArrayCounter_RBV')
+    ad_attrs = ('image1:ArrayData', 'image1:ArraySize0_RBV',
+                'image1:ArraySize1_RBV', 'cam1:ArrayCounter_RBV')
 
     def __init__(self, parent, prefix=None, writer=None,
                  motion_writer=None, draw_objects=None, rot90=0,
@@ -183,8 +187,10 @@ class ADMonoImagePanel(wx.Panel):
 
     def build_popupmenu(self):
         self.popup_menu = popup = wx.Menu()
-        MenuItem(self, popup, 'Follow Cursor for Thumbnail', '', self.thumb_motion_mode)
-        MenuItem(self, popup, 'Left Click to Show Thumbnail', '',  self.thumb_click_mode)
+        MenuItem(self, popup, 'Follow Cursor for Thumbnail', '',
+                 self.thumb_motion_mode)
+        MenuItem(self, popup, 'Left Click to Show Thumbnail', '',
+                 self.thumb_click_mode)
 
     def thumb_motion_mode(self, evt=None):
         self.thumbmode = 'live'
