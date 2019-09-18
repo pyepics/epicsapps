@@ -409,7 +409,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.write('Connecting to areaDetector %s' % self.prefix)
 
         self.ad_img = epics.Device(self.prefix + 'image1:', delim='',
-e                                   attrs=self.img_attrs)
+                                   attrs=self.img_attrs)
         self.ad_cam = epics.Device(self.prefix + 'cam1:', delim='',
                                    attrs=self.cam_attrs)
 

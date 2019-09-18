@@ -1,24 +1,36 @@
 #!/usr/bin/env python
+"""
+setup for pyepics/epicsapps
+"""
+from setuptools import setup, find_packages
 
-from setuptools import setup
+install_requires = ('pyepics', 'numpy', 'matplotlib', 'xraydb', 'wxpython',
+                    'wxmplot')
 
-deps = ('wx', 'epics', 'numpy', 'matplotlib', 'wxmplot', 'xraydb')
 
-setup(name = 'epicsapp_stripchart',
-      version = '0.2',
+packages = ['epicsapps']
+for pname in find_packages('epicsapps'):
+    packages.append('epicsapps.%s' % pname)
+
+package_data = ['icons/*']
+
+# list of top level scripts to add to Python's bin/
+scripts = ('instruments', 'sampleviewer', 'adviewer')
+apps = ['epics_{0:s} = epicsapps.apps:run_{0:s}'.format(s) for s in scripts]
+
+setup(name = 'epicsapps',
+      version = '0.9',
       author = 'Matthew Newville',
       author_email = 'newville@cars.uchicago.edu',
-      license = 'BSD',
-      description = 'Epics PV Stripchart',
-      package_dir = {'epicsapps.stripchart': 'lib',
-                     'epicsapps': 'base'},
-      packages = ['epicsapps', 'epicsapps.stripchart'],
-      data_files  = [('bin', ['pyepics_stripchart.py'])])
-
-
-errmsg = 'WARNING: pyepics_stripchart requires Python module "%s"'
-for mod in deps:
-    try:
-        a = __import__(mod)
-    except ImportError:
-        print( errmsg % mod)
+      license = 'Epics Open License',
+      description = 'PyEpics Applications',
+      python_requires='>=3.6',
+      install_requires=install_requires,
+      packages=packages,
+      package_data={'epicsapps': package_data},
+      entry_points={'console_scripts' : apps},
+      classifiers=['Intended Audience :: Science/Research',
+                   'Operating System :: OS Independent',
+                   'Programming Language :: Python',
+                   'License :: OSI Approved :: BSD License',
+                   'Topic :: Scientific/Engineering'])
