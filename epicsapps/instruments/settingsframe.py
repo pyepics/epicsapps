@@ -1,6 +1,8 @@
-import wx
 import sys
 import time
+
+import wx
+import wx.lib.scrolledpanel as scrolled
 
 from epics.wx.utils import (empty_bitmap, add_button, add_menu, Closure,
                             NumericCombo, pack, popup, SimpleText,
@@ -31,9 +33,7 @@ class SettingsFrame(wx.Frame) :
 
         sizer = wx.GridBagSizer(10, 5)
         panel = wx.Panel(self)
-        # title row
         self.colors = GUIColors()
-        panel.SetBackgroundColour(self.colors.bg)
 
         title = SimpleText(panel, 'Positions Settings:',
                            font=titlefont,
@@ -142,11 +142,10 @@ class InstSelectionFrame(wx.Frame) :
         titlefont.SetWeight(wx.BOLD)
 
         sizer = wx.GridBagSizer(10, 5)
-        panel = wx.Panel(self)
+        panel = scrolled.ScrolledPanel(self, size=(400, 500),
+                                       style=wx.GROW|wx.TAB_TRAVERSAL)
         # title row
         self.colors = GUIColors()
-        panel.SetBackgroundColour(self.colors.bg)
-
         title = SimpleText(panel, 'Show Instruments:',
                            font=titlefont,
                            colour=self.colors.title, style=tstyle)
@@ -181,7 +180,7 @@ class InstSelectionFrame(wx.Frame) :
         set_font_with_children(self, font)
 
         pack(panel, sizer)
-
+        panel.SetupScrolling()
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1, wx.GROW|wx.ALL, 1)
 

@@ -40,7 +40,6 @@ class RenameDialog(wx.Dialog):
         titlefont.PointSize += 2
         titlefont.SetWeight(wx.BOLD)
 
-        panel.SetBackgroundColour(colors.bg)
         sizer = wx.GridBagSizer(10, 3)
 
         labstyle  = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
@@ -102,7 +101,6 @@ class MoveToDialog(wx.Dialog):
         titlefont.PointSize += 2
         titlefont.SetWeight(wx.BOLD)
 
-        panel.SetBackgroundColour(colors.bg)
         sizer = wx.GridBagSizer(10, 4)
 
         labstyle  = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
@@ -276,7 +274,7 @@ class InstrumentPanel(wx.Panel):
 
         self.pos_list.Clear()
         for pos in inst.positions:
-            self.pos_list.Append(pos.name)
+            self.pos_list.Append(pos.name)o
 
         rsizer.Add(brow,          0, wx.ALIGN_LEFT|wx.ALL)
         rsizer.Add(self.pos_list, 1, wx.EXPAND|wx.ALIGN_CENTER, 1)

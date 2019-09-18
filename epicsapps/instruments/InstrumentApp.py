@@ -26,7 +26,7 @@ from .utils import GUIColors, ConnectDialog, set_font_with_children, EIN_WILDCAR
 from .instrumentpanel import InstrumentPanel
 
 from .settingsframe import SettingsFrame, InstSelectionFrame
-from .editframe import EditInstrumentFrame, NewPositionFrame
+from .editframe import EditInstrumentFrame, NewPositionFrame, ErasePositionsFrame
 from .epics_server import EpicsInstrumentServer
 
 from .pvconnector import EpicsPVList
@@ -71,7 +71,6 @@ class InstrumentFrame(wx.Frame):
         self.server_timer = None
 
         self.colors = GUIColors()
-        self.SetBackgroundColour(self.colors.bg)
 
         self.Bind(wx.EVT_CLOSE, self.onClose)
 
@@ -144,7 +143,6 @@ class InstrumentFrame(wx.Frame):
         self.nb.SetTabAreaColour(colors.nb_area)
         self.nb.SetNonActiveTabTextColour(colors.nb_text)
         self.nb.SetActiveTabTextColour(colors.nb_activetext)
-        self.nb.SetBackgroundColour(colors.bg)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.nb, 1, wx.EXPAND)
@@ -211,6 +209,13 @@ class InstrumentFrame(wx.Frame):
                  action=self.onAddInstrument)
 
         add_menu(self, inst_menu,
+                 "&Remove Current Instrument",
+                 "Permanently Remove Current Instrument",
+                 action=self.onRemoveInstrument)
+
+        inst_menu.AppendSeparator()
+
+        add_menu(self, inst_menu,
                  "&Edit Current Instrument",
                  "Edit Current Instrument",
                  action=self.onEditInstrument)
@@ -220,11 +225,11 @@ class InstrumentFrame(wx.Frame):
                  "Enter a Position for the Current Instrument",
                  action=self.onEnterPosition)
 
-        inst_menu.AppendSeparator()
         add_menu(self, inst_menu,
-                 "&Remove Current Instrument",
-                 "Permanently Remove Current Instrument",
-                 action=self.onRemoveInstrument)
+                 "Erase Positions for the Current Instrument",
+                 "Erase Positions for the Current Instrument",
+                 action=self.onErasePositions)
+
 
         add_menu(self, opts_menu, "&Select Instruments to Show",
                  "Change Which Instruments are Shown",
@@ -359,6 +364,9 @@ class InstrumentFrame(wx.Frame):
         inst = page.inst
         NewPositionFrame(parent=self, db=self.db, inst=inst,
                          page=page)
+
+    def onErasePositions(self, event=None):
+        ErasePositionsFrame(self, self.nb.GetCurrentPage())
 
 
     def onRemoveInstrument(self, event=None):
