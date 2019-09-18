@@ -106,11 +106,11 @@ def run_instruments(**kws):
     from .instruments import EpicsInstrumentApp
     EpicsInstrumentApp(**kws).MainLoop()
 
-def run_sampleviewer():
+def run_sampleviewer(inifile=None):
     """Sample Viewer"""
     use_mpl_wxagg()
     from .sampleviewer import ViewerApp
-    ViewerApp().MainLoop()
+    ViewerApp(inifile=inifile).MainLoop()
 
 ## main cli wrapper
 def run_epicsapps():
