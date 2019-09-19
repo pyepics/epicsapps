@@ -48,47 +48,52 @@ Would you like this application to use this instrument file?
 """
 
 class InstrumentFrame(wx.Frame):
-    def __init__(self, parent=None, conf=None, dbname=None,
-                 server='sqlite', user='', password='', host='',
-                 port=None, **kwds):
-        self.config = InstrumentConfig(name=conf)
+    def __init__(self, dbname=None, server=None, user=None,
+                 password=None, host=None, port=None, **kwds):
+        self.config = InstrumentConfig()
+        if server is not None:
+            self.config['server'] = server
+        if dbname is not None:
+            self.config['dbname'] = dname
+        if host is not None:
+            self.config['host'] = host
+        if port is not None:
+            self.config['port'] = port
+        if user is not None:
+            self.config['user'] = user
+        if password is not None:
+            self.config['password'] = password
 
-        wx.Frame.__init__(self, parent=parent, title='Epics Instruments',
+        wx.Frame.__init__(self, parent=None, title='Epics Instruments',
                           size=(925, -1), **kwds)
 
-        t0 = self.t0 = time.time()
-
         self.pvlist = EpicsPVList(self)
-
-        self.db, self.dbname = self.connect_db(dbname, server=server,
-                                               host=host, port=port,
-                                               user=user, password=password)
-
-        if self.db is None:
-            return
         self.connected = {}
         self.panels = {}
         self.epics_server = None
         self.server_timer = None
 
+        self.db, self.dbname = self.connect_db(**self.config)
+        if self.db is None:
+            return
+
         self.colors = GUIColors()
-
-        self.Bind(wx.EVT_CLOSE, self.onClose)
-
         self.create_Statusbar()
         self.create_Menus()
         self.create_Frame()
-        # self.enable_epics_server()
+        self.Bind(wx.EVT_CLOSE, self.onClose)
+        self.enable_epics_server()
 
 
-    def connect_db(self, dbname=None, new=False, server='sqlite',
-                   user='', password='', host='', port=None):
+    def connect_db(self, dbname=None, server='sqlite',
+                   user=None, password=None, host=None, port=None,
+                   recent_dbs=None, new=False):
         """connects to a db, possibly creating a new one"""
         if dbname is None:
-            filelist = self.config.get_dblist()
-            if new:
-                filelist = None
-            dlg = ConnectDialog(filelist=filelist)
+            dlg = ConnectDialog(parent=self, dbname=dbname, server=server,
+                                user=user, password=password, host=host,
+                                port=port, recent_dbs=recent_dbs)
+
             response = dlg.GetResponse()
             dlg.Destroy()
             if not response.ok:
@@ -104,8 +109,7 @@ class InstrumentFrame(wx.Frame):
                 not dbname.endswith('.ein')):
                 dbname = "%s.ein" % dbname
 
-        if (server.startswith('sqlite') and
-            not os.path.exists(dbname)):
+        if (server.startswith('sqlite') and not os.path.exists(dbname)):
             make_newdb(dbname)
             time.sleep(0.25)
 
@@ -129,7 +133,12 @@ class InstrumentFrame(wx.Frame):
 
             else:
                 db.create_newdb(dbname, connect=True)
-            self.config.set_current_db(dbname)
+        self.config['dbname'] = dbname
+        self.config['server'] = server
+        self.config['host'] = host
+        self.config['port'] = port
+        self.config['user'] = user
+        self.config['password'] = password
 
         for pv in db.get_allpvs():
             self.pvlist.init_connect(pv.name)
@@ -191,7 +200,7 @@ class InstrumentFrame(wx.Frame):
         help_menu = wx.Menu()
 
         add_menu(self, file_menu,
-                 "&Open File", "Open or Create Instruments File",
+                 "&Open File", "Open or Create Instruments File/Connection",
                  action=self.onOpen)
         add_menu(self, file_menu,
                  "&Save As", "Save Instruments File",
@@ -268,8 +277,6 @@ class InstrumentFrame(wx.Frame):
         """connect to an epics db to act as a server for external access."""
         connect = False
         epics_prefix = ''
-        if not self.db.server.startswith('sqlite'):
-            return
         if (1 == int(self.db.get_info('epics_use', default=0))):
             epics_prefix = self.db.get_info('epics_prefix', default='')
             if len(epics_prefix) > 1:
@@ -278,7 +285,7 @@ class InstrumentFrame(wx.Frame):
             return
 
         self.epics_server = EpicsInstrumentServer(epics_prefix, db=self.db)
-        self.epics_server.Start('Initializing...')
+        self.epics_server.Start('Initializing Epics Listener...')
         if self.epics_server is not None:
             self.epics_server.SetInfo(os.path.abspath(self.dbname))
             self.server_timer = wx.Timer(self)
@@ -329,8 +336,6 @@ class InstrumentFrame(wx.Frame):
 
             pos = self.db.get_position(server.PosName, instrument=server._inst)
             server.PosOK = {True:1, False:0}[pos is not None]
-
-
 
     def onAddInstrument(self, event=None):
         "add a new, empty instrument and start adding PVs"
@@ -422,22 +427,9 @@ class InstrumentFrame(wx.Frame):
             self.db.close()
             time.sleep(1)
             self.db, self.dbname = self.connect_db(dbname)
-            self.config.set_current_db(dbname)
             self.db.set_hostpid(clear=False)
             self.config.write()
             self.create_nbpages()
-
-    def onNew(self, event=None):
-        fname = FileOpen(self, 'New Instrument File',
-                         wildcard=EIN_WILDCARD,
-                         default_file=self.dbname)
-        self.db.close()
-        time.sleep(1)
-        self.dbname = fname
-        self.connect_db(dbname=fname, new=True)
-        self.config.set_current_db(fname)
-        self.config.write()
-        self.create_nbpages()
 
     def onSave(self, event=None):
         outfile = FileSave(self, 'Save Instrument File As',

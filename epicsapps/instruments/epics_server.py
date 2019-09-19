@@ -21,7 +21,6 @@ class EpicsInstrumentServer(epics.Device):
     def __init__(self, prefix, db=None):
         if not prefix.endswith(':'):
             prefix = "%s:" % prefix
-
         epics.Device.__init__(self, prefix, delim='',
                               attrs=self.attrs)
 

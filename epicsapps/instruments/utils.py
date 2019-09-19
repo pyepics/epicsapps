@@ -163,6 +163,7 @@ class ConnectDialog(wx.Dialog):
     """
     msg = """Select Instruments SQLite File or Connect to PostgresQL DB"""
     def __init__(self, parent=None, filelist=None,
+
                  title='Select Instruments Database'):
 
         wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(525, 450),
