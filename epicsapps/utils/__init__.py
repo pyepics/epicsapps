@@ -19,7 +19,7 @@ def get_configfile(name='epicsapps.yaml', dirname=None):
         be assumeed to be in the folder
              $HOME/.config/epicsapps
     """
-    condfir = dirname
+    confdir = dirname
     if confdir is None:
         confdir = os.path.join(get_homedir(), '.config', 'epicsasps')
 
