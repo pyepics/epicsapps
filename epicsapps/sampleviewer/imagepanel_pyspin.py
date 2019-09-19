@@ -24,13 +24,6 @@ try:
 except ImportError:
     pass
 
-is_wxPhoenix = 'phoenix' in wx.PlatformInfo
-
-if is_wxPhoenix:
-    Image = wx.Image
-else:
-    Image = wx.ImageFromData
-
 MAX_EXPOSURE_TIME = 58
 
 class ImagePanel_PySpin(ImagePanel_Base):
@@ -251,7 +244,6 @@ class ConfPanel_PySpin(ConfPanel_Base):
 
     # @EpicsFunction
     def onLampVal(self, evt=None):
-        print("Set Lamp PV ", float(self.lampval.GetValue()))
         self.lamp_pv.put(float(self.lampval.GetValue()))
 
     def onRestart(self, event=None, **kws):

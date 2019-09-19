@@ -2,8 +2,6 @@
 """
 
 import wx
-is_wxPhoenix = 'phoenix' in wx.PlatformInfo
-
 import time
 import os
 import numpy as np
@@ -194,10 +192,7 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
         elif im_mode == 'RGB':
             rawdata.shape = (3, width, height)
             rawdata = rawdata.astype(np.uint8)
-            if is_wxPhoenix:
-                image = wx.Image(width, height, rawdata)
-            else:
-                image = wx.ImageFromData(width, height, rawdata)
+            image = wx.Image(width, height, rawdata)
         return image.Scale(int(scale*width), int(scale*height))
 
 class ConfPanel_EpicsAD(ConfPanel_Base):

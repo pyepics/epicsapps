@@ -105,7 +105,6 @@ class StageFrame(wx.Frame):
 <meta http-equiv='Refresh' content='300'>
 <body>
     """
-
     def __init__(self, inifile='SampleStage.ini', size=(1600, 800),
                  ask_workdir=True, orientation='landscape'):
         super(StageFrame, self).__init__(None, wx.ID_ANY,
@@ -113,7 +112,14 @@ class StageFrame(wx.Frame):
                                          size=size)
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
-        self.read_config(configfile=inifile, get_dir=ask_workdir)
+        print(" -> read config ", inifile, ask_workdir)
+        if ask_workdir:
+            ret = SelectWorkdir(self)
+            if ret is None:
+                self.Destroy()
+            os.chdir(ret)
+
+        self.read_config()
         self.overlay_frame = None
         self.last_pixel = None
         self.xhair_pixel = None
@@ -136,7 +142,6 @@ class StageFrame(wx.Frame):
                     motion_cb=self.onPixelMotion,
                     xhair_cb=self.onShowCrosshair,
                     center_cb=self.onMoveToCenter,
-                    autosave_file=self.autosave_file,
                     lamp=self.lamp)
 
         autofocus_cb = self.onAutoFocus
@@ -217,8 +222,6 @@ class StageFrame(wx.Frame):
             msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add(zpanel,         (2, 0), (1, 1), ALL_EXP|LEFT_TOP, 2)
             msizer.Add(self.pospanel,  (0, 1), (3, 1), ALL_EXP|LEFT_TOP, 2)
-            # msizer.Add((20, 20),       (3, 0), (2, 1), ALL_EXP|LEFT_TOP, 2)
-
             pack(ppanel, msizer)
 
             sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -374,10 +377,6 @@ class StageFrame(wx.Frame):
                  text="Start Projection Plots",
                  action = self.onStartProjections)
 
-        #         add_menu(self, fmenu, label="Print Blurriness\tCtrl+B",
-        #                  text="print blurriness",
-        #                  action = self.onReportBlurry)
-
         add_menu(self, fmenu, label="Stop Projection\tCtrl+C",
                  text="Stop Projection Plots",
                  action = self.onStopProjections)
@@ -502,49 +501,37 @@ class StageFrame(wx.Frame):
         """events for options menu: move, erase, overwrite """
         setattr(self, self.menu_opts[evt.GetId()], evt.IsChecked())
 
-    def read_config(self, configfile=None, get_dir=False):
-        "open/read ini config file"
-        if get_dir:
-            ret = SelectWorkdir(self)
-            if ret is None:
-                self.Destroy()
-            os.chdir(ret)
+    def read_config(self, fname=None):
+        "read config file"
+        self.configfile = StageConfig(fname=fname)
+        self.config = self.configfile.config
+        cnf = self.config
+        self.workdir  = cnf.get('workdir', os.curdir)
+        self.v_move    = cnf.get('verify_move', True)
+        self.v_erase   = cnf.get('verify_erase', True)
+        self.v_replace = cnf.get('verify_overwrite', True)
+        self.center_with_fine_stages = cnf.get('center_with_fine_stages', False)
+        self.SetTitle(cnf.get('title', 'Microscope'))
 
-        self.cnf = StageConfig(configfile)
-        self.config = self.cnf.config
-        gui = self.config['gui']
-        self.workdir_file  = gui.get('workdir_file', 'sampleviewer_workdir.txt')
-        self.iconfile      = gui.get('icon_file', '')
-        self.autosave_file = gui.get('autosave_file', 'SampleStage_autosave.ini')
-        self.v_move    = gui.get('verify_move', True)
-        self.v_erase   = gui.get('verify_erase', True)
-        self.v_replace = gui.get('verify_overwrite', True)
-        self.center_with_fine_stages = gui.get('center_with_fine_stages', False)
-        self.SetTitle(gui.get('title', 'Microscope'))
-
-        cam = self.config['camera']
-        self.imgdir     = cam.get('image_folder', 'Sample_Images')
-        self.cam_type   = cam.get('type', 'fly2').lower()
-        self.cam_fly2id = cam.get('fly2_id', 0)
-        self.cam_id     = cam.get('cam_id', 0)
-        self.cam_adpref = cam.get('ad_prefix', '')
-        self.cam_adform = cam.get('ad_format', 'JPEG')
-        self.cam_weburl = cam.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
-        self.cam_zmqhost = cam.get('zmq_host', '164.54.160.93')
-        self.cam_zmqport = cam.get('zmq_port', '17166')
-        self.cam_zmqpush = cam.get('zmq_push', 'False').lower() not in ('false', 'no', '0')
+        self.imgdir     = cnf.get('image_folder', 'Sample_Images')
+        self.cam_type   = cnf.get('camera_type', 'areadetector').lower()
+        self.cam_id     = cnf.get('camera_id', 0)
+        self.cam_adpref = cnf.get('ad_prefix', '')
+        self.cam_adform = cnf.get('ad_format', 'JPEG')
+        self.cam_weburl = cnf.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
+        self.cam_zmqhost = cnf.get('zmq_host', '164.54.160.93')
+        self.cam_zmqport = cnf.get('zmq_port', '17166')
+        self.cam_zmqpush = cnf.get('zmq_push', 'False').lower() not in ('false', 'no', '0')
         self.get_cam_calib()
 
         self.lamp = None
-        lamp = self.config.get('lamp', None)
+        lamp = cnf.get('lamp', None)
         if lamp is not None:
-            ctrl_pv = lamp.get('ctrl_pv', None)
+            ctrl_pv = lamp.get('ctrlpv', None)
             min_val = lamp.get('min_val', 0.0)
             max_val = lamp.get('max_val', 5.0)
             step    = lamp.get('step', 0.25)
-            self.lamp = dict(ctrl_pv=ctrl_pv, min_val=min_val, max_val=max_val, step=step)
-        # print(" LAMP : ", lamp)
-        self.imgdir     = cam.get('image_folder', 'Sample_Images')
+            self.lamp = dict(ctrl_pv=ctrlpv, min_val=min_val, max_val=max_val, step=step)
         try:
             pref = self.imgdir.split('_')[0]
         except:
@@ -555,9 +542,8 @@ class StageFrame(wx.Frame):
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
 
-        self.config = self.cnf.config
         self.stages = OrderedDict()
-        for mname, data in self.config.get('stages', {}).items():
+        for mname, data in cnf.get('stages', {}).items():
             mot = Motor(name=mname)
             if data['prec'] is None:
                 data['prec'] = mot.precision
@@ -568,9 +554,10 @@ class StageFrame(wx.Frame):
             self.stages[mname] = data
 
     def get_cam_calib(self):
-        cam = self.config['camera']
-        cx = self.cam_calibx = float(cam.get('calib_x', 0.100))
-        cy = self.cam_caliby = float(cam.get('calib_y', 0.100))
+        cal = self.config['calibration']
+
+        cx = self.cam_calibx = float(cal.get('calib_x', 0.100))
+        cy = self.cam_caliby = float(cal.get('calib_y', 0.100))
         cmag = self.cam_calibmag = float(cam.get('calib_mag', 10))
         self.cam_lenses = [cmag]
         clenses = cam.get('calib_lenses', '10')
@@ -593,8 +580,6 @@ class StageFrame(wx.Frame):
             self.write_message('saved image to %s' % fname)
         return imgdata
 
-    def autosave(self, positions=None):
-        self.cnf.Save(self.autosave_file, positions=positions)
 
     def write_htmllog(self, name, thispos):
         stages  = self.config['stages']
@@ -806,9 +791,8 @@ class StageFrame(wx.Frame):
         if wx.ID_YES == popup(self, "Really Quit?", "Exit Sample Stage?",
                               style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION):
 
-            fout = open(self.workdir_file, 'w')
-            fout.write("%s\n" % os.path.abspath(os.curdir))
-            fout.close()
+            self.config['workdir'] = os.path.abspath(os.curdir)
+            self.configfile.save(config=self.config)
             self.imgpanel.Stop()
             try:
                 self.overlay_frame.Destroy()
@@ -851,10 +835,6 @@ class StageFrame(wx.Frame):
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
 
-    def onReportBlurry(self, event=None):
-        score = image_blurriness(self.imgpanel)
-        print(" blurriness = %.3f" % (score))
-
     def onStartProjections(self, event=None):
         try:
             self.xplot.Raise()
@@ -873,7 +853,6 @@ class StageFrame(wx.Frame):
 
     def onStopProjections(self, event=None):
         self.proj_timer.Stop()
-
 
     def onShowProjections(self, event=None):
         dat = self.imgpanel.grab_data()
@@ -923,15 +902,14 @@ class StageFrame(wx.Frame):
                          wildcard='INI (*.ini)|*.ini|All files (*.*)|*.*',
                          default_file='SampleStage.ini')
         if fname is not None:
-            self.cnf.Save(fname)
+            self.configfile.save(fname=fname)
         self.write_message('Saved Configuration File %s' % fname)
-
 
     def onReadConfig(self, event=None):
         curpath = os.getcwd()
         fname = FileOpen(self, 'Read Configuration File',
-                         wildcard='INI (*.ini)|*.ini|All files (*.*)|*.*',
-                         default_file='SampleStage.ini')
+                         wildcard='yaml (*.yaml)|*.yaml|All files (*.*)|*.*',
+                         default_file='SampleStage.yaml')
         if fname is not None:
             self.read_config(fname)
             self.connect_motors()

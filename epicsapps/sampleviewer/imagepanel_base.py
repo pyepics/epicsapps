@@ -19,13 +19,6 @@ from PIL import Image
 from epics.wx.utils import  Closure, add_button
 from wxutils import MenuItem, Choice
 
-is_wxPhoenix = 'phoenix' in wx.PlatformInfo
-
-if is_wxPhoenix:
-    Bitmap = wx.Bitmap
-else:
-    Bitmap = wx.BitmapFromImage
-
 try:
     import zmq
     HAS_ZMQ = True
@@ -242,7 +235,7 @@ class ImagePanel_Base(wx.Panel):
                 self.full_size = img.GetSize()
 
         try:
-            bitmap = Bitmap(self.image)
+            bitmap = wx.Bitmap(self.image)
         except ValueError:
             return
         t2 = time.clock()
@@ -315,7 +308,7 @@ class ImagePanel_Base(wx.Panel):
         # make two device contexts -- copy bitamp to one,
         # use other for image+overlays
         dc_bitmap = wx.MemoryDC()
-        dc_bitmap.SelectObject(Bitmap(image))
+        dc_bitmap.SelectObject(wx.Bitmap(image))
         dc_output = wx.MemoryDC()
 
         out = wx.Bitmap(width, height)

@@ -22,13 +22,6 @@ try:
 except ImportError:
     pass
 
-is_wxPhoenix = 'phoenix' in wx.PlatformInfo
-
-if is_wxPhoenix:
-    Image = wx.Image
-else:
-    Image = wx.ImageFromData
-
 class ImagePanel_Fly2(ImagePanel_Base):
     """Image Panel for FlyCapture2 camera"""
     def __init__(self, parent,  camera_id=0, writer=None,
@@ -434,10 +427,7 @@ class ImagePanel_Fly2AD(ImagePanel_Base):
         elif im_mode == 'RGB':
             rawdata.shape = (3, width, height)
             rawdata = rawdata.astype(np.uint8)
-            if is_wxPhoenix:
-                image = wx.Image(width, height, rawdata)
-            else:
-                image = wx.ImageFromData(width, height, rawdata)
+            image = wx.Image(width, height, rawdata)
         return image.Scale(int(scale*width), int(scale*height))
 
 class ConfPanel_Fly2AD(ConfPanel_Base):
