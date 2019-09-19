@@ -16,7 +16,9 @@ import wx.adv
 import epics
 from epics.wx import finalize_epics, EpicsFunction
 from epics.wx.utils import  (empty_bitmap, add_button, add_menu, pack, popup,
-                    Closure, NumericCombo, FileSave, FileOpen, SelectWorkdir)
+                    Closure, NumericCombo)
+
+from wxutils import FileSave, FileOpen
 
 from .configfile import InstrumentConfig
 from .instrument import isInstrumentDB, InstrumentDB
@@ -48,13 +50,15 @@ Would you like this application to use this instrument file?
 """
 
 class InstrumentFrame(wx.Frame):
-    def __init__(self, dbname=None, server=None, user=None,
+    def __init__(self, parent=None, prompt=True,
+                 dbname=None, server=None, user=None,
                  password=None, host=None, port=None, **kwds):
-        self.config = InstrumentConfig()
+        self.configfile = InstrumentConfig()
+        self.config = self.configfile.config
         if server is not None:
             self.config['server'] = server
         if dbname is not None:
-            self.config['dbname'] = dname
+            self.config['dbname'] = dbname
         if host is not None:
             self.config['host'] = host
         if port is not None:
@@ -73,7 +77,7 @@ class InstrumentFrame(wx.Frame):
         self.epics_server = None
         self.server_timer = None
 
-        self.db, self.dbname = self.connect_db(**self.config)
+        self.db, self.dbname = self.connect_db(prompt=prompt, **self.config)
         if self.db is None:
             return
 
@@ -87,9 +91,9 @@ class InstrumentFrame(wx.Frame):
 
     def connect_db(self, dbname=None, server='sqlite',
                    user=None, password=None, host=None, port=None,
-                   recent_dbs=None, new=False):
+                   recent_dbs=None, new=False, prompt=False, **kws):
         """connects to a db, possibly creating a new one"""
-        if dbname is None:
+        if prompt or dbname is None:
             dlg = ConnectDialog(parent=self, dbname=dbname, server=server,
                                 user=user, password=password, host=host,
                                 port=port, recent_dbs=recent_dbs)
@@ -105,6 +109,7 @@ class InstrumentFrame(wx.Frame):
             user = response.user
             password = response.password
             dbname = response.dbname
+
             if (response.server.startswith('sqlite') and
                 not dbname.endswith('.ein')):
                 dbname = "%s.ein" % dbname
@@ -135,10 +140,18 @@ class InstrumentFrame(wx.Frame):
                 db.create_newdb(dbname, connect=True)
         self.config['dbname'] = dbname
         self.config['server'] = server
-        self.config['host'] = host
-        self.config['port'] = port
-        self.config['user'] = user
-        self.config['password'] = password
+        self.config['connstr'] = db.connstr
+
+        if server.lower().startswith('sqlite'):
+            if dbname in self.config['recent_dbs']:
+                self.config['recent_dbs'].remove(dbname)
+            self.config['recent_dbs'].insert(0, dbname)
+        else:
+            self.config['host'] = host
+            self.config['port'] = port
+            self.config['user'] = user
+            self.config['password'] = password
+
 
         for pv in db.get_allpvs():
             self.pvlist.init_connect(pv.name)
@@ -200,10 +213,10 @@ class InstrumentFrame(wx.Frame):
         help_menu = wx.Menu()
 
         add_menu(self, file_menu,
-                 "&Open File", "Open or Create Instruments File/Connection",
+                 "&Open Database", "Open or Create Instruments File/Connection",
                  action=self.onOpen)
         add_menu(self, file_menu,
-                 "&Save As", "Save Instruments File",
+                 "&Save", "Save Instruments File",
                  action=self.onSave)
         file_menu.AppendSeparator()
 
@@ -428,7 +441,7 @@ class InstrumentFrame(wx.Frame):
             time.sleep(1)
             self.db, self.dbname = self.connect_db(dbname)
             self.db.set_hostpid(clear=False)
-            self.config.write()
+            self.configfile.write(config=self.config)
             self.create_nbpages()
 
     def onSave(self, event=None):
@@ -448,8 +461,7 @@ class InstrumentFrame(wx.Frame):
 
             time.sleep(1.0)
             self.dbname = outfile
-            self.config.set_current_db(outfile)
-            self.config.write()
+            self.configfile.write(config=self.config)
 
             self.db = InstrumentDB(outfile)
 
@@ -477,8 +489,7 @@ class InstrumentFrame(wx.Frame):
 
     # @EpicsFunction
     def onClose(self, event):
-        self.config.write()
-
+        self.configfile.write(config=self.config)
         display_order = [self.nb.GetPage(i).inst.name for i in range(self.nb.GetPageCount())]
         for inst in self.db.get_all_instruments():
             inst.show = 0
@@ -503,35 +514,26 @@ class InstrumentFrame(wx.Frame):
         self.Destroy()
 
 
-class EpicsInstrumentApp(wx.App): # , wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, conf=None, dbname=None, debug=False, server='sqlite',
-                 user='', password='', host='', port=None):
-        self.conf  = conf
-        self.dbname  = dbname
-        self.debug = debug
+DEBUG = False
+class EpicsInstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
+    def __init__(self, prompt=True, dbname=None, server='sqlite',
+                 user=None, password=None, host=None, port=None):
+        self.prompt = prompt
         self.server = server
-        self.user = user
-        self.password = password
+        self.dbname  = dbname
         self.host = host
         self.port = port
-
+        self.user = user
+        self.password = password
         wx.App.__init__(self)
 
     def OnInit(self):
-        frame = InstrumentFrame(conf=self.conf, dbname=self.dbname,
-                                server=self.server, host=self.host,
+
+        frame = InstrumentFrame(prompt=self.prompt, server=self.server,
+                                dbname=self.dbname, host=self.host,
                                 port=self.port, user=self.user,
                                 password=self.password)
         frame.Show()
         self.SetTopWindow(frame)
-        # if self.debug:
-        #     self.ShowInspectionTool()
+        if DEBUG: self.ShowInspectionTool()
         return True
-
-if __name__ == '__main__':
-    conf = None
-    dbname = None
-    inspect = False
-    app = EpicsInstrumentApp(dbname=dbname, debug=inspect, conf=conf)
-
-    app.MainLoop()

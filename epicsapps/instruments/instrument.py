@@ -211,6 +211,7 @@ class InstrumentDB(object):
         "connect to an existing database"
         self.dbname = dbname
         self.engine = None
+        self.connstr = None
         if server.startswith('sqlite'):
             if not os.path.exists(dbname):
                 raise IOError("Database '%s' not found!" % dbname)
@@ -220,13 +221,15 @@ class InstrumentDB(object):
 
             if backup:
                 save_backup(dbname)
-            self.engine = create_engine('sqlite:///%s' % self.dbname,
-                                        poolclass = SingletonThreadPool)
+            self.connstr = 'sqlite:///%s' % self.dbname
+            self.engine = create_engine(connstr, poolclass=SingletonThreadPool)
         elif server.startswith('post'):
-            conn_str= 'postgresql://%s:%s@%s:%i/%s'
-            if port is None:
+            self.connstr= 'postgresql://%s:%s@%s:%d/%s' % (user, password,
+                                                           host, int(port),
+                                                           dbname)
+            if port in (None, 'None', ''):
                 port = 5432
-            self.engine = create_engine(conn_str % (user, password, host, port, dbname))
+            self.engine = create_engine(self.connstr)
 
         if self.engine is None:
                 raise ValueError("could not connect to '%s'!" % dbname)

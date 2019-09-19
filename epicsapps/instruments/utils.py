@@ -162,27 +162,31 @@ class ConnectDialog(wx.Dialog):
     Connect to a recent or existing DB File, or create a new one
     """
     msg = """Select Instruments SQLite File or Connect to PostgresQL DB"""
-    def __init__(self, parent=None, filelist=None,
+    def __init__(self, parent=None, dbname=None, server='sqlite',
+                 user=None, password=None, host=None, port=5432,
+                 recent_dbs=None, title='Select Instruments Database'):
 
-                 title='Select Instruments Database'):
-
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(525, 450),
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(750, 450),
                            title=title)
+
+        serverdef = 0 if server.startswith('sqlit') else 1
+
+        self.server = Choice(self, choices=('SQLite', 'Postgresql'),
+                             default=serverdef, size=(200, -1),
+                             action=self.onServer)
+
         flist = []
-        for fname in filelist:
-            if os.path.exists(fname):
-                flist.append(fname)
-
-        self.server = Choice(self, choices=('SQLite', 'PostgresQL'),
-                             size=(200, -1), action=self.onServer)
-
-        self.filebrowser = FileBrowser(self, size=(400, -1))
+        if recent_dbs is not None:
+            for fname in recent_dbs:
+                if os.path.exists(fname):
+                    flist.append(fname)
+        self.filebrowser = FileBrowser(self, size=(650, -1))
         self.filebrowser.SetHistory(flist)
         self.filebrowser.SetLabel('File:')
         self.filebrowser.fileMask = EIN_WILDCARD
 
-        if filelist is not None:
-            self.filebrowser.SetValue(filelist[0])
+        if len(flist) > 0:
+            self.filebrowser.SetValue(flist[0])
 
         panel = GridPanel(self, ncols=5, nrows=6, pad=3,
                           itemstyle=wx.ALIGN_LEFT)
@@ -199,11 +203,21 @@ class ConnectDialog(wx.Dialog):
         panel.Add(SimpleText(self, ' PostgresQL database connection'),
                   dcol=3, newrow=True)
 
-        self.dbname = wx.TextCtrl(self, -1, '', size=(200, -1))
-        self.host = wx.TextCtrl(self, -1, '', size=(200, -1))
-        self.port = wx.TextCtrl(self, -1, '5432', size=(200, -1))
-        self.user = wx.TextCtrl(self, -1, '', size=(200, -1))
-        self.password = wx.TextCtrl(self, -1, '', size=(200, -1))
+        if dbname is None: dbname = ''
+        if host in (None, ''):
+            host = 'localhost'
+        if port in (None, ''):
+            port = '5432'
+        if user is None:
+            user = ''
+        if password is None:
+            password = ''
+        self.dbname = wx.TextCtrl(self, -1, dbname, size=(300, -1))
+        self.host = wx.TextCtrl(self, -1, host, size=(300, -1))
+        self.port = wx.TextCtrl(self, -1, str(port), size=(300, -1))
+        self.user = wx.TextCtrl(self, -1, user, size=(300, -1))
+        self.password = wx.TextCtrl(self, -1, password, size=(300, -1),
+                                    style=wx.TE_PASSWORD)
 
         panel.Add(SimpleText(self, ' Database Name:'), newrow=True)
         panel.Add(self.dbname)
@@ -224,7 +238,7 @@ class ConnectDialog(wx.Dialog):
         panel.Add(HLine(self, size=(400, -1)), dcol=5, newrow=True)
         panel.Add(btnsizer, dcol=3, newrow=True)
         panel.pack()
-        self.onServer(server='sqlite')
+        self.onServer()
 
 
     def onServer(self, event=None, server=None, **kws):
