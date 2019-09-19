@@ -13,16 +13,10 @@ from epics.wx import (EpicsFunction, PVText, PVFloatCtrl, PVTextCtrl,
 from epics.wx.utils import  pack, popup, add_button, SimpleText
 from collections import OrderedDict
 
-from .utils import ALL_EXP , GUIColors, get_pvtypes, get_pvdesc
+from .utils import ALL_EXP , GUIColors, get_pvtypes, get_pvdesc, normalize_pvname
 
 MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
                 '.HLS', '.LLS', '.SPMG', '.DESC')
-
-def normalize_pvname(pvname):
-    pvname = str(pvname)
-    if '.' not in pvname:
-        pvname = '%s.VAL' % pvname
-    return pvname
 
 class RenameDialog(wx.Dialog):
     """Rename a Position"""

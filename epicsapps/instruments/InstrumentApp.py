@@ -251,7 +251,6 @@ class InstrumentFrame(wx.Frame):
                  "Erase Positions for the Current Instrument",
                  action=self.onErasePositions)
 
-
         add_menu(self, opts_menu, "&Select Instruments to Show",
                  "Change Which Instruments are Shown",
                  action=self.onSelectInstruments)

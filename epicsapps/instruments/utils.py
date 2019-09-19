@@ -7,6 +7,7 @@ import wx.lib.filebrowsebutton as filebrowse
 
 import epics
 
+from ..utils import normalize_pvname, get_pvdesc
 
 from wxutils import (GridPanel, BitmapButton, FloatCtrl, FloatSpin,
                      FloatSpinWithPin, get_icon, SimpleText, Choice,
@@ -17,22 +18,6 @@ FileBrowser = filebrowse.FileBrowseButtonWithHistory
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 EIN_WILDCARD = 'Epics Instrument Files (*.ein)|*.ein|All files (*.*)|*.*'
-
-def normalize_pvname(pvname):
-    pvname = str(pvname)
-    if '.' not in pvname:
-        pvname = '%s.VAL' % pvname
-    return pvname
-
-def get_pvdesc(pvname):
-    desc = pref = pvname
-    if '.' in pvname:
-        pref = pvname[:pvname.find('.')]
-    t0 = time.time()
-    descpv = epics.get_pv(pref + '.DESC', form='native')
-    if descpv.connect():
-        desc = descpv.get()
-    return desc
 
 
 def get_pvtypes(pvobj, instrument=None):

@@ -29,3 +29,19 @@ def get_configfile(name='epicsapps.yaml', dirname=None):
         except FileExistsError:
             pass
     return os.path.join(confdir, name)
+
+def normalize_pvname(pvname):
+    pvname = str(pvname)
+    if '.' not in pvname:
+        pvname = '%s.VAL' % pvname
+    return pvname
+
+def get_pvdesc(pvname):
+    desc = pref = pvname
+    if '.' in pvname:
+        pref = pvname[:pvname.find('.')]
+    t0 = time.time()
+    descpv = epics.get_pv(pref + '.DESC', form='native')
+    if descpv.connect():
+        desc = descpv.get()
+    return desc
