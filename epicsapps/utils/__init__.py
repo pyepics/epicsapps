@@ -1,6 +1,8 @@
 import os
 import yaml
 
+import wx
+
 from pyshortcuts.utils import get_homedir
 
 def get_configfile(name='epicsapps.yaml', dirname=None):
@@ -9,14 +11,15 @@ def get_configfile(name='epicsapps.yaml', dirname=None):
 
     Arguments:
         name (str):  name of config file ['epicsapps.yaml']
-        dirname (str or None): name of config folder [None]
+        dirname (str or None): name of config folder [None, see Note 2]
 
     Returns:
         full path name of config file
 
     Notes:
-        by default (with `dirname=None`), the config file will
-        be assumeed to be in the folder
+        1. if the config file is found either in the current folder,
+           or if the full path is given, that will be returned.
+        2. if dirname=None, it will be assumed to be
              $HOME/.config/epicsapps
     """
     confdir = dirname
@@ -28,7 +31,10 @@ def get_configfile(name='epicsapps.yaml', dirname=None):
             os.makedirs(confdir)
         except FileExistsError:
             pass
-    return os.path.join(confdir, name)
+    if not os.path.exists(name):
+        name = os.path.join(confdir, name)
+    print("configfile: ",os.path.abspath(name))
+    return os.path.abspath(name)
 
 def normalize_pvname(pvname):
     pvname = str(pvname)
@@ -45,3 +51,18 @@ def get_pvdesc(pvname):
     if descpv.connect():
         desc = descpv.get()
     return desc
+
+
+def SelectWorkdir(parent,  message='Select Working Folder...'):
+    "prompt for and change into a working directory "
+    dlg = wx.DirDialog(parent, message,
+                       style=wx.DD_DEFAULT_STYLE|wx.DD_CHANGE_DIR)
+
+    path = os.path.abspath(os.curdir)
+    dlg.SetPath(path)
+    if  dlg.ShowModal() == wx.ID_CANCEL:
+        return None
+    path = os.path.abspath(dlg.GetPath())
+    dlg.Destroy()
+    os.chdir(path)
+    return path
