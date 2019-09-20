@@ -102,17 +102,25 @@ APPS = (EpicsApp('Instruments', 'epicsapp instruments', icon='instruments'),
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
 
 
-# entry points:
-def run_instruments(**kws):
+def run_instruments(configfile=None, prompt=False):
     """Epics Instruments"""
+    EpicsInstrumentApp(configfile=configfile, prompt=prompt).MainLoop()
 
-    EpicsInstrumentApp(**kws).MainLoop()
-
-def run_sampleviewer(inifile=None):
+def run_sampleviewer(configfile=None, prompt=False):
     """Sample Viewer"""
-    ViewerApp(inifile=inifile).MainLoop()
+    SampleViewerApp(configfile=configfile, prompt=prompt).MainLoop()
 
-## main cli wrapper
+def run_adviewer(configfile=None, prompt=False):
+    """AD Viewer"""
+    print('ad viewer')
+    AdViewerApp(configfile=configfile, prompt=prompt).MainLoop()
+
+def run_stripchart(configfile=None, prompt=False):
+    """StripChart"""
+    print('strip chart')
+    StripChartApp(configfile=configfile, prompt=prompt).MainLoop()
+
+## main wrapper program
 def run_epicsapps():
     """
     run PyEpics Applications
@@ -133,34 +141,36 @@ notes:
     parser = ArgumentParser(description=desc,
                             epilog=epilog,
                             formatter_class=RawDescriptionHelpFormatter)
-    parser.add_argument('-m', '--makeicons',
-                        dest='makeicons',
-                        action='store_true',
-                        default=False,
-                        help='create desktop and start menu icons and quit')
+    parser.add_argument('-m', '--makeicons', dest='makeicons',
+                        action='store_true', default=False,
+                        help='create desktop and start menu icons')
+    parser.add_argument('-p', '--prompt', dest='prompt',
+                        action='store_true', default=False,
+                        help='prompt for configuration on startup')
+
 
     parser.add_argument('appname', nargs='?', help='application name')
-    parser.add_argument('filename', nargs='?',
-                        help='configuration filename')
+    parser.add_argument('filename', nargs='?', help='configuration file name')
 
     args = parser.parse_args()
-    print(args)
-
     if args.appname is None and args.makeicons is False:
         parser.print_usage()
 
-    # create desktop icons
-    if args.makeicons:
+    elif args.makeicons:
         for app in APPS:
             app.create_shortcut()
-        return
-    use_mpl_wxagg()
-    isapp = args.appname.lower().startswith
-    if isapp('inst'):
-        EpicsInstrumentApp().MainLoop()
-    elif isapp('strip'):
-        print("run Stripchart ")
-    elif isapp('sample'):
-        print("run Sample Viewer ", args.filename)
-    elif isapp('ad'):
-        print("run AD Viewer ", args.filename)
+    else:
+        use_mpl_wxagg()
+        isapp = args.appname.lower().startswith
+        fapp = None
+        if isapp('inst'):
+            fapp = run_instruments
+        if isapp('sample'):
+            fapp = run_sampleviewer,
+        elif isapp('strip'):
+            fapp = run_stripchart,
+        elif isapp('area'):
+            fapp = run_adviewer
+
+        if fapp is not None:
+            fapp(configfile=args.filename, prompt=args.prompt)
