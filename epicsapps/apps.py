@@ -95,7 +95,7 @@ class EpicsApp:
             except:
                 print("Warning: could not fix Mac exe for ", script)
 
-APPS = (EpicsApp('Instruments', 'epicsapp instruments', icon='instruments'),
+APPS = (EpicsApp('Instruments', 'epicsapp instruments', icon='instrument'),
         EpicsApp('Sample Viewer', 'epicsapp sampleviewer', icon='microscope'),
         EpicsApp('areaDetector Viewer', 'epicsapp adviewer', icon='camera'),
         EpicsApp('StripChart', 'epicsapp stripchart', icon='stripchart'))
