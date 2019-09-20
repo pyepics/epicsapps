@@ -25,7 +25,7 @@ zmq_push: true
 
 camera_type: areadetector
 camera_id:  1
-ad_prefix: 13IDEPS1:
+ad_prefix: '13IDEPS1:'
 ad_format: JPEG
 web_url:  http://164.54.160.115/jpg/2/image.jpg
 
@@ -34,7 +34,7 @@ calibration:
 
 overlays:
    - ['scalebar', 100.0, 0.85, 0.97, 2.0, 255, 255, 128]
-   - ['circle '.   10.0, 0.50, 0.50, 2.0, 0, 255, 0]
+   - ['circle ',   10.0, 0.50, 0.50, 2.0, 0, 255, 0]
 
 scandb_credentials: ESCAN_CREDENTIALS
 instrument: SampleStage
@@ -48,10 +48,12 @@ stages:
    - ['13XRM:m6.VAL', 'Coarse Stages', z, -1, 4, 10.5, 1]
 """
 
+CONFFILE = 'samplestage.yaml'
 class StageConfig(object):
-    def __init__(self, name='samplestage.yaml'):
-        self.config = None
-        self.config = yaml.load(_configtext, Load=Loader)
+    def __init__(self, name=None):
+        if name is None:
+            name = CONFFILE
+        self.config = yaml.load(_configtext, Loader=yaml.Loader)
         self.read(name)
 
     def read(self, fname):
