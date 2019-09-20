@@ -2,10 +2,15 @@ import os
 import sys
 import numpy
 import time
+
+from argparse import ArgumentParser, RawDescriptionHelpFormatter
+
 from pyshortcuts import make_shortcut, platform
 from pyshortcuts.utils import get_homedir
 from pyshortcuts.shortcut import Shortcut
 
+from .instruments import EpicsInstrumentApp
+from .sampleviewer import ViewerApp as SampleViewerApp
 
 HAS_CONDA = os.path.exists(os.path.join(sys.prefix, 'conda-meta'))
 
@@ -15,9 +20,6 @@ try:
     HAS_WXPYTHON = True
 except ImportError:
     pass
-
-here, _ = os.path.split(__file__)
-icondir = os.path.join(here, 'icons')
 
 def use_mpl_wxagg():
     """import matplotlib, set backend to WXAgg"""
@@ -29,6 +31,10 @@ def use_mpl_wxagg():
         except ImportError:
             pass
     return False
+
+here, _ = os.path.split(__file__)
+icondir = os.path.join(here, 'icons')
+
 
 def fix_darwin_shebang(script):
     """
@@ -89,32 +95,72 @@ class EpicsApp:
             except:
                 print("Warning: could not fix Mac exe for ", script)
 
-APPS = (EpicsApp('Instruments', 'instruments', icon='instruments'),
-        EpicsApp('Sample Viewer', 'sampleviewer', icon='microscope'))
-        # EpicsApp('EpicsApps', 'epicsapps', terminal=True, icon='epics'))
+APPS = (EpicsApp('Instruments', 'epicsapp instruments', icon='instruments'),
+        EpicsApp('Sample Viewer', 'epicsapp sampleviewer', icon='microscope'),
+        EpicsApp('areaDetector Viewer', 'epicsapp adviewer', icon='camera'),
+        EpicsApp('StripChart', 'epicsapp stripchart', icon='stripchart'))
+# EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
 
-
-def make_desktop_shortcuts():
-    """make desktop shortcuts for Epics Apps"""
-    for app in APPS:
-        app.create_shortcut()
 
 # entry points:
 def run_instruments(**kws):
     """Epics Instruments"""
-    use_mpl_wxagg()
-    from .instruments import EpicsInstrumentApp
+
     EpicsInstrumentApp(**kws).MainLoop()
 
 def run_sampleviewer(inifile=None):
     """Sample Viewer"""
-    use_mpl_wxagg()
-    from .sampleviewer import ViewerApp
     ViewerApp(inifile=inifile).MainLoop()
 
 ## main cli wrapper
 def run_epicsapps():
     """
-    main desktop shortcuts for EpicsApps
+    run PyEpics Applications
     """
-    make_desktop_shortcuts()
+    desc = 'run pyepics applications'
+    epilog ='''applications:
+  adviewer     [filename] Area Detector Viewer
+  instruments  [filename] Epics Instruments
+  sampleviewer [filename] Sample Microscope Viewer
+  stripchart              Epics PV Stripchart
+
+notes:
+  applications with the optional filename will look for a yaml-formatted
+  configuration file in the folder
+      {:s}/.config/epicsapps
+  or will prompt for configuration if this file is not found.
+'''.format(get_homedir())
+    parser = ArgumentParser(description=desc,
+                            epilog=epilog,
+                            formatter_class=RawDescriptionHelpFormatter)
+    parser.add_argument('-m', '--makeicons',
+                        dest='makeicons',
+                        action='store_true',
+                        default=False,
+                        help='create desktop and start menu icons and quit')
+
+    parser.add_argument('appname', nargs='?', help='application name')
+    parser.add_argument('filename', nargs='?',
+                        help='configuration filename')
+
+    args = parser.parse_args()
+    print(args)
+
+    if args.appname is None and args.makeicons is False:
+        parser.print_usage()
+
+    # create desktop icons
+    if args.makeicons:
+        for app in APPS:
+            app.create_shortcut()
+        return
+    use_mpl_wxagg()
+    isapp = args.appname.lower().startswith
+    if isapp('inst'):
+        EpicsInstrumentApp().MainLoop()
+    elif isapp('strip'):
+        print("run Stripchart ")
+    elif isapp('sample'):
+        print("run Sample Viewer ", args.filename)
+    elif isapp('ad'):
+        print("run AD Viewer ", args.filename)

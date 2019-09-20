@@ -2,7 +2,6 @@
 
 
 from . import (ionchamber, instruments, sampleviewer)
-
 # from . import (cameraview, areadetector)
 
-from .apps import make_desktop_shortcuts
+from .apps import run_epicsapps
