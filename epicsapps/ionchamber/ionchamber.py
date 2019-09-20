@@ -3,14 +3,14 @@
 
 Closely dependent on Epics Record defined in IonChamber.db
 
-Uses Mucal routine for actual calculation
+Uses xraydb routine for actual calculation
 '''
 import time
 import os
-from math import exp
+from numpy import exp
 
 from epics import Device, caget
-from  Mucal import mucal
+from xraydb import material_mu
 
 PIDFILE = '/tmp/ionchamber.pid'
 
@@ -20,8 +20,6 @@ class IonChamber(Device):
     attrs = ('Amp', 'Desc', 'Volts', 'Length', 'AbsPercent',
              'Gas', 'Current', 'FluxAbs', 'FluxOut', 'EnergyPV',
              'Energy', 'TimeStamp' )
-
-    gasMapping = {'He': 2, 'N2': 7, 'Ar': 18, 'Kr': 36}
 
     def __init__(self, prefix='13XRM:ION:'):
         Device.__init__(self, prefix, attrs=self.attrs)
@@ -53,14 +51,11 @@ class IonChamber(Device):
         flux_abs    = 2e14 * current / max(energy, 1000.0)
 
         kev = 0.001 * energy
-        if gas in self.gasMapping:
-            iz_gas = self.gasMapping[gas]
-            mu = mucal(z=iz_gas, energy = kev)['mu']
-        elif gas.lower().startswith('air'):
-            m_n2 = mucal(z=7, energy=kev)['mu']
-            m_o2 = mucal(z=8, energy=kev)['mu']
-            m_ar = mucal(z=18, energy=kev)['mu']
-            mu   = 0.78*m_n2 + 0.21 * m_o2  + 0.01 * m_ar
+        if gas == 'N2':
+            gas = 'nitrogen'
+        mu_photo = materal_mu(gas, energy=kev, kind='photo')
+        mu_total = materal_mu(gas, energy=kev, kind='total')
+        mu = mu_total
 
         frac  = (1-exp(-mu*length))
         flux_trans =  flux_abs*(1-frac)/frac
