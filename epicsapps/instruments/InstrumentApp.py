@@ -50,33 +50,18 @@ Would you like this application to use this instrument file?
 """
 
 class InstrumentFrame(wx.Frame):
-    def __init__(self, parent=None, prompt=True,
-                 dbname=None, server=None, user=None,
-                 password=None, host=None, port=None, **kwds):
-        self.configfile = InstrumentConfig()
+    def __init__(self, parent=None, configfile=None, prompt=False, **kws):
+        self.configfile = InstrumentConfig(configfile)
         self.config = self.configfile.config
-        if server is not None:
-            self.config['server'] = server
-        if dbname is not None:
-            self.config['dbname'] = dbname
-        if host is not None:
-            self.config['host'] = host
-        if port is not None:
-            self.config['port'] = port
-        if user is not None:
-            self.config['user'] = user
-        if password is not None:
-            self.config['password'] = password
 
         wx.Frame.__init__(self, parent=None, title='Epics Instruments',
-                          size=(925, -1), **kwds)
+                          size=(925, -1), **kws)
 
         self.pvlist = EpicsPVList(self)
         self.connected = {}
         self.panels = {}
         self.epics_server = None
         self.server_timer = None
-
         self.db, self.dbname = self.connect_db(prompt=prompt, **self.config)
         if self.db is None:
             return
@@ -515,23 +500,14 @@ class InstrumentFrame(wx.Frame):
 
 DEBUG = False
 class EpicsInstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, prompt=True, dbname=None, server='sqlite',
-                 user=None, password=None, host=None, port=None):
+    def __init__(self, prompt=False, configfile=None):
         self.prompt = prompt
-        self.server = server
-        self.dbname  = dbname
-        self.host = host
-        self.port = port
-        self.user = user
-        self.password = password
+        self.configfile = configfile
         wx.App.__init__(self)
 
     def OnInit(self):
 
-        frame = InstrumentFrame(prompt=self.prompt, server=self.server,
-                                dbname=self.dbname, host=self.host,
-                                port=self.port, user=self.user,
-                                password=self.password)
+        frame = InstrumentFrame(configfile=self.configfile, prompt=self.prompt)
         frame.Show()
         self.SetTopWindow(frame)
         if DEBUG: self.ShowInspectionTool()

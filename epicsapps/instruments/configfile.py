@@ -9,12 +9,14 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
-
+CONFFILE = 'instruments.yaml'
 _config = dict(server='sqlite', dbname=None, host=None, port='5432',
                user=None, password=None, recent_dbs=[])
 
 class InstrumentConfig(object):
-    def __init__(self, name='instruments.yaml'):
+    def __init__(self, name=None):
+        if name is None:
+            name = CONFFILE
         self.config = _config
         self.read(name)
 
