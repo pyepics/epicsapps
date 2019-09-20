@@ -35,7 +35,8 @@ def make_steps(precision=3, minstep=0, maxstep=10, decades=7, steps=(1,2,5)):
     return out
 
 class ControlPanel(wx.Panel):
-    def __init__(self, parent, groups=None, config={}, autofocus=None):
+    def __init__(self, parent, groups=None, config={}, center_cb=None,
+                 autofocus=None):
         wx.Panel.__init__(self, parent, -1)
         self.subpanels = {}
 
@@ -73,9 +74,14 @@ class ControlPanel(wx.Panel):
             sizer.Add((3, 3))
             sizer.Add(wx.StaticLine(self, size=(300, 3)), 0, CEN_TOP)
 
+        if center_cb is not None:
+            ctr_button = add_button(self, "Move Selected Pixel to Center",
+                                    action=self.onBringToCenter, size=(225, -1))
+            sizer.Add(ctr_button, 0, LEFT_TOP)
+
         if autofocus is not None:
             self.af_button = add_button(self, "AutoFocus",
-                                        action=autofocus, size=(125, -1))
+                                        action=autofocus, size=(225, -1))
             self.af_message = wx.StaticText(self, label="", size=(200,-1))
             sizer.Add(self.af_button, 0, LEFT_TOP)
             sizer.Add(self.af_message, 0, LEFT_TOP)
@@ -191,6 +197,10 @@ class ControlPanel(wx.Panel):
 
         pack(panel, sizer)
         return panel
+
+    def onBringToCenter(self, event=None,  **kws):
+        if self.center_cb is not None:
+            self.center_cb(event=event, **kws)
 
     def onZeroFineMotors(self, event=None):
         "event handler for Zero Fine Motors"

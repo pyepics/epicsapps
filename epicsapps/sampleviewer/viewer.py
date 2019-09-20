@@ -20,7 +20,7 @@ from epics.wx import EpicsFunction
 
 from epics.wx.utils import (add_menu, pack, Closure, popup,
                             NumericCombo, SimpleText, FileSave, FileOpen,
-                            SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
+                            LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from wxutils import (GridPanel, OkCancel, FloatSpin)
 
@@ -31,12 +31,16 @@ from .icons import icons
 from .controlpanel import ControlPanel
 from .positionpanel import PositionPanel
 from .overlayframe import OverlayFrame
+from .calibrationframe import CalibrationFrame
 
 from .imagepanel_base import ZoomPanel
 from .imagepanel_pyspin import ImagePanel_PySpin, ConfPanel_PySpin
 from .imagepanel_fly2 import ImagePanel_Fly2AD, ConfPanel_Fly2AD
 from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
 from .imagepanel_weburl import ImagePanel_URL, ConfPanel_URL
+
+from ..utils import SelectWorkdir
+
 try:
     from .imagepanel_zmqjpeg import ImagePanel_ZMQ, ConfPanel_ZMQ
 except ImportError:
@@ -105,30 +109,29 @@ class StageFrame(wx.Frame):
 <meta http-equiv='Refresh' content='300'>
 <body>
     """
-    def __init__(self, inifile='SampleStage.ini', size=(1600, 800),
-                 ask_workdir=True, orientation='landscape'):
-        super(StageFrame, self).__init__(None, wx.ID_ANY,
-                                         style=wx.DEFAULT_FRAME_STYLE,
-                                         size=size)
+
+    def __init__(self, configfile=None, prompt=True, **kws):
+        self.read_config(configfile)
+
+        wx.Frame.__init__(self, parent=None, size=(1500, 750), **kws)
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
-        print(" -> read config ", inifile, ask_workdir)
-        if ask_workdir:
+        if prompt:
             ret = SelectWorkdir(self)
             if ret is None:
                 self.Destroy()
             os.chdir(ret)
 
-        self.read_config()
-        self.overlay_frame = None
+        self.overlayframe = None
+        self.calibframe = None
         self.last_pixel = None
         self.xhair_pixel = None
-        self.create_frame(size=size, orientation=orientation)
+        self.create_frame(orientation=self.orientation)
         self.xplot = None
         self.yplot = None
         self.imgpanel.Start()
 
-    def create_frame(self, size=(1600, 800), orientation='landscape'):
+    def create_frame(self, size=(1500, 750), orientation='landscape'):
         "build main frame"
         self.statusbar = self.CreateStatusBar(2, wx.CAPTION)
         self.statusbar.SetStatusWidths([-4, -1])
@@ -141,7 +144,6 @@ class StageFrame(wx.Frame):
                     leftdown_cb=self.onSelectPixel,
                     motion_cb=self.onPixelMotion,
                     xhair_cb=self.onShowCrosshair,
-                    center_cb=self.onMoveToCenter,
                     lamp=self.lamp)
 
         autofocus_cb = self.onAutoFocus
@@ -149,11 +151,9 @@ class StageFrame(wx.Frame):
 
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
-            opts['output_pv'] = config['camera'].get('output_pv', None)
             ImagePanel, ConfPanel = ImagePanel_Fly2, ConfPanel_Fly2
         elif self.cam_type.startswith('pyspin'):
             opts['camera_id'] = int(self.cam_id)
-            opts['output_pv'] = config['camera'].get('output_pv', None)
             ImagePanel, ConfPanel = ImagePanel_PySpin, ConfPanel_PySpin
         elif self.cam_type.startswith('adfly'):
             opts['prefix'] = self.cam_adpref
@@ -173,26 +173,26 @@ class StageFrame(wx.Frame):
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
 
+        offline = config.get('offline_instrument', None)
+
+        ppanel = wx.Panel(self)
+        self.pospanel = PositionPanel(ppanel, self,
+                                      instrument=config['instrument'],
+                                      xyzmotors=config['xyzmotors'],
+                                      offline_instrument=config['offline_instrument'],
+                                      offline_xyzmotors=config['offline_xyzmotors'])
+
+        self.ctrlpanel = ControlPanel(ppanel,
+                                      groups=self.stage_groups,
+                                      config=self.stages,
+                                      center_cb=self.onMoveToCenter,
+                                      autofocus=autofocus_cb)
+
+        self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel, **opts)
+
         if orientation.lower().startswith('land'):
             size = (1600, 800)
-            self.cpanel = wx.CollapsiblePane(self, label='Show Controls',
-                                             style=wx.CP_DEFAULT_STYLE|wx.CP_NO_TLW_RESIZE)
-
-            self.Bind(wx.EVT_COLLAPSIBLEPANE_CHANGED, self.OnPaneChanged, self.cpanel)
-
-            ppanel = wx.Panel(self.cpanel.GetPane())
-            offline_config = config.get('offline', {})
-            self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'],
-                                           offline_config=offline_config)
             self.pospanel.SetMinSize((275, 600))
-
-            self.ctrlpanel = ControlPanel(ppanel,
-                                          groups=config['stage_groups'],
-                                          config=config['stages'],
-                                          autofocus=autofocus_cb)
-
-            self.confpanel = ConfPanel(ppanel,
-                                       image_panel=self.imgpanel, **opts)
 
             zpanel = wx.Panel(ppanel)
             zlab1 = wx.StaticText(zpanel, label='ZoomBox size (\u03bCm):',
@@ -226,44 +226,41 @@ class StageFrame(wx.Frame):
 
             sizer = wx.BoxSizer(wx.HORIZONTAL)
             sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
-                           (self.cpanel,    1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
+                           (ppanel,     1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
 
             pack(self, sizer)
-            self.cpanel.Collapse(False)
-            self.cpanel.SetLabel('Hide Controls')
-
-        else: # portrait mode
-            size = (900, 1500)
-            ppanel = wx.Panel(self)
-            self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
-            self.pospanel.SetMinSize((250, 450))
-            self.ctrlpanel = ControlPanel(ppanel,
-                                          groups=config['stage_groups'],
-                                          config=config['stages'],
-                                          autofocus=autofocus_cb)
-
-            if len(self.cam_lenses) > 1:
-                opts['lens_choices'] = self.cam_lenses
-                opts['lens_default'] = self.cam_calibmag
-            self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel, **opts)
-
-            msizer = wx.GridBagSizer(3, 3)
-            msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
-            msizer.Add(self.confpanel, (0, 2), (1, 1), ALL_EXP|LEFT_TOP, 1)
-
-            pack(ppanel, msizer)
-
-            sizer = wx.BoxSizer(wx.VERTICAL)
-            sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
-                           (ppanel,    1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
-
-            pack(self, sizer)
+#
+#         else: # portrait mode
+#             size = (900, 1500)
+#             self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
+#             self.pospanel.SetMinSize((250, 450))
+#             self.ctrlpanel = ControlPanel(ppanel,
+#                                           groups=self.stage_groups,
+#                                           config=self.stages,
+#                                           autofocus=autofocus_cb)
+#
+#             if len(self.cam_lenses) > 1:
+#                 opts['lens_choices'] = self.cam_lenses
+#                 opts['lens_default'] = self.cam_calibmag
+#             self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel, **opts)
+#
+#             msizer = wx.GridBagSizer(3, 3)
+#             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+#             msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
+#             msizer.Add(self.confpanel, (0, 2), (1, 1), ALL_EXP|LEFT_TOP, 1)
+#
+#             pack(ppanel, msizer)
+#
+#             sizer = wx.BoxSizer(wx.VERTICAL)
+#             sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
+#                            (ppanel,    1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
+#
+#             pack(self, sizer)
 
         self.imgpanel.confpanel = self.confpanel
         self.SetSize(size)
-        if len(self.iconfile) > 0:
-            self.SetIcon(wx.Icon(self.iconfile, wx.BITMAP_TYPE_ICO))
+        # if len(self.iconfile) > 0:
+        #     self.SetIcon(wx.Icon(self.iconfile, wx.BITMAP_TYPE_ICO))
 
         ex  = [{'shape':'circle', 'color': (255, 0, 0),
                 'width': 1.5, 'args': (0.5, 0.5, 0.007)},
@@ -293,29 +290,30 @@ class StageFrame(wx.Frame):
         if self.imgpanel.full_size is not None:
             if 'overlays' in self.config:
                 img_x, img_y = self.imgpanel.full_size
-                pix_x = float(self.config['camera']['calib_x'])
+                pix_x = abs(self.get_calibration()[0])
                 try:
                     iscale = 0.5/abs(pix_x * img_x)
                 except ZeroDivisionError:
                     iscale = 1.0
 
-                olays = self.config['overlays']
-                scalebar = olays.get('scalebar', None)
-                circle = olays.get('circle', None)
-                has_scalebar = scalebar is not None
-                has_circle = circle is not None
+                scalebar = circle = None
+                for overlay in self.config.get('overlays', []):
+                    name  = overlay[0].lower()
+                    if name == 'scalebar':
+                        scalebar = [float(x) for x in overlay[1:]]
+                    elif name == 'circle':
+                        circle = [float(x) for x in overlay[1:]]
+
                 dobjs = []
-                if has_scalebar:
-                    sbar = [float(x) for x in scalebar.split()]
-                    ssiz, sx, sy, swid, scolr, scolg, scolb = sbar
+                if scalebar is not None:
+                    ssiz, sx, sy, swid, scolr, scolg, scolb = scalebar
                     sargs = [sx - ssiz*iscale, sy, sx + ssiz*iscale, sy]
                     scol = wx.Colour(int(scolr), int(scolg), int(scolb))
                     dobjs.append(dict(shape='Line', width=swid,
                                       style=wx.SOLID, color=scol, args=sargs))
 
-                if has_circle:
-                    circ = [float(x) for x in circle.split()]
-                    csiz, cx, cy, cwid, ccolr, ccolg, ccolb = circ
+                if circle is not None:
+                    csiz, cx, cy, cwid, ccolr, ccolg, ccolb = circle
                     cargs = [cx, cy, csiz*iscale]
                     ccol = wx.Colour(int(ccolr), int(ccolg), int(ccolb))
                     dobjs.append(dict(shape='Circle', width=cwid,
@@ -373,14 +371,6 @@ class StageFrame(wx.Frame):
                  text="Capture Video",
                  action = self.onCaptureVideo)
 
-        add_menu(self, fmenu, label="Show Projections\tCtrl+G",
-                 text="Start Projection Plots",
-                 action = self.onStartProjections)
-
-        add_menu(self, fmenu, label="Stop Projection\tCtrl+C",
-                 text="Stop Projection Plots",
-                 action = self.onStopProjections)
-
         add_menu(self, fmenu, label="Select &Working Directory\tCtrl+W",
                  text="change Working Folder",
                  action = self.onChangeWorkdir)
@@ -406,6 +396,9 @@ class StageFrame(wx.Frame):
         add_menu(self, omenu, label="Image Overlays",
                  text="Setup Image Overlays",
                  action = self.onConfigOverlays)
+        add_menu(self, omenu, label="Calibration",
+                 text="Setup Image Calibration",
+                 action = self.onConfigCalibration)
 
 
         vmove  = wx.NewId()
@@ -414,7 +407,7 @@ class StageFrame(wx.Frame):
         cenfine = wx.NewId()
         self.menu_opts = {vmove: 'v_move', verase: 'v_erase',
                           vreplace: 'v_replace',
-                          cenfine: 'center_with_fine_stages'}
+                          cenfine: 'centerfine'}
 
         mitem = omenu.Append(vmove, "Verify Go To ",
                              "Prompt to Verify Moving with 'Go To'",
@@ -444,7 +437,7 @@ class StageFrame(wx.Frame):
             label = 'Enable %s' % name
             mid = wx.NewId()
             self.menu_opts[mid] = label
-            for mname, data in self.config['stages'].items():
+            for mname, data in self.stages.items():
                 if data['group'] == name:
                     show = show + data['show']
             mitem = omenu.Append(mid, label, label, wx.ITEM_CHECK)
@@ -487,15 +480,55 @@ class StageFrame(wx.Frame):
 
     def onConfigOverlays(self, evt=None, **kws):
         shown = False
-        if self.overlay_frame is not None:
+        if self.overlayframe is not None:
             try:
-                self.overlay_frame.Raise()
+                self.overlayframe.Raise()
                 shown = True
             except:
-                del self.overlay_frame
+                del self.overlayframe
         if not shown:
-            self.overlayframe = OverlayFrame(image_panel=self.imgpanel,
-                                             config=self.config)
+            self.overlayframe = OverlayFrame(calib=self.get_calibration(),
+                                             config=self.config,
+                                             callback=self.onSetOverlays)
+
+
+    def onSetOverlays(self, overlays=None):
+        if overlays is not None:
+            self.overlays = overlays
+        imgx, imgy = self.imgpanel.full_size
+        calib = self.get_calibration()
+        iscale = 0.5/abs(calib[0] * imgx)
+
+        sname, ssiz, sx, sy, swid, scolr, scolg, scolb = self.overlays[0]
+        cname, csiz, cx, cy, cwid, ccolr, ccolg, ccolb = self.overlays[1]
+        scol = [scolr, scolg, scolb]
+        ccol = [ccolr, ccolg, ccolb]
+        cargs = [cx, cy, csiz*iscale]
+        sargs = [sx - ssiz*iscale, sy, sx + ssiz*iscale, sy]
+        dobjs = [dict(shape='Line', width=swid,
+                      style=wx.SOLID, color=scol, args=sargs),
+                 dict(shape='Circle', width=cwid,
+                      style=wx.SOLID, color=ccol, args=cargs)]
+        self.imgpanel.draw_objects = dobjs
+
+    def onConfigCalibration(self, evt=None, **kws):
+        shown = False
+        if self.calibframe is not None:
+            try:
+                self.calibframe.Raise()
+                shown = True
+            except:
+                del self.calibframe
+        if not shown:
+            self.calibframe = CalibrationFrame(self.calibrations,
+                                               self.calib_current,
+                                               callback=self.onSetCalibration)
+
+    def onSetCalibration(self, calibrations, current):
+        self.calibrations = calibrations
+        self.calib_current = current
+        self.get_calibration()
+        self.onSetOverlays()
 
     def onMenuOption(self, evt=None):
         """events for options menu: move, erase, overwrite """
@@ -503,35 +536,44 @@ class StageFrame(wx.Frame):
 
     def read_config(self, fname=None):
         "read config file"
-        self.configfile = StageConfig(fname=fname)
-        self.config = self.configfile.config
-        cnf = self.config
-        self.workdir  = cnf.get('workdir', os.curdir)
-        self.v_move    = cnf.get('verify_move', True)
-        self.v_erase   = cnf.get('verify_erase', True)
-        self.v_replace = cnf.get('verify_overwrite', True)
-        self.center_with_fine_stages = cnf.get('center_with_fine_stages', False)
-        self.SetTitle(cnf.get('title', 'Microscope'))
+        self.configfile = StageConfig(name=fname)
 
-        self.imgdir     = cnf.get('image_folder', 'Sample_Images')
-        self.cam_type   = cnf.get('camera_type', 'areadetector').lower()
-        self.cam_id     = cnf.get('camera_id', 0)
-        self.cam_adpref = cnf.get('ad_prefix', '')
-        self.cam_adform = cnf.get('ad_format', 'JPEG')
-        self.cam_weburl = cnf.get('web_url', 'http://164.54.160.115/jpg/2/image.jpg')
+        cnf = self.config = self.configfile.config
+        self.workdir     = cnf.get('workdir', os.curdir)
+        self.orientation = cnf.get('orientation', 'landscape')
+        self.title       = cnf.get('title', 'Microscope')
+
+        self.v_move      = cnf.get('verify_move', True)
+        self.v_erase     = cnf.get('verify_erase', True)
+        self.v_replace   = cnf.get('verify_overwrite', True)
+        self.centerfine  = cnf.get('center_with_fine_stages', False)
+        self.imgdir      = cnf.get('image_folder', 'Sample_Images')
+        self.cam_type    = cnf.get('camera_type', 'areadetector').lower()
+        self.cam_id      = cnf.get('camera_id', 0)
+        self.cam_adpref  = cnf.get('ad_prefix', '')
+        self.cam_adform  = cnf.get('ad_format', 'JPEG')
+        self.cam_weburl  = cnf.get('web_url', 'http://xxx/image.jpg')
         self.cam_zmqhost = cnf.get('zmq_host', '164.54.160.93')
         self.cam_zmqport = cnf.get('zmq_port', '17166')
-        self.cam_zmqpush = cnf.get('zmq_push', 'False').lower() not in ('false', 'no', '0')
-        self.get_cam_calib()
+        self.cam_zmqpush = cnf.get('zmq_push', False)
+        self.calibrations = {}
+        self.calib_current = None
+        calibs = cnf.get('calibration', [])
+        calibs.append(['10 um pixels', 0.01, 0.01])
+        for cname, calx, caly in calibs:
+            self.calibrations[cname] = (float(calx), float(caly))
+            if self.calib_current is None:
+                self.calib_current = cname
 
+        self.get_calibration()
         self.lamp = None
         lamp = cnf.get('lamp', None)
         if lamp is not None:
-            ctrl_pv = lamp.get('ctrlpv', None)
-            min_val = lamp.get('min_val', 0.0)
-            max_val = lamp.get('max_val', 5.0)
-            step    = lamp.get('step', 0.25)
-            self.lamp = dict(ctrl_pv=ctrlpv, min_val=min_val, max_val=max_val, step=step)
+            ctrlpv = lamp.get('ctrlpv', None)
+            minval = lamp.get('minval', 0.0)
+            maxval = lamp.get('maxval', 5.0)
+            step   = lamp.get('step', 0.25)
+            self.lamp = dict(ctrlpv=ctrlpv, minval=minval, maxval=maxval, step=step)
         try:
             pref = self.imgdir.split('_')[0]
         except:
@@ -542,28 +584,26 @@ class StageFrame(wx.Frame):
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
 
-        self.stages = OrderedDict()
-        for mname, data in cnf.get('stages', {}).items():
-            mot = Motor(name=mname)
-            if data['prec'] is None:
-                data['prec'] = mot.precision
-            if data['desc'] is None:
-                data['desc'] = mot.description
-            if data['maxstep'] is None:
-                data['maxstep'] = (mot.high_limit - mot.low_limit)/2.10
-            self.stages[mname] = data
+        self.stages = {}
+        self.stage_groups = []
 
-    def get_cam_calib(self):
-        cal = self.config['calibration']
+        for _dat in cnf.get('stages', []):
+            name, group, desc, scale, prec, maxstep, show = _dat
+            self.stages[name] = dict(label=name, group=group, desc=desc,
+                                    scale=scale, prec=prec, maxstep=maxstep,
+                                    show=show)
+            if group not in self.stage_groups:
+                self.stage_groups.append(group)
 
-        cx = self.cam_calibx = float(cal.get('calib_x', 0.100))
-        cy = self.cam_caliby = float(cal.get('calib_y', 0.100))
-        cmag = self.cam_calibmag = float(cam.get('calib_mag', 10))
-        self.cam_lenses = [cmag]
-        clenses = cam.get('calib_lenses', '10')
-        if ', ' in clenses:
-             self.cam_lenses = [float(i) for i in clenses.split(', ')]
-        return cx, cy
+    def get_calibration(self, name=None):
+        if name is None:
+            name = self.calib_current
+        if name in self.calibrations:
+            self.current_calib = name
+        cal = self.calibrations[name]
+        self.cam_calibx = abs(float(cal[0]))
+        self.cam_caliby = abs(float(cal[0]))
+        return cal
 
     def begin_htmllog(self):
         "initialize log file"
@@ -732,12 +772,11 @@ class StageFrame(wx.Frame):
         if p is None:
             return
 
-        cal_x, cal_y = self.get_cam_calib()
+        # cam_lens = self.confpanel.choice_lens.GetStringSelection()
+        cal_x, cal_y = self.get_calibration()
         if self.confpanel.choice_lens is not None:
-            cam_lens = self.confpanel.choice_lens.GetStringSelection()
-            cam_lens = float(cam_lens.replace('x', ''))
-            cal_x = cal_x * self.cam_calibmag / cam_lens
-            cal_y = cal_y * self.cam_calibmag / cam_lens
+            cal_x = cal_x
+            cal_y = cal_y
 
         dx = 0.001*cal_x*(p['x']-p['xmax']/2.0)
         dy = 0.001*cal_y*(p['y']-p['ymax']/2.0)
@@ -745,7 +784,7 @@ class StageFrame(wx.Frame):
         mots = self.ctrlpanel.motors
 
         xmotor, ymotor = 'x', 'y'
-        if self.center_with_fine_stages and 'finex' in mots:
+        if self.centerfine and 'finex' in mots:
             xmotor, ymotor = 'finex', 'finey'
 
         xscale, yscale = 1.0, 1.0
@@ -759,10 +798,17 @@ class StageFrame(wx.Frame):
         self.onSelectPixel(p['xmax']/2.0, p['ymax']/2.0,
                            xmax=p['xmax'], ymax=p['ymax'])
 
+        zoompanel = getattr(self.imgpanel, 'zoompanel', None)
+        if zoompanel is not None:
+            mx, my = self.imgpanel.full_size
+            zoompanel.xcen = int(mx/2.0)
+            zoompanel.ycen = int(my/2.0)
+            zoompanel.Refresh()
+
     def onSelectPixel(self, x, y, xmax=100, ymax=100):
         " select a pixel from image "
         self.last_pixel = dict(x=x, y=y, xmax=xmax, ymax=ymax)
-        cal_x, cal_y = self.get_cam_calib()
+        cal_x, cal_y = self.get_calibration()
         self.confpanel.on_selected_pixel(x, y, xmax, ymax,
                                          cam_calibx=cal_x,
                                          cam_caliby=cal_y)
@@ -792,10 +838,10 @@ class StageFrame(wx.Frame):
                               style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION):
 
             self.config['workdir'] = os.path.abspath(os.curdir)
-            self.configfile.save(config=self.config)
+            self.configfile.write(config=self.config)
             self.imgpanel.Stop()
             try:
-                self.overlay_frame.Destroy()
+                self.overlayframe.Destroy()
             except:
                 pass
             self.Destroy()
@@ -828,74 +874,20 @@ class StageFrame(wx.Frame):
         if ret is None:
             return
         os.chdir(ret)
-        cam = self.config['camera']
-        self.imgdir     = cam.get('image_folder', 'Sample_Images')
+        self.imgdir = self.config.get('image_folder', 'Sample_Images')
         if not os.path.exists(self.imgdir):
             os.makedirs(self.imgdir)
         if not os.path.exists(self.htmllog):
             self.begin_htmllog()
-
-    def onStartProjections(self, event=None):
-        try:
-            self.xplot.Raise()
-        except:
-            self.xplot = PlotFrame(parent=self)
-        try:
-            self.yplot.Raise()
-        except:
-            self.yplot = PlotFrame(parent=self)
-
-        self.proj_start = True
-        self.proj_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.onShowProjections, self.proj_timer)
-        self.proj_timer.Start(500)
-
-
-    def onStopProjections(self, event=None):
-        self.proj_timer.Stop()
-
-    def onShowProjections(self, event=None):
-        dat = self.imgpanel.grab_data()
-        shape = dat.shape
-        if len(shape) == 3:
-            dat = dat.sum(axis=2)
-        cx, cy = self.get_cam_calib()
-        kws = dict(ylabel='intensity',
-                   xlabel='distance ($\mu\mathrm{m}$)',
-                   marker='+', markersize=4)
-
-        _y = (np.arange(shape[0]) - shape[0]/2.0) *abs(cx)
-        _x = (np.arange(shape[1]) - shape[1]/2.0) *abs(cy)
-        _xi = dat.sum(axis=0)
-        _yi = dat.sum(axis=1)
-        ymin = min((min(_xi), min(_yi)))
-        ymax = max((max(_xi), max(_yi)))
-
-        if self.proj_start:
-            self.xplot.plot(_x, _xi, title='X projection', **kws)
-            self.yplot.plot(_y, _yi, title='Y projection', **kws)
-            self.xplot.Show()
-            self.yplot.Show()
-            self.proj_start = False
-        else:
-            self.xplot.panel.update_line(0, _x, _xi, draw=True, update_limits=True)
-            self.yplot.panel.update_line(0, _y, _yi, draw=True, update_limits=True)
-
-            self.xplot.panel.axes.set_ylim((ymin, ymax), emit=True)
-            self.yplot.panel.axes.set_ylim((ymin, ymax), emit=True)
-            # self.yplot.panel.set_xylims(ylims)
 
     def onCaptureVideo(self, event=None):
         self.imgpanel.camera.StopCapture()
         t0 = time.time()
         dlg = VideoDialog(self, 'Capture.mjpg')
         res = dlg.GetResponse()
-        print("got response ", time.time()-t0)
         dlg.Destroy()
         if res.ok:
-            print(" --> Capture Video!! ", res, (time.time() - t0))
             self.imgpanel.CaptureVideo(filename=res.filename, runtime=res.runtime)
-            print(" --> Capture done. ", (time.time() - t0))
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',
@@ -913,27 +905,23 @@ class StageFrame(wx.Frame):
         if fname is not None:
             self.read_config(fname)
             self.connect_motors()
-            self.pospanel.set_positions(self.config['positions'])
         self.write_message('Read Configuration File %s' % fname)
         os.chdir(curpath)
 
 class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, inifile=None, debug=False, ask_workdir=True,
-                 orientation='landscape', position=(-1, -1), **kws):
-        self.inifile = inifile
-        self.orientation = orientation
+    def __init__(self, configfile=None, prompt=True, debug=False,
+                  **kws):
+        self.configfile = configfile
+        self.prompt = prompt
         self.debug = debug
-        self.ask_workdir = ask_workdir
-        self.position = position
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        self.frame = StageFrame(inifile=self.inifile,
-                           orientation=self.orientation,
-                           ask_workdir=self.ask_workdir)
+        self.frame = StageFrame(configfile=self.configfile,
+                                prompt=self.prompt)
         self.frame.Show()
-        self.frame.SetPosition(self.position)
-        self.frame.Maximize()
+        # self.frame.SetPosition(self.position)
+        # self.frame.Maximize()
         self.SetTopWindow(self.frame)
 
     def OnInit(self):
@@ -941,21 +929,3 @@ class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         if self.debug:
             self.ShowInspectionTool()
         return True
-
-if __name__ == '__main__':
-    app = ViewerApp(inifile=None, debug=True)
-    app.MainLoop()
-
-"""
-        def residual(vals):
-            zval = min(max_pos, max(min_pos, vals[0]))
-            zstage.put(zval, wait=True)
-            time.sleep(0.1)
-            score = image_blurriness(self.imgpanel)
-            print( 'Value: ', vals, zval, score)
-            return score
-
-        minimize(residual, [zstage.get()], options={'xtol':0.002,
-                                                    'maxfev':25})
-
-"""

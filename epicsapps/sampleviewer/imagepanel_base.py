@@ -377,8 +377,8 @@ class ConfPanel_Base(wx.Panel):
         img_label = self.txt("Image Size:")
         sel_label = self.txt("Selected Pixel:")
         cen_label = self.txt("Distance to Center(um):")
-        ctr_button = add_button(self, "Bring Selected Pixel to Center",
-                                action=self.onBringToCenter, size=(250, -1))
+        # ctr_button = add_button(self, "Bring Selected Pixel to Center",
+        #                         action=self.onBringToCenter, size=(250, -1))
 
         sizer = self.sizer
         sizer.Add(img_label,      (row,   0), (1, 1), LEFT)
@@ -390,7 +390,7 @@ class ConfPanel_Base(wx.Panel):
         sizer.Add(cen_label,      (row, 0), (1, 1), LEFT)
         sizer.Add(self.cen_dist,  (row, 1), (1, 2), LEFT)
         row += 1
-        sizer.Add(ctr_button,     (row, 0), (1, 2), wx.ALIGN_LEFT)
+        # sizer.Add(ctr_button,     (row, 0), (1, 2), wx.ALIGN_LEFT)
         self.choice_lens = None
         if self.lens_choices is not None and len(self.lens_choices) > 1:
             lenses = ['%ix' % i for i in self.lens_choices]
@@ -413,18 +413,6 @@ class ConfPanel_Base(wx.Panel):
     def onStop(self, event=None, **kws):
         pass
 
-    def onBringToCenter(self, event=None,  **kws):
-        if self.center_cb is not None:
-            self.center_cb(event=event, **kws)
-
-        if self.image_panel is not None:
-            zoompanel = getattr(self.image_panel, 'zoompanel', None)
-            if zoompanel is not None:
-                mx, my = self.image_panel.full_size
-                zoompanel.xcen = int(mx/2.0)
-                zoompanel.ycen = int(my/2.0)
-                zoompanel.Refresh()
-
     def onToggleCrosshair(self, event=None,  **kws):
         self.show_xhair = not self.show_xhair
         if self.xhair_cb is not None:
@@ -443,7 +431,6 @@ class ZoomPanel(wx.Panel):
         self.SetSize(size)
         self.data = None
         self.scale = 1.0
-        # print("ZoomPanel ", imgsize, size)
         self.xcen = self.ycen = self.x = self.y = 0
         self.Bind(wx.EVT_PAINT, self.onPaint)
 
@@ -452,7 +439,6 @@ class ZoomPanel(wx.Panel):
         if data is None or xcen is None or ycen is None:
             return
 
-        # print("ZoomPanel onPaint ", data.shape)
         h, w, x = data.shape
 
         if ycen < self.imgsize/2.0:

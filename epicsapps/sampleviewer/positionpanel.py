@@ -389,16 +389,18 @@ class TransferPositionsDialog(wx.Frame):
 
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
-    def __init__(self, parent, viewer, config=None, offline_config=None, **kws):
+
+    def __init__(self, parent, viewer, instrument='SampleStage',
+                 xyzmotors=None, offline_instrument=None,
+                 offline_xyzmotors=None, **kws):
         wx.Panel.__init__(self, parent, -1, size=(300, 500))
-        self.scandb = None
         self.size = (300, 600)
         self.parent = parent
         self.viewer = viewer
-        self.config = config
-        self.offline_config = offline_config
-        if self.offline_config is None:
-            self.offline_config = {}
+        self.instrument = instrument
+        self.xyzmotors = xyzmotors
+        self.offline_instrument = offline_instrument
+        self.offline_xyzmotors = offline_xyzmotors
         self.poslist_select = None
         self.image_display = None
         self.pos_name =  wx.TextCtrl(self, value="", size=(300, 25),
@@ -411,8 +413,6 @@ class PositionPanel(wx.Panel):
         btn_goto  = add_button(self, "Go To", action=self.onGo,    **bkws)
         btn_erase = add_button(self, "Erase", action=self.onErase, **bkws)
         btn_show  = add_button(self, "Show",  action=self.onShow,  **bkws)
-        # btn_many  = add_button(self, "Erase Many",  action=self.onEraseMany,  **bkws)
-
         brow = wx.BoxSizer(wx.HORIZONTAL)
         brow.Add(btn_goto,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_erase, 0, ALL_EXP|wx.ALIGN_LEFT, 1)
@@ -431,23 +431,19 @@ class PositionPanel(wx.Panel):
         sizer.Add(self.pos_list,  1, ALL_EXP|wx.ALIGN_CENTER, 3)
 
         pack(self, sizer)
-        self.init_scandb()
+        self.scandb = self.instdb = None
+        try:
+            self.scandb = ScanDB()
+        except:
+            print("ScanDB not connected, some functionality will not work")
+            return
+        self.instdb = InstrumentDB(self.scandb)
+
         self.last_refresh = 0
         self.get_positions_from_db()
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
         self.timer.Start(2500)
-
-    def init_scandb(self):
-        dbconn = self.config
-        if dbconn is not None:
-            self.instname = dbconn.get('instrument', 'microscope_stages')
-            self.scandb = ScanDB()
-            self.instdb = InstrumentDB(self.scandb)
-            print("Connect ScanDB ", self.scandb.engine, self.instname)
-            if self.instdb.get_instrument(self.instname) is None:
-                pvs = self.viewer.config['stages'].keys()
-                self.instdb.add_instrument(self.instname, pvs=pvs)
 
     def onSave1(self, event):
         "save from text enter"
@@ -494,7 +490,7 @@ class PositionPanel(wx.Panel):
         if name not in self.pos_list.GetItems():
             self.pos_list.Append(name)
 
-        self.instdb.save_position(self.instname, name, tmp_pos,
+        self.instdb.save_position(self.instrument, name, tmp_pos,
                                   notes=notes, image=fullpath)
 
         self.pos_list.SetStringSelection(name)
@@ -609,7 +605,7 @@ class PositionPanel(wx.Panel):
 
         pos_names = self.pos_list.GetItems()
         ipos = pos_names.index(posname)
-        self.instdb.remove_position(self.instname, posname)
+        self.instdb.remove_position(self.instrument, posname)
         self.positions.pop(posname)
         self.pos_list.Delete(ipos)
         self.pos_name.Clear()
@@ -618,23 +614,22 @@ class PositionPanel(wx.Panel):
     def onEraseMany(self, event=None):
         if self.instdb is not None:
             ErasePositionsDialog(self.positions.keys(),
-                                 instname=self.instname,
+                                 instname=self.instrument,
                                  instdb=self.instdb)
 
-
     def onMicroscopeTransfer(self, event=None):
-        offline =  self.offline_config.get('instrument', '')
+        offline =  self.offline_instrument
         if len(offline) > 0 and self.instdb is not None:
-            TransferPositionsDialog(offline, instname=self.instname,
+            TransferPositionsDialog(offline, instname=self.instrument,
                                     instdb=self.instdb, parent=self)
 
     def onMicroscopeCalibrate(self, event=None, **kws):
-        online = self.config.get('instrument', '')
-        offline = self.offline_config.get('instrument', '')
+        online = self.instrument
+        offline = self.offline_instrument
         if len(online) > 0 and len(offline) > 0 and self.scandb is not None:
-            offline_xyz = self.offline_config.get('xyz_offline', '')
+            offline_xyz = self.offline_xyzmotors
             offline_xyz = [s.strip() for s in offline_xyz.split(',')]
-            online_xyz  = self.offline_config.get('xyz_online', '')
+            online_xyz  = self.xyzmotors
             online_xyz  = [s.strip() for s in online_xyz.split(',')]
 
             if len(offline_xyz) == 3 and len(online_xyz) == 3:
@@ -707,7 +702,7 @@ class PositionPanel(wx.Panel):
 
     def onTimer(self, evt=None):
         if self.poslist_select is None:
-            inst = self.instdb.get_instrument(self.instname)
+            inst = self.instdb.get_instrument(self.instrument)
             cls, tab = self.instdb.scandb.get_table('position')
 
             self.poslist_select = tab.select().where(tab.c.instrument_id==inst.id)
@@ -719,11 +714,13 @@ class PositionPanel(wx.Panel):
             self.last_refresh = now
 
     def get_positions_from_db(self):
+        print("Get Positions ", self.instdb)
+
         if self.instdb is None:
             return
 
         positions = OrderedDict()
-        iname = self.instname
+        iname = self.instrument
         posnames =  self.instdb.get_positionlist(iname)
         self.posnames = posnames
         for pname in posnames:
@@ -786,7 +783,7 @@ class PositionPanel(wx.Panel):
             except:
                 print( 'Cannot set', name, tmp_pos, notes, img)
             try:
-                self.instdb.save_position(self.instname, name, tmp_pos,
+                self.instdb.save_position(self.instrument, name, tmp_pos,
                                           notes=json.dumps(notes), image=img)
             except:
                 print( 'Could save ', name, tmp_pos, notes, img)

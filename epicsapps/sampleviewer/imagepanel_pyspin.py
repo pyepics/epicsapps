@@ -200,37 +200,18 @@ class ConfPanel_PySpin(ConfPanel_Base):
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
 
-        # datapush_time = "%.1f" % self.image_panel.datapush_delay
-        # wids['dpush_time'] =  FloatCtrl(self, value=datapush_time, maxval=1e6,
-        #                                         precision=1, minval=0,
-        #                                         action=self.onValue, act_on_losefocus=True,
-        #                                         action_kw={'prop':'autosave_time'}, size=(75, -1))
-
-        # label = 'AutoSave Time (sec)'
-        # sizer.Add(self.txt(label),    (i, 0), (1, 1), LEFT)
-        # sizer.Add(wids['dpush_time'], (i, 1), (1, 1), LEFT)
-        # i = i + 1
-#         if with_color_conv:
-#             conv_choices = ('DEFAULT', 'NO_COLOR_PROCESSING', 'NEAREST_NEIGHBOR',
-#                             'EDGE_SENSING', 'HQ_LINEAR', 'RIGOROUS', 'IPP',
-#                             'DIRECTIONAL_FILTER', 'WEIGHTED_DIRECTIONAL_FILTER')
-#             wids['color_conv'] = wx.Choice(self, -1, choices=conv_choices, size=(150, -1))
-#             wids['color_conv'].Bind(wx.EVT_CHOICE, self.onColorConv)
-#             i += 1
-#             sizer.Add(self.txt('Conversion: '), (i, 0), (1, 1), LEFT)
-#             sizer.Add(wids['color_conv'],       (i, 1), (1, 1), LEFT)
-
         sizer.Add(btn_start,          (i, 0), (1, 2), LEFT)
         if self.lamp is not None:
             i += 1
-            self.lampval = FloatSpin(self, value=1.5, digits=2,
-                                min_val=self.lamp['min_val'],
-                                max_val=self.lamp['max_val'],
+            self.lamp_pv = PV(self.lamp['ctrlpv'])
+            val = self.lamp_pv.get()
+            self.lampval = FloatSpin(self, value=val, digits=2,
+                                min_val=self.lamp['minval'],
+                                max_val=self.lamp['maxval'],
                                 increment=self.lamp['step'],
                                 action=self.onLampVal,
                                 size=(80, -1),
                                 style=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER)
-            self.lamp_pv = PV(self.lamp['ctrl_pv'])
 
             sizer.Add(self.txt('Lamp Intensity:'), (i, 0), (1, 1), LEFT)
             sizer.Add(self.lampval,                (i, 1), (1, 1), LEFT)
