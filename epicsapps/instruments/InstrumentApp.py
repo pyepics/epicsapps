@@ -33,11 +33,11 @@ from .epics_server import EpicsInstrumentServer
 
 from .pvconnector import EpicsPVList
 
+from ..utils import get_icon
+
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON|flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS
 FNB_STYLE |= flat_nb.FNB_DROPDOWN_TABS_LIST|flat_nb.FNB_NO_NAV_BUTTONS
 
-thisdir, _ = os.path.split(__file__)
-ICON_FILE = os.path.join(thisdir, '..', 'icons', 'instrument.ico')
 
 FILE_IN_USE_MSG = """The instrument file  %s
 may be in use:
@@ -161,7 +161,11 @@ class InstrumentFrame(wx.Frame):
         self.SetMinSize((875, 350))
 
         pack(self, sizer)
-        self.SetIcon(wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO))
+        iconfile = get_icon('instrument')
+        try:
+            self.SetIcon(wx.Icon(iconfile, wx.BITMAP_TYPE_ICO))
+        except:
+            pass
 
         self.Refresh()
 

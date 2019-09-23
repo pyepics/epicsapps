@@ -5,6 +5,13 @@ import wx
 
 from pyshortcuts.utils import get_homedir
 
+def get_icon(iconname):
+    topdir, _s = os.path.split(__file__)
+    topdir, _s = os.path.split(topdir)
+    if not iconname.endswith('.ico'):
+        iconname = "%s.ico" % iconname
+    return os.path.abspath(os.path.join(topdir, 'icons', iconname))
+
 def get_configfile(name='epicsapps.yaml', dirname=None):
     """
     get an epics app config file
@@ -33,7 +40,6 @@ def get_configfile(name='epicsapps.yaml', dirname=None):
             pass
     if not os.path.exists(name):
         name = os.path.join(confdir, name)
-    print("configfile: ",os.path.abspath(name))
     return os.path.abspath(name)
 
 def normalize_pvname(pvname):

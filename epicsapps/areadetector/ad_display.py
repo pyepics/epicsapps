@@ -37,12 +37,9 @@ from .imagepanel import ADMonoImagePanel, ThumbNailImagePanel
 from .pvconfig import PVConfigPanel
 from .ad_config import ADConfig
 
-from ..utils import SelectWorkdir
+from ..utils import SelectWorkdir, get_icon
 
-topdir, _s = os.path.split(__file__)
-DEFAULT_ICONFILE = os.path.join(topdir, 'icons', 'camera.ico')
-
-labstyle = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
+labstyle = wx.ALIGN_LEFT|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
 rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
 txtstyle = wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
@@ -105,7 +102,6 @@ class ADFrame(wx.Frame):
         self.epics_controls = cnf.get('epics_controls', [])
         self.scandb_instname = cnf.get('scandb_instrument', None)
         self.connect_scandb()
-        print(" READ CONFIG ", self.scandb_instname)
 
     def connect_scandb(self):
         self.scandb_choices = []
@@ -170,7 +166,7 @@ class ADFrame(wx.Frame):
             self.scandb_sel.SetSelection(0)
             scandb_btn = wx.Button(panel, label='Go To',  size=(55, -1))
             scandb_btn.Bind(wx.EVT_BUTTON, self.onInstrumentGo)
-            sizer.Add(SimpleText(panel, "  %s:" % self.scandb_instname),
+            sizer.Add(SimpleText(panel, " %s:" % self.scandb_instname),
                       (irow, 0), (1, 1), labstyle)
             sizer.Add(self.scandb_sel, (irow, 1), (1, 1), labstyle)
             sizer.Add(scandb_btn,      (irow, 2), (1, 1), labstyle)
@@ -249,8 +245,9 @@ class ADFrame(wx.Frame):
 
         self.SetAutoLayout(True)
         iconfile = self.config.get('iconfile', None)
-        if iconfile is None or not os.path.exists(iconfile):
-            iconfile = DEFAULT_ICONFILE
+        if not os.path.exists(iconfile):
+            iconfile = get_icon('camera')
+        print("ICON FILE ", iconfile)
         try:
             self.SetIcon(wx.Icon(iconfile, wx.BITMAP_TYPE_ICO))
         except:
@@ -438,7 +435,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def onInstrumentGo(self, event=None):
         posname = self.scandb_sel.GetStringSelection()
-        print("Would restore position ", self.scandb_instname, posname, self.instdb)
 
         msg = ["Move to '{:s}'?\n".format(posname)]
         for pospv in self.instdb.get_position(self.scandb_instname, posname).pv:
@@ -449,9 +445,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
                     style=wx.YES_NO|wx.ICON_QUESTION)
         if wx.ID_YES == ret:
             print("would really move to " ,  posname)
-
         # self.instdb.restore_positionlist(instname, posname)
-
 
     @EpicsFunction
     def onButton(self, event=None, key='free'):

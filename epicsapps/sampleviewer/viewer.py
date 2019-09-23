@@ -39,7 +39,7 @@ from .imagepanel_fly2 import ImagePanel_Fly2AD, ConfPanel_Fly2AD
 from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
 from .imagepanel_weburl import ImagePanel_URL, ConfPanel_URL
 
-from ..utils import SelectWorkdir
+from ..utils import SelectWorkdir, get_icon
 
 try:
     from .imagepanel_zmqjpeg import ImagePanel_ZMQ, ConfPanel_ZMQ
@@ -269,8 +269,7 @@ class StageFrame(wx.Frame):
 
         self.imgpanel.confpanel = self.confpanel
         self.SetSize(size)
-        # if len(self.iconfile) > 0:
-        #     self.SetIcon(wx.Icon(self.iconfile, wx.BITMAP_TYPE_ICO))
+        self.SetIcon(wx.Icon(get_icon('microscope'), wx.BITMAP_TYPE_ICO))
 
         ex  = [{'shape':'circle', 'color': (255, 0, 0),
                 'width': 1.5, 'args': (0.5, 0.5, 0.007)},

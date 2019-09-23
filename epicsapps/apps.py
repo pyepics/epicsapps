@@ -113,12 +113,10 @@ def run_sampleviewer(configfile=None, prompt=False):
 
 def run_adviewer(configfile=None, prompt=False):
     """AD Viewer"""
-    print('ad viewer')
     areaDetectorApp(configfile=configfile, prompt=prompt).MainLoop()
 
 def run_stripchart(configfile=None, prompt=False):
     """StripChart"""
-    print('strip chart')
     StripChartApp(configfile=configfile, prompt=prompt).MainLoop()
 
 ## main wrapper program
