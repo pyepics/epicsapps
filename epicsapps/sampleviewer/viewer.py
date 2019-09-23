@@ -26,7 +26,7 @@ from wxutils import (GridPanel, OkCancel, FloatSpin)
 
 from scipy.optimize import minimize
 
-from .configfile import StageConfig
+from .configfile import StageConfig, CONFFILE
 from .icons import icons
 from .controlpanel import ControlPanel
 from .positionpanel import PositionPanel
@@ -109,18 +109,23 @@ class StageFrame(wx.Frame):
 <meta http-equiv='Refresh' content='300'>
 <body>
     """
-
     def __init__(self, configfile=None, prompt=True, **kws):
-        self.read_config(configfile)
         wx.Frame.__init__(self, parent=None, size=(1500, 750), **kws)
-
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
 
-        try:
-            os.chdir(self.config['workdir'])
-        except:
-            print("Could not move to working directory ", self.config['workdir'])
+        if configfile is None:
+            wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
+            configfile = FileOpen(self, "Read Configuration File",
+                                  default_file=CONFFILE,
+                                  wildcard=wcard)
+        if configfile is None:
+            sys.exit()
 
+        self.read_config(configfile)
+        try:
+            os.chdir(self.config.get('workdir', os.getcwd()))
+        except:
+            pass
         if prompt:
             ret = SelectWorkdir(self)
             if ret is None:
@@ -549,10 +554,7 @@ class StageFrame(wx.Frame):
     def read_config(self, fname=None):
         "read config file"
         self.configfile = StageConfig(name=fname)
-
         cnf = self.config = self.configfile.config
-        self.workdir     = cnf.get('workdir', os.curdir)
-
         self.orientation = cnf.get('orientation', 'landscape')
         self.title       = cnf.get('title', 'Microscope')
 
@@ -852,7 +854,7 @@ class StageFrame(wx.Frame):
         if wx.ID_YES == popup(self, "Really Quit?", "Exit Sample Stage?",
                               style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION):
 
-            self.config['workdir'] = os.path.abspath(os.curdir)
+            self.config['workdir'] = os.path.abspath(os.getcwd())
             self.configfile.write(config=self.config)
             self.imgpanel.Stop()
             try:
@@ -882,7 +884,6 @@ class StageFrame(wx.Frame):
 
         self.write_message('Loaded Positions from File %s' % fname)
         os.chdir(curpath)
-
 
     def onChangeWorkdir(self, event=None):
         ret = SelectWorkdir(self)
