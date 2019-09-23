@@ -636,7 +636,9 @@ class StageFrame(wx.Frame):
 
     def write_htmllog(self, name, thispos):
         stages  = self.config['stages']
-        img_folder = self.config['camera']['image_folder']
+        stagedesc = {s[0]:s[2] for s in stages}
+
+        img_folder = self.imgdir
         junk, img_file = os.path.split(thispos['image'])
         imgfile = os.path.join(img_folder, img_file)
 
@@ -649,7 +651,7 @@ class StageFrame(wx.Frame):
     </table></td></tr></table>"""
         pos_fmt ="    <tr><td> %s </td><td> %s </td><td>   %f</td></tr>"
         for pvname, value in thispos['position'].items():
-            txt.append(pos_fmt % (stages[pvname]['desc'], pvname, value))
+            txt.append(pos_fmt % (stagedesc.get(pvname, pvname), pvname, value))
 
         fout = open(self.htmllog, 'a')
         fout.write(html_fmt % (imgfile, imgfile, name,

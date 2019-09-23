@@ -494,9 +494,6 @@ class PositionPanel(wx.Panel):
                                   notes=notes, image=fullpath)
 
         self.pos_list.SetStringSelection(name)
-        # auto-save file
-        self.viewer.autosave(positions=self.positions)
-
         self.viewer.write_htmllog(name, self.positions[name])
 
         imgfile_exists = False
@@ -687,7 +684,6 @@ class PositionPanel(wx.Panel):
         for name in namelist:
             newpos[name]  = stmp[name]
         self.init_positions(newpos)
-        self.viewer.autosave(positions=self.positions)
 
     def set_positions(self, positions):
         "set the list of position on the left-side panel"
