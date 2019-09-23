@@ -10,7 +10,6 @@ import json
 from functools import partial
 from collections import namedtuple
 
-
 import numpy as np
 import matplotlib.cm as colormap
 
@@ -27,14 +26,18 @@ from wxmplot.plotframe import PlotFrame
 import epics
 from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 
-from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel,
+from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin)
+
+from epicsscan.scandb import ScanDB, InstrumentDB
 
 from .contrast_control import ContrastControl
 from .xrd_integrator import XRD_Integrator
 from .imagepanel import ADMonoImagePanel, ThumbNailImagePanel
 from .pvconfig import PVConfigPanel
-from .ad_config import read_adconfig
+from .ad_config import ADConfig
+
+from ..utils import SelectWorkdir
 
 topdir, _s = os.path.split(__file__)
 DEFAULT_ICONFILE = os.path.join(topdir, 'icons', 'camera.ico')
@@ -47,7 +50,7 @@ class ADFrame(wx.Frame):
     """
     AreaDetector Display Frame
     """
-    def __init__(self, configfile=None, calibration_callback=None):
+    def __init__(self, configfile=None, prompt=False, calibration_callback=None):
         wx.Frame.__init__(self, None, -1, 'AreaDetector Viewer',
                           style=wx.DEFAULT_FRAME_STYLE)
 
@@ -59,20 +62,19 @@ class ADFrame(wx.Frame):
         if configfile is None:
             sys.exit()
 
-        self.config = read_adconfig(configfile)
-        self.prefix = self.config['general']['prefix']
-        self.fname = self.config['general']['name']
-        self.colormode = self.config['general']['colormode'].lower()
-        self.cam_attrs = self.config['cam_attributes']
-        self.img_attrs = self.config['img_attributes']
-        self.fsaver = self.config['general']['filesaver']
+        self.read_config(configfile)
+        try:
+            os.chdir(self.config.get('workdir', os.getcwd()))
+        except:
+            pass
 
-        self.SetTitle(self.config['general']['title'])
-        self.scandb = None
-        if ScanDB is not None:
-            self.scandb = ScanDB()
-            if self.scandb.engine is None: # not connected to running scandb server
-                self.scandb = None
+        if prompt:
+            ret = SelectWorkdir(self)
+            if ret is None:
+                self.Destroy()
+            os.chdir(ret)
+
+        self.SetTitle(self.config['title'])
 
         self.calib = None
         self.ad_img = None
@@ -87,8 +89,43 @@ class ADFrame(wx.Frame):
         self.buildMenus()
         self.buildFrame()
 
+    def read_config(self, fname=None):
+        "read config file"
+        self.configfile = ADConfig(name=fname)
+        cnf = self.config = self.configfile.config
+        if 'general' in cnf:
+            for key, val in cnf['general'].items():
+                cnf[key] = val
+        self.prefix = cnf['prefix']
+        self.fname = cnf['name']
+        self.fsaver = cnf['filesaver']
+        self.colormode = cnf['colormode'].lower()
+        self.cam_attrs = cnf['camera_attributes']
+        self.img_attrs = cnf['image_attributes']
+        self.epics_controls = cnf.get('epics_controls', [])
+        self.scandb_instname = cnf.get('scandb_instrument', None)
+        self.connect_scandb()
+        print(" READ CONFIG ", self.scandb_instname)
+
+    def connect_scandb(self):
+        self.scandb_choices = []
+        if self.scandb_instname is not None:
+            self.scandb = self.instdb = None
+            try:
+                self.scandb = ScanDB()
+            except:
+                self.scandb_instname = None
+                return
+
+        self.instdb = InstrumentDB(self.scandb)
+        try:
+            poslist = self.instdb.get_positionlist(self.scandb_instname)
+            self.scandb_choices = poslist
+        except:
+            pass
+
     def buildFrame(self):
-        self.SetFont(Font(11))
+        self.SetFont(Font(10))
 
         sbar = self.CreateStatusBar(3, wx.CAPTION)
         self.SetStatusWidths([-1, -1, -1])
@@ -96,7 +133,7 @@ class ADFrame(wx.Frame):
 
         sizer = wx.GridBagSizer(3, 3)
         panel = self.panel = wx.Panel(self)
-        pvpanel = PVConfigPanel(panel, self.prefix, self.config['controls'])
+        pvpanel = PVConfigPanel(panel, self.prefix, self.epics_controls)
 
         wsize = (100, -1)
         lsize = (250, -1)
@@ -115,17 +152,29 @@ class ADFrame(wx.Frame):
             return wx.StaticLine(panel, size=(len, wid), style=style)
 
         irow = 0
-        sizer.Add(pvpanel,  (irow, 0), (1, 3), labstyle)
-
-        irow += 1
         sizer.Add(start_btn, (irow, 0), (1, 1), labstyle)
         sizer.Add(stop_btn,  (irow, 1), (1, 1), labstyle)
-
-        if self.config['general'].get('show_free_run', False):
+        if self.config.get('show_free_run', False):
             free_btn  = wx.Button(panel, label='Free Run', size=wsize)
             free_btn.Bind(wx.EVT_BUTTON,  partial(self.onButton, key='free'))
             irow += 1
             sizer.Add(free_btn,  (irow, 0), (1, 2), labstyle)
+
+        irow += 1
+        sizer.Add(pvpanel,  (irow, 0), (1, 3), labstyle)
+
+        if self.scandb_instname is not None and len(self.scandb_choices) > 1:
+            irow += 1
+            self.scandb_sel = wx.Choice(panel, size=(80, -1),
+                                           choices=self.scandb_choices)
+            self.scandb_sel.SetSelection(0)
+            scandb_btn = wx.Button(panel, label='Go To',  size=(55, -1))
+            scandb_btn.Bind(wx.EVT_BUTTON, self.onInstrumentGo)
+            sizer.Add(SimpleText(panel, "  %s:" % self.scandb_instname),
+                      (irow, 0), (1, 1), labstyle)
+            sizer.Add(self.scandb_sel, (irow, 1), (1, 1), labstyle)
+            sizer.Add(scandb_btn,      (irow, 2), (1, 1), labstyle)
+
 
         irow += 1
         sizer.Add(lin(200, wid=4),  (irow, 0), (1, 3), labstyle)
@@ -152,7 +201,7 @@ class ADFrame(wx.Frame):
         sizer.Add(self.contrast.label,  (irow, 0), (1, 1), labstyle)
         sizer.Add(self.contrast.choice, (irow, 1), (1, 1), labstyle)
 
-        if self.config['general']['show_1dintegration']:
+        if self.config['show_1dintegration']:
             self.show1d_btn = wx.Button(panel, label='Show 1D Integration',
                                          size=(200, -1))
             self.show1d_btn.Bind(wx.EVT_BUTTON, self.onShowIntegration)
@@ -160,13 +209,14 @@ class ADFrame(wx.Frame):
             irow += 1
             sizer.Add(self.show1d_btn, (irow, 0), (1, 2), labstyle)
 
-        if self.config['general']['show_thumbnail']:
-            t_size=self.config['general'].get('thumbnail_size', 100)
+        if self.config['show_thumbnail']:
+            t_size=self.config.get('thumbnail_size', 100)
 
-            self.thumbnail = ThumbNailImagePanel(panel, imgsize=t_size,
-                                                 size=(350, 350),
-                                                 motion_writer=partial(self.write, panel=0))
+            tnail = ThumbNailImagePanel(panel, imgsize=t_size,
+                                        size=(300, 300),
+                                        motion_writer=partial(self.write, panel=0))
 
+            self.thumbnail = tnail
             label = wx.StaticText(panel, label='Thumbnail size (pixels): ',
                                        size=(200, -1), style=txtstyle)
 
@@ -185,7 +235,7 @@ class ADFrame(wx.Frame):
 
         # image panel
         self.image = ADMonoImagePanel(self, prefix=self.prefix,
-                                      rot90=self.config['general']['default_rotation'],
+                                      rot90=self.config['default_rotation'],
                                       size=(750, 750),
                                       writer=partial(self.write, panel=1),
                                       thumbnail=self.thumbnail,
@@ -198,7 +248,7 @@ class ADFrame(wx.Frame):
         mainsizer.Fit(self)
 
         self.SetAutoLayout(True)
-        iconfile = self.config['general'].get('iconfile', None)
+        iconfile = self.config.get('iconfile', None)
         if iconfile is None or not os.path.exists(iconfile):
             iconfile = DEFAULT_ICONFILE
         try:
@@ -267,20 +317,20 @@ class ADFrame(wx.Frame):
 
         # may need to trim outer pixels (int1d_trimx/int1d_trimy in config)
         xstride = 1
-        if self.config['general'].get('int1d_flipx', False):
+        if self.config.get('int1d_flipx', False):
             xstride = -1
 
         xslice = slice(None, None, xstride)
-        trimx = int(self.config['general'].get('int1d_trimx', 0))
+        trimx = int(self.config.get('int1d_trimx', 0))
         if trimx != 0:
             xslice = slice(trimx*xstride, -trimx*xstride, xstride)
 
         ystride = 1
-        if self.config['general'].get('int1d_flipy', True):
+        if self.config.get('int1d_flipy', True):
             ystride = -1
 
         yslice = slice(None, None, ystride)
-        trimy = int(self.config['general'].get('int1d_trimy', 0))
+        trimy = int(self.config.get('int1d_trimy', 0))
         if trimy > 0:
             yslice = slice(trimy*ystride, -trimy*ystride, ystride)
 
@@ -386,11 +436,28 @@ Matt Newville <newville@cars.uchicago.edu>"""
         """write a message to the Status Bar"""
         self.SetStatusText(text=s, number=panel)
 
+    def onInstrumentGo(self, event=None):
+        posname = self.scandb_sel.GetStringSelection()
+        print("Would restore position ", self.scandb_instname, posname, self.instdb)
+
+        msg = ["Move to '{:s}'?\n".format(posname)]
+        for pospv in self.instdb.get_position(self.scandb_instname, posname).pv:
+            msg.append("{:s} = {:s}".format(pospv.pv.name, pospv.value))
+
+        msg.append('\n')
+        ret = Popup(self, '\n'.join(msg), 'Verify Move',
+                    style=wx.YES_NO|wx.ICON_QUESTION)
+        if wx.ID_YES == ret:
+            print("would really move to " ,  posname)
+
+        # self.instdb.restore_positionlist(instname, posname)
+
+
     @EpicsFunction
     def onButton(self, event=None, key='free'):
         key = key.lower()
         if key.startswith('free'):
-            ftime = self.config['general']['free_run_time']
+            ftime = self.config['free_run_time']
             self.image.restart_fps_counter()
             self.ad_cam.AcquireTime   = ftime
             self.ad_cam.AcquirePeriod = ftime
@@ -413,7 +480,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.ad_cam = epics.Device(self.prefix + 'cam1:', delim='',
                                    attrs=self.cam_attrs)
 
-        if self.config['general']['use_filesaver']:
+        if self.config['use_filesaver']:
             epics.caput("%s%sEnableCallbacks" % (self.prefix, self.fsaver), 1)
             epics.caput("%s%sAutoSave" % (self.prefix, self.fsaver), 0)
             epics.caput("%s%sAutoIncrement" % (self.prefix, self.fsaver), 0)
@@ -449,12 +516,13 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.write(char_value, panel=0)
 
 class areaDetectorApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, configfile=None,  **kws):
+    def __init__(self, configfile=None, prompt=False, **kws):
         self.configfile = configfile
+        self.prompt = prompt
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        frame = ADFrame(configfile=self.configfile)
+        frame = ADFrame(configfile=self.configfile, prompt=self.prompt)
         frame.Show()
         self.SetTopWindow(frame)
 
