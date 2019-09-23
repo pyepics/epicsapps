@@ -65,7 +65,7 @@ class EpicsApp:
     """
     wrapper for Epics Application
     """
-    def __init__(self, name, script, icon='epics', folder='Epics Apps', terminal=False):
+    def __init__(self, name, script, icon='epics', folder='Epics Apps', terminal=True):
         self.name = name
         self.script = script
         self.folder = folder
@@ -81,14 +81,16 @@ class EpicsApp:
         self.bindir = os.path.join(sys.prefix, bindir)
 
     def create_shortcut(self):
-        script =os.path.join(self.bindir, self.script)
-        scut = make_shortcut(script, name=self.name,
-                             icon=os.path.join(icondir, self.icon),
-                             terminal=self.terminal,
-                             folder=self.folder)
+        script  = os.path.join(self.bindir, self.script)
+        make_shortcut(script, name=self.name,
+                      icon=os.path.join(icondir, self.icon),
+                      terminal=self.terminal,
+                      folder=self.folder)
 
-        if platform == 'linux':
-            os.chmod(scut.target, 493)
+        print("make_shortcut ", script,self.name,
+              icondir, self.icon,
+              self.terminal,
+              self.folder)
 
         if platform == 'darwin' and HAS_CONDA:
             try:
@@ -96,10 +98,11 @@ class EpicsApp:
             except:
                 print("Warning: could not fix Mac exe for ", script)
 
-APPS = (EpicsApp('Instruments', 'epicsapp instruments', icon='instrument'),
-        EpicsApp('Sample Viewer', 'epicsapp sampleviewer', icon='microscope'),
-        EpicsApp('areaDetector Viewer', 'epicsapp adviewer', icon='camera'),
-        EpicsApp('StripChart', 'epicsapp stripchart', icon='stripchart'))
+APPS = (EpicsApp('Instruments', 'epicsapps instruments', icon='instrument'),
+        EpicsApp('Sample Viewer', 'epicsapps sampleviewer', icon='microscope'),
+        EpicsApp('areaDetector Viewer', 'epicsapps adviewer', icon='camera'),
+        # EpicsApp('StripChart', 'epicsapp stripchart', icon='stripchart'),
+        )
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
 
 
