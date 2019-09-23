@@ -3,7 +3,7 @@
 import os
 import yaml
 
-from ..utils import get_configfile
+from ..utils import get_configfile, normalize_pvname
 
 from yaml import load, dump
 try:
@@ -11,7 +11,6 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
-from ..utils import normalize_pvname
 
 _configtext = """
 title: 'SampleStage'

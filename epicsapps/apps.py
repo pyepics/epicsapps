@@ -11,6 +11,7 @@ from pyshortcuts.shortcut import Shortcut
 
 from .instruments import EpicsInstrumentApp
 from .sampleviewer import ViewerApp as SampleViewerApp
+from .areadetector import areaDetectorApp
 
 HAS_CONDA = os.path.exists(os.path.join(sys.prefix, 'conda-meta'))
 
@@ -113,7 +114,7 @@ def run_sampleviewer(configfile=None, prompt=False):
 def run_adviewer(configfile=None, prompt=False):
     """AD Viewer"""
     print('ad viewer')
-    AdViewerApp(configfile=configfile, prompt=prompt).MainLoop()
+    areaDetectorApp(configfile=configfile, prompt=prompt).MainLoop()
 
 def run_stripchart(configfile=None, prompt=False):
     """StripChart"""
