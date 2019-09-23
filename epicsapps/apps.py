@@ -65,7 +65,7 @@ class EpicsApp:
     """
     wrapper for Epics Application
     """
-    def __init__(self, name, script, icon='epics', folder='Epics Apps', terminal=True):
+    def __init__(self, name, script, icon='epics', folder='Epics Apps', terminal=False):
         self.name = name
         self.script = script
         self.folder = folder
