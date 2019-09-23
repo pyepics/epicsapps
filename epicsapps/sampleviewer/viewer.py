@@ -112,10 +112,15 @@ class StageFrame(wx.Frame):
 
     def __init__(self, configfile=None, prompt=True, **kws):
         self.read_config(configfile)
-
         wx.Frame.__init__(self, parent=None, size=(1500, 750), **kws)
 
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
+
+        try:
+            os.chdir(self.config['workdir'])
+        except:
+            print("Could not move to working directory ", self.config['workdir'])
+
         if prompt:
             ret = SelectWorkdir(self)
             if ret is None:
@@ -494,16 +499,23 @@ class StageFrame(wx.Frame):
 
     def onSetOverlays(self, overlays=None):
         if overlays is not None:
-            self.overlays = overlays
+            self.config['overlays'] = overlays
+        overlays = self.config['overlays']
         imgx, imgy = self.imgpanel.full_size
         calib = self.get_calibration()
         iscale = 0.5/abs(calib[0] * imgx)
 
-        sname, ssiz, sx, sy, swid, scolr, scolg, scolb = self.overlays[0]
-        cname, csiz, cx, cy, cwid, ccolr, ccolg, ccolb = self.overlays[1]
-        scol = [scolr, scolg, scolb]
+        if overlays[0][0].startswith('circ'):
+            circ, sbar = overlays[0], overlays[1]
+        else:
+            circ, sbar = overlays[1], overlays[0]
+
+        cname, csiz, cx, cy, cwid, ccolr, ccolg, ccolb = circ
         ccol = [ccolr, ccolg, ccolb]
         cargs = [cx, cy, csiz*iscale]
+
+        sname, ssiz, sx, sy, swid, scolr, scolg, scolb = sbar
+        scol = [scolr, scolg, scolb]
         sargs = [sx - ssiz*iscale, sy, sx + ssiz*iscale, sy]
         dobjs = [dict(shape='Line', width=swid,
                       style=wx.SOLID, color=scol, args=sargs),
@@ -540,6 +552,7 @@ class StageFrame(wx.Frame):
 
         cnf = self.config = self.configfile.config
         self.workdir     = cnf.get('workdir', os.curdir)
+
         self.orientation = cnf.get('orientation', 'landscape')
         self.title       = cnf.get('title', 'Microscope')
 

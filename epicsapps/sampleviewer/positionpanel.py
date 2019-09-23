@@ -714,8 +714,6 @@ class PositionPanel(wx.Panel):
             self.last_refresh = now
 
     def get_positions_from_db(self):
-        print("Get Positions ", self.instdb)
-
         if self.instdb is None:
             return
 
