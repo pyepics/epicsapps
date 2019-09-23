@@ -165,10 +165,10 @@ notes:
         if isapp('inst'):
             fapp = run_instruments
         if isapp('sample'):
-            fapp = run_sampleviewer,
+            fapp = run_sampleviewer
         elif isapp('strip'):
             fapp = run_stripchart,
-        elif isapp('area'):
+        elif isapp('area') or isapp('adview'):
             fapp = run_adviewer
 
         if fapp is not None:

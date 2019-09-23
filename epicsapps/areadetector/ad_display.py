@@ -35,7 +35,7 @@ from .contrast_control import ContrastControl
 from .xrd_integrator import XRD_Integrator
 from .imagepanel import ADMonoImagePanel, ThumbNailImagePanel
 from .pvconfig import PVConfigPanel
-from .ad_config import ADConfig
+from .ad_config import ADConfig, CONFFILE
 
 from ..utils import SelectWorkdir, get_icon
 
@@ -54,7 +54,7 @@ class ADFrame(wx.Frame):
         if configfile is None:
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
             configfile = FileOpen(self, "Read Detector Configuration File",
-                                  default_file='det.yaml',
+                                  default_file=CONFFILE,
                                   wildcard=wcard)
         if configfile is None:
             sys.exit()
@@ -242,18 +242,16 @@ class ADFrame(wx.Frame):
         mainsizer.Add(self.image, 1, wx.CENTER|wx.GROW|wx.ALL)
         self.SetSizer(mainsizer)
         mainsizer.Fit(self)
-
+        self.Bind(wx.EVT_CLOSE, self.onClose)
         self.SetAutoLayout(True)
         iconfile = self.config.get('iconfile', None)
         if not os.path.exists(iconfile):
             iconfile = get_icon('camera')
-        print("ICON FILE ", iconfile)
         try:
             self.SetIcon(wx.Icon(iconfile, wx.BITMAP_TYPE_ICO))
         except:
             pass
         self.connect_pvs()
-
 
     def onThumbSize(self, event=None):
         self.thumbnail.imgsize = int(self.thumbsize.GetValue())
@@ -369,12 +367,21 @@ class ADFrame(wx.Frame):
         file_pv = "%s%sFullFileName_RBV" % (self.prefix, self.prefix)
         print("Saved image File ", epics.caget(file_pv,  as_string=True))
 
-    def onExit(self, event=None):
-        try:
-            wx.Yield()
-        except:
-            pass
-        self.Destroy()
+    def onSaveConf(self, event=None):
+        fname = self.configfile.write(config=self.config, defaultfile=True)
+        print("wrote %s" % fname)
+
+    def onClose(self, event=None):
+        ret = Popup(self, "Really Quit?", "Exit AreaDetector Viewer?",
+                    style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
+        if wx.ID_YES == ret:
+            self.config['workdir'] = os.path.abspath(os.getcwd())
+            self.configfile.write(config=self.config)
+            try:
+                wx.Yield()
+            except:
+                pass
+            self.Destroy()
 
     def onAbout(self, event=None):
         msg =  """areaDetector Display version 0.2
@@ -392,8 +399,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
                  self.onCopyImage)
         MenuItem(self, fmenu, "Read Calibration File", "Read PONI Calibration",
                  self.onReadCalibFile)
+        MenuItem(self, fmenu, "&Save Configuration\tCtrl+E",
+                 "Save Configuration as Default", self.onSaveConf)
         fmenu.AppendSeparator()
-        MenuItem(self, fmenu, "E&xit\tCtrl+Q",  "Exit Program", self.onExit)
+        MenuItem(self, fmenu, "E&xit\tCtrl+Q",  "Exit Program", self.onClose)
 
         omenu = wx.Menu()
         MenuItem(self, omenu,  "&Rotate CCW\tCtrl+R", "Rotate Counter Clockwise", self.onRot90)
@@ -523,9 +532,3 @@ class areaDetectorApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
     def OnInit(self):
         self.createApp()
         return True
-
-if __name__ == '__main__':
-    configfile = None
-    if len(sys.argv) > 1:
-        configfile = sys.argv[1]
-    areaDetectorApp(configfile=configfile).MainLoop()

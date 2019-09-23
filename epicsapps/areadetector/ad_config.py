@@ -52,35 +52,6 @@ epics_controls: []
 scandb_instrument: None
 """
 
-def read_adconfig(fname):
-    """read configuration from YAML file"""
-    conf = {}
-
-#     conf.update(_def_)
-#     text = open(fname, 'r').read()
-#     data = yaml.load(text)
-#     for key, val in data.items():
-#         key = key.lower()
-#         if key == 'general':
-#             conf['general'].update(val)
-#         elif key in ('enabled_plugins', 'colormaps',
-#                      'cam_attributes', 'img_attributes'):
-#             for p in val:
-#                 if p not in conf[key]:
-#                     conf[key].append(p)
-#         else:
-#             conf[key] = val
-#
-#     prefix = conf['general'].get('prefix', None)
-#     if prefix is None:
-#         raise ValueError('prefix required in config file')
-#
-#     conf['general']['prefix'] = prefix
-#
-#     fsaver = conf['general'].get('filesaver', 'TIFF1:')
-#     conf['general']['filesaver'] = fsaver
-#     return conf
-
 CONFFILE = 'areadetector.yaml'
 class ADConfig(object):
     def __init__(self, name=None):
@@ -100,10 +71,13 @@ class ADConfig(object):
             except:
                 pass
 
-    def write(self, fname=None, config=None):
+    def write(self, fname=None, config=None, defaultfile=False):
         if fname is None:
             fname = self.config_file
+            if defaultfile:
+                fname = get_configfile(CONFFILE)
         if config is None:
             config = self.config
         with open(fname, 'w') as fh:
             fh.write(yaml.dump(config))
+        return fname

@@ -115,7 +115,7 @@ class StageFrame(wx.Frame):
 
         if configfile is None:
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
-            configfile = FileOpen(self, "Read Configuration File",
+            configfile = FileOpen(self, "Read SampleStage Configuration File",
                                   default_file=CONFFILE,
                                   wildcard=wcard)
         if configfile is None:
