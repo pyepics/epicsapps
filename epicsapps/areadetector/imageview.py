@@ -2,7 +2,6 @@
 Simple Image Viewing Window
 """
 import wx
-is_wxPhoenix = 'phoenix' in wx.PlatformInfo
 
 class ImageView(wx.Window):
     def __init__(self, parent, id=-1, pos=wx.DefaultPosition,
@@ -118,8 +117,6 @@ class ImageView(wx.Window):
         zdc.SetBrush(wx.TRANSPARENT_BRUSH)
         zdc.SetPen(wx.Pen('White', 2, wx.SOLID))
         zdc.ResetBoundingBox()
-        if not is_wxPhoenix:
-            zdc.BeginDrawing()
         if self.cursor_mode == 'profile':
             if self.prof_line is not None:
                 zdc.DrawLine(*self.prof_line)
@@ -132,8 +129,6 @@ class ImageView(wx.Window):
             if not erase:
                 self.zoom_box = bbox
                 zdc.DrawRectangle(*self.zoom_box)
-        if not is_wxPhoenix:
-            zdc.EndDrawing()
 
     def SetValue(self, image):
         self.image = image

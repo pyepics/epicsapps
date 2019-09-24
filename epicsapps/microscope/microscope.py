@@ -6,7 +6,7 @@ import time
 import os
 import shutil
 
-from six import StringIO
+
 from threading import Thread
 from collections import namedtuple, OrderedDict
 from functools import partial

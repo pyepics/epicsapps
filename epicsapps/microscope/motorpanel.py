@@ -10,9 +10,7 @@ provides two classes:
 """
 #  Aug 21 2004 M Newville:  initial working version.
 #
-import six
 import wx
-
 
 import epics
 from epics.wx.wxlib import (PVText, PVFloatCtrl, PVButton, PVComboBox,
@@ -70,7 +68,7 @@ class MotorPanel(wx.Panel):
             if self.motor is not None:
                 for i in self.__motor_fields:
                     self.motor.clear_callback(attr=i)
-        except PyDeadObjectError:
+        except:
             return
 
         if isinstance(motor, str):
@@ -96,7 +94,7 @@ class MotorPanel(wx.Panel):
         try:
             if self.motor is None:
                 return
-        except PyDeadObjectError:
+        except:
             return
 
         self.drive.SetPV(self.motor.PV('VAL'))
@@ -141,7 +139,7 @@ class MotorPanel(wx.Panel):
 
         try:
             self.FillPanelComponents()
-        except PyDeadObjectError:
+        except:
             return
 
         spacer = wx.StaticText(self, label=' ', size=(5, 5), style=RIGHT)
@@ -189,7 +187,7 @@ class MotorPanel(wx.Panel):
             if self._size == 'full':
                 self.twk_list = self.make_step_list()
                 self.UpdateStepList()
-        except PyDeadObjectError:
+        except:
             pass
 
     @EpicsFunction
@@ -286,7 +284,7 @@ class MotorPanel(wx.Panel):
             if val not in self.twk_list:
                 self.UpdateStepList(value=val)
             self.__twkbox.SetValue(val)
-        except PyDeadObjectError:
+        except:
             pass
 
     def make_step_list(self):

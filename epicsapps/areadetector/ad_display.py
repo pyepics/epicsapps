@@ -15,11 +15,6 @@ import matplotlib.cm as colormap
 
 import wx
 import wx.lib.mixins.inspection
-is_wxPhoenix = 'phoenix' in wx.PlatformInfo
-try:
-    from wx._core import PyDeadObjectError
-except:
-    PyDeadObjectError = Exception
 
 from wxmplot.plotframe import PlotFrame
 
