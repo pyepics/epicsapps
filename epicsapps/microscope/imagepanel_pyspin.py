@@ -7,7 +7,7 @@ import time
 import os
 from functools import partial
 
-from epics import PV, Device, caput, poll
+from epics import get_pv, Device, caput, poll
 
 from epics.wx import DelayedEpicsCallback, EpicsFunction
 
@@ -65,7 +65,7 @@ class ImagePanel_PySpin(ImagePanel_Base):
             for attr  in ('ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
                           'ColorMode_RBV', 'ArrayData'):
                 if attr not in self.output_pvs:
-                    self.output_pvs[attr] = PV("%s%s" % (self.output_pv, attr))
+                    self.output_pvs[attr] = get_pv("%s%s" % (self.output_pv, attr))
             time.sleep(0.02)
             self.output_pvs['ColorMode_RBV'].put(2)
             self.output_pvs['ArraySize2_RBV'].put(3)
@@ -130,33 +130,27 @@ class ImagePanel_PySpin(ImagePanel_Base):
 
 class ConfPanel_PySpin(ConfPanel_Base):
     def __init__(self, parent, image_panel=None, camera_id=0,
-                 center_cb=None, xhair_cb=None, lamp=None, **kws):
+                 center_cb=None, xhair_cb=None, **kws):
         super(ConfPanel_PySpin, self).__init__(parent, center_cb=center_cb,
                                              xhair_cb=xhair_cb, **kws)
         self.image_panel = image_panel
         self.camera_id = camera_id
         self.camera = self.image_panel.camera
-        self.lamp = lamp
 
         wids = self.wids
         sizer = self.sizer
         with_color_conv = False
         self.framerate_set_count = 0
 
-
         self.title = self.txt("PySpinnaker: ", size=285)
-        self.title2 = self.txt(" ", size=285)
-        self.title3 = self.txt(" ", size=285)
-        btn_start = Button(self, "Restart Camera", action=self.onRestart,
-                               size=(250, -1))
         next_row = self.show_position_info(row=0)
 
-        sizer.Add(self.title, (next_row,   0), (1, 3), LEFT)
-        sizer.Add(self.title2,(next_row+1, 0), (1, 3), LEFT)
-        sizer.Add(self.title3,(next_row+2, 0), (1, 3), LEFT)
         self.__initializing = True
-        i = next_row + 3
+        i = next_row + 1
 
+        sizer.Add(self.title,          (i,  0), (1, 3), LEFT)
+        
+        i += 1
         for dat in (('exposure', 'ms',  50, 0.03, MAX_EXPOSURE_TIME),
                     ('gain', 'dB',      5,  0, 40)):
             # ('gamma', '',       1, 0.5, 4)):
@@ -167,7 +161,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
                                   precision=2,
                                   action=self.onValue,
                                   act_on_losefocus=True,
-                                  action_kw={'prop': key}, size=(75, -1))
+                                  action_kws={'prop': key}, size=(75, -1))
             label = '%s' % (key.title())
             if len(units)> 0:
                 label = '%s (%s)' % (key.title(), units)
@@ -188,7 +182,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
                                   precision=3,
                                   action=self.onValue,
                                   act_on_losefocus=True,
-                                  action_kw={'prop': key}, size=(75, -1))
+                                  action_kws={'prop': key}, size=(75, -1))
             # wids[key].Disable()
             label = 'White Balance (%s)' % (color)
             sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)
@@ -201,22 +195,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
 
-        sizer.Add(btn_start,          (i, 0), (1, 2), LEFT)
-        if self.lamp is not None:
-            i += 1
-            self.lamp_pv = PV(self.lamp['ctrlpv'])
-            val = self.lamp_pv.get()
-            self.lampval = FloatSpin(self, value=val, digits=2,
-                                min_val=self.lamp['minval'],
-                                max_val=self.lamp['maxval'],
-                                increment=self.lamp['step'],
-                                action=self.onLampVal,
-                                size=(80, -1),
-                                style=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER)
-
-            sizer.Add(self.txt('Lamp Intensity:'), (i, 0), (1, 1), LEFT)
-            sizer.Add(self.lampval,                (i, 1), (1, 1), LEFT)
-
+        # sizer.Add(btn_start,          (i, 0), (1, 2), LEFT)
 
         pack(self, sizer)
         self.__initializing = False
@@ -224,9 +203,6 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.Bind(wx.EVT_TIMER, self.onTimer, self.read_props_timer)
         wx.CallAfter(self.onConnect)
 
-    # @EpicsFunction
-    def onLampVal(self, evt=None):
-        self.lamp_pv.put(float(self.lampval.GetValue()))
 
     def onRestart(self, event=None, **kws):
         self.camera.cam.EndAcquisition()
@@ -253,8 +229,8 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.wids['wb_auto'].SetValue(0)
         self.read_props_timer.Start(3000)
         self.title.SetLabel("Camera Model: %s" % (self.camera.device_name))
-        self.title2.SetLabel("Serial #: %s" % (self.camera.device_id))
-        self.title3.SetLabel("Firmware: %s" % (self.camera.device_version))
+        # self.title2.SetLabel("Serial #: %s" % (self.camera.device_id))
+        # self.title3.SetLabel("Firmware: %s" % (self.camera.device_version))
 
         self.camera.SetFramerate(14.5)
         self.framerate_set_count = 0

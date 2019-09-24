@@ -203,7 +203,7 @@ class ConfPanel_Fly2(ConfPanel_Base):
                                   precision=1,
                                   action=self.onValue,
                                   act_on_losefocus=True,
-                                  action_kw={'prop': key}, size=(75, -1))
+                                  action_kws={'prop': key}, size=(75, -1))
             label = '%s' % (key.title())
             if len(units)> 0:
                 label = '%s (%s)' % (key.title(), units)
@@ -223,7 +223,7 @@ class ConfPanel_Fly2(ConfPanel_Base):
                                   precision=0,
                                   action=self.onValue,
                                   act_on_losefocus=True,
-                                  action_kw={'prop': key}, size=(75, -1))
+                                  action_kws={'prop': key}, size=(75, -1))
             label = 'White Balance (%s)' % (color)
             sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)
             sizer.Add(wids[key],  (i, 1), (1, 1), LEFT)
@@ -240,7 +240,7 @@ class ConfPanel_Fly2(ConfPanel_Base):
         wids['dpush_time'] =  FloatCtrl(self, value=datapush_time, maxval=1e6,
                                         precision=1, minval=0,
                                         action=self.onValue, act_on_losefocus=True,
-                                        action_kw={'prop':'autosave_time'}, size=(75, -1))
+                                        action_kws={'prop':'autosave_time'}, size=(75, -1))
 
         label = 'AutoSave Time (sec)'
         sizer.Add(self.txt(label), (i, 0), (1, 1), LEFT)

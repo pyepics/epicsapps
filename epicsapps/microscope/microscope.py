@@ -157,7 +157,6 @@ class MicroscopeFrame(wx.Frame):
 
         autofocus_cb = self.onAutoFocus
 
-
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
             ImagePanel, ConfPanel = ImagePanel_Fly2, ConfPanel_Fly2
@@ -197,11 +196,13 @@ class MicroscopeFrame(wx.Frame):
                                       center_cb=self.onMoveToCenter,
                                       autofocus=autofocus_cb)
 
-        self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel, **opts)
+        self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel,
+                                   calibrations=self.calibrations,
+                                   calib_cb=self.onSetCalibration, **opts)
+
 
         if orientation.lower().startswith('land'):
-            size = (1600, 800)
-            self.pospanel.SetMinSize((275, 600))
+            size = (1500, 750)
 
             zpanel = wx.Panel(ppanel)
             zlab1 = wx.StaticText(zpanel, label='ZoomBox size (\u03bCm):',
@@ -223,28 +224,28 @@ class MicroscopeFrame(wx.Frame):
             zsizer.Add(zlab2,         (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             zsizer.Add(zsharp,        (1, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
             zsizer.Add(self.imgpanel.zoompanel, (2, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
+            zsizer.Add((50, 50),      (3, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
             zpanel.SetSizer(zsizer)
             zsizer.Fit(zpanel)
 
             msizer = wx.GridBagSizer(2, 2)
-            msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            msizer.Add(zpanel,         (2, 0), (1, 1), ALL_EXP|LEFT_TOP, 2)
-            msizer.Add(self.pospanel,  (0, 1), (3, 1), ALL_EXP|LEFT_TOP, 2)
+            msizer.Add(self.ctrlpanel, (0, 0), (1, 1), LEFT_TOP, 1)
+            msizer.Add(self.confpanel, (1, 0), (1, 1), LEFT_TOP, 1)
+            msizer.Add((10, 10),       (2, 0), (1, 1), ALL_EXP, 1)
+            msizer.Add(zpanel,         (3, 0), (1, 1), ALL_EXP, 1)
+            msizer.Add(self.pospanel,  (0, 1), (5, 1), ALL_EXP, 1)
+            self.pospanel.SetMinSize((275, 1000))
+
             pack(ppanel, msizer)
 
             sizer = wx.BoxSizer(wx.HORIZONTAL)
             sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
                            (ppanel,     1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
             pack(self, sizer)
-
+            
         else: # portrait mode
             size = (900, 1500)
             self.pospanel.SetMinSize((250, 450))
-            # if len(self.cam_lenses) > 1:
-            #     opts['lens_choices'] = self.cam_lenses
-            #     opts['lens_default'] = self.cam_calibmag
-            # self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel, **opts)
             msizer = wx.GridBagSizer(3, 3)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
@@ -388,16 +389,12 @@ class MicroscopeFrame(wx.Frame):
         add_menu(self, pmenu, label="Erase Many Positions\tCtrl+E",
                  text="Select Multiple Positions to Erase",
                  action = self.onEraseMany)
-
-
         add_menu(self, omenu, label="Image Overlays",
                  text="Setup Image Overlays",
                  action = self.onConfigOverlays)
         add_menu(self, omenu, label="Calibration",
                  text="Setup Image Calibration",
                  action = self.onConfigCalibration)
-
-
         vmove  = wx.NewId()
         verase = wx.NewId()
         vreplace = wx.NewId()
@@ -588,7 +585,6 @@ class MicroscopeFrame(wx.Frame):
 
         self.stages = {}
         self.stage_groups = []
-
         for _dat in cnf.get('stages', []):
             name, group, desc, scale, prec, maxstep, show = _dat
             self.stages[name] = dict(label=name, group=group, desc=desc,
@@ -624,9 +620,6 @@ class MicroscopeFrame(wx.Frame):
 
 
     def write_htmllog(self, name, thispos):
-        stages  = self.config['stages']
-        stagedesc = {s[0]:s[2] for s in stages}
-
         img_folder = self.imgdir
         junk, img_file = os.path.split(thispos['image'])
         imgfile = os.path.join(img_folder, img_file)
@@ -640,7 +633,8 @@ class MicroscopeFrame(wx.Frame):
     </table></td></tr></table>"""
         pos_fmt ="    <tr><td> %s </td><td> %s </td><td>   %f</td></tr>"
         for pvname, value in thispos['position'].items():
-            txt.append(pos_fmt % (stagedesc.get(pvname, pvname), pvname, value))
+            desc = self.stages.get(pvname).get(desc, pvname)
+            txt.append(pos_fmt % (desc, pvname, value))
 
         fout = open(self.htmllog, 'a')
         fout.write(html_fmt % (imgfile, imgfile, name,
@@ -912,7 +906,7 @@ class MicroscopeFrame(wx.Frame):
         os.chdir(curpath)
 
 class MicroscopeApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, configfile=None, prompt=True, debug=False, **kws):
+    def __init__(self, configfile=None, prompt=True, debug=True, **kws):
         self.configfile = configfile
         self.prompt = prompt
         self.debug = debug

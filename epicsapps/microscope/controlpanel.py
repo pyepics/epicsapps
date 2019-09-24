@@ -172,7 +172,7 @@ class ControlPanel(wx.Panel):
         "bitmap button"
         bitmap = wx.Bitmap(icons[name].GetImage())
         b = wx.BitmapButton(panel, -1, bitmap, style=wx.NO_BORDER)
-        b.Bind(wx.EVT_BUTTON, partiald(self.onMove, group=group, name=name))
+        b.Bind(wx.EVT_BUTTON, partial(self.onMove, group=group, name=name))
         return b
 
     def make_button_panel(self, parent, group='', dim=2):
