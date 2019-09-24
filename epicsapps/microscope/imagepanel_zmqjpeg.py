@@ -7,14 +7,15 @@ import wx
 import time
 import os
 import numpy as np
-from six import StringIO
 import io
 import zmq
 import base64
+
 from PIL import Image
 
+from wxutils import  pack
+
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
-from epics.wx.utils import  pack
 
 class ImagePanel_ZMQ(ImagePanel_Base):
     """Image Panel for JPEGs sent by ZeroMQ"""

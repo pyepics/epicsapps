@@ -5,14 +5,15 @@ import numpy as np
 import wx
 import time
 import os
-from epics import PV, Device, caput, poll
-from epics.wx import EpicsFunction
+from functools import partial
 
-from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
-from epics.wx.utils import pack, FloatCtrl, Closure, add_button
+from epics import PV, Device, caput, poll
+
 from epics.wx import DelayedEpicsCallback, EpicsFunction
 
-from wxutils import FloatSpin
+from wxutils import FloatSpin, FloatCtrl, pack, Button
+
+from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
@@ -146,7 +147,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.title = self.txt("PySpinnaker: ", size=285)
         self.title2 = self.txt(" ", size=285)
         self.title3 = self.txt(" ", size=285)
-        btn_start = add_button(self, "Restart Camera", action=self.onRestart,
+        btn_start = Button(self, "Restart Camera", action=self.onRestart,
                                size=(250, -1))
         next_row = self.show_position_info(row=0)
 
@@ -177,7 +178,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
                 akey = '%s_auto' % key
                 wids[akey] =  wx.CheckBox(self, -1, label='auto')
                 wids[akey].SetValue(0)
-                wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
+                wids[akey].Bind(wx.EVT_CHECKBOX, partial(self.onAuto, prop=key))
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i = i + 1
 
@@ -196,7 +197,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
                 akey = 'wb_auto'
                 wids[akey] =  wx.CheckBox(self, -1, label='auto')
                 wids[akey].SetValue(0)
-                wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
+                wids[akey].Bind(wx.EVT_CHECKBOX, partial(self.onAuto, prop=key))
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
 

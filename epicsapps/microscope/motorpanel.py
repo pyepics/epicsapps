@@ -12,18 +12,15 @@ provides two classes:
 #
 import six
 import wx
-try:
-    from wx._core import PyDeadObjectError
-except:
-    PyDeadObjectError = Exception
+
 
 import epics
-from epics.wx.wxlib import PVText, PVFloatCtrl, PVButton, PVComboBox, \
-     DelayedEpicsCallback, EpicsFunction
+from epics.wx.wxlib import (PVText, PVFloatCtrl, PVButton, PVComboBox,
+                            DelayedEpicsCallback, EpicsFunction)
 
 from epics.wx.motordetailframe  import MotorDetailFrame
 
-from epics.wx.utils import LCEN, RCEN, CEN, LTEXT, RIGHT, pack, add_button
+from wxutils import LCEN, RCEN, CEN, LTEXT, RIGHT, pack, Button
 
 class MotorPanel(wx.Panel):
     """ MotorPanel  a simple wx windows panel for controlling an Epics Motor
@@ -57,7 +54,7 @@ class MotorPanel(wx.Panel):
         if motor is not None:
             try:
                 self.SelectMotor(motor)
-            except PyDeadObjectError:
+            except:
                 pass
 
 
@@ -76,7 +73,7 @@ class MotorPanel(wx.Panel):
         except PyDeadObjectError:
             return
 
-        if isinstance(motor, six.string_types):
+        if isinstance(motor, str):
             self.motor = epics.Motor(motor)
         elif isinstance(motor, epics.Motor):
             self.motor = motor
@@ -167,8 +164,8 @@ class MotorPanel(wx.Panel):
             self.twr = PVButton(self, label='<',  size=(30, 30))
             self.twf = PVButton(self, label='>',  size=(30, 30))
 
-            self.stopbtn = add_button(self, label=' Stop ', action=self.OnStopButton)
-            self.morebtn = add_button(self, label=' More ', action=self.OnMoreButton)
+            self.stopbtn = Button(self, label=' Stop ', action=self.OnStopButton)
+            self.morebtn = Button(self, label=' More ', action=self.OnMoreButton)
 
             self.__sizer.AddMany([(self.twr,      0, CEN),
                                   (self.__twkbox, 0, CEN),

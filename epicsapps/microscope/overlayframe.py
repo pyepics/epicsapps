@@ -1,7 +1,6 @@
 import wx
 import wx.lib.colourselect  as csel
-from wx.lib.agw.floatspin import FloatSpin
-from epics.wx.utils import (add_button, pack, SimpleText, FloatCtrl)
+from wxutil import Button, pack, SimpleText, FloatCtrl
 
 CEN = wx.ALL|wx.GROW|wx.ALIGN_CENTER
 LEFT = wx.ALIGN_LEFT
@@ -22,8 +21,8 @@ class OverlayFrame(wx.Frame):
         panel = wx.Panel(self)
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, 0, ""))
 
-        ok_button = add_button(panel, "Apply", action=self.onApply, size=(75, -1))
-        done_button = add_button(panel, "Done", action=self.onClose, size=(75, -1))
+        ok_button = Button(panel, "Apply", action=self.onApply, size=(75, -1))
+        done_button = Button(panel, "Done", action=self.onClose, size=(75, -1))
 
         sbar = circ = None
         for overlay in self.config.get('overlays', []):

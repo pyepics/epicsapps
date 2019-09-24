@@ -1,10 +1,10 @@
 import wx
 
 from epics import get_pv, poll
-from epics.wx.utils import pack
 from epics.wx import (PVEnumChoice, PVEnumButtons,
                       PVFloatCtrl, PVTextCtrl, PVStaticText)
-from wxutils import Font
+
+from wxutils import Font, pack
 labstyle = wx.ALIGN_LEFT|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
 
 

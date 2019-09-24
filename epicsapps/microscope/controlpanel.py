@@ -2,15 +2,13 @@ import wx
 import time
 import json
 from collections import OrderedDict
-
-import wx.lib.agw.pycollapsiblepane as CP
+from functools import partial
 
 from epics import Motor
 from epics.wx import EpicsFunction
 
-from epics.wx.utils import (add_button, add_menu, popup, pack, Closure ,
-                            NumericCombo, SimpleText, FileSave, FileOpen,
-                            SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
+from wxutils import (Button, pack, NumericCombo, SimpleText, FileSave,
+                     FileOpen, SelectWorkdir, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from .motorpanel import MotorPanel
 from .icons import icons
@@ -75,12 +73,12 @@ class ControlPanel(wx.Panel):
             sizer.Add(wx.StaticLine(self, size=(300, 3)), 0, CEN_TOP)
 
         if center_cb is not None:
-            ctr_button = add_button(self, "Move Selected Pixel to Center",
+            ctr_button = Button(self, "Move Selected Pixel to Center",
                                     action=self.onBringToCenter, size=(225, -1))
             sizer.Add(ctr_button, 0, LEFT_TOP)
 
         if autofocus is not None:
-            self.af_button = add_button(self, "AutoFocus",
+            self.af_button = Button(self, "AutoFocus",
                                         action=autofocus, size=(225, -1))
             self.af_message = wx.StaticText(self, label="", size=(200,-1))
             sizer.Add(self.af_button, 0, LEFT_TOP)
@@ -156,7 +154,7 @@ class ControlPanel(wx.Panel):
 
         if buttons is not None:
             for blabel, action in buttons:
-                msizer.Add(add_button(panel, blabel, action=action))
+                msizer.Add(Button(panel, blabel, action=action))
 
         dim=len(motorlist)
         btnbox = self.make_button_panel(panel, group=group, dim=dim)
@@ -174,7 +172,7 @@ class ControlPanel(wx.Panel):
         "bitmap button"
         bitmap = wx.Bitmap(icons[name].GetImage())
         b = wx.BitmapButton(panel, -1, bitmap, style=wx.NO_BORDER)
-        b.Bind(wx.EVT_BUTTON, Closure(self.onMove, group=group, name=name))
+        b.Bind(wx.EVT_BUTTON, partiald(self.onMove, group=group, name=name))
         return b
 
     def make_button_panel(self, parent, group='', dim=2):

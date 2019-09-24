@@ -5,12 +5,13 @@ import numpy as np
 import wx
 import time
 import os
+from functools import partial
 from epics import PV, Device, caput, poll
-from epics.wx import EpicsFunction
+from epics.wx import DelayedEpicsCallback, EpicsFunction
+
+from wxutils import pack, FloatCtrl
 
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
-from epics.wx.utils import pack, FloatCtrl, Closure, add_button
-from epics.wx import DelayedEpicsCallback
 
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
@@ -212,7 +213,7 @@ class ConfPanel_Fly2(ConfPanel_Base):
             akey = '%s_auto' % key
             wids[akey] =  wx.CheckBox(self, -1, label='auto')
             wids[akey].SetValue(0)
-            wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
+            wids[akey].Bind(wx.EVT_CHECKBOX, partial(self.onAuto, prop=key))
             sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i = i + 1
 
@@ -231,7 +232,7 @@ class ConfPanel_Fly2(ConfPanel_Base):
                 akey = 'wb_auto'
                 wids[akey] =  wx.CheckBox(self, -1, label='auto')
                 wids[akey].SetValue(0)
-                wids[akey].Bind(wx.EVT_CHECKBOX, Closure(self.onAuto, prop=key))
+                wids[akey].Bind(wx.EVT_CHECKBOX, partial(self.onAuto, prop=key))
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
 

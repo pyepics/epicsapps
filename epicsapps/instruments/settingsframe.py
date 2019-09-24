@@ -4,9 +4,8 @@ import time
 import wx
 import wx.lib.scrolledpanel as scrolled
 
-from epics.wx.utils import (empty_bitmap, add_button, add_menu, Closure,
-                            NumericCombo, pack, popup, SimpleText,
-                            FileSave, FileOpen, SelectWorkdir)
+from wxutils import (NumericCombo, pack, SimpleText, FileSave,
+                     FileOpen, SelectWorkdir)
 
 from .utils import GUIColors, set_font_with_children
 
@@ -79,8 +78,8 @@ class SettingsFrame(wx.Frame) :
         sizer.Add(wx.StaticLine(panel, size=(150, -1), style=wx.LI_HORIZONTAL),
                   (irow, 0), (1, 5), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 3)
 
-        btn_ok     = add_button(panel, 'OK',     size=(70, -1), action=self.OnOK)
-        btn_cancel = add_button(panel, 'Cancel', size=(70, -1), action=self.OnCancel)
+        btn_ok     = Button(panel, 'OK',     size=(70, -1), action=self.OnOK)
+        btn_cancel = Button(panel, 'Cancel', size=(70, -1), action=self.OnCancel)
 
         irow += 1
         sizer.Add(btn_ok,     (irow, 0), (1, 1), labstyle|wx.ALL,  5)
@@ -169,8 +168,8 @@ class InstSelectionFrame(wx.Frame) :
         sizer.Add(wx.StaticLine(panel, size=(150, -1), style=wx.LI_HORIZONTAL),
                   (irow, 0), (1, 5), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 5)
 
-        btn_ok     = add_button(panel, 'OK',     size=(70, -1), action=self.OnOK)
-        btn_cancel = add_button(panel, 'Cancel', size=(70, -1), action=self.OnCancel)
+        btn_ok     = Button(panel, 'OK',     size=(70, -1), action=self.OnOK)
+        btn_cancel = Button(panel, 'Cancel', size=(70, -1), action=self.OnCancel)
 
         irow += 1
         sizer.Add(btn_ok,     (irow, 0), (1, 1), labstyle|wx.ALL,  5)

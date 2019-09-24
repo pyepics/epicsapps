@@ -5,16 +5,17 @@ import wx
 import time
 import os
 import numpy as np
-
+from functools import partial
 from epics import PV, Device, caput, poll
-from epics.wx import EpicsFunction
+
+from epics.wx import DelayedEpicsCallback, EpicsFunction
+from epics.wx import PVEnumChoice, PVFloatCtrl, PVTextCtrl
 
 from PIL import Image
+
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 
-from epics.wx import (DelayedEpicsCallback, EpicsFunction, Closure,
-                      PVEnumChoice, PVFloatCtrl, PVTextCtrl)
-from epics.wx.utils import pack, add_button
+from wxutils import pack, Button
 
 class ImagePanel_EpicsAD(ImagePanel_Base):
     img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
@@ -227,8 +228,8 @@ class ConfPanel_EpicsAD(ConfPanel_Base):
         self.wids['gain'].SetMax(20)
 
         for key in ('start', 'stop'):
-            self.wids[key] = wx.Button(self, -1, label=key.title(), size=(65, -1))
-            self.wids[key].Bind(wx.EVT_BUTTON, Closure(self.onButton, key=key))
+            self.wids[key] =Button(self, label=key.title(), size=(65, -1),
+                                   action=partial(self.onButton, key=key))
 
         labstyle  = wx.ALIGN_LEFT|wx.EXPAND|wx.ALIGN_BOTTOM
         ctrlstyle = wx.ALIGN_LEFT #  |wx.ALIGN_BOTTOM

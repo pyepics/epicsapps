@@ -1,17 +1,14 @@
 #!/usr/bin/python
 
-import wx
-try:
-    from wx._core import PyDeadObjectError
-except:
-    PyDeadObjectError = Exception
-
 import time
+from collections import OrderedDict
+
+import wx
+
 import epics
 from epics.wx import (EpicsFunction, PVText, PVFloatCtrl, PVTextCtrl,
                       PVEnumChoice, MotorPanel)
-from epics.wx.utils import  pack, popup, add_button, SimpleText
-from collections import OrderedDict
+from wxutils import pack, Popup, Button, SimpleText
 
 from .utils import ALL_EXP , GUIColors, get_pvtypes, get_pvdesc, normalize_pvname
 
@@ -320,7 +317,7 @@ class InstrumentPanel(wx.Panel):
                 try:
                     t0 = time.time()
                     panel = MotorPanel(self.leftpanel, pvname)
-                except PyDeadObjectError:
+                except:
                     pass
             elif pv is not None and hasattr(pv, 'pvname') and pv.pvname not in skip:
                 panel = wx.Panel(self.leftpanel)
@@ -388,7 +385,7 @@ class InstrumentPanel(wx.Panel):
                 try:
                     time.sleep(0.010)
                     wid.Destroy()
-                except PyDeadObjectError:
+                except:
                     pass
 
         self.Refresh()
@@ -491,7 +488,7 @@ class InstrumentPanel(wx.Panel):
                 postext.append('  %s= %s' % (pvpos.pv.name, pvpos.value))
             postext = '\n'.join(postext)
 
-            ret = popup(self, "Overwrite %s?: \n%s" % (posname, postext),
+            ret = Popup(self, "Overwrite %s?: \n%s" % (posname, postext),
                         'Verify Overwrite',
                         style=wx.YES_NO|wx.ICON_QUESTION)
             if ret != wx.ID_YES:
@@ -607,7 +604,7 @@ class InstrumentPanel(wx.Panel):
         verify = int(self.db.get_info('verify_erase'))
 
         if verify:
-            ret = popup(self, "Erase position '%s'?" % (posname),
+            ret = Popup(self, "Erase position '%s'?" % (posname),
                         'Verify Erase',
                         style=wx.YES_NO|wx.ICON_QUESTION)
             if ret != wx.ID_YES:

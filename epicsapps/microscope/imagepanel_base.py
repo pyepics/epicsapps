@@ -2,22 +2,16 @@
 Base Image Panel to be inherited by other ImagePanels
 """
 
+import os
 import io
 import wx
 import time
 import numpy as np
-import os
-import shutil
-import math
-import atexit
 from threading import Thread
-from six import StringIO
 import base64
 
 from PIL import Image
-
-from epics.wx.utils import  Closure, add_button
-from wxutils import MenuItem, Choice
+from wxutils import MenuItem, Choice, Button
 
 try:
     import zmq
@@ -377,8 +371,8 @@ class ConfPanel_Base(wx.Panel):
         img_label = self.txt("Image Size:")
         sel_label = self.txt("Selected Pixel:")
         cen_label = self.txt("Distance to Center(um):")
-        # ctr_button = add_button(self, "Bring Selected Pixel to Center",
-        #                         action=self.onBringToCenter, size=(250, -1))
+        # ctr_button = Button(self, "Bring Selected Pixel to Center",
+        #                     action=self.onBringToCenter, size=(250, -1))
 
         sizer = self.sizer
         sizer.Add(img_label,      (row,   0), (1, 1), LEFT)

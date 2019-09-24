@@ -15,10 +15,9 @@ import wx.adv
 
 import epics
 from epics.wx import finalize_epics, EpicsFunction
-from epics.wx.utils import  (empty_bitmap, add_button, add_menu, pack, popup,
-                    Closure, NumericCombo)
+from epics.wx.utils import add_menu
 
-from wxutils import FileSave, FileOpen
+from wxutils import FileSave, FileOpen, Popup, pack, NumericCombo
 
 from .configfile import InstrumentConfig
 from .instrument import isInstrumentDB, InstrumentDB
@@ -112,8 +111,8 @@ class InstrumentFrame(wx.Frame):
                 set_hostpid = True
                 if not db.check_hostpid():
                     hostname = db.get_info('host_name')
-                    pid     =  db.get_info('process_id')
-                    ret = popup(None, FILE_IN_USE_MSG % (os.path.abspath(dbname),
+                    pid = db.get_info('process_id')
+                    ret = Popup(None, FILE_IN_USE_MSG % (os.path.abspath(dbname),
                                                          hostname, pid),
                                 'Database in use',
                                 style=wx.YES_NO|wx.ICON_EXCLAMATION)
@@ -380,8 +379,7 @@ class InstrumentFrame(wx.Frame):
 
         MSG = "Permanently Remove Instrument '%s'?\nThis cannot be undone!"
 
-        ret = popup(self, MSG % iname,
-                    'Remove Instrument',
+        ret = Popup(self, MSG % iname, 'Remove Instrument',
                     style=wx.YES_NO|wx.ICON_QUESTION)
         if ret != wx.ID_YES:
             return

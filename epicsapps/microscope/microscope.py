@@ -9,6 +9,8 @@ import shutil
 from six import StringIO
 from threading import Thread
 from collections import namedtuple, OrderedDict
+from functools import partial
+
 import base64
 import json
 import matplotlib
@@ -18,13 +20,10 @@ from wxmplot import PlotFrame
 from epics import caput, Motor
 from epics.wx import EpicsFunction
 
-from epics.wx.utils import (add_menu, pack, Closure, popup,
-                            NumericCombo, SimpleText, FileSave, FileOpen,
-                            LTEXT, CEN, LCEN, RCEN, RIGHT)
+from epics.wx.utils import (add_menu, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
-from wxutils import (GridPanel, OkCancel, FloatSpin)
-
-from scipy.optimize import minimize
+from wxutils import (GridPanel, OkCancel, FloatSpin, NumericCombo,
+                     SimpleText, FileSave, FileOpen, pack, Popup)
 
 from .configfile import MicroscopeConfig, CONFFILE
 from .icons import icons
@@ -441,7 +440,7 @@ class MicroscopeFrame(wx.Frame):
             mitem = omenu.Append(mid, label, label, wx.ITEM_CHECK)
             if show > 0 :
                 mitem.Check()
-            self.Bind(wx.EVT_MENU, Closure(self.onShowHide, name=name, panel=panel), mitem)
+            self.Bind(wx.EVT_MENU, partial(self.onShowHide, name=name, panel=panel), mitem)
 
         mbar.Append(fmenu, '&File')
         mbar.Append(omenu, '&Options')
@@ -839,7 +838,7 @@ class MicroscopeFrame(wx.Frame):
                 self.confpanel.img_size_shown = True
 
     def onClose(self, event=None):
-        if wx.ID_YES == popup(self, "Really Quit?", "Exit Sample Stage?",
+        if wx.ID_YES == Popup(self, "Really Quit?", "Exit Sample Stage?",
                               style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION):
 
             self.config['workdir'] = os.path.abspath(os.getcwd())

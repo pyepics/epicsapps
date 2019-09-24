@@ -10,9 +10,9 @@ import epics
 from ..utils import normalize_pvname, get_pvdesc
 
 from wxutils import (GridPanel, BitmapButton, FloatCtrl, FloatSpin,
-                     FloatSpinWithPin, get_icon, SimpleText, Choice,
-                     SetTip, Check, Button, HLine, OkCancel, LCEN,
-                     RCEN, pack)
+                     FloatSpinWithPin, get_icon, SimpleText, Choice, YesNo,
+                     SetTip, Check, Button, HLine, OkCancel, LCEN, RCEN,
+                     pack)
 
 FileBrowser = filebrowse.FileBrowseButtonWithHistory
 
@@ -114,33 +114,6 @@ class GUIColors(object):
         self.nb_activetext = wx.Colour(80,10,10)
         self.title  = wx.Colour(80,10,10)
         self.pvname = wx.Colour(10,10,80)
-
-class HideShow(wx.Choice):
-    def __init__(self, parent, default=True, size=(100, -1)):
-        wx.Choice.__init__(self, parent, -1, size=size)
-        self.choices = ('Hide', 'Show')
-        self.Clear()
-        self.SetItems(self.choices)
-        self.SetSelection({False:0, True:1}[default])
-
-class YesNo(wx.Choice):
-    def __init__(self, parent, defaultyes=True, size=(75, -1)):
-        wx.Choice.__init__(self, parent, -1, size=size)
-        self.choices = ('No', 'Yes')
-        self.Clear()
-        self.SetItems(self.choices)
-        self.SetSelection({False:0, True:1}[defaultyes])
-
-    def SetChoices(self, choices):
-        self.Clear()
-        self.SetItems(choices)
-        self.choices = choices
-
-    def Select(self, choice):
-        if isinstance(choice, int):
-            self.SetSelection(0)
-        elif choice in self.choices:
-            self.SetSelection(self.choices.index(choice))
 
 class ConnectDialog(wx.Dialog):
     """

@@ -6,9 +6,10 @@ import wx.lib.scrolledpanel as scrolled
 import epics
 from epics.wx import EpicsFunction
 
-from epics.wx.utils import  (empty_bitmap, add_button, add_menu,
-                             Closure, NumericCombo, pack, popup, SimpleText,
-                             FileSave, FileOpen, SelectWorkdir)
+from epics.wx.utils import add_menu
+
+from wxutils import (NumericCombo, pack, SimpleText, FileSave, FileOpen,
+                     SelectWorkdir, Button)
 
 from .utils import GUIColors, HideShow, YesNo, set_font_with_children, get_pvtypes
 from . import instrument
@@ -134,9 +135,9 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
 
         btn_panel = wx.Panel(panel, size=(75, -1))
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        btn_ok     = add_button(btn_panel, 'OK',     size=(70, -1),
+        btn_ok     = Button(btn_panel, 'OK',     size=(70, -1),
                                 action=self.onOK)
-        btn_cancel = add_button(btn_panel, 'Cancel', size=(70, -1), action=self.onCancel)
+        btn_cancel = Button(btn_panel, 'Cancel', size=(70, -1), action=self.onCancel)
 
         btn_sizer.Add(btn_ok,     0, wx.ALIGN_LEFT,  2)
         btn_sizer.Add(btn_cancel, 0, wx.ALIGN_RIGHT,  2)
@@ -328,9 +329,9 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
 
         btn_panel = wx.Panel(panel, size=(75, -1))
         btn_sizer = wx.BoxSizer(wx.HORIZONTAL)
-        btn_ok     = add_button(btn_panel, 'Done',     size=(70, -1),
+        btn_ok     = Button(btn_panel, 'Done',     size=(70, -1),
                                 action=self.OnDone)
-        btn_cancel = add_button(btn_panel, 'Cancel', size=(70, -1), action=self.onCancel)
+        btn_cancel = Button(btn_panel, 'Cancel', size=(70, -1), action=self.onCancel)
 
         btn_sizer.Add(btn_ok,     0, wx.ALIGN_LEFT,  2)
         btn_sizer.Add(btn_cancel, 0, wx.ALIGN_RIGHT,  2)
@@ -542,9 +543,9 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
         sizer.SetVGap(2)
         sizer.SetHGap(3)
         bkws = dict(size=(125, -1))
-        btn_ok     = add_button(panel, "Erase Selected",   action=self.onOK, **bkws)
-        btn_all    = add_button(panel, "Select All",    action=self.onAll, **bkws)
-        btn_none   = add_button(panel, "Select None",   action=self.onNone,  **bkws)
+        btn_ok    = Button(panel, "Erase Selected",   action=self.onOK, **bkws)
+        btn_all   = Button(panel, "Select All",    action=self.onAll, **bkws)
+        btn_none  = Button(panel, "Select None",   action=self.onNone,  **bkws)
 
         brow = wx.BoxSizer(wx.HORIZONTAL)
         brow.Add(btn_all ,  0, ALL_EXP|wx.ALIGN_LEFT, 1)

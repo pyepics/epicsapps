@@ -4,15 +4,16 @@
 import wx
 import time
 import os
-import numpy as np
-from six import StringIO
-# from six.moves.urllib.request import urlopen
 import io
 import urllib
+
+import numpy as np
+
 from PIL import Image
 
+from wxutils import  pack
+
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
-from epics.wx.utils import  pack
 
 class ImagePanel_URL(ImagePanel_Base):
     """Image Panel for webcam"""
@@ -58,7 +59,6 @@ class ImagePanel_URL(ImagePanel_Base):
         try:
             wximage = wx.Image(self.read_url())
             time.sleep(0.025)
-            # wximage = wx.ImageFromStream(StringIO(urlopen(self.url).read()))
             return wximage.Scale(int(scale*self.img_w), int(scale*self.img_h))
         except:
             pass

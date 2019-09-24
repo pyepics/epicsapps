@@ -7,8 +7,10 @@ import numpy as np
 import time
 from collections import OrderedDict
 from epics import caput
-from epics.wx.utils import (add_button, add_menu, popup, pack, Closure,
-                            SimpleText, FloatCtrl)
+
+from funcutil import partial
+
+from wxuxitls import SimpleText, FloatCtrl, MenuItem, Popup, pack, Button
 
 from epicsscan.scandb import ScanDB, InstrumentDB
 from lmfit import Parameters, minimize
@@ -166,9 +168,9 @@ class ErasePositionsDialog(wx.Frame):
         sizer.SetVGap(2)
         sizer.SetHGap(3)
         bkws = dict(size=(95, -1))
-        btn_ok     = add_button(panel, "Erase Selected",   action=self.onOK, **bkws)
-        btn_all    = add_button(panel, "Select All",    action=self.onAll, **bkws)
-        btn_none   = add_button(panel, "Select None",   action=self.onNone,  **bkws)
+        btn_ok   = Button(panel, "Erase Selected",   action=self.onOK, **bkws)
+        btn_all  = Button(panel, "Select All",    action=self.onAll, **bkws)
+        btn_none = Button(panel, "Select None",   action=self.onNone,  **bkws)
 
         brow = wx.BoxSizer(wx.HORIZONTAL)
         brow.Add(btn_all ,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
@@ -253,9 +255,9 @@ class TransferPositionsDialog(wx.Frame):
         sizer.SetVGap(2)
         sizer.SetHGap(3)
         bkws = dict(size=(95, -1))
-        btn_ok     = add_button(panel, "Copy Selected", action=self.onOK, **bkws)
-        btn_all    = add_button(panel, "Select All",    action=self.onAll, **bkws)
-        btn_none   = add_button(panel, "Select None",   action=self.onNone,  **bkws)
+        btn_ok   = Button(panel, "Copy Selected", action=self.onOK, **bkws)
+        btn_all  = Button(panel, "Select All",    action=self.onAll, **bkws)
+        btn_none = Button(panel, "Select None",   action=self.onNone,  **bkws)
 
         brow = wx.BoxSizer(wx.HORIZONTAL)
         brow.Add(btn_all ,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
@@ -410,9 +412,9 @@ class PositionPanel(wx.Panel):
         tlabel = wx.StaticText(self, label="Save Position: ")
 
         bkws = dict(size=(55, -1))
-        btn_goto  = add_button(self, "Go To", action=self.onGo,    **bkws)
-        btn_erase = add_button(self, "Erase", action=self.onErase, **bkws)
-        btn_show  = add_button(self, "Show",  action=self.onShow,  **bkws)
+        btn_goto  = Button(self, "Go To", action=self.onGo,    **bkws)
+        btn_erase = Button(self, "Erase", action=self.onErase, **bkws)
+        btn_show  = Button(self, "Show",  action=self.onShow,  **bkws)
         brow = wx.BoxSizer(wx.HORIZONTAL)
         brow.Add(btn_goto,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_erase, 0, ALL_EXP|wx.ALIGN_LEFT, 1)
@@ -507,7 +509,7 @@ class PositionPanel(wx.Panel):
         else:
             self.viewer.write_message("COULD NOT SAVE IMAGE FILE!!")
 
-        wx.CallAfter(Closure(self.onSelect, event=None, name=name))
+        wx.CallAfter(partial(self.onSelect, event=None, name=name))
 
     def onShow(self, event):
         posname = self.pos_list.GetStringSelection()
