@@ -9,9 +9,9 @@ import time
 import numpy as np
 from threading import Thread
 import base64
-
+from epics import get_pv
 from PIL import Image
-from wxutils import MenuItem, Choice, Button
+from wxutils import MenuItem, Choice, Button, FloatSpin
 
 try:
     import zmq
@@ -331,15 +331,14 @@ class ImagePanel_Base(wx.Panel):
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
 class ConfPanel_Base(wx.Panel):
-    def __init__(self, parent,  center_cb=None,
-                 image_panel=None, xhair_cb=None,
-                 size=(300, 350), **kws):
-        self.lens_choices = None
-        if 'lens_choices' in kws:
-             self.lens_choices = kws.pop('lens_choices')
-        self.lens_default = None
-        if 'lens_default' in kws:
-             self.lens_default = kws.pop('lens_default')
+    def __init__(self, parent,  calibrations=None, calib_cb=None,
+                 center_cb=None, image_panel=None, xhair_cb=None,
+                 lamp=None,  size=(325, 250), **kws):
+
+        self.calibrations = calibrations
+        self.calib_cb = calib_cb
+        self.lamp = lamp
+
         super(ConfPanel_Base, self).__init__(parent, -1, size=size)
         self.image_panel = image_panel
         self.center_cb = center_cb
@@ -350,9 +349,6 @@ class ConfPanel_Base(wx.Panel):
         self.sizer.SetVGap(3)
         self.sizer.SetHGap(5)
 
-        self.sel_pixel = self.txt(' ', size=200)
-        self.cen_dist = self.txt(' ', size=200)
-        self.cur_pixel = self.txt(' ', size=200)
         self.img_size  = self.txt(' ', size=140)
         self.img_size_shown = False
         self.show_xhair = False
@@ -364,42 +360,47 @@ class ConfPanel_Base(wx.Panel):
         if x > 0 and x < xmax and y > 0 and y < ymax:
             dx = abs(cam_calibx*(x-xmax/2.0))
             dy = abs(cam_caliby*(y-ymax/2.0))
-            self.sel_pixel.SetLabel("(%i, %i)" % (x, y))
-            self.cen_dist.SetLabel("(%.1f, %.1f)" % (dx, dy))
 
     def show_position_info(self, row=0):
-        img_label = self.txt("Image Size:")
-        sel_label = self.txt("Selected Pixel:")
-        cen_label = self.txt("Distance to Center(um):")
-        # ctr_button = Button(self, "Bring Selected Pixel to Center",
-        #                     action=self.onBringToCenter, size=(250, -1))
-
         sizer = self.sizer
-        sizer.Add(img_label,      (row,   0), (1, 1), LEFT)
+        sizer.Add(self.txt("Image Size:"), (row,   0), (1, 1), LEFT)
         sizer.Add(self.img_size,  (row,   1), (1, 2), LEFT)
-        row += 1
-        sizer.Add(sel_label,      (row, 0), (1, 1), LEFT)
-        sizer.Add(self.sel_pixel, (row, 1), (1, 2), LEFT)
-        row += 1
-        sizer.Add(cen_label,      (row, 0), (1, 1), LEFT)
-        sizer.Add(self.cen_dist,  (row, 1), (1, 2), LEFT)
-        row += 1
-        # sizer.Add(ctr_button,     (row, 0), (1, 2), wx.ALIGN_LEFT)
-        self.choice_lens = None
-        if self.lens_choices is not None and len(self.lens_choices) > 1:
-            lenses = ['%ix' % i for i in self.lens_choices]
-            ldef = '%ix' % self.lens_default
-            default = 1
-            if ldef in lenses:
-                  default = lenses.index(ldef)
-            self.choice_lens = Choice(self, choices=lenses, default=default,
-                                       size=(100, -1))
+        
+        if self.calibrations is not None:
             row += 1
-            _label = self.txt("Current Lens:")
-            sizer.Add(_label,            (row, 0), (1, 1), wx.ALIGN_LEFT)
-            sizer.Add(self.choice_lens,  (row, 1), (1, 2), wx.ALIGN_LEFT)
+            calibs = list(self.calibrations.keys())
+            self.calib = Choice(self, choices=calibs, default=0,
+                                size=(150, -1), action=self.onCalib)
+            _label = self.txt("Calibration:")
+            sizer.Add(_label,      (row, 0), (1, 1), wx.ALIGN_LEFT)
+            sizer.Add(self.calib,  (row, 1), (1, 2), wx.ALIGN_LEFT)
+            
 
-        return row+1
+        if self.lamp is not None:
+            row += 1
+            self.lamp_pv = get_pv(self.lamp['ctrlpv'])
+            val = self.lamp_pv.get()
+            self.lampval = FloatSpin(self, value=val, digits=2,
+                                min_val=self.lamp['minval'],
+                                max_val=self.lamp['maxval'],
+                                increment=self.lamp['step'],
+                                action=self.onLampVal,
+                                size=(80, -1),
+                                style=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER)
+
+            sizer.Add(self.txt('Lamp Intensity:'), (row, 0), (1, 1), wx.ALIGN_LEFT)
+            sizer.Add(self.lampval,                (row, 1), (1, 2), wx.ALIGN_LEFT)
+        
+        return row +1
+
+    # @EpicsFunction
+    def onLampVal(self, evt=None):
+        self.lamp_pv.put(float(self.lampval.GetValue()))
+
+    
+    def onCalib(self, event=None):
+        if callable(self.calib_cb):
+            self.calib_cb(self.calibrations, self.calib.GetStringSelection())           
 
     def onStart(self, event=None, **kws):
         pass
