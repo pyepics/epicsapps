@@ -72,7 +72,6 @@ class InstrumentFrame(wx.Frame):
         self.Bind(wx.EVT_CLOSE, self.onClose)
         self.enable_epics_server()
 
-
     def connect_db(self, dbname=None, server='sqlite',
                    user=None, password=None, host=None, port=None,
                    recent_dbs=None, new=False, prompt=False, **kws):
@@ -101,7 +100,7 @@ class InstrumentFrame(wx.Frame):
         if (server.startswith('sqlite') and not os.path.exists(dbname)):
             make_newdb(dbname)
             time.sleep(0.25)
-
+            
         db = InstrumentDB(dbname=dbname, server=server, user=user,
                           password=password, host=host, port=port)
 
@@ -136,9 +135,10 @@ class InstrumentFrame(wx.Frame):
             self.config['user'] = user
             self.config['password'] = password
 
-
         for pv in db.get_allpvs():
             self.pvlist.init_connect(pv.name)
+        time.sleep(0.50)
+        self.pvlist.show_unconnected()
         return db, dbname
 
     def create_Frame(self):

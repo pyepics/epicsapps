@@ -10,7 +10,9 @@ from epics.wx import (EpicsFunction, PVText, PVFloatCtrl, PVTextCtrl,
                       PVEnumChoice, MotorPanel)
 from wxutils import pack, Popup, Button, SimpleText
 
-from .utils import ALL_EXP , GUIColors, get_pvtypes, get_pvdesc, normalize_pvname
+from ..utils import  GUIColors, get_pvtypes, get_pvdesc, normalize_pvname
+
+ALL_EXP  = wx.ALL|wx.EXPAND
 
 MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
                 '.HLS', '.LLS', '.SPMG', '.DESC')
@@ -64,27 +66,36 @@ class RenameDialog(wx.Dialog):
         sizer.Add(panel, 0, 0, 0)
         pack(self, sizer)
 
+
 class MoveToDialog(wx.Dialog):
     """Full Query for Move To for a Position"""
     msg = '''Select Recent Instrument File, create a new one'''
-    def __init__(self, parent, posname, inst, db, pvs, mode='move', **kws):
+    def __init__(self, parent, posname, instname, db, pvs=None, mode='move', **kws):
         self.posname = posname
-        self.inst = inst
+        self.instname = instname
         self.pvs  = pvs
         self.mode = mode
-        thispos = db.get_position(posname, inst)
+        # print(db.get_instrument(instname))
+        # inst = db.get_instrument(instname)
+        # print(dir(inst))
+        
+        self.pvs = {}
+        for xpv in db.get_instrument(instname).pvs:
+            pvname = normalize_pvname(xpv.name)
+            self.pvs[pvname] = epics.get_pv(pvname)
+                
+        thispos = db.get_position(posname, instname)
         if thispos is None:
             return
-
-        title = "Move Instrument %s to Position '%s'?" % (inst.name, posname)
+        title = "Move Instrument %s to Position '%s'?" % (instname, posname)
         if mode == 'show':
-            title = "Instrument %s  / Position '%s'" % (inst.name, posname)
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title)
+            title = "Instrument %s  / Position '%s'" % (instname, posname)
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title,
+                           size=(500, 325))
         self.build_dialog(parent, thispos)
 
     @EpicsFunction
     def build_dialog(self, parent, thispos):
-        panel = wx.Panel(self)
         colors = GUIColors()
 
         self.SetFont(parent.GetFont())
@@ -100,9 +111,10 @@ class MoveToDialog(wx.Dialog):
         # title row
         i = 0
         col_labels = ['  PV ', 'Current Value', 'Saved Value']
-        if self.mode != 'show': col_labels.append('Move?')
+        if self.mode != 'show':
+            col_labels.append('Move?')
         for titleword in col_labels:
-            txt =SimpleText(panel, titleword,
+            txt =SimpleText(self, titleword,
                             font=titlefont,
                             minsize=(100, -1),
                             colour=colors.title,
@@ -111,13 +123,12 @@ class MoveToDialog(wx.Dialog):
             sizer.Add(txt, (0, i), (1, 1), labstyle, 1)
             i = i + 1
 
-        sizer.Add(wx.StaticLine(panel, size=(150, -1),
+        sizer.Add(wx.StaticLine(self, size=(450, -1),
                                 style=wx.LI_HORIZONTAL),
                   (1, 0), (1, 4), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
 
         self.checkboxes = {}
         for irow, pvpos in enumerate(thispos.pvs):
-            # pvname = normalize_pvname(pvpos.pv.name)
             pvname = pvpos.pv.name
             desc = get_pvdesc(pvname)
             if desc != pvname:
@@ -127,10 +138,8 @@ class MoveToDialog(wx.Dialog):
             if pvname in self.pvs:
                 curr_val = self.pvs[pvname].get(as_string=True)
             elif pvname.endswith('.VAL') and pvname[:4] in self.pvs:
-                # pvname = pvname[:-4]
                 curr_val = self.pvs[pvname[:-4]].get(as_string=True)
             elif pvname+'.VAL' in self.pvs:
-                #pvname = pvname + '.VAL'
                 curr_val = self.pvs[pvname+'.VAL'].get(as_string=True)
 
             if curr_val is None:
@@ -138,12 +147,12 @@ class MoveToDialog(wx.Dialog):
 
             save_val = pvpos.value
 
-            label = SimpleText(panel, desc, style=tstyle,
+            label = SimpleText(self, desc, style=tstyle,
                                colour=colors.pvname)
-            curr  = SimpleText(panel, curr_val, style=tstyle)
-            saved = SimpleText(panel, save_val, style=tstyle)
+            curr  = SimpleText(self, curr_val, style=tstyle)
+            saved = SimpleText(self, save_val, style=tstyle)
             if self.mode != 'show':
-                cbox  = wx.CheckBox(panel, -1, "Move")
+                cbox  = wx.CheckBox(self, -1, "Move")
                 cbox.SetValue(True)
                 self.checkboxes[pvname] = (cbox, save_val)
 
@@ -153,25 +162,25 @@ class MoveToDialog(wx.Dialog):
             if self.mode != 'show':
                 sizer.Add(cbox,  (irow+2, 3), (1, 1), rlabstyle, 2)
 
-        sizer.Add(wx.StaticLine(panel, size=(150, -1),
+        sizer.Add(wx.StaticLine(self, size=(450, -1),
                                 style=wx.LI_HORIZONTAL),
                   (irow+3, 0), (1, 4), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
 
         btnsizer = wx.StdDialogButtonSizer()
-        btn = wx.Button(panel, wx.ID_OK)
+        btn = wx.Button(self, wx.ID_OK)
         btn.SetDefault()
         btnsizer.AddButton(btn)
         if self.mode != 'show':
-            btnsizer.AddButton(wx.Button(panel, wx.ID_CANCEL))
+            btnsizer.AddButton(wx.Button(self, wx.ID_CANCEL))
 
         btnsizer.Realize()
         sizer.Add(btnsizer, (irow+4, 2), (1, 2),
                   wx.ALIGN_CENTER_VERTICAL|wx.ALL, 1)
-        pack(panel, sizer)
-
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(panel, 0, 0, 0)
         pack(self, sizer)
+        w, h = self.GetBestSize()
+        w = 25*int((w + 26)/25.)
+        h = 25*int((h + 26)/25.)
+        self.SetSize((w, h))
 
 class InstrumentPanel(wx.Panel):
     """ create Panel for an instrument"""
@@ -242,11 +251,11 @@ class InstrumentPanel(wx.Panel):
         self.Bind(wx.EVT_TIMER, self.OnPutTimer, self.puttimer)
 
         rsizer = wx.BoxSizer(wx.VERTICAL)
-        btn_goto = add_button(rpanel, "Go To", size=(70, -1),
+        btn_goto = Button(rpanel, "Go To", size=(70, -1),
                               action=self.OnMove)
-        btn_show = add_button(rpanel, "Show", size=(70, -1),
+        btn_show = Button(rpanel, "Show", size=(70, -1),
                               action=self.OnShowPos)
-        btn_erase = add_button(rpanel, "Erase",  size=(70, -1),
+        btn_erase = Button(rpanel, "Erase",  size=(70, -1),
                                action=self.onErase)
 
         brow = wx.BoxSizer(wx.HORIZONTAL)
@@ -290,7 +299,6 @@ class InstrumentPanel(wx.Panel):
     @EpicsFunction
     def redraw_leftpanel(self, force=False):
         """ redraws the left panel """
-        # print 'redraw leftpanel ', self.inst, (time.time() - self.last_draw)
         if (time.time() - self.last_draw) < 0.5:
             return
 
@@ -517,7 +525,7 @@ class InstrumentPanel(wx.Panel):
         if verify == 0:
             self.restore_position(posname)
         elif verify == 1:
-            dlg = MoveToDialog(self, posname, self.inst, self.db, self.pvs)
+            dlg = MoveToDialog(self, posname, self.inst.name, self.db, pvs=self.pvs)
             dlg.Raise()
             if dlg.ShowModal() == wx.ID_OK:
                 exclude_pvs = []
@@ -535,7 +543,7 @@ class InstrumentPanel(wx.Panel):
         thispos = self.db.get_position(posname, self.inst)
         if thispos is None:
             return
-        dlg = MoveToDialog(self, posname, self.inst, self.db, self.pvs,
+        dlg = MoveToDialog(self, posname, self.inst.name, self.db, pvs=self.pvs,
                            mode='show')
         dlg.Raise()
         if dlg.ShowModal() == wx.ID_OK:
