@@ -11,12 +11,13 @@ from epics import caput
 from functools import partial
 
 from wxutils import SimpleText, FloatCtrl, MenuItem, Popup, pack, Button
-
 try:
     from epicsscan.scandb import ScanDB, InstrumentDB
 except ImportError:
     ScanDB = InstrumentDB = None
 
+from ..utils import MoveToDialog
+    
 from lmfit import Parameters, minimize
 from .transformations import superimposition_matrix
 from .imageframe import ImageDisplayFrame
@@ -210,15 +211,12 @@ class ErasePositionsDialog(wx.Frame):
         sizer.Add(wx.StaticLine(panel, size=(500, 2)), (irow, 0), (1, 4),  LEFT_CEN, 2)
 
         pack(panel, sizer)
-        panel.SetMinSize((700, 550))
-
         panel.SetupScrolling()
 
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1,  ALL_EXP|wx.GROW|wx.ALIGN_LEFT, 1)
         pack(self, mainsizer)
-
-        self.SetMinSize((700, 550))
+        self.SetMinSize((400, 350))
         self.Raise()
         self.Show()
 
@@ -426,6 +424,7 @@ class PositionPanel(wx.Panel):
         # brow.Add(btn_many,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
 
         self.pos_list  = wx.ListBox(self)
+        self.pos_list.SetMinSize((275, 1200))
         self.pos_list.SetBackgroundColour(wx.Colour(253, 253, 250))
         self.pos_list.Bind(wx.EVT_LISTBOX, self.onSelect)
         self.pos_list.Bind(wx.EVT_RIGHT_DOWN, self.onRightClick)
@@ -436,13 +435,11 @@ class PositionPanel(wx.Panel):
         sizer.Add(brow,           0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(self.pos_list,  1, ALL_EXP|wx.ALIGN_CENTER, 3)
 
+        self.pos_list.SetSize((275, 1200))        
         pack(self, sizer)
-        self.scandb = self.instdb = None
-        try:
-            self.scandb = ScanDB()
-        except:
-            print("ScanDB not connected, some functionality will not work")
-            return
+        self.SetSize((275, 1300))        
+        
+        self.scandb = ScanDB()
         self.instdb = InstrumentDB(self.scandb)
 
         self.last_refresh = 0
@@ -539,7 +536,8 @@ class PositionPanel(wx.Panel):
             return
 
         label = []
-        stages  = self.viewer.config['stages']
+        stages  = self.viewer.stages
+        print("onShow stages: ", stages)
         posvals = self.positions[posname]['position']
         for pvname, value in posvals.items():
             value = thispos['position'][pvname]
@@ -562,7 +560,6 @@ class PositionPanel(wx.Panel):
         except:
             self.image_display =  None
 
-
         if str(notes['data_format']) == 'file':
             self.image_display.showfile(data, title=posname,
                                         label=label)
@@ -570,29 +567,24 @@ class PositionPanel(wx.Panel):
             size = notes.get('image_size', (800, 600))
             self.image_display.showb64img(data, size=size,
                                           title=posname, label=label)
-
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
         if posname is None or len(posname) < 1:
             return
-        stages  = self.viewer.config['stages']
-        posvals = self.positions[posname]['position']
-        postext = []
-        for pvname, value in posvals.items():
-            label = pvname
-            desc = stages.get(pvname, {}).get('desc', None)
-            if desc is not None:
-                label = '%s (%s)' % (desc, pvname)
-            postext.append('  %s\t= %.4f' % (label, float(value)))
-        postext = '\n'.join(postext)
         if self.viewer.v_move:
-            ret = popup(self, "Move to %s?: \n%s" % (posname, postext),
-                        'Verify Move',
-                        style=wx.YES_NO|wx.ICON_QUESTION)
-            if ret != wx.ID_YES:
+            dlg = MoveToDialog(self, posname, self.instrument, self.instdb)
+            dlg.Raise()
+            if dlg.ShowModal() == wx.ID_OK:
+                exclude_pvs = []
+                for pvname, data, in dlg.checkboxes.items():
+                    if not data[0].IsChecked():
+                        exclude_pvs.append(pvname)
+                self.instdb.restore_position(posname, self.inst, wait=False,
+                                             exclude_pvs=exclude_pvs)
+               
+            else:
                 return
-        for pvname, value in posvals.items():
-            caput(pvname, value)
+            dlg.Destroy()
         self.viewer.write_message('moved to %s' % posname)
 
     def onErase(self, event=None, posname=None, query=True):
@@ -601,7 +593,7 @@ class PositionPanel(wx.Panel):
         if posname is None or len(posname) < 1:
             return
         if self.viewer.v_erase and query:
-            if wx.ID_YES != popup(self, "Erase  %s?" % (posname),
+            if wx.ID_YES != Popup(self, "Erase  %s?" % (posname),
                                   'Verify Erase',
                                   style=wx.YES_NO|wx.ICON_QUESTION):
                 return
