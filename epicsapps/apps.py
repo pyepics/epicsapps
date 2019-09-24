@@ -68,7 +68,7 @@ class EpicsApp:
     """
     def __init__(self, name, script, icon='epics', folder='Epics Apps', terminal=False):
         self.name = name
-        self.script = script
+        self.script = "epicsapps {}".format(script)
         self.folder = folder
         icon_ext = 'ico'
         if platform == 'darwin':
@@ -94,10 +94,10 @@ class EpicsApp:
             except:
                 print("Warning: could not fix Mac exe for ", script)
 
-APPS = (EpicsApp('Instruments', 'epicsapps instruments', icon='instrument'),
-        EpicsApp('Sample Microscope', 'epicsapps microscope', icon='microscope'),
-        EpicsApp('areaDetector Viewer', 'epicsapps adviewer', icon='camera'),
-        EpicsApp('StripChart', 'epicsapp stripchart', icon='stripchart'),
+APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
+        EpicsApp('Sample Microscope', 'microscope', icon='microscope'),
+        EpicsApp('areaDetector Viewer', 'adviewer', icon='camera'),
+        EpicsApp('StripChart',       'stripchart', icon='stripchart'),
         )
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
 
@@ -108,7 +108,7 @@ def run_instruments(configfile=None, prompt=False):
 
 def run_samplemicroscope(configfile=None, prompt=False):
     """Sample Microscope"""
-    SampleMicroscopeApp(configfile=configfile, prompt=prompt).MainLoop()
+    MicroscopeApp(configfile=configfile, prompt=prompt).MainLoop()
 
 def run_adviewer(configfile=None, prompt=False):
     """AD Viewer"""
