@@ -9,6 +9,7 @@ from pyshortcuts import make_shortcut, platform
 from pyshortcuts.utils import get_homedir
 from pyshortcuts.shortcut import Shortcut
 
+from .stripchart import StripChartApp
 from .instruments import EpicsInstrumentApp
 from .microscope import MicroscopeApp
 from .areadetector import areaDetectorApp
@@ -96,7 +97,7 @@ class EpicsApp:
 APPS = (EpicsApp('Instruments', 'epicsapps instruments', icon='instrument'),
         EpicsApp('Sample Microscope', 'epicsapps microscope', icon='microscope'),
         EpicsApp('areaDetector Viewer', 'epicsapps adviewer', icon='camera'),
-        # EpicsApp('StripChart', 'epicsapp stripchart', icon='stripchart'),
+        EpicsApp('StripChart', 'epicsapp stripchart', icon='stripchart'),
         )
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
 
