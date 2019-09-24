@@ -8,11 +8,15 @@ import time
 from collections import OrderedDict
 from epics import caput
 
-from funcutil import partial
+from functools import partial
 
-from wxuxitls import SimpleText, FloatCtrl, MenuItem, Popup, pack, Button
+from wxutils import SimpleText, FloatCtrl, MenuItem, Popup, pack, Button
 
-from epicsscan.scandb import ScanDB, InstrumentDB
+try:
+    from epicsscan.scandb import ScanDB, InstrumentDB
+except ImportError:
+    ScanDB = InstrumentDB = None
+
 from lmfit import Parameters, minimize
 from .transformations import superimposition_matrix
 from .imageframe import ImageDisplayFrame

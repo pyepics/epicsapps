@@ -11,7 +11,7 @@ from epics.wx.utils import add_menu
 from wxutils import (NumericCombo, pack, SimpleText, FileSave, FileOpen,
                      SelectWorkdir, Button)
 
-from .utils import GUIColors, HideShow, YesNo, set_font_with_children, get_pvtypes
+from .utils import GUIColors, YesNo, set_font_with_children, get_pvtypes
 from . import instrument
 
 class PVTypeChoice(wx.Choice):

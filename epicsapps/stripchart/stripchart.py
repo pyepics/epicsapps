@@ -12,11 +12,10 @@ import wx.lib.colourselect  as csel
 
 from epics import get_pv
 from epics.wx import EpicsFunction, DelayedEpicsCallback
-from wxutils import  SimpleText, FloatCtrl, Choice, YesNo
+from wxutils import  SimpleText, FloatCtrl, Choice, YesNo, LabeledTextCtrl
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
-from wxmplot.utils import LabelEntry
 
 ICON_FILE = 'stripchart.ico'
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
@@ -130,8 +129,8 @@ Matt Newville <newville@cars.uchicago.edu>
         p1 = wx.Panel(self)
         p1.SetBackgroundColour(wx.Colour(*BGCOL))
         s1 = wx.BoxSizer(wx.HORIZONTAL)
-        n = LabelEntry(p1, '', labeltext=' Add PV: ',
-                       size=300, action=self.onPVname)
+        n = LabeledTextCtrl(p1, '', labeltext=' Add PV: ',
+                            size=(300, -1), action=self.onPVname)
         self.pvmsg = SimpleText(p1, '   ',  minsize=(75, -1),
                                 style=LSTY|wx.EXPAND)
         s1.Add(n.label,    0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
@@ -285,15 +284,15 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel = self.pvpanel
         sizer = self.pvsizer
-        pvchoice = YesNo(panel, choices=self.pvlist, size=(150, -1))
+        pvchoice = Choice(panel, choices=self.pvlist, size=(150, -1))
         pvchoice.SetSelection(0)
-        logs = YesNo(panel, size=(50, -1))
+        logs = Choice(panel, choices=('No', 'Yes'), size=(50, -1))
         logs.SetSelection(0)
         ymin = wx.TextCtrl(panel, -1, '', size=(75, -1))
         ymax = wx.TextCtrl(panel, -1, '', size=(75, -1))
         desc = wx.TextCtrl(panel, -1, '', size=(150, -1))
-        side = YesNo(panel, choices=('left', 'right'),
-                     action=self.onSide, size=(80, -1))
+        side = Choice(panel, choices=('left', 'right'),
+                      action=self.onSide, size=(80, -1))
         side.SetSelection((i-1)%2)
 
         if i > 2:

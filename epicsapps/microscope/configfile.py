@@ -47,8 +47,8 @@ stages:
    - ['13XRM:m6.VAL', 'Coarse Stages', z, -1, 4, 10.5, 1]
 """
 
-CONFFILE = 'samplestage.yaml'
-class StageConfig(object):
+CONFFILE = 'microscope.yaml'
+class MicroscopeConfig(object):
     def __init__(self, name=None):
         if name is None:
             name = CONFFILE

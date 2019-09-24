@@ -1,6 +1,6 @@
 import wx
 import wx.lib.colourselect  as csel
-from wxutil import Button, pack, SimpleText, FloatCtrl
+from wxutils import Button, pack, SimpleText, FloatCtrl
 
 CEN = wx.ALL|wx.GROW|wx.ALIGN_CENTER
 LEFT = wx.ALIGN_LEFT

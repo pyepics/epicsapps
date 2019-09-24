@@ -24,7 +24,10 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin)
 
-from epicsscan.scandb import ScanDB, InstrumentDB
+try:
+    from epicsscan.scandb import ScanDB, InstrumentDB
+except ImportError:
+    ScanDB = InstrumentDB = None
 
 from .contrast_control import ContrastControl
 from .xrd_integrator import XRD_Integrator
