@@ -26,7 +26,7 @@ from wxutils import (GridPanel, OkCancel, FloatSpin)
 
 from scipy.optimize import minimize
 
-from .configfile import StageConfig, CONFFILE
+from .configfile import MicroscopeConfig, CONFFILE
 from .icons import icons
 from .controlpanel import ControlPanel
 from .positionpanel import PositionPanel
@@ -102,9 +102,9 @@ class VideoDialog(wx.Dialog):
             ok = True
         return response(ok, runtime, filename)
 
-class StageFrame(wx.Frame):
+class MicroscopeFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
-    html_header = """<html><head><title>Sample Stage Log</title></head>
+    html_header = """<html><head><title>Sample Microscope Log</title></head>
 <meta http-equiv='Pragma'  content='no-cache'>
 <meta http-equiv='Refresh' content='300'>
 <body>
@@ -115,7 +115,7 @@ class StageFrame(wx.Frame):
 
         if configfile is None:
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
-            configfile = FileOpen(self, "Read SampleStage Configuration File",
+            configfile = FileOpen(self, "Read Microscope Configuration File",
                                   default_file=CONFFILE,
                                   wildcard=wcard)
         if configfile is None:
@@ -237,35 +237,24 @@ class StageFrame(wx.Frame):
             sizer = wx.BoxSizer(wx.HORIZONTAL)
             sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
                            (ppanel,     1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
-
             pack(self, sizer)
-#
-#         else: # portrait mode
-#             size = (900, 1500)
-#             self.pospanel  = PositionPanel(ppanel, self, config=config['scandb'])
-#             self.pospanel.SetMinSize((250, 450))
-#             self.ctrlpanel = ControlPanel(ppanel,
-#                                           groups=self.stage_groups,
-#                                           config=self.stages,
-#                                           autofocus=autofocus_cb)
-#
-#             if len(self.cam_lenses) > 1:
-#                 opts['lens_choices'] = self.cam_lenses
-#                 opts['lens_default'] = self.cam_calibmag
-#             self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel, **opts)
-#
-#             msizer = wx.GridBagSizer(3, 3)
-#             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-#             msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
-#             msizer.Add(self.confpanel, (0, 2), (1, 1), ALL_EXP|LEFT_TOP, 1)
-#
-#             pack(ppanel, msizer)
-#
-#             sizer = wx.BoxSizer(wx.VERTICAL)
-#             sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
-#                            (ppanel,    1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
-#
-#             pack(self, sizer)
+
+        else: # portrait mode
+            size = (900, 1500)
+            self.pospanel.SetMinSize((250, 450))
+            # if len(self.cam_lenses) > 1:
+            #     opts['lens_choices'] = self.cam_lenses
+            #     opts['lens_default'] = self.cam_calibmag
+            # self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel, **opts)
+            msizer = wx.GridBagSizer(3, 3)
+            msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
+            msizer.Add(self.confpanel, (0, 2), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            pack(ppanel, msizer)
+            sizer = wx.BoxSizer(wx.VERTICAL)
+            sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
+                          (ppanel,    1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
+            pack(self, sizer)
 
         self.imgpanel.confpanel = self.confpanel
         self.SetSize(size)
@@ -552,7 +541,7 @@ class StageFrame(wx.Frame):
 
     def read_config(self, fname=None):
         "read config file"
-        self.configfile = StageConfig(name=fname)
+        self.configfile = MicroscopeConfig(name=fname)
         cnf = self.config = self.configfile.config
         self.orientation = cnf.get('orientation', 'landscape')
         self.title       = cnf.get('title', 'Microscope')
@@ -923,20 +912,17 @@ class StageFrame(wx.Frame):
         self.write_message('Read Configuration File %s' % fname)
         os.chdir(curpath)
 
-class ViewerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, configfile=None, prompt=True, debug=False,
-                  **kws):
+class MicroscopeApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
+    def __init__(self, configfile=None, prompt=True, debug=False, **kws):
         self.configfile = configfile
         self.prompt = prompt
         self.debug = debug
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        self.frame = StageFrame(configfile=self.configfile,
-                                prompt=self.prompt)
+        self.frame = MicroscopeFrame(configfile=self.configfile,
+                                     prompt=self.prompt)
         self.frame.Show()
-        # self.frame.SetPosition(self.position)
-        # self.frame.Maximize()
         self.SetTopWindow(self.frame)
 
     def OnInit(self):

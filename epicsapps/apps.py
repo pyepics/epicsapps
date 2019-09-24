@@ -10,7 +10,7 @@ from pyshortcuts.utils import get_homedir
 from pyshortcuts.shortcut import Shortcut
 
 from .instruments import EpicsInstrumentApp
-from .sampleviewer import ViewerApp as SampleViewerApp
+from .microscope import MicroscopeApp
 from .areadetector import areaDetectorApp
 
 HAS_CONDA = os.path.exists(os.path.join(sys.prefix, 'conda-meta'))
@@ -87,11 +87,6 @@ class EpicsApp:
                       terminal=self.terminal,
                       folder=self.folder)
 
-        print("make_shortcut ", script,self.name,
-              icondir, self.icon,
-              self.terminal,
-              self.folder)
-
         if platform == 'darwin' and HAS_CONDA:
             try:
                 fix_darwin_shebang(script)
@@ -99,7 +94,7 @@ class EpicsApp:
                 print("Warning: could not fix Mac exe for ", script)
 
 APPS = (EpicsApp('Instruments', 'epicsapps instruments', icon='instrument'),
-        EpicsApp('Sample Viewer', 'epicsapps sampleviewer', icon='microscope'),
+        EpicsApp('Sample Microscope', 'epicsapps microscope', icon='microscope'),
         EpicsApp('areaDetector Viewer', 'epicsapps adviewer', icon='camera'),
         # EpicsApp('StripChart', 'epicsapp stripchart', icon='stripchart'),
         )
@@ -110,9 +105,9 @@ def run_instruments(configfile=None, prompt=False):
     """Epics Instruments"""
     EpicsInstrumentApp(configfile=configfile, prompt=prompt).MainLoop()
 
-def run_sampleviewer(configfile=None, prompt=False):
-    """Sample Viewer"""
-    SampleViewerApp(configfile=configfile, prompt=prompt).MainLoop()
+def run_samplemicroscope(configfile=None, prompt=False):
+    """Sample Microscope"""
+    SampleMicroscopeApp(configfile=configfile, prompt=prompt).MainLoop()
 
 def run_adviewer(configfile=None, prompt=False):
     """AD Viewer"""
@@ -131,7 +126,7 @@ def run_epicsapps():
     epilog ='''applications:
   adviewer     [filename] Area Detector Viewer
   instruments  [filename] Epics Instruments
-  sampleviewer [filename] Sample Microscope Viewer
+  microscope   [filename] Sample Microscope Viewer
   stripchart              Epics PV Stripchart
 
 notes:
@@ -167,11 +162,11 @@ notes:
         fapp = None
         if isapp('inst'):
             fapp = run_instruments
-        if isapp('sample'):
-            fapp = run_sampleviewer
+        if isapp('micro'):
+            fapp = run_samplemicroscope
         elif isapp('strip'):
-            fapp = run_stripchart,
-        elif isapp('area') or isapp('adview'):
+            fapp = run_stripchart
+        elif isapp('adview'):
             fapp = run_adviewer
 
         if fapp is not None:

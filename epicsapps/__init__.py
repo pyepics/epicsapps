@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-
-from . import (ionchamber, instruments, sampleviewer)
-from . import areadetector
-# from . import (cameraview, areadetector)
+from . import ionchamber, instruments, microscope, areadetector, stripchart
 
 from .apps import run_epicsapps
