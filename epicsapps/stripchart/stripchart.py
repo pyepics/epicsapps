@@ -12,7 +12,7 @@ import wx.lib.colourselect  as csel
 
 from epics import get_pv
 from epics.wx import EpicsFunction, DelayedEpicsCallback
-from wxutils import  SimpleText, FloatCtrl, Choice, YesNo, LabeledTextCtrl
+from wxutils import  SimpleText, FloatCtrl, Choice, YesNo, TextCtrl
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
@@ -129,12 +129,12 @@ Matt Newville <newville@cars.uchicago.edu>
         p1 = wx.Panel(self)
         p1.SetBackgroundColour(wx.Colour(*BGCOL))
         s1 = wx.BoxSizer(wx.HORIZONTAL)
-        n = LabeledTextCtrl(p1, '', labeltext=' Add PV: ',
-                            size=(300, -1), action=self.onPVname)
+        label = SimpleText(p1, ' Add PV:')
+        self.pvname = TextCtrl(p1, '', size=(250, -1), action=self.onPVname)
         self.pvmsg = SimpleText(p1, '   ',  minsize=(75, -1),
                                 style=LSTY|wx.EXPAND)
-        s1.Add(n.label,    0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
-        s1.Add(n,          0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
+        s1.Add(label,      0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
+        s1.Add(self.pvname, 0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         s1.Add(self.pvmsg, 1,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         p1.SetAutoLayout(True)
         p1.SetSizer(s1)
@@ -342,11 +342,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.needs_refresh = True
 
     def onPVname(self, event=None):
-        try:
-            name = event.GetString()
-        except AttributeError:
-            return
-        self.addPV(name)
+        self.addPV(self.pvname.GetValue())
 
     @EpicsFunction
     def addPV(self, name):
