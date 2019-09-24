@@ -5,13 +5,14 @@ Epics Strip Chart application
 import os
 import time
 from numpy import array, where
+from functools import partial
 
 import wx
 import wx.lib.colourselect  as csel
 
 from epics import get_pv
 from epics.wx import EpicsFunction, DelayedEpicsCallback
-from epics.wx.utils import  SimpleText, Closure, FloatCtrl
+from wxutils import  SimpleText, FloatCtrl, Choice, YesNo
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
@@ -54,30 +55,8 @@ def get_bound(val):
         val = None
     return val
 
-class MyChoice(wx.Choice):
-    """Simplified wx Choice"""
-    def __init__(self, parent, choices=('No', 'Yes'),
-                 defaultyes=True, action=None, size=(75, -1)):
-        wx.Choice.__init__(self, parent, -1, size=size)
-        self.choices = choices
-        self.Clear()
-        self.SetItems(self.choices)
-        self.SetSelection({False:0, True:1}[defaultyes])
-        if action is not None:
-            self.Bind(wx.EVT_CHOICE, action)
 
-    def SetChoices(self, choices):
-        self.Clear()
-        self.SetItems(choices)
-        self.choices = choices
-
-    def Select(self, choice):
-        if isinstance(choice, int):
-            self.SetSelection(choice)
-        elif choice in self.choices:
-            self.SetSelection(self.choices.index(choice))
-
-class StripChart(wx.Frame):
+class StripChartFrame(wx.Frame):
     default_colors = ((0, 0, 0), (0, 0, 255), (255, 0, 0),
                       (0, 0, 0), (255, 0, 255), (0, 125, 0))
 
@@ -235,10 +214,10 @@ Matt Newville <newville@cars.uchicago.edu>
 
         time_label = SimpleText(panel, '    Time Range: ',  minsize=(85, -1),
                                 style=LSTY)
-        self.time_choice = MyChoice(panel, size=(120, -1),
-                                    choices=('seconds', 'minutes', 'hours'))
+        self.time_choice = Choice(panel, size=(120, -1),
+                                  choices=('seconds', 'minutes', 'hours'),
+                                  action=self.onTimeChoice)
         self.time_choice.SetStringSelection(self.timelabel)
-        self.time_choice.Bind(wx.EVT_CHOICE,   self.onTimeChoice)
 
         self.time_ctrl  = FloatCtrl(panel, value=-self.tmin, precision=2,
                                     size=(90, -1), action=self.onDisplayTimeVal)
@@ -306,15 +285,15 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel = self.pvpanel
         sizer = self.pvsizer
-        pvchoice = MyChoice(panel, choices=self.pvlist, size=(150, -1))
+        pvchoice = YesNo(panel, choices=self.pvlist, size=(150, -1))
         pvchoice.SetSelection(0)
-        logs = MyChoice(panel, size=(50, -1))
+        logs = YesNo(panel, size=(50, -1))
         logs.SetSelection(0)
         ymin = wx.TextCtrl(panel, -1, '', size=(75, -1))
         ymax = wx.TextCtrl(panel, -1, '', size=(75, -1))
         desc = wx.TextCtrl(panel, -1, '', size=(150, -1))
-        side = MyChoice(panel, choices=('left', 'right'),
-                        action=self.onSide, size=(80, -1))
+        side = YesNo(panel, choices=('left', 'right'),
+                     action=self.onSide, size=(80, -1))
         side.SetSelection((i-1)%2)
 
         if i > 2:
@@ -338,8 +317,8 @@ Matt Newville <newville@cars.uchicago.edu>
         sizer.Add(desc,     (i, 5), (1, 1), CSTY, 3)
         sizer.Add(side,     (i, 6), (1, 1), CSTY, 3)
 
-        pvchoice.Bind(wx.EVT_CHOICE,     Closure(self.onPVchoice, row=i))
-        colr.Bind(csel.EVT_COLOURSELECT, Closure(self.onPVcolor, row=i))
+        pvchoice.Bind(wx.EVT_CHOICE,     partial(self.onPVchoice, row=i))
+        colr.Bind(csel.EVT_COLOURSELECT, partial(self.onPVcolor, row=i))
         logs.Bind(wx.EVT_CHOICE,         self.onPVwid)
         ymin.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
         ymax.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
@@ -400,7 +379,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 desc = basename
 
             self.pv_desc[basename] = desc
-            
+
             i_new = len(self.pvdata)
             new_shown = False
             for ix, choice in enumerate(self.pvchoices):
@@ -453,7 +432,7 @@ Matt Newville <newville@cars.uchicago.edu>
         if abs(new - self.tmin) > 1.e-3*max(new, self.tmin):
             new = new
 
-        self.tmin = new 
+        self.tmin = new
         self.plotpanel.axes.set_xlim(self.tmin, 0)
         try:
             for axes in self.plotpanel.fig.get_axes():
@@ -481,7 +460,7 @@ Matt Newville <newville@cars.uchicago.edu>
             self.time_ctrl.SetValue(timeval * denom/num)
             self.plotpanel.set_xlabel('Elapsed Time (%s)' % self.timelabel)
         self.needs_refresh = True
-        
+
 
     def onPause(self, event=None):
         if self.paused:
@@ -644,12 +623,12 @@ Matt Newville <newville@cars.uchicago.edu>
                 if span1[0]*ymax < 1.e-6:
                     update_failed = True
                     continue
-            elif itrace > 1:  
+            elif itrace > 1:
                 yr = abs(ymax-ymin)
                 if yr > 1.e-9:
                     ydat = span1[1] + 0.99*(ydat - ymin)*span1[0]/yr
                 ymin, ymax = min(ydat), max(ydat)
-            
+
             if self.needs_refresh:
                 ppnl = self.plotpanel
                 if side == 'left':
@@ -664,9 +643,9 @@ Matt Newville <newville@cars.uchicago.edu>
                     try:
                         plot(tdat, ydat, drawstyle='steps-post', side=side,
                              ylog_scale=uselog, color=color,
-                             xmin=self.tmin, xmax=0, 
+                             xmin=self.tmin, xmax=0,
                              xlabel=xlabel, label=desc, autoscale=False)
-                       
+
                         self.plots_drawn[itrace] = True
                     except:
                         update_failed = True
@@ -681,16 +660,27 @@ Matt Newville <newville@cars.uchicago.edu>
                     axes.set_yscale('log', basey=10)
                 else:
                     axes.set_yscale('linear')
-                    
+
         self.plotpanel.set_title(time.strftime("%Y-%b-%d %H:%M:%S", time.localtime()))
         if did_update:
             self.plotpanel.canvas.draw()
         self.needs_refresh = update_failed
         return
 
-if __name__ == '__main__':
-    app = wx.App()
-    f = StripChart()
-    f.Show(True)
-    # f.addPV('13IDA:QE2:DiffX:MeanValue_RBV')
-    app.MainLoop()
+class StripChartApp(wx.App):
+    def __init__(self, configfile=None, prompt=True, debug=False, **kws):
+        self.configfile = configfile
+        self.prompt = prompt
+        self.debug = debug
+        wx.App.__init__(self, **kws)
+
+    def createApp(self):
+        self.frame = StripChartFrame()
+        self.frame.Show()
+        self.SetTopWindow(self.frame)
+
+    def OnInit(self):
+        self.createApp()
+        if self.debug:
+            self.ShowInspectionTool()
+        return True
