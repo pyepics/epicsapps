@@ -906,7 +906,7 @@ class MicroscopeFrame(wx.Frame):
         os.chdir(curpath)
 
 class MicroscopeApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, configfile=None, prompt=True, debug=True, **kws):
+    def __init__(self, configfile=None, prompt=True, debug=False, **kws):
         self.configfile = configfile
         self.prompt = prompt
         self.debug = debug
