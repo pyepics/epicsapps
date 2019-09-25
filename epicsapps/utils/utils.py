@@ -2,7 +2,6 @@ import os
 import yaml
 import time
 import wx
-from pyshortcuts.utils import get_homedir
 
 import epics
 
