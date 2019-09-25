@@ -13,35 +13,6 @@ def get_icon(iconname):
         iconname = "%s.ico" % iconname
     return os.path.abspath(os.path.join(topdir, 'icons', iconname))
 
-def get_configfile(name='epicsapps.yaml', dirname=None):
-    """
-    get an epics app config file
-
-    Arguments:
-        name (str):  name of config file ['epicsapps.yaml']
-        dirname (str or None): name of config folder [None, see Note 2]
-
-    Returns:
-        full path name of config file
-
-    Notes:
-        1. if the config file is found either in the current folder,
-           or if the full path is given, that will be returned.
-        2. if dirname=None, it will be assumed to be
-             $HOME/.config/epicsapps
-    """
-    confdir = dirname
-    if confdir is None:
-        confdir = os.path.join(get_homedir(), '.config', 'epicsasps')
-
-    if not os.path.exists(confdir):
-        try:
-            os.makedirs(confdir)
-        except FileExistsError:
-            pass
-    if not os.path.exists(name):
-        name = os.path.join(confdir, name)
-    return os.path.abspath(name)
 
 def normalize_pvname(pvname):
     pvname = str(pvname)

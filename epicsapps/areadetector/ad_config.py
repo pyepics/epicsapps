@@ -1,17 +1,8 @@
-import sys
-import os
-import yaml
+#!/usr/bin/python
 
-from ..utils import get_configfile, normalize_pvname
-
-from yaml import load, dump
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
+from ..utils import ConfigFile, load_yaml
 
 # default camera configuration
-#
 _configtext = """
 prefix: None
 name: areaDetector
@@ -25,59 +16,48 @@ free_run_time: 0.5
 show_1dintegration: false
 iconfile: None
 colormode: Mono
-int1d_trimx': 0
-int1d_trimy': 0
-int1d_flipx': false
-int1d_flipy': true
+int1d_trimx: 0
+int1d_trimy: 0
+int1d_flipx: false
+int1d_flipy: true
 show_thumbnail: true
 thumbnail_size: 100
 
-enabled_plugins: ['image1', 'Over1', 'Over2', 'Over3', 'Over4', 'ROI1', 'ROI2', 'JPEG1', 'TIFF1']
-image_attributes: ['ArrayData', 'UniqueId_RBV']
+enabled_plugins: [image1, Over1, Over2, Over3, Over4, ROI1, ROI2, JPEG1, TIFF1]
+image_attributes: [ArrayData, UniqueId_RBV]
 
 camera_attributes:
-- 'Acquire'
-- 'DetectorState_RBV'
-- 'ArrayCounter'
-- 'ArrayCounter_RBV'
-- 'NumImages'
-- 'NumImages_RBV'
-- 'AcquireTime'
-- 'AcquireTime_RBV'
-- 'TriggerMode'
-- 'TriggerMode_RBV'
-colormaps: ['gray', 'magma', 'inferno', 'plasma', 'viridis', 'coolwarm', 'hot', 'jet']
+- Acquire
+- DetectorState_RBV
+- ArrayCounter
+- ArrayCounter_RBV
+- NumImages
+- NumImages_RBV
+- AcquireTime
+- AcquireTime_RBV
+- TriggerMode
+- TriggerMode_RBV
 
-epics_controls: []
+
+colormaps: [gray, magma, inferno, plasma, viridis, coolwarm, hot]
 scandb_instrument: None
+
+epics_controls:
+ - ['Trigger Mode',   'cam1:TriggerMode', true, pvenum, _RBV,  150,  10]
+ - ['Num Images',       'cam1:NumImages', true, pvfloat, _RBV, 100, 10]
+ - ['Acquire Period', 'cam1:AcquirePeriod', true,pvfloat, _RBV, 100, 10]
+ - ['Acquire Time',   'cam1:AcquireTime', true, pvfloat, _RBV, 100, 10]
+ - ['Acquire Status', 'cam1:Acquire', true, pvtext, false, 250, 10]
+ - ['Acquire Busy',  'cam1:AcquireBusy', true, pvtext, false, 250, 10]
+ - ['Acquire Message', 'cam1:StatusMessage_RBV', true, pvtext, false, 250, 10]
+
 """
 
 CONFFILE = 'areadetector.yaml'
+
 class ADConfig(object):
-    def __init__(self, name=None):
-        if name is None:
-            name = CONFFILE
-        self.config = yaml.load(_configtext, Loader=yaml.Loader)
-        self.read(name)
+    def __init__(self, name='areadetector.yaml', default_config=None):
+        if default_config is None:
+            default_config = load_yaml(_configtext)
 
-    def read(self, fname):
-        self.config_file = get_configfile(fname)
-        if os.path.exists(self.config_file):
-            text = None
-            with open(self.config_file, 'r') as fh:
-                text = fh.read()
-            try:
-                self.config.update(yaml.load(text, Loader=Loader))
-            except:
-                pass
-
-    def write(self, fname=None, config=None, defaultfile=False):
-        if fname is None:
-            fname = self.config_file
-            if defaultfile:
-                fname = get_configfile(CONFFILE)
-        if config is None:
-            config = self.config
-        with open(fname, 'w') as fh:
-            fh.write(yaml.dump(config))
-        return fname
+        ConfigFile.__init__(self, fname, default_config=default_config)

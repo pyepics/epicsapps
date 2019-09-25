@@ -1,40 +1,11 @@
-import os
-import yaml
 
-from ..utils import get_configfile
-
-from yaml import load, dump
-try:
-    from yaml import CLoader as Loader, CDumper as Dumper
-except ImportError:
-    from yaml import Loader, Dumper
-
-CONFFILE = 'instruments.yaml'
-_config = dict(server='sqlite', dbname=None, host=None, port='5432',
-               user=None, password=None, recent_dbs=[])
+from ..utils import ConfigFile
 
 class InstrumentConfig(object):
-    def __init__(self, name=None):
-        if name is None:
-            name = CONFFILE
-        self.config = _config
-        self.read(name)
+    def __init__(self, name='instruments.yaml', default_config=None):
+        if default_config is None:
+            default_config = dict(server='sqlite', dbname=None, host=None,
+                                  port='5432', user=None, password=None,
+                                  recent_dbs=[])
 
-    def read(self, fname):
-        self.config_file = get_configfile(fname)
-        if os.path.exists(self.config_file):
-            text = None
-            with open(self.config_file, 'r') as fh:
-                text = fh.read()
-            try:
-                self.config = yaml.load(text, Loader=Loader)
-            except:
-                pass
-
-    def write(self, fname=None, config=None):
-        if fname is None:
-            fname = self.config_file
-        if config is None:
-            config = self.config
-        with open(fname, 'w') as fh:
-            fh.write(yaml.dump(config))
+        ConfigFile.__init__(self, fname, default_config=default_config)
