@@ -16,12 +16,17 @@ def get_configfolder():
         path name of config folder, typically $HOME/.config/epicsapps
 
     """
-    confdir = os.path.join(get_homedir(), '.config', 'epicsasps')
-    if not os.path.exists(confdir):
-        try:
-            os.makedirs(confdir)
-        except FileExistsError:
-            pass
+    escancred = os.environ.get('ESCAN_CREDENTIALS', None)
+    if escancred is not None:
+        confdir, _ = os.path.split(escancred)
+    else:
+        confdir = os.path.join(get_homedir(), '.config', 'epicsasps')
+        
+        if not os.path.exists(confdir):
+            try:
+                os.makedirs(confdir)
+            except FileExistsError:
+                pass
     return confdir
 
 def get_default_configfile(fname):
