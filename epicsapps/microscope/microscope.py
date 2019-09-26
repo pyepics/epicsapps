@@ -560,7 +560,8 @@ class MicroscopeFrame(wx.Frame):
         self.calibrations = {}
         self.calib_current = None
         calibs = cnf.get('calibration', [])
-        calibs.append(['10 um pixels', 0.01, 0.01])
+        if len(calibs) == 0:
+            calibs.append(['10 um pixels', 0.01, 0.01])
         for cname, calx, caly in calibs:
             self.calibrations[cname] = (float(calx), float(caly))
             if self.calib_current is None:
@@ -635,7 +636,7 @@ class MicroscopeFrame(wx.Frame):
     </table></td></tr></table>"""
         pos_fmt ="    <tr><td> %s </td><td> %s </td><td>   %f</td></tr>"
         for pvname, value in thispos['position'].items():
-            desc = self.stages.get(pvname).get(desc, pvname)
+            desc = self.stages.get(pvname).get('desc', pvname)
             txt.append(pos_fmt % (desc, pvname, value))
 
         fout = open(self.htmllog, 'a')
@@ -772,12 +773,7 @@ class MicroscopeFrame(wx.Frame):
         if p is None:
             return
 
-        # cam_lens = self.confpanel.choice_lens.GetStringSelection()
         cal_x, cal_y = self.get_calibration()
-        if self.confpanel.choice_lens is not None:
-            cal_x = cal_x
-            cal_y = cal_y
-
         dx = 0.001*cal_x*(p['x']-p['xmax']/2.0)
         dy = 0.001*cal_y*(p['y']-p['ymax']/2.0)
 

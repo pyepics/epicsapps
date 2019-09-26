@@ -37,7 +37,7 @@ class ControlPanel(wx.Panel):
                  autofocus=None):
         wx.Panel.__init__(self, parent, -1)
         self.subpanels = {}
-
+        self.center_cb = center_cb
         self.groups = groups
         self.config = config #  json.loads(station_configs[station.upper()])
         self.tweak_wids  = {}   # tweak Combobox widgets per group

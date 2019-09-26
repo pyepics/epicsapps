@@ -461,7 +461,7 @@ class PositionPanel(wx.Panel):
             return
 
         if name in self.positions and self.viewer.v_replace:
-            ret = popup(self, "Overwrite Position %s?" % name,
+            ret = Popup(self, "Overwrite Position %s?" % name,
                         "Veriry Overwrite Position",
                         style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
             if ret != wx.ID_YES:
@@ -579,7 +579,7 @@ class PositionPanel(wx.Panel):
                 for pvname, data, in dlg.checkboxes.items():
                     if not data[0].IsChecked():
                         exclude_pvs.append(pvname)
-                self.instdb.restore_position(posname, self.inst, wait=False,
+                self.instdb.restore_position(self.instrument, posname, wait=False,
                                              exclude_pvs=exclude_pvs)
                
             else:
