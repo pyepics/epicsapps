@@ -19,7 +19,7 @@ from epics.wx.utils import add_menu
 
 from wxutils import FileSave, FileOpen, Popup, pack, NumericCombo
 
-from .configfile import InstrumentConfig
+from .configfile import InstrumentConfig, CONFFILE, get_default_configfile
 from .instrument import isInstrumentDB, InstrumentDB
 from .creator import make_newdb
 
@@ -50,7 +50,11 @@ Would you like this application to use this instrument file?
 
 class InstrumentFrame(wx.Frame):
     def __init__(self, parent=None, configfile=None, prompt=False, **kws):
-        self.configfile = InstrumentConfig(configfile)
+
+        if configfile is None:
+            configfile = get_default_configfile(CONFFILE)
+
+        self.configfile = InstrumentConfig(fname=configfile)
         self.config = self.configfile.config
 
         wx.Frame.__init__(self, parent=None, title='Epics Instruments',

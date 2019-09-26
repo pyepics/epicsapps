@@ -33,8 +33,7 @@ from .contrast_control import ContrastControl
 from .xrd_integrator import XRD_Integrator
 from .imagepanel import ADMonoImagePanel, ThumbNailImagePanel
 from .pvconfig import PVConfigPanel
-from .ad_config import ADConfig, CONFFILE
-
+from .ad_config import ADConfig, CONFFILE, get_default_configfile
 from ..utils import SelectWorkdir, get_icon
 
 labstyle = wx.ALIGN_LEFT|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
@@ -50,6 +49,8 @@ class ADFrame(wx.Frame):
                           style=wx.DEFAULT_FRAME_STYLE)
 
         if configfile is None:
+            configfile = get_default_configfile(CONFFILE)
+        if prompt or configfile is None:
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
             configfile = FileOpen(self, "Read Detector Configuration File",
                                   default_file=CONFFILE,
@@ -57,7 +58,7 @@ class ADFrame(wx.Frame):
         if configfile is None:
             sys.exit()
 
-        self.read_config(configfile)
+        self.read_config(fname=configfile)
         try:
             os.chdir(self.config.get('workdir', os.getcwd()))
         except:
@@ -86,7 +87,7 @@ class ADFrame(wx.Frame):
 
     def read_config(self, fname=None):
         "read config file"
-        self.configfile = ADConfig(name=fname)
+        self.configfile = ADConfig(fname=fname)
         cnf = self.config = self.configfile.config
         if 'general' in cnf:
             for key, val in cnf['general'].items():

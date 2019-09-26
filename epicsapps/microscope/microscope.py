@@ -6,7 +6,6 @@ import time
 import os
 import shutil
 
-
 from threading import Thread
 from collections import namedtuple, OrderedDict
 from functools import partial
@@ -25,7 +24,7 @@ from epics.wx.utils import (add_menu, LTEXT, CEN, LCEN, RCEN, RIGHT)
 from wxutils import (GridPanel, OkCancel, FloatSpin, NumericCombo,
                      SimpleText, FileSave, FileOpen, pack, Popup)
 
-from .configfile import MicroscopeConfig, CONFFILE
+from .configfile import MicroscopeConfig, CONFFILE, get_default_configfile
 from .icons import icons
 from .controlpanel import ControlPanel
 from .positionpanel import PositionPanel
@@ -113,9 +112,12 @@ class MicroscopeFrame(wx.Frame):
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
 
         if configfile is None:
+            configfile = get_default_configfile(CONFFILE)
+        if prompt or configfile is None:
+            default_file = configfile or CONFFILE
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
             configfile = FileOpen(self, "Read Microscope Configuration File",
-                                  default_file=CONFFILE,
+                                  default_file=default_file,
                                   wildcard=wcard)
         if configfile is None:
             sys.exit()
@@ -125,11 +127,11 @@ class MicroscopeFrame(wx.Frame):
             os.chdir(self.config.get('workdir', os.getcwd()))
         except:
             pass
-        if prompt:
-            ret = SelectWorkdir(self)
-            if ret is None:
-                self.Destroy()
-            os.chdir(ret)
+
+        ret = SelectWorkdir(self)
+        if ret is None:
+            self.Destroy()
+        os.chdir(ret)
 
         self.overlayframe = None
         self.calibframe = None
@@ -537,7 +539,7 @@ class MicroscopeFrame(wx.Frame):
 
     def read_config(self, fname=None):
         "read config file"
-        self.configfile = MicroscopeConfig(name=fname)
+        self.configfile = MicroscopeConfig(fname=fname)
         cnf = self.config = self.configfile.config
         self.orientation = cnf.get('orientation', 'landscape')
         self.title       = cnf.get('title', 'Microscope')

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from ..utils import ConfigFile, load_yaml
+from ..utils import ConfigFile, load_yaml, get_default_configfile
 
 # default camera configuration
 _configtext = """
@@ -55,8 +55,8 @@ epics_controls:
 
 CONFFILE = 'areadetector.yaml'
 
-class ADConfig(object):
-    def __init__(self, name='areadetector.yaml', default_config=None):
+class ADConfig(ConfigFile):
+    def __init__(self, fname='areadetector.yaml', default_config=None):
         if default_config is None:
             default_config = load_yaml(_configtext)
 

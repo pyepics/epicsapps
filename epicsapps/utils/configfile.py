@@ -24,6 +24,13 @@ def get_configfolder():
             pass
     return confdir
 
+def get_default_configfile(fname):
+    """get the default configfile, if it exists or None if it does not"""
+    out = os.path.join(get_configfolder(), fname)
+    if os.path.exists(out):
+        return out
+    return None    
+
 class ConfigFile(object):
     """
     Configuration File, using YAML
@@ -46,7 +53,6 @@ class ConfigFile(object):
 
         self.config = {}
         self.config.update(self.default_config)
-
         if fname is not None:
             self.read(fname)
 

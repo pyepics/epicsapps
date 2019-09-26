@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from ..utils import ConfigFile, load_yaml
+from ..utils import ConfigFile, load_yaml, get_default_configfile
 
 
 _configtext = """
@@ -44,5 +44,4 @@ class MicroscopeConfig(ConfigFile):
     def __init__(self, fname='microscope.yaml', default_config=None):
         if default_config is None:
             default_config = load_yaml(_configtext)
-
         ConfigFile.__init__(self, fname, default_config=default_config)
