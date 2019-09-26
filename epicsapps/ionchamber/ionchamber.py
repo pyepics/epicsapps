@@ -14,6 +14,18 @@ from xraydb import material_mu
 
 PIDFILE = '/tmp/ionchamber.pid'
 
+# effective ionization potentials, energy in eV per ion pair, from Knoll
+
+ion_potentials = {'argon': 26.4, 'helium': 41.3, 'hydrogen': 36.5,
+                  'nitrogren': 34.8, 'air': 33.8, 'oxygen': 30.8,
+                  'methane': 27.3, 'Ar': 26.4, 'He': 41.3,
+                  'H2': 36.5, 'N2': 34.8, 'O2': 30.8, 'CO4': 27.3}
+
+# current amp sensitivities:
+sensitivities = {'pA/V': 1.e-12, 'nA/V': 1.e-9, 'uA/V': 1.e-6, 'mA/V': 1.e-3}
+
+QCHARGE = 1.6021766208e-19
+
 class IonChamber(Device):
     """Epics Device for Ion Chamber Flux Calculation"""
 
@@ -36,36 +48,48 @@ class IonChamber(Device):
         ampu_pv   = '%ssens_unit' % amp_pv
 
         energy    = caget(energy_pv)
-        if energy is None:
-            energy = 9090.9090
+        if energy is None or energy < 100.0:
+            energy = 100.0
 
         voltage   = caget(volt_pv)
         amp_num   = float(caget(ampn_pv, as_string=True))
-        amp_unit  = int(caget(ampu_pv) )
+        amp_unit  = caget(ampu_pv, as_string=True)
+        sensitivity = amp_num * sensitivities.get(amp_unit, 1.e-6)
+        current     = abs(voltage) * sensitivity
 
-        # this is fairly magic:
-        #  amp_unit = 0 for pA/V, 1 for nA/V, 2 for microA/V, 3 for mA/V
-        #  Thus, 10 ** (3*amp_unit-12)  !!
-        sensitivity = amp_num * 10**(3*amp_unit-12)
-        current     = 1.e6 * abs(voltage) * sensitivity
-        flux_abs    = 2e14 * current / max(energy, 1000.0)
+        # print("Current ", current, type(current))
+        # print(voltage, energy, amp_num, amp_unit, sensitivity)
 
-        kev = 0.001 * energy
+        # Ion Chamber flux to current (energies in eV):
+        #     Current = flux_photo * (energy/ion_pot) * (2*q)
+        # where q = 1.6e-19 Coulombs.  With ion_pot = 32 eV
+        #   current = flux_photo * energy * 1.e-20
+        #   photo_flux = 1.e20 * current / energy
+
+        ion_pot = ion_potentials.get(gas, 32.0)
+        flux_photo = current * ion_pot / (2*QCHARGE*energy)
+
         if gas == 'N2':
             gas = 'nitrogen'
-        mu_photo = materal_mu(gas, energy=kev, kind='photo')
-        mu_total = materal_mu(gas, energy=kev, kind='total')
-        mu = mu_total
 
-        frac  = (1-exp(-mu*length))
-        flux_trans =  flux_abs*(1-frac)/frac
+        # note on Photo v Total attenuation:
+        # the current is from the photo-electric cross-section, so that
+        #   flux_photo = flux_in * [1 - exp(-t*mu_photo)]
+        # while total attenuation means
+        #   flux_out = flux_in * exp(-t*mu_total)
+        # so that
+        #   flux_out = flux_photo * exp(-t*mu_total) / [1 - exp(-t*mu_photo)]
+
+        etmu_photo = exp(-length*material_mu(gas, energy=energy, kind='photo'))
+        etmu_total = exp(-length*material_mu(gas, energy=energy, kind='total'))
+
+        flux_out = flux_photo * etmu_total/(1-etmu_photo)
 
         self.put('Energy',    energy)
-
-        self.put('AbsPercent', 100.0*frac)
-        self.put('Current',   "%12.3g" % current)
-        self.put('FluxAbs',   "%12.3e" % flux_abs)
-        self.put('FluxOut',   "%12.3e" % flux_trans)
+        self.put('AbsPercent', 100.0*((1-etmu_total)/etmu_total))
+        self.put('Current',   "%12.3g" % (current*1.e6)) # report current in microAmp
+        self.put('FluxAbs',   "%12.3e" % flux_photo)
+        self.put('FluxOut',   "%12.3e" % flux_out)
 
         self.put('TimeStamp',
                  time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
@@ -97,9 +121,12 @@ def get_lastupdate(prefix='13XRM:ION:'):
     return time.time() - 100000.
 
 def kill_old_process():
-    finp = open(pidfile)
-    pid = int(finp.readlines()[0][:-1])
-    finp.close()
+    try:
+        finp = open(pidfile)
+        pid = int(finp.readlines()[0][:-1])
+        finp.close()
+    except:
+        return
     cmd = "kill -9 %d" % pid
     os.system(cmd)
     print(' killing pid=', pid, ' at ', time.ctime())
