@@ -183,14 +183,15 @@ class MicroscopeFrame(wx.Frame):
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
 
-        offline = config.get('offline_instrument', None)
+        offline_inst = config.get('offline_instrument', None)
+        offline_xyz = config.get('offline_xyzmotors'], None)
 
         ppanel = wx.Panel(self)
         self.pospanel = PositionPanel(ppanel, self,
                                       instrument=config['instrument'],
                                       xyzmotors=config['xyzmotors'],
-                                      offline_instrument=config['offline_instrument'],
-                                      offline_xyzmotors=config['offline_xyzmotors'])
+                                      offline_instrument=offline_inst,
+                                      offline_xyzmotors=offline_xyz)
 
         self.ctrlpanel = ControlPanel(ppanel,
                                       groups=self.stage_groups,
@@ -244,7 +245,7 @@ class MicroscopeFrame(wx.Frame):
             sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
                            (ppanel,     1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
             pack(self, sizer)
-            
+
         else: # portrait mode
             size = (900, 1500)
             self.pospanel.SetMinSize((250, 450))
