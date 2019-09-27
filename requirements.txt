@@ -12,7 +12,8 @@ pyepics>=3.4.0
 wxpython>=4.0.3
 wxutils>=0.2.3
 wxmplot>=0.9.37
-yaml
+yaml>=5.0
+xraydb
 pip
 pillow
 pyfai
