@@ -21,7 +21,7 @@ def get_configfolder():
         confdir, _ = os.path.split(escancred)
     else:
         confdir = os.path.join(get_homedir(), '.config', 'epicsasps')
-        
+
         if not os.path.exists(confdir):
             try:
                 os.makedirs(confdir)
@@ -34,7 +34,7 @@ def get_default_configfile(fname):
     out = os.path.join(get_configfolder(), fname)
     if os.path.exists(out):
         return out
-    return None    
+    return None
 
 class ConfigFile(object):
     """

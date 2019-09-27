@@ -7,7 +7,8 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from pyshortcuts import make_shortcut, platform
 from pyshortcuts.utils import get_homedir
-from pyshortcuts.shortcut import Shortcut
+
+from .utils import get_configfolder
 
 from .stripchart import StripChartApp
 from .instruments import EpicsInstrumentApp
@@ -102,7 +103,7 @@ APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
 
 
-def run_instruments(configfile=None, prompt=False):
+def run_instruments(configfile=None, prompt=True):
     """Epics Instruments"""
     EpicsInstrumentApp(configfile=configfile, prompt=prompt).MainLoop()
 
@@ -133,9 +134,9 @@ def run_epicsapps():
 notes:
   applications with the optional filename will look for a yaml-formatted
   configuration file in the folder
-      {:s}/.config/epicsapps
+      {:s}
   or will prompt for configuration if this file is not found.
-'''.format(get_homedir())
+'''.format(get_configfolder())
     parser = ArgumentParser(description=desc,
                             epilog=epilog,
                             formatter_class=RawDescriptionHelpFormatter)
@@ -143,8 +144,11 @@ notes:
                         action='store_true', default=False,
                         help='create desktop and start menu icons')
     parser.add_argument('-p', '--prompt', dest='prompt',
-                        action='store_true', default=False,
+                        action='store_true', default=None,
                         help='prompt for configuration on startup')
+    parser.add_argument('-n', '--no-prompt', dest='no_prompt',
+                        action='store_true', default=False,
+                        help='suppress prompt, use default configuration')
 
 
     parser.add_argument('appname', nargs='?', help='application name')
@@ -153,11 +157,12 @@ notes:
     args = parser.parse_args()
     if args.appname is None and args.makeicons is False:
         parser.print_usage()
-
     elif args.makeicons:
         for app in APPS:
             app.create_shortcut()
     else:
+        if args.filename is None and args.prompt is None:
+            args.prompt = not args.no_prompt
         use_mpl_wxagg()
         isapp = args.appname.lower().startswith
         fapp = None
@@ -169,6 +174,5 @@ notes:
             fapp = run_stripchart
         elif isapp('adview'):
             fapp = run_adviewer
-
         if fapp is not None:
             fapp(configfile=args.filename, prompt=args.prompt)

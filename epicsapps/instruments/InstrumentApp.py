@@ -51,19 +51,18 @@ Would you like this application to use this instrument file?
 class InstrumentFrame(wx.Frame):
     def __init__(self, parent=None, configfile=None, prompt=False, **kws):
 
-        if configfile is None:
-            configfile = get_default_configfile(CONFFILE)
-        elif isInstrumentDB(configfile):
+        if isInstrumentDB(configfile):
             dbname = configfile
             configfile = get_default_configfile(CONFFILE)
-            # print("Read Config ", dbname, configfile)
 
             self.configfile = InstrumentConfig(fname=configfile)
             self.config = self.configfile.config
             self.config['server'] = 'sqlite'
             self.config['dbname'] = dbname
-            # print("Read Config ", dbname, configfile, self.config)
         else:
+            if configfile is None:
+                configfile = get_default_configfile(CONFFILE)
+            print("Config file ", configfile)
             self.configfile = InstrumentConfig(fname=configfile)
             self.config = self.configfile.config
 
