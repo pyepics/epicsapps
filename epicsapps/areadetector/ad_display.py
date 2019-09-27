@@ -53,9 +53,12 @@ class ADFrame(wx.Frame):
         if configfile is None:
             configfile = get_default_configfile(CONFFILE)
         if prompt or configfile is None:
+            default_file = configfile or CONFFILE
+            fpath, fname = os.psth.split(default_file)
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
             configfile = FileOpen(self, "Read Detector Configuration File",
-                                  default_file=CONFFILE,
+                                  default_file=fname,
+                                  default_path=fpath,
                                   wildcard=wcard)
         if configfile is None:
             sys.exit()

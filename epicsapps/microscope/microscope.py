@@ -115,9 +115,12 @@ class MicroscopeFrame(wx.Frame):
             configfile = get_default_configfile(CONFFILE)
         if prompt or configfile is None:
             default_file = configfile or CONFFILE
+            fpath, fname = os.path.split(default_file)
+            print(fpath, fname)
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
             configfile = FileOpen(self, "Read Microscope Configuration File",
-                                  default_file=default_file,
+                                  default_file=fname,
+                                  default_dir=fpath,
                                   wildcard=wcard)
         if configfile is None:
             sys.exit()
@@ -204,33 +207,32 @@ class MicroscopeFrame(wx.Frame):
                                    calib_cb=self.onSetCalibration, **opts)
 
 
+        zpanel = wx.Panel(ppanel)
+        zlab1 = wx.StaticText(zpanel, label='ZoomBox size (\u03bCm):',
+                              size=(150, -1), style=txtstyle)
+        zlab2 = wx.StaticText(zpanel, label='ZoomBox Sharpness:',
+                              size=(150, -1), style=txtstyle)
+        zsharp = wx.StaticText(zpanel, label='=',
+                               size=(100, -1), style=txtstyle)
+        self.zoomsize = FloatSpin(zpanel, value=150, min_val=5, increment=5,
+                                  action=self.onZoomSize,
+                                size=(80, -1), style=txtstyle)
+        self.imgpanel.zoompanel = ZoomPanel(zpanel, imgsize=150,
+                                            size=(275, 275),
+                                            sharpness_label=zsharp,
+                                            **opts)
+        zsizer = wx.GridBagSizer(2, 2)
+        zsizer.Add(zlab1,         (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(self.zoomsize, (0, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(zlab2,         (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(zsharp,        (1, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(self.imgpanel.zoompanel, (2, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add((50, 50),      (3, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
+        zpanel.SetSizer(zsizer)
+        zsizer.Fit(zpanel)
+
         if orientation.lower().startswith('land'):
             size = (1500, 750)
-
-            zpanel = wx.Panel(ppanel)
-            zlab1 = wx.StaticText(zpanel, label='ZoomBox size (\u03bCm):',
-                                  size=(150, -1), style=txtstyle)
-            zlab2 = wx.StaticText(zpanel, label='ZoomBox Sharpness:',
-                                  size=(150, -1), style=txtstyle)
-            zsharp = wx.StaticText(zpanel, label='=',
-                                  size=(100, -1), style=txtstyle)
-            self.zoomsize = FloatSpin(zpanel, value=150, min_val=5, increment=5,
-                                      action=self.onZoomSize,
-                                      size=(80, -1), style=txtstyle)
-            self.imgpanel.zoompanel = ZoomPanel(zpanel, imgsize=150,
-                                                size=(275, 275),
-                                                sharpness_label=zsharp,
-                                                **opts)
-            zsizer = wx.GridBagSizer(2, 2)
-            zsizer.Add(zlab1,         (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            zsizer.Add(self.zoomsize, (0, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            zsizer.Add(zlab2,         (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            zsizer.Add(zsharp,        (1, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            zsizer.Add(self.imgpanel.zoompanel, (2, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
-            zsizer.Add((50, 50),      (3, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
-            zpanel.SetSizer(zsizer)
-            zsizer.Fit(zpanel)
-
             msizer = wx.GridBagSizer(2, 2)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), LEFT_TOP, 1)
             msizer.Add(self.confpanel, (1, 0), (1, 1), LEFT_TOP, 1)
@@ -253,6 +255,8 @@ class MicroscopeFrame(wx.Frame):
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
             msizer.Add(self.confpanel, (0, 2), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            msizer.Add((10, 10),       (1, 2), (1, 1), ALL_EXP, 1)
+            msizer.Add(zpanel,         (2, 2), (1, 1), ALL_EXP, 1)
             pack(ppanel, msizer)
             sizer = wx.BoxSizer(wx.VERTICAL)
             sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
@@ -897,7 +901,7 @@ class MicroscopeFrame(wx.Frame):
         curpath = os.getcwd()
         fname = FileOpen(self, 'Read Configuration File',
                          wildcard='yaml (*.yaml)|*.yaml|All files (*.*)|*.*',
-                         default_file='SampleStage.yaml')
+                         default_file='microscope.yaml')
         if fname is not None:
             self.read_config(fname)
             self.connect_motors()
