@@ -343,7 +343,6 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
 
         pack(panel, sizer)
         panel.SetupScrolling()
-        print('best size ', panel.GetBestSize())
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1, LSTY)
         pack(self, mainsizer)

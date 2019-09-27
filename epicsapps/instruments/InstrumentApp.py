@@ -62,7 +62,6 @@ class InstrumentFrame(wx.Frame):
         else:
             if configfile is None:
                 configfile = get_default_configfile(CONFFILE)
-            print("Config file ", configfile)
             self.configfile = InstrumentConfig(fname=configfile)
             self.config = self.configfile.config
 

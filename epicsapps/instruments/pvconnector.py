@@ -96,13 +96,16 @@ class EpicsPVList(object):
             #    self.in_progress[pvname] = (None, None, time.time())
 
     def show_unconnected(self):
-        all, unconn =  0, 0
+        all = 0
+        unconn =  []
         for name, pv in self.pvs.items():
             all += 1
             if not pv.connected:
                 print(" Not connected: ", name)
-                unconn += 1
+                unconn.append(name)
             time.sleep(0.001)
+        print("%d unconnected PVs of %d total" % (len(unconn), all))
+        print(", ".join(unconn))
 
     # @EpicsFunction
     def connect_pv(self, pvname, is_motor=False, wid=None, action=None):
