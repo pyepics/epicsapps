@@ -5,7 +5,7 @@ import wx
 import wx.lib.scrolledpanel as scrolled
 
 from wxutils import (NumericCombo, pack, SimpleText, FileSave,
-                     FileOpen, SelectWorkdir)
+                     FileOpen, SelectWorkdir, Button)
 
 from .utils import GUIColors, set_font_with_children
 
