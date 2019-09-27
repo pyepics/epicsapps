@@ -75,15 +75,12 @@ class MoveToDialog(wx.Dialog):
         self.instname = instname
         self.pvs  = pvs
         self.mode = mode
-        # print(db.get_instrument(instname))
-        # inst = db.get_instrument(instname)
-        # print(dir(inst))
-        
+
         self.pvs = {}
         for xpv in db.get_instrument(instname).pvs:
             pvname = normalize_pvname(xpv.name)
             self.pvs[pvname] = epics.get_pv(pvname)
-                
+
         thispos = db.get_position(posname, instname)
         if thispos is None:
             return
@@ -103,24 +100,23 @@ class MoveToDialog(wx.Dialog):
         titlefont.PointSize += 2
         titlefont.SetWeight(wx.BOLD)
 
-        sizer = wx.GridBagSizer(10, 4)
+        sizer = wx.GridBagSizer(6, 3)
 
         labstyle  = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
         rlabstyle = wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
-        tstyle    = wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL
+        tstyle    = wx.ALIGN_CENTER_VERTICAL
         # title row
         i = 0
-        col_labels = ['  PV ', 'Current Value', 'Saved Value']
+        col_labels = [ 'PV', 'Current Value', 'Saved Value']
         if self.mode != 'show':
             col_labels.append('Move?')
         for titleword in col_labels:
-            txt =SimpleText(self, titleword,
-                            font=titlefont,
-                            minsize=(100, -1),
-                            colour=colors.title,
-                            style=tstyle)
-
-            sizer.Add(txt, (0, i), (1, 1), labstyle, 1)
+            style = rlabstyle
+            if 'PV' in titleword: style = labstyle
+            txt =SimpleText(self, titleword, font=titlefont,
+                            size=(125, -1),
+                            colour=colors.title, style=style)
+            sizer.Add(txt, (0, i), (1, 1), style, 2)
             i = i + 1
 
         sizer.Add(wx.StaticLine(self, size=(450, -1),

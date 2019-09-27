@@ -15,7 +15,7 @@ from .utils import GUIColors, YesNo, set_font_with_children, get_pvtypes
 from . import instrument
 
 class PVTypeChoice(wx.Choice):
-    def __init__(self, parent, choices=None, size=(95, -1), **kws):
+    def __init__(self, parent, choices=None, size=(125, -1), **kws):
         wx.Choice.__init__(self, parent, -1, size=size)
         if choices is None:
             choices = ('',)
@@ -236,31 +236,27 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         self.curpvs, self.newpvs = [], {}
         if inst is not None:
             self.name.SetValue(inst.name)
-            sizer.Add(SimpleText(panel, 'Current PVs:', font=titlefont,
+            sizer.Add(SimpleText(panel, 'Current PVs', font=titlefont,
                                  colour=self.colors.title, style=LSTY),
                       (2, 0), (1, 1), LSTY, 2)
-            sizer.Add(SimpleText(panel, 'Display Type:',
+            sizer.Add(SimpleText(panel, 'Display Type', size=(125, -1),
                                  colour=self.colors.title, style=CSTY),
                       (2, 1), (1, 1), LSTY, 2)
-            # sizer.Add(SimpleText(panel, 'Move Order:',
-            #                      colour=self.colors.title, style=CSTY),
-            #           (2, 2), (1, 1), LSTY, 2)
-            sizer.Add(SimpleText(panel, 'Remove?:',
+            sizer.Add(SimpleText(panel, 'Remove?', size=(125, -1),
                                  colour=self.colors.title, style=CSTY),
-                      (2, 3), (1, 1), RSTY, 2)
+                      (2, 2), (1, 1), RSTY, 2)
 
             ordered_pvs  = db.get_ordered_instpvs(inst)
-            move_choices = ["1"]
-            if len(ordered_pvs) > 1:
-                move_choices = ["%i" % (i+1) for i in range(len(ordered_pvs))]
+            # move_choices = ["1"]
+            # if len(ordered_pvs) > 1:
+            #   move_choices = ["%i" % (i+1) for i in range(len(ordered_pvs))]
 
             for instpv in ordered_pvs:
                 pv = instpv.pv
-                move_order = instpv.move_order
-                if move_order is None:
-                    move_order = 1
-
-                move_order = int(move_order)
+                # move_order = instpv.move_order
+                # if move_order is None:
+                #     move_order = 1
+                # move_order = int(move_order)
                 irow += 1
                 pvchoices = get_pvtypes(pv, instrument)
 
@@ -293,20 +289,19 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
             irow += 1
 
 
-        txt =SimpleText(panel, 'New PVs:', font=titlefont,
+        txt =SimpleText(panel, 'New PVs', font=titlefont,
                         colour=self.colors.title, style=LSTY)
-
         sizer.Add(txt, (irow, 0), (1, 1), LEFT, 3)
-        sizer.Add(SimpleText(panel, 'Display Type',
+        sizer.Add(SimpleText(panel, 'Display Type', size=(125, -1),
                              colour=self.colors.title, style=CSTY),
                   (irow, 1), (1, 1), LSTY, 2)
+        sizer.Add(SimpleText(panel, 'Remove?', size=(125, -1),
+                             colour=self.colors.title, style=CSTY),
+                  (irow, 2), (1, 1), RSTY, 2)
 
-        sizer.Add(SimpleText(panel, 'Move Order:',
-                             colour=self.colors.title, style=CSTY),
-                  (irow, 2), (1, 1), LSTY, 2)
-        sizer.Add(SimpleText(panel, 'Remove?',
-                             colour=self.colors.title, style=CSTY),
-                  (irow, 3), (1, 1), RSTY, 2)
+        # sizer.Add(SimpleText(panel, 'Move Order:',
+        #                     colour=self.colors.title, style=CSTY),
+        #          (irow, 3), (1, 1), LSTY, 2)
         # New PVs
         for npv in range(8):
             irow += 1
@@ -348,11 +343,11 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
 
         pack(panel, sizer)
         panel.SetupScrolling()
-
+        print('best size ', panel.GetBestSize())
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1, LSTY)
         pack(self, mainsizer)
-
+        self.SetSize((500, 800))
         self.Layout()
         self.Show()
         self.Raise()

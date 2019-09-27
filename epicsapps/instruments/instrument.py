@@ -34,7 +34,6 @@ import sqlalchemy.dialects.sqlite
 
 from . import upgrades
 
-
 def isInstrumentDB(dbname):
     """test if a file is a valid Instrument Library file:
        must be a sqlite db file, with tables named
@@ -222,7 +221,7 @@ class InstrumentDB(object):
             if backup:
                 save_backup(dbname)
             self.connstr = 'sqlite:///%s' % self.dbname
-            self.engine = create_engine(connstr, poolclass=SingletonThreadPool)
+            self.engine = create_engine(self.connstr, poolclass=SingletonThreadPool)
         elif server.startswith('post'):
             self.connstr= 'postgresql://%s:%s@%s:%d/%s' % (user, password,
                                                            host, int(port),

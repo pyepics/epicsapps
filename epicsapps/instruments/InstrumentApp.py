@@ -53,9 +53,19 @@ class InstrumentFrame(wx.Frame):
 
         if configfile is None:
             configfile = get_default_configfile(CONFFILE)
+        elif isInstrumentDB(configfile):
+            dbname = configfile
+            configfile = get_default_configfile(CONFFILE)
+            # print("Read Config ", dbname, configfile)
 
-        self.configfile = InstrumentConfig(fname=configfile)
-        self.config = self.configfile.config
+            self.configfile = InstrumentConfig(fname=configfile)
+            self.config = self.configfile.config
+            self.config['server'] = 'sqlite'
+            self.config['dbname'] = dbname
+            # print("Read Config ", dbname, configfile, self.config)
+        else:
+            self.configfile = InstrumentConfig(fname=configfile)
+            self.config = self.configfile.config
 
         wx.Frame.__init__(self, parent=None, title='Epics Instruments',
                           size=(925, -1), **kws)
@@ -80,6 +90,7 @@ class InstrumentFrame(wx.Frame):
                    user=None, password=None, host=None, port=None,
                    recent_dbs=None, new=False, prompt=False, **kws):
         """connects to a db, possibly creating a new one"""
+        # print(" connect_db ", dbname, server, prompt)
         if prompt or dbname is None:
             dlg = ConnectDialog(parent=self, dbname=dbname, server=server,
                                 user=user, password=password, host=host,
@@ -104,7 +115,7 @@ class InstrumentFrame(wx.Frame):
         if (server.startswith('sqlite') and not os.path.exists(dbname)):
             make_newdb(dbname)
             time.sleep(0.25)
-            
+
         db = InstrumentDB(dbname=dbname, server=server, user=user,
                           password=password, host=host, port=port)
 
