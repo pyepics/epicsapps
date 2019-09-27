@@ -1,9 +1,9 @@
 import wx
-from wxutils import pack, Popup, Button, SimpleText 
+from wxutils import pack, Popup, Button, SimpleText
 
 from epics import get_pv
 from epics.wx import EpicsFunction
-                      
+
 from . import GUIColors, get_pvtypes, get_pvdesc, normalize_pvname
 
 ALL_EXP  = wx.ALL|wx.EXPAND
@@ -20,7 +20,7 @@ class MoveToDialog(wx.Dialog):
             pvname = normalize_pvname(pv.name)
             self.pvs[pvname] = get_pv(pvname)
         # for pv in self.pvs.values():  pv.get()
-                
+
         thispos = db.get_position(instname, posname)
         if thispos is None:
             return
