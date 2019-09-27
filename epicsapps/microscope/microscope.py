@@ -184,7 +184,7 @@ class MicroscopeFrame(wx.Frame):
         self.imgpanel.SetMinSize((285, 250))
 
         offline_inst = config.get('offline_instrument', None)
-        offline_xyz = config.get('offline_xyzmotors'], None)
+        offline_xyz = config.get('offline_xyzmotors', None)
 
         ppanel = wx.Panel(self)
         self.pospanel = PositionPanel(ppanel, self,
