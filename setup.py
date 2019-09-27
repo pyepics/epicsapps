@@ -5,7 +5,7 @@ setup for pyepics/epicsapps
 from setuptools import setup, find_packages
 
 install_requires = ('pyepics', 'numpy', 'matplotlib', 'xraydb', 'wxpython',
-                    'wxmplot', 'sqliachemy', 'yaml')
+                    'wxmplot', 'sqliachemy', 'pyyaml')
 
 packages = ['epicsapps']
 for pname in find_packages('epicsapps'):
