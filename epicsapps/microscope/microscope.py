@@ -116,7 +116,6 @@ class MicroscopeFrame(wx.Frame):
         if prompt or configfile is None:
             default_file = configfile or CONFFILE
             fpath, fname = os.path.split(default_file)
-            print(fpath, fname)
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
             configfile = FileOpen(self, "Read Microscope Configuration File",
                                   default_file=fname,
@@ -124,7 +123,6 @@ class MicroscopeFrame(wx.Frame):
                                   wildcard=wcard)
         if configfile is None:
             sys.exit()
-
         self.read_config(configfile)
         try:
             os.chdir(self.config.get('workdir', os.getcwd()))
@@ -253,7 +251,7 @@ class MicroscopeFrame(wx.Frame):
             self.pospanel.SetMinSize((250, 450))
             msizer = wx.GridBagSizer(3, 3)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            msizer.Add(self.pospanel,  (0, 1), (2, 1), ALL_EXP|LEFT_TOP, 2)
+            msizer.Add(self.pospanel,  (0, 1), (3, 1), ALL_EXP|LEFT_TOP, 2)
             msizer.Add(self.confpanel, (0, 2), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add((10, 10),       (1, 2), (1, 1), ALL_EXP, 1)
             msizer.Add(zpanel,         (2, 2), (1, 1), ALL_EXP, 1)
