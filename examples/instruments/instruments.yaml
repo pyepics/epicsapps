@@ -1,0 +1,7 @@
+server: postgresql
+dbname: escan_aps13ide
+host: cars4.cars.aps.anl.gov
+user: username
+password: secret
+port: '5432'
+recent_dbs: []

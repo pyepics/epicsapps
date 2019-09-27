@@ -1,0 +1,32 @@
+camera_attributes: [Acquire, ArrayCounter, ArrayCounter_RBV, NumImages, NumImages_RBV,
+  AcquireTime, AcquireTime_RBV, TriggerMode, TriggerMode_RBV]
+colormaps: [gray, magma, inferno, plasma, viridis, coolwarm, hot, jet]
+colormode: Mono
+default_rotation: 0
+enabled_plugins: [image1, Over1, Over2, Over3, Over4, ROI1, ROI2, JPEG1, TIFF1]
+epics_controls:
+- [Trigger Mode, 'cam1:TriggerMode', true, pvenum, _RBV, 150, 10]
+- [Image Mode, 'cam1:ImageMode', true, pvenum, _RBV, 150, 10]
+- ['# Images', 'cam1:NumImages', true, pvfloat, _RBV, 100, 10]
+- [Acquire Time, 'cam1:AcquireTime', true, pvfloat, _RBV, 100, 10]
+- [Acquire Period, 'cam1:AcquirePeriod', true, pvfloat, _RBV, 100, 10]
+- [TIFF File Path, 'TIFF1:FilePath', true, pvtctrl, false, 250, 10]
+- [Acquire Status, 'cam1:Acquire', true, pvtext, false, 250, 10]
+filesaver: 'TIFF1:'
+free_run_time: 0.2
+iconfile: None
+image_attributes: [ArrayData, UniqueId_RBV]
+int1d_flipx': false
+int1d_flipy': true
+int1d_trimx': 0
+int1d_trimy': 0
+name: Secondary Source Aperture Viewer
+prefix: '13IDBPS1:'
+scandb_instrument: SSA Viewscreen
+show_1dintegration: false
+show_free_run: false
+show_thumbnail: true
+thumbnail_size: 100
+title: AD Display / IDB SSA Viewer
+use_filesaver: true
+workdir: /home/xas_user/Codes/epicsapps

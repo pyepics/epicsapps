@@ -1,0 +1,37 @@
+camera_attributes: [Acquire, DetectorState_RBV, ArrayCounter, ArrayCounter_RBV, NumImages,
+  NumImages_RBV, AcquireTime, AcquireTime_RBV, TriggerMode, TriggerMode_RBV]
+colormaps: [gray, magma, inferno, plasma, viridis, coolwarm, hot, jet]
+colormode: Mono
+default_rotation: 0
+enabled_plugins: [image1, Over1, Over2, Over3, Over4, ROI1, ROI2, JPEG1, TIFF1]
+epics_controls:
+- [Trigger Mode, 'cam1:TriggerMode', true, pvenum, _RBV, 150, 10]
+- ['# Images', 'cam1:NumImages', true, pvfloat, _RBV, 100, 10]
+- [Acqure Period, 'cam1:AcquirePeriod', true, pvfloat, _RBV, 100, 10]
+- [Acquire Time, 'cam1:AcquireTime', true, pvfloat, _RBV, 100, 10]
+- [X-ray Energy, 'cam1:PhotonEnergy', true, pvfloat, _RBV, 100, 10]
+- [Energy Threshold, 'cam1:ThresholdEnergy', true, pvfloat, _RBV, 100, 10]
+- [TIFF File Path, 'TIFF1:FilePath', true, pvtctrl, false, 250, 10]
+- [Acquire Status, 'cam1:Acquire', true, pvtext, false, 250, 10]
+- [Acquire Busy, 'cam1:AcquireBusy', true, pvtext, false, 250, 10]
+- [Acquire Message, 'cam1:StatusMessage_RBV', true, pvtext, false, 250, 10]
+- [Detector Armed, 'cam1:Armed', true, pvtext, false, 250, 10]
+- [Free Disk Space (Gb), 'cam1:FWFree_RBV', true, pvtext, false, 250, 10]
+filesaver: 'TIFF1:'
+free_run_time: 0.2
+iconfile: eiger500k.ico
+image_attributes: [ArrayData, UniqueId_RBV]
+int1d_flipx': false
+int1d_flipy': true
+int1d_trimx': 0
+int1d_trimy': 0
+name: Eiger
+prefix: '13EIG1:'
+scandb_instrument: Eiger Stages
+show_1dintegration: true
+show_free_run: false
+show_thumbnail: true
+thumbnail_size: 100
+title: Epics areaDetector Display
+use_filesaver: true
+workdir: /home/xas_user/Codes/epicsapps
