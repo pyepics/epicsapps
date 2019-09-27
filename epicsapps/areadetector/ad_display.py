@@ -21,6 +21,8 @@ from wxmplot.plotframe import PlotFrame
 import epics
 from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 
+from ..utils import MoveToDialog
+
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin)
 
@@ -443,17 +445,24 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def onInstrumentGo(self, event=None):
         posname = self.scandb_sel.GetStringSelection()
+        dlg = MoveToDialog(self, posname,
+                           self.scandb_instname,
+                           self.instdb)
+        dlg.Raise()
+        if dlg.ShowModal() == wx.ID_OK:
+            exclude_pvs = []
+            for pvname, data, in dlg.checkboxes.items():
+                if not data[0].IsChecked():
+                    exclude_pvs.append(pvname)
+            self.instdb.restore_position(self.scandb_instname,
+                                         posname, wait=False,
+                                         exclude_pvs=exclude_pvs)
 
-        msg = ["Move to '{:s}'?\n".format(posname)]
-        for pospv in self.instdb.get_position(self.scandb_instname, posname).pv:
-            msg.append("{:s} = {:s}".format(pospv.pv.name, pospv.value))
+        else:
+            return
+        dlg.Destroy()
+        print('moving to %s' % posname)
 
-        msg.append('\n')
-        ret = Popup(self, '\n'.join(msg), 'Verify Move',
-                    style=wx.YES_NO|wx.ICON_QUESTION)
-        if wx.ID_YES == ret:
-            print("would really move to " ,  posname)
-        # self.instdb.restore_positionlist(instname, posname)
 
     @EpicsFunction
     def onButton(self, event=None, key='free'):
