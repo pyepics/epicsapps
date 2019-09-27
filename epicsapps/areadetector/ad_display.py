@@ -58,7 +58,7 @@ class ADFrame(wx.Frame):
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
             configfile = FileOpen(self, "Read Detector Configuration File",
                                   default_file=fname,
-                                  default_path=fpath,
+                                  default_dir=fpath,
                                   wildcard=wcard)
         if configfile is None:
             sys.exit()
