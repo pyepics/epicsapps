@@ -17,7 +17,7 @@ except ImportError:
     ScanDB = InstrumentDB = None
 
 from ..utils import MoveToDialog
-    
+
 from lmfit import Parameters, minimize
 from .transformations import superimposition_matrix
 from .imageframe import ImageDisplayFrame
@@ -435,10 +435,10 @@ class PositionPanel(wx.Panel):
         sizer.Add(brow,           0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(self.pos_list,  1, ALL_EXP|wx.ALIGN_CENTER, 3)
 
-        self.pos_list.SetSize((275, 1200))        
+        self.pos_list.SetSize((275, 1200))
         pack(self, sizer)
-        self.SetSize((275, 1300))        
-        
+        self.SetSize((275, 1300))
+
         self.scandb = ScanDB()
         self.instdb = InstrumentDB(self.scandb)
 
@@ -581,7 +581,7 @@ class PositionPanel(wx.Panel):
                         exclude_pvs.append(pvname)
                 self.instdb.restore_position(self.instrument, posname, wait=False,
                                              exclude_pvs=exclude_pvs)
-               
+
             else:
                 return
             dlg.Destroy()
