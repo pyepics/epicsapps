@@ -576,9 +576,12 @@ class PositionPanel(wx.Panel):
             dlg.Raise()
             if dlg.ShowModal() == wx.ID_OK:
                 exclude_pvs = []
+                pvvals = {}
                 for pvname, data, in dlg.checkboxes.items():
                     if not data[0].IsChecked():
                         exclude_pvs.append(pvname)
+                    else:
+                        caput(pvname, float(data[1]))
                 self.instdb.restore_position(self.instrument, posname, wait=False,
                                              exclude_pvs=exclude_pvs)
 
