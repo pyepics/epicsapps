@@ -531,8 +531,18 @@ class MicroscopeFrame(wx.Frame):
                                                callback=self.onSetCalibration)
 
     def onSetCalibration(self, calibrations, current):
+
         self.calibrations = calibrations
         self.calib_current = current
+       
+        self.config['calibration'] = []
+        for cname, cval in calibrations.items():
+            self.config['calibration'].append([cname, "%.4f" % cval[0], "%.4f" % cval[1]])
+        self.confpanel.calib.Clear()
+        for cname in calibrations:
+            self.confpanel.calib.Append(cname)
+        self.confpanel.calibrations = calibrations
+        self.confpanel.calib.SetStringSelection(current)
         self.get_calibration()
         self.onSetOverlays()
 
@@ -604,6 +614,7 @@ class MicroscopeFrame(wx.Frame):
             name = self.calib_current
         if name in self.calibrations:
             self.current_calib = name
+            
         cal = self.calibrations[name]
         self.cam_calibx = abs(float(cal[0]))
         self.cam_caliby = abs(float(cal[0]))
@@ -889,8 +900,8 @@ class MicroscopeFrame(wx.Frame):
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',
-                         wildcard='INI (*.ini)|*.ini|All files (*.*)|*.*',
-                         default_file='SampleStage.ini')
+                         wildcard='Config files (*.yaml)|*.yaml|All files (*.*)|*.*',
+                         default_file='microscope.yaml')
         if fname is not None:
             self.configfile.save(fname=fname)
         self.write_message('Saved Configuration File %s' % fname)

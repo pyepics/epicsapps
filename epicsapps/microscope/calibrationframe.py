@@ -66,16 +66,14 @@ class CalibrationFrame(wx.Frame):
 
     def onCalibSelection(self, event=None, **kws):
         name = self.calname.GetValue()
-        try:
-            if name not in self.calibrations:
-                x, y = self.calib_x.GetValue(), self.calib_y.GetValue()
-                self.calibrations[name] = [float(x), float(y)]
-            else:
-                calib = self.calibrations[name]
-                self.calib_x.SetValue(calib[0])
-                self.calib_y.SetValue(calib[1])
-        except AttributeError:
-            pass
+        # print(" On Calib selection ", name)
+        if name not in self.calibrations:
+            x, y = self.calib_x.GetValue(), self.calib_y.GetValue()
+            self.calibrations[name] = [float(x), float(y)]
+        else:
+            calib = self.calibrations[name]
+            self.calib_x.SetValue(calib[0])
+            self.calib_y.SetValue(calib[1])
 
     def onCalibXY(self, event=None, **kws):
         try:
