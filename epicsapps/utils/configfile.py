@@ -20,7 +20,7 @@ def get_configfolder():
     if escancred is not None:
         confdir, _ = os.path.split(escancred)
     else:
-        confdir = os.path.join(get_homedir(), '.config', 'epicsasps')
+        confdir = os.path.join(get_homedir(), '.config', 'epicsapps')
 
         if not os.path.exists(confdir):
             try:
