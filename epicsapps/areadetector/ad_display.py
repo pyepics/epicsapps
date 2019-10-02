@@ -468,12 +468,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
             desc = get_pvdesc(pvname)
             pvdata[pvname] = (desc, save_val, curr_val)
 
-        dlg = MoveToDialog(self, pvdata, instname, posname)
-        res = dlg.GetResponse()
-        if res.ok:
-            for pvname, sval in res.values.items():
+        def GoCallback(pvdata):
+            for pvname, sval in pvdata.items():
                 get_pv(pvname).put(sval)
-        dlg.Destroy()
+        m2d = MoveToDialog(self, pvdata, instname, posname,
+                           callback=GoCallback)
+        m2d.Raise()
 
     @EpicsFunction
     def onButton(self, event=None, key='free'):

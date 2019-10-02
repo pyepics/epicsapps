@@ -1,7 +1,7 @@
 from collections import namedtuple
 import time
 import wx
-from wxutils import pack, Popup, Button, SimpleText, OkCancel
+from wxutils import pack, Popup, Button, SimpleText
 
 from . import GUIColors
 
@@ -13,8 +13,7 @@ class MoveToDialog(wx.Frame):
     def __init__(self, parent, pvdata, instname, posname, callback=None, mode=None):
         self.pvdata = pvdata
         self.callback = callback
-        
-        # print(parent, pvdata, instname, posname, callback, mode)
+
         title = "Move Instrument %s to Position '%s'?" % (instname, posname)
         if mode == 'show':
             title = "Instrument %s  / Position '%s'" % (instname, posname)
@@ -77,9 +76,9 @@ class MoveToDialog(wx.Frame):
 
         btnsizer = wx.StdDialogButtonSizer()
         btn_ok = wx.Button(self, wx.ID_OK)
-        self.Bind(wx.EVT_BUTTON, self.onOK, btn_ok)
         btn_no = wx.Button(self, wx.ID_CANCEL)
-        btn_no.SetDefault()
+        self.Bind(wx.EVT_BUTTON, self.onOK, btn_ok)
+        self.Bind(wx.EVT_BUTTON, self.onCancel, btn_no)
         btnsizer.AddButton(btn_ok)
         btnsizer.AddButton(btn_no)
         btnsizer.Realize()
@@ -92,8 +91,7 @@ class MoveToDialog(wx.Frame):
         h = 25*int((h + 26)/25.)
         self.SetSize((w, h))
         self.Show()
-        self.Raise()        
-        
+
     def onOK(self, event=None):
         values = {}
         for pvname in self.pvdata:

@@ -568,8 +568,8 @@ class PositionPanel(wx.Panel):
             size = notes.get('image_size', (800, 600))
             self.image_display.showb64img(data, size=size,
                                           title=posname, label=label)
-                                          
-                                          
+
+
     @EpicsFunction
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
@@ -599,14 +599,15 @@ class PositionPanel(wx.Panel):
                 get_pv(pvname).put(sval)
 
         if self.viewer.v_move:
-            m2d = MoveToDialog(self, pvdata, instname, posname, 
+            m2d = MoveToDialog(self, pvdata, instname, posname,
                                callback=GoCallback)
+            m2d.Raise()
         else:
             for pvname, data in self.pvdata.items():
                 get_pv(pvname).put(data[1])
 
-        self.viewer.write_message('moved to %s' % posname)    
-    
+        self.viewer.write_message('moved to %s' % posname)
+
     def onErase(self, event=None, posname=None, query=True):
         if posname is None:
             posname = self.pos_list.GetStringSelection()
