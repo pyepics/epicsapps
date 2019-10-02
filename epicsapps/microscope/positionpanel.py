@@ -7,6 +7,7 @@ import numpy as np
 import time
 from collections import OrderedDict
 from epics import caput, get_pv
+from epics.wx import EpicsFunction
 
 from functools import partial
 
@@ -30,7 +31,6 @@ LEFT_TOP = wx.ALIGN_LEFT|wx.ALIGN_TOP
 LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
-
 
 def read_xyz(instdb, name, xyz_stages):
     """
@@ -568,6 +568,9 @@ class PositionPanel(wx.Panel):
             size = notes.get('image_size', (800, 600))
             self.image_display.showb64img(data, size=size,
                                           title=posname, label=label)
+                                          
+                                          
+    @EpicsFunction
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
         if posname is None or len(posname) < 1:
@@ -591,20 +594,19 @@ class PositionPanel(wx.Panel):
             desc = get_pvdesc(pvname)
             pvdata[pvname] = (desc, save_val, curr_val)
 
-        if self.viewer.v_move:
-            dlg = MoveToDialog(self, pvdata, instname, posname)
-            res = dlg.GetResponse()
-            if res.ok:
-                for pvname, sval in res.values.items():
-                    get_pv(pvname).put(sval)
-            dlg.Destroy()
+        def GoCallback(pvdata):
+            for pvname, sval in pvdata.items():
+                get_pv(pvname).put(sval)
 
+        if self.viewer.v_move:
+            m2d = MoveToDialog(self, pvdata, instname, posname, 
+                               callback=GoCallback)
         else:
             for pvname, data in self.pvdata.items():
                 get_pv(pvname).put(data[1])
 
-        self.viewer.write_message('moved to %s' % posname)
-
+        self.viewer.write_message('moved to %s' % posname)    
+    
     def onErase(self, event=None, posname=None, query=True):
         if posname is None:
             posname = self.pos_list.GetStringSelection()
