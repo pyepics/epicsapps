@@ -19,9 +19,10 @@ import wx.lib.mixins.inspection
 from wxmplot.plotframe import PlotFrame
 
 import epics
+from epics import get_pv
 from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 
-from ..utils import MoveToDialog
+from ..utils import MoveToDialog, normalize_pvname, get_pvdesc
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin)
@@ -448,24 +449,31 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def onInstrumentGo(self, event=None):
         posname = self.scandb_sel.GetStringSelection()
-        dlg = MoveToDialog(self, posname,
-                           self.scandb_instname,
-                           self.instdb)
-        dlg.Raise()
-        if dlg.ShowModal() == wx.ID_OK:
-            exclude_pvs = []
-            for pvname, data, in dlg.checkboxes.items():
-                if not data[0].IsChecked():
-                    exclude_pvs.append(pvname)
-            self.instdb.restore_position(self.scandb_instname,
-                                         posname, wait=False,
-                                         exclude_pvs=exclude_pvs)
+        instname = self.scandb_instname
 
-        else:
-            return
-        dlg.Destroy()
-        print('moving to %s' % posname)
+        # pre-load to make sure the PVs are connected
+        for pv in self.instdb.get_instrument(instname).pv:
+            pvname = normalize_pvname(pv.name)
+            get_pv(pvname)
+            get_pvdesc(pvname)
 
+        pos = self.instdb.get_position(instname, posname)
+        time.sleep(0.005)
+
+        pvdata = {}
+        for pvpos in pos.pv:
+            pvname = normalize_pvname(pvpos.pv.name)
+            save_val = pvpos.value
+            curr_val = get_pv(pvname).get(as_string=True)
+            desc = get_pvdesc(pvname)
+            pvdata[pvname] = (desc, save_val, curr_val)
+
+        def GoCallback(pvdata):
+            for pvname, sval in pvdata.items():
+                get_pv(pvname).put(sval)
+        m2d = MoveToDialog(self, pvdata, instname, posname,
+                           callback=GoCallback)
+        m2d.Raise()
 
     @EpicsFunction
     def onButton(self, event=None, key='free'):

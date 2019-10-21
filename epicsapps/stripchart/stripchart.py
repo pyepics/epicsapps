@@ -12,7 +12,10 @@ import wx.lib.colourselect  as csel
 
 from epics import get_pv
 from epics.wx import EpicsFunction, DelayedEpicsCallback
-from wxutils import  SimpleText, FloatCtrl, Choice, YesNo, TextCtrl
+
+from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
+                     FileOpen, SavedParameterDialog, Font, FloatSpin,
+                     FloatCtrl, Choice, YesNo, TextCtrl)                     
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
@@ -27,21 +30,6 @@ POLLTIME = 50
 STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL|wx.ALIGN_CENTER_VERTICAL
 CSTY = wx.ALIGN_CENTER|wx.ALIGN_CENTER_VERTICAL
-
-MENU_EXIT   = wx.NewId()
-MENU_SAVE_IMG = wx.NewId()
-MENU_SAVE_DAT = wx.NewId()
-MENU_CONFIG = wx.NewId()
-MENU_UNZOOM = wx.NewId()
-MENU_HELP   = wx.NewId()
-MENU_ABOUT  = wx.NewId()
-MENU_PRINT  = wx.NewId()
-MENU_PSETUP = wx.NewId()
-MENU_PREVIEW = wx.NewId()
-MENU_CLIPB  = wx.NewId()
-MENU_SELECT_COLOR = wx.NewId()
-MENU_SELECT_SMOOTH = wx.NewId()
-
 
 def get_bound(val):
     "return float value of input string or None"
@@ -233,51 +221,51 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def build_menus(self):
         mbar = wx.MenuBar()
-
         mfile = wx.Menu()
-        mfile.Append(MENU_SAVE_DAT, "&Save Data\tCtrl+S",
-                     "Save PNG Image of Plot")
-        mfile.Append(MENU_SAVE_IMG, "Save Plot Image\t",
-                     "Save PNG Image of Plot")
-        mfile.Append(MENU_CLIPB, "&Copy Image to Clipboard\tCtrl+C",
-                     "Copy Plot Image to Clipboard")
-        mfile.AppendSeparator()
-        mfile.Append(MENU_PSETUP, 'Page Setup...', 'Printer Setup')
-        mfile.Append(MENU_PREVIEW, 'Print Preview...', 'Print Preview')
-        mfile.Append(MENU_PRINT, "&Print\tCtrl+P", "Print Plot")
-        mfile.AppendSeparator()
-        mfile.Append(MENU_EXIT, "E&xit\tCtrl+Q", "Exit the 2D Plot Window")
+        pp = self.plotpanel
+        MenuItem(self, mfile, "&Save Data\tCtrl+S",
+                 "Save PNG Image of Plot", self.onSaveData)
 
+        MenuItem(self, mfile, "Save Plot Image\t",
+                 "Save PNG Image of Plot", pp.save_figure)
+
+        MenuItem(self, mfile, "&Copy Image to Clipboard\tCtrl+C",
+                 "Copy Plot Image to Clipboard", pp.canvas.Copy_to_Clipboard)
+        mfile.AppendSeparator()
+
+       
+        MenuItem(self, mfile, 'Page Setup...', 'Printer Setup',
+                 pp.PrintSetup)
+                  
+        MenuItem(self, mfile, 'Print Preview...', 'Print Preview',
+                 pp.PrintPreview)
+                  
+        MenuItem(self, mfile, "&Print\tCtrl+P", "Print Plot",
+                 pp.Print)
+        mfile.AppendSeparator()
+
+        MenuItem(self, mfile, "E&xit\tCtrl+Q",
+                 "Exit StripChart", self.onExit)
+        self.Bind(wx.EVT_CLOSE, self.onExit)
+        
         mopt = wx.Menu()
-        mopt.Append(MENU_CONFIG, "Configure Plot\tCtrl+K",
-                 "Configure Plot styles, colors, labels, etc")
+        MenuItem(self, mopt, "Configure Plot\tCtrl+K",
+                 "Configure Plot", pp.configure)
+        
         mopt.AppendSeparator()
-        mopt.Append(MENU_UNZOOM, "Zoom Out\tCtrl+Z",
-                 "Zoom out to full data range")
+        MenuItem(self, mopt, "Zoom Out\tCtrl+Z",
+                 "Zoom out to full data range", pp.unzoom_all)
 
         mhelp = wx.Menu()
-        mhelp.Append(MENU_HELP, "Quick Reference",  "Quick Reference for MPlot")
-        mhelp.Append(MENU_ABOUT, "About", "About MPlot")
+        MenuItem(self, mhelp, "Quick Reference",
+                 "Quick Reference ", self.onHelp)
+        MenuItem(self, mhelp, "About", "About Stripchart", self.onAbout)
 
         mbar.Append(mfile, "File")
         mbar.Append(mopt, "Options")
         mbar.Append(mhelp, "&Help")
 
         self.SetMenuBar(mbar)
-        self.Bind(wx.EVT_MENU, self.onSaveData, id=MENU_SAVE_DAT)
-        self.Bind(wx.EVT_MENU, self.onHelp,     id=MENU_HELP)
-        self.Bind(wx.EVT_MENU, self.onAbout,    id=MENU_ABOUT)
-        self.Bind(wx.EVT_MENU, self.onExit,     id=MENU_EXIT)
-        self.Bind(wx.EVT_CLOSE, self.onExit)
-
-        pp = self.plotpanel
-        self.Bind(wx.EVT_MENU, pp.configure,    id=MENU_CONFIG)
-        self.Bind(wx.EVT_MENU, pp.unzoom_all,   id=MENU_UNZOOM)
-        self.Bind(wx.EVT_MENU, pp.save_figure,  id=MENU_SAVE_IMG)
-        self.Bind(wx.EVT_MENU, pp.Print,        id=MENU_PRINT)
-        self.Bind(wx.EVT_MENU, pp.PrintSetup,   id=MENU_PSETUP)
-        self.Bind(wx.EVT_MENU, pp.PrintPreview, id=MENU_PREVIEW)
-        self.Bind(wx.EVT_MENU, pp.canvas.Copy_to_Clipboard, id=MENU_CLIPB)
 
     def AddPV_row(self):
         i = self.npv_rows = self.npv_rows + 1
@@ -293,7 +281,7 @@ Matt Newville <newville@cars.uchicago.edu>
         desc = wx.TextCtrl(panel, -1, '', size=(150, -1))
         side = Choice(panel, choices=('left', 'right'),
                       action=self.onSide, size=(80, -1))
-        side.SetSelection((i-1)%2)
+        side.SetSelection(0) # (i-1)%2)
 
         if i > 2:
             logs.Disable()
@@ -408,11 +396,12 @@ Matt Newville <newville@cars.uchicago.edu>
                 trace.set_data([], [])
             except:
                 pass
-        if row == 1:
-            self.plotpanel.set_y2label('')
+        # if row == 1:
+        #    self.plotpanel.set_y2label('')
         self.plotpanel.canvas.draw()
 
     def onPVcolor(self, event=None, row=None, **kws):
+        print("Set Trace color ", row, event.GetValue())
         self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
                                             trace=row-1)
         self.needs_refresh = True
@@ -551,8 +540,11 @@ Matt Newville <newville@cars.uchicago.edu>
     def onUpdatePlot(self, event=None):
         if self.paused or not self.needs_refresh:
             return
-
         tnow = time.time()
+        for pvname, data in self.pvdata.items():
+            if (tnow - data[-1][0]) > 15.0:
+                self.pvdata[pvname].append((tnow, data[-1][1]))
+            
         # set timescale sec/min/hour
         timescale = 1.0
         if self.time_choice.GetSelection() == 1:
@@ -568,10 +560,11 @@ Matt Newville <newville@cars.uchicago.edu>
         span1 = (1, 0)
         did_update = False
         left_axes = self.plotpanel.axes
-        right_axes = self.plotpanel.get_right_axes()
+        # right_axes = self.plotpanel.get_right_axes()
 
         for tracedata in self.get_current_traces():
             irow, pname, uselog, color, ymin, ymax, desc, xside = tracedata
+            # print("Trace: ", irow, pname, xside)
             if len(desc.strip() ) < 1:
                 desc = pname
             if pname not in self.pvdata:
@@ -581,9 +574,9 @@ Matt Newville <newville@cars.uchicago.edu>
                 self.plots_drawn.extend([False]*3)
             side = 'left'
             axes = left_axes
-            if xside == 1:
-                side = 'right'
-                axes = right_axes
+            # if xside == 1:
+            #     side = 'right'
+            #     axes = right_axes
 
             data = self.pvdata[pname][:]
             if len(data)  < 2:
@@ -612,7 +605,7 @@ Matt Newville <newville@cars.uchicago.edu>
             if ymax is None:
                 ymax = max(ydat)
 
-            # for more that 2 plots, scale to left hand axis
+            # for more than 2 plots, scale to left hand axis
             if itrace ==  0:
                 span1 = (ymax-ymin, ymin)
                 if span1[0]*ymax < 1.e-6:
@@ -626,10 +619,10 @@ Matt Newville <newville@cars.uchicago.edu>
 
             if self.needs_refresh:
                 ppnl = self.plotpanel
-                if side == 'left':
-                    ppnl.set_ylabel(desc)
-                elif side == 'right':
-                    ppnl.set_y2label(desc)
+                # if side == 'left':
+                #     ppnl.set_ylabel(desc)
+                # elif side == 'right':
+                #     ppnl.set_y2label(desc)
                 if self.force_redraw or not self.plots_drawn[itrace]:
                     self.force_redraw = False
                     plot = ppnl.oplot
@@ -638,16 +631,17 @@ Matt Newville <newville@cars.uchicago.edu>
                     try:
                         plot(tdat, ydat, drawstyle='steps-post', side=side,
                              ylog_scale=uselog, color=color,
-                             xmin=self.tmin, xmax=0,
-                             xlabel=xlabel, label=desc, autoscale=False)
-
+                             xmin=self.tmin, xmax=0, 
+                             show_legend=True, 
+                             xlabel=xlabel, label=desc)
                         self.plots_drawn[itrace] = True
                     except:
                         update_failed = True
                 else:
                     try:
-                        ppnl.update_line(itrace, tdat, ydat, draw=False, update_limits=False)
-                        axes.set_ylim((ymin, ymax), emit=True)
+                        ppnl.update_line(itrace, tdat, ydat, draw=False,
+                                         update_limits=False)
+                        # axes.set_ylim((ymin, ymax), emit=True)
                         did_update = True
                     except:
                         update_failed = True

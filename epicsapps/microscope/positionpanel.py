@@ -6,7 +6,8 @@ import json
 import numpy as np
 import time
 from collections import OrderedDict
-from epics import caput
+from epics import caput, get_pv
+from epics.wx import EpicsFunction
 
 from functools import partial
 
@@ -16,7 +17,8 @@ try:
 except ImportError:
     ScanDB = InstrumentDB = None
 
-from ..utils import MoveToDialog
+
+from ..utils import MoveToDialog, normalize_pvname, get_pvdesc
 
 from lmfit import Parameters, minimize
 from .transformations import superimposition_matrix
@@ -29,7 +31,6 @@ LEFT_TOP = wx.ALIGN_LEFT|wx.ALIGN_TOP
 LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
-
 
 def read_xyz(instdb, name, xyz_stages):
     """
@@ -566,27 +567,44 @@ class PositionPanel(wx.Panel):
             size = notes.get('image_size', (800, 600))
             self.image_display.showb64img(data, size=size,
                                           title=posname, label=label)
+
+
+    @EpicsFunction
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
         if posname is None or len(posname) < 1:
             return
-        if self.viewer.v_move:
-            dlg = MoveToDialog(self, posname, self.instrument, self.instdb)
-            dlg.Raise()
-            if dlg.ShowModal() == wx.ID_OK:
-                exclude_pvs = []
-                pvvals = {}
-                for pvname, data, in dlg.checkboxes.items():
-                    if not data[0].IsChecked():
-                        exclude_pvs.append(pvname)
-                    else:
-                        caput(pvname, float(data[1]))
-                self.instdb.restore_position(self.instrument, posname, wait=False,
-                                             exclude_pvs=exclude_pvs)
 
-            else:
-                return
-            dlg.Destroy()
+        instname = self.instrument
+        # pre-load to make sure the PVs are connected
+        for pv in self.instdb.get_instrument(instname).pv:
+            pvname = normalize_pvname(pv.name)
+            get_pv(pvname)
+            get_pvdesc(pvname)
+
+        pos = self.instdb.get_position(instname, posname)
+        time.sleep(0.005)
+
+        pvdata = {}
+        for pvpos in pos.pv:
+            pvname = normalize_pvname(pvpos.pv.name)
+            save_val = pvpos.value
+            curr_val = get_pv(pvname).get(as_string=True)
+            desc = get_pvdesc(pvname)
+            pvdata[pvname] = (desc, save_val, curr_val)
+
+        def GoCallback(pvdata):
+            for pvname, sval in pvdata.items():
+                get_pv(pvname).put(sval)
+
+        if self.viewer.v_move:
+            m2d = MoveToDialog(self, pvdata, instname, posname,
+                               callback=GoCallback)
+            m2d.Raise()
+        else:
+            for pvname, data in self.pvdata.items():
+                get_pv(pvname).put(data[1])
+
         self.viewer.write_message('moved to %s' % posname)
 
     def onErase(self, event=None, posname=None, query=True):
