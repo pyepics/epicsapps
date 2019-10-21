@@ -73,7 +73,7 @@ class ImagePanel_Base(wx.Panel):
 
     def AutoSetExposureTime(self):
         """auto set exposure time"""
-        raise NotImplementedError('must provide AutoSetExposure')
+        pass # raise NotImplementedError('must provide AutoSetExposure')
 
     def __init__(self, parent, camera_id=0, writer=None, output_pv=None,
                  leftdown_cb=None, motion_cb=None, publish_jpeg=False,
