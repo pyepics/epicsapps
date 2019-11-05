@@ -130,7 +130,6 @@ class MoveToDialog(wx.Dialog):
             if desc != pvname:
                 desc = "%s (%s)" % (desc, pvname)
             curr_val = None
-
             if pvname in self.pvs:
                 curr_val = self.pvs[pvname].get(as_string=True)
             elif pvname.endswith('.VAL') and pvname[:4] in self.pvs:
@@ -139,7 +138,8 @@ class MoveToDialog(wx.Dialog):
                 curr_val = self.pvs[pvname+'.VAL'].get(as_string=True)
 
             if curr_val is None:
-                curr_val = 'Unknown'
+                # may have been removed from instrument definition
+                continue
 
             save_val = pvpos.value
 
@@ -187,9 +187,9 @@ class InstrumentPanel(wx.Panel):
         self.inst = inst
         self.pvlist = pvlist
 
-        self.db   = db
+        self.db = db
         self.write_message = writer
-        self.pvs  = {}
+        self.pvs = {}
         self.pv_components  = OrderedDict()
 
         wx.Panel.__init__(self, parent, size=size)
