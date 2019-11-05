@@ -124,7 +124,8 @@ class MoveToDialog(wx.Dialog):
                   (1, 0), (1, 4), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
 
         self.checkboxes = {}
-        for irow, pvpos in enumerate(thispos.pvs):
+        irow = 0
+        for pvpos in thispos.pvs:
             pvname = pvpos.pv.name
             desc = get_pvdesc(pvname)
             if desc != pvname:
@@ -139,8 +140,7 @@ class MoveToDialog(wx.Dialog):
 
             if curr_val is None:
                 # may have been removed from instrument definition
-                continue
-
+                continue 
             save_val = pvpos.value
 
             label = SimpleText(self, desc, style=tstyle,
@@ -157,7 +157,8 @@ class MoveToDialog(wx.Dialog):
             sizer.Add(saved, (irow+2, 2), (1, 1), rlabstyle, 2)
             if self.mode != 'show':
                 sizer.Add(cbox,  (irow+2, 3), (1, 1), rlabstyle, 2)
-
+            irow = irow + 1
+             
         sizer.Add(wx.StaticLine(self, size=(450, -1),
                                 style=wx.LI_HORIZONTAL),
                   (irow+3, 0), (1, 4), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
