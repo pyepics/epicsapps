@@ -6,6 +6,7 @@ import time
 import os
 import io
 import urllib
+import requests
 
 import numpy as np
 
@@ -38,7 +39,7 @@ class ImagePanel_URL(ImagePanel_Base):
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
 
     def read_url(self):
-        return io.BytesIO(urllib.request.urlopen(self.url).read())
+        return io.BytesIO(requests.get(self.url).content)
 
     def Start(self):
         "turn camera on"
@@ -53,7 +54,8 @@ class ImagePanel_URL(ImagePanel_Base):
 
     def GrabNumpyImage(self):
         pimg = Image.open(self.read_url())
-        return np.array(pimg.getdata()).reshape(pimg.size[0], pimg.size[1], 3)
+        self.data = np.array(pimg.getdata()).reshape(pimg.size[0], pimg.size[1], 3)
+        return self.data
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         try:
@@ -69,6 +71,8 @@ class ConfPanel_URL(ConfPanel_Base):
                                             xhair_cb=xhair_cb,
                                             size=(280, 300))
 
+        super(ConfPanel_URL, self).__init__(parent, center_cb=center_cb,
+                                             xhair_cb=xhair_cb, **kws)
         title =  wx.StaticText(self, label="Webcam Config", size=(285, 25))
 
         sizer = self.sizer # wx.BoxSizer(wx.VERTICAL)

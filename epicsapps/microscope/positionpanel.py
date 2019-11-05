@@ -108,12 +108,11 @@ def calc_rotmatrix(d1, d2):
     mat = params2rotmatrix(params, mat)
     return mat, v1, v2
 
-
 def make_uscope_rotation(scandb,
                          offline_inst='IDE_Microscope',
                          offline_xyz=('13IDE:m1.VAL', '13IDE:m2.VAL', '13IDE:m3.VAL'),
                          online_inst='IDE_SampleStage',
-                         online_xyz=('13XRM:m4.VAL', '13XRM:m6.VAL', '13XRM:m5.VAL')):
+                         online_xyz=('13XRM:m5.VAL', '13XRM:m6.VAL', '13XRM:m4.VAL')):
     """
     Calculate and store the rotation maxtrix needed to convert
     positions from the GSECARS offline microscope (OSCAR)
@@ -129,6 +128,8 @@ def make_uscope_rotation(scandb,
 
     pos_us = read_xyz(instdb, offline_inst, offline_xyz)
     pos_ss = read_xyz(instdb, online_inst, online_xyz)
+    # print('pos us: ', pos_us['A2'])
+    # print('pos ss: ', pos_ss['A2'])
     # calculate the rotation matrix
     mat_us2ss, v1, v2 = calc_rotmatrix(pos_us, pos_ss)
     if mat_us2ss is None:
@@ -143,7 +144,6 @@ def make_uscope_rotation(scandb,
 
     us2ss = dict(source=offline_xyz, dest=online_xyz,
                  rotmat=mat_us2ss.tolist())
-
     scandb.set_config(conf_us2ss, json.dumps(us2ss))
 
     # calculate the rotation matrix going the other way
@@ -538,7 +538,6 @@ class PositionPanel(wx.Panel):
 
         label = []
         stages  = self.viewer.stages
-        print("onShow stages: ", stages)
         posvals = self.positions[posname]['position']
         for pvname, value in posvals.items():
             value = thispos['position'][pvname]
@@ -643,13 +642,13 @@ class PositionPanel(wx.Panel):
         online = self.instrument
         offline = self.offline_instrument
         if len(online) > 0 and len(offline) > 0 and self.scandb is not None:
-            offline_xyz = self.offline_xyzmotors
-            offline_xyz = [s.strip() for s in offline_xyz.split(',')]
-            online_xyz  = self.xyzmotors
-            online_xyz  = [s.strip() for s in online_xyz.split(',')]
-
+            # offline_xyz = self.offline_xyzmotors
+            offline_xyz = [s.strip() for s in self.offline_xyzmotors]
+            online_xyz  = [s.strip() for s in self.xyzmotors]
             if len(offline_xyz) == 3 and len(online_xyz) == 3:
                 print("calibrate %s to %s " % (offline, online))
+                # print(offline_xyz, online_xyz)
+
                 make_uscope_rotation(self.scandb,
                                      offline_inst=offline,
                                      offline_xyz=offline_xyz,

@@ -447,18 +447,16 @@ class MicroscopeFrame(wx.Frame):
         mbar.Append(fmenu, '&File')
         mbar.Append(omenu, '&Options')
         mbar.Append(pmenu, 'Positions')
-
-        if 'offline' in self.config:
-            if len(self.config['offline'].get('instrument', '')):
-                cmenu = wx.Menu()
-                add_menu(self, cmenu, label="Copy Positions from Offline Microscope",
-                         text="Copy Positions from Offline Microscope",
-                         action = self.pospanel.onMicroscopeTransfer)
-                cmenu.AppendSeparator()
-                add_menu(self, cmenu, label="Calibrate to Offline Microscope",
-                         text="Calibrate to Offline Microscope",
-                         action = self.pospanel.onMicroscopeCalibrate)
-                mbar.Append(cmenu, 'Offline Microscope')
+        if 'offline_instrument' in self.config:
+            cmenu = wx.Menu()
+            add_menu(self, cmenu, label="Copy Positions from Offline Microscope",
+                     text="Copy Positions from Offline Microscope",
+                     action = self.pospanel.onMicroscopeTransfer)
+            cmenu.AppendSeparator()
+            add_menu(self, cmenu, label="Calibrate to Offline Microscope",
+                     text="Calibrate to Offline Microscope",
+                     action = self.pospanel.onMicroscopeCalibrate)
+            mbar.Append(cmenu, 'Offline Microscope')
 
         self.SetMenuBar(mbar)
 
