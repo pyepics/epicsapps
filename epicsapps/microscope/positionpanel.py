@@ -602,7 +602,7 @@ class PositionPanel(wx.Panel):
                                callback=GoCallback)
             m2d.Raise()
         else:
-            for pvname, data in self.pvdata.items():
+            for pvname, data in pvdata.items():
                 get_pv(pvname).put(data[1])
 
         self.viewer.write_message('moved to %s' % posname)
