@@ -379,6 +379,8 @@ class ADFrame(wx.Frame):
         print("wrote %s" % fname)
 
     def onClose(self, event=None):
+        self.ad_cam.Acquire = 0
+        time.sleep(0.05)
         ret = Popup(self, "Really Quit?", "Exit AreaDetector Viewer?",
                     style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION)
         if wx.ID_YES == ret:
