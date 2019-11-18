@@ -1,7 +1,7 @@
 # This database contains fields used to calculate ion chamber currents
 grecord(stringin,"$(P)$(Q):Amp") {
-	field(DESC, "IonCh SRS570 Amp")
-	field(VAL,  "xxx:A1")
+	field(DESC, "IonChSRS570 Amp")
+	field(VAL,  "13IDC:A1")
 }
 
 grecord(stringin,"$(P)$(Q):Desc") {
@@ -46,6 +46,11 @@ grecord(stringout,"$(P)$(Q):Current") {
 	field(VAL,"0.")
 }
 
+grecord(stringout,"$(P)$(Q):Volts2Flux") {
+	field(DESC,"IonCh Voltage to Flux Out")
+	field(VAL,"0")
+}
+
 grecord(stringout,"$(P)$(Q):FluxAbs") {
 	field(DESC,"IonCh Flux Absorbed (Hz)")
 	field(VAL,"0")
@@ -54,6 +59,11 @@ grecord(stringout,"$(P)$(Q):FluxAbs") {
 grecord(stringout,"$(P)$(Q):FluxOut") {
 	field(DESC,"IonCh Flux Out (Hz)")
 	field(VAL,"0")
+}
+
+grecord(stringin,"$(P)$(Q):FluxLowLimit") {
+	field(DESC, "Lower Threshold for Flux")
+	field(VAL,  "5.e9")
 }
 
 grecord(stringin,"$(P)$(Q):EnergyPV") {
@@ -81,4 +91,17 @@ grecord(longout,"$(P)$(Q):UNIXTS") {
         field(DTYP,"Soft Channel") 
 	field(DESC, "timestamp")
 	field(VAL,  0)
+}
+
+
+grecord(ao,"$(P)$(Q):AutotuneTS") {
+	field(DESC,"timestamp (sec) of last autotune")
+        field(PREC,"0")
+	field(VAL,"0")
+}
+
+grecord(ao,"$(P)$(Q):AutotuneDelay") {
+	field(DESC,"time (hours) for autotune")
+        field(PREC,"2")
+	field(VAL, "1.0")
 }

@@ -1,4 +1,7 @@
+$(P)$(Q):EnergyPV
 $(P)$(Q):Amp
 $(P)$(Q):Volts
 $(P)$(Q):Length
 $(P)$(Q):Gas
+$(P)$(Q):AutotuneDelay
+
