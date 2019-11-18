@@ -600,6 +600,9 @@ class PositionPanel(wx.Panel):
         if self.viewer.v_move:
             m2d = MoveToDialog(self, pvdata, instname, posname,
                                callback=GoCallback)
+
+            spos = self.viewer.imgpanel.GetScreenPosition()
+            m2d.SetPosition((int(spos[0]+200), int(spos[1]+50)))
             m2d.Raise()
         else:
             for pvname, data in pvdata.items():

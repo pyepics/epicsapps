@@ -692,6 +692,7 @@ class MicroscopeFrame(wx.Frame):
             report = self.ctrlpanel.af_message.SetLabel
         if report is not None:
             report('Auto-setting exposure')
+        expdat = self.imgpanel.GetExposureGain()
         self.imgpanel.AutoSetExposureTime()
         report('Auto-focussing start')
 
@@ -714,7 +715,7 @@ class MicroscopeFrame(wx.Frame):
         def get_score(pos):
             zpos = start_pos + pos * 0.001
             zstage.put(zpos, wait=True)
-            time.sleep(0.2)
+            time.sleep(0.05)
             score = image_blurriness(self.imgpanel)
             dat = (pos, zstage.get(), score)
             focus_data.append(dat)
@@ -777,6 +778,7 @@ class MicroscopeFrame(wx.Frame):
 
         get_score(best)
         report('Auto-focussing done. ')
+        self.imgpanel.SetExposureGain(expdat)
         self.ctrlpanel.af_button.Enable()
 
     def onMoveToCenter(self, event=None, **kws):
