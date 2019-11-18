@@ -106,7 +106,8 @@ class ADFrame(wx.Frame):
         self.img_attrs = cnf['image_attributes']
         self.epics_controls = cnf.get('epics_controls', [])
         self.scandb_instname = cnf.get('scandb_instrument', None)
-        self.connect_scandb()
+        if self.scandb_instname is not None:
+            self.connect_scandb()
 
     def connect_scandb(self):
         self.scandb_choices = []
@@ -363,13 +364,14 @@ class ADFrame(wx.Frame):
 
 
         root, fname = os.path.split(path)
-        epics.caput("%s%sFileName" % self.prefix, self.fsaver, fname)
-        epics.caput("%s%sFileWriteMode" % self.prefix, self.fsaver, 0)
+        fsaver = "%s%s" % (self.prefix, self.fsaver)
+        epics.caput("%sFileName" % fsaver, fname)
+        epics.caput("%sFileWriteMode" % fsaver, 0)
         time.sleep(0.05)
-        epics.caput("%s%sWriteFile" % self.prefix, self.fsaver, 1)
+        epics.caput("%sWriteFile" % fsaver, 1)
         time.sleep(0.05)
 
-        file_pv = "%s%sFullFileName_RBV" % (self.prefix, self.prefix)
+        file_pv = "%sFullFileName_RBV" % fsaver
         print("Saved image File ", epics.caget(file_pv,  as_string=True))
 
     def onSaveConf(self, event=None):
@@ -503,10 +505,11 @@ Matt Newville <newville@cars.uchicago.edu>"""
                                    attrs=self.cam_attrs)
 
         if self.config['use_filesaver']:
-            epics.caput("%s%sEnableCallbacks" % (self.prefix, self.fsaver), 1)
-            epics.caput("%s%sAutoSave" % (self.prefix, self.fsaver), 0)
-            epics.caput("%s%sAutoIncrement" % (self.prefix, self.fsaver), 0)
-            epics.caput("%s%sFileWriteMode" % (self.prefix, self.fsaver), 0)
+            fsaver = "%s%s" % (self.prefix, self.fsaver)            
+            epics.caput("%sEnableCallbacks" % fsaver, 1)
+            epics.caput("%sAutoSave" % fsaver, 0)
+            epics.caput("%sAutoIncrement" % fsaver, 0)
+            epics.caput("%sFileWriteMode" % fsaver, 0)
 
         time.sleep(0.002)
         if not self.ad_img.PV('UniqueId_RBV').connected:
