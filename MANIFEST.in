@@ -1,0 +1,9 @@
+include README.md LICENSE MANIFEST.in setup.py requirements.txt
+exclude *.pyc core.* *~ *.pdf
+recursive-exclude epicsapps/__pycache__ *
+recursive-exclude epicsapps *.pyc
+
+recursive-include epicsapps *.py
+recursive-include epicsapps/icons *
+recursive-include examples *
+recursive-include doc

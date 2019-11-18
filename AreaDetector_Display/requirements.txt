@@ -1,8 +1,0 @@
-six>=1.10
-numpy>=1.12
-matplotlib>=3.0
-pyyaml
-wxpython>=4.0.3
-pyepics>=3.3.0
-wxutils>=0.2.3
-wxmplot>=0.9.32

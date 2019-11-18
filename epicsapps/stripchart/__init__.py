@@ -1,0 +1,1 @@
+from .stripchart import StripChartApp

@@ -1,8 +1,6 @@
 *.pyc
-*.ein
 *~
 *#
-*.dat
 *.bak
 doc/_build
 doc/*.pdf
@@ -11,5 +9,3 @@ build
 dist
 junk
 sandbox
-*/sandbox
-gsecars*
