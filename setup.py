@@ -3,6 +3,7 @@
 setup for pyepics/epicsapps
 """
 from setuptools import setup, find_packages
+import versioneer
 
 install_requires = ('pyepics', 'numpy', 'matplotlib', 'xraydb', 'wxpython',
                     'wxmplot', 'wxutils', 'sqlalchemy', 'pyyaml', 'lmfit',
@@ -18,7 +19,8 @@ package_data = ['icons/*']
 apps = ['epicsapps = epicsapps:run_epicsapps']
 
 setup(name = 'epicsapps',
-      version = '0.9',
+      version = versioneer.get_version(),
+      cmdclass = versioneer.get_cmdclass(),
       author = 'Matthew Newville',
       author_email = 'newville@cars.uchicago.edu',
       license = 'Epics Open License',

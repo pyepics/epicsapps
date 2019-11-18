@@ -7,3 +7,5 @@ recursive-include epicsapps *.py
 recursive-include epicsapps/icons *
 recursive-include examples *
 recursive-include doc
+include versioneer.py
+include epicsapps/_version.py
