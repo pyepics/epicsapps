@@ -9,7 +9,7 @@ import time
 import os
 from numpy import exp
 
-from epics import Device, caget
+from epics import Device, caget, get_pv
 from xraydb import material_mu
 
 PIDFILE = '/tmp/ionchamber.pid'
@@ -29,9 +29,9 @@ QCHARGE = 1.6021766208e-19
 class IonChamber(Device):
     """Epics Device for Ion Chamber Flux Calculation"""
 
-    attrs = ('Amp', 'Desc', 'Volts', 'Length', 'AbsPercent',
-             'Gas', 'Current', 'FluxAbs', 'FluxOut', 'EnergyPV',
-             'Energy', 'TimeStamp' )
+    attrs = ('Amp', 'Desc', 'Volts', 'Length', 'AbsPercent', 'Gas', 'Current',
+             'FluxAbs', 'FluxOut', 'Volts2Flux', 'EnergyPV', 'Energy',
+             'TimeStamp')
 
     def __init__(self, prefix='13XRM:ION:'):
         Device.__init__(self, prefix, attrs=self.attrs)
@@ -66,9 +66,8 @@ class IonChamber(Device):
         #   current = flux_photo * energy * 1.e-20
         #   photo_flux = 1.e20 * current / energy
 
-        ion_pot = ion_potentials.get(gas, 32.0)
-        flux_photo = current * ion_pot / (2*QCHARGE*energy)
-
+        ion_pot = ion_potentials.get(gas, 32.0)/(2*QCHARGE*energy)
+        flux_photo = current * ion_pot
         if gas == 'N2':
             gas = 'nitrogen'
 
@@ -83,13 +82,16 @@ class IonChamber(Device):
         etmu_photo = exp(-length*material_mu(gas, energy=energy, kind='photo'))
         etmu_total = exp(-length*material_mu(gas, energy=energy, kind='total'))
 
-        flux_out = flux_photo * etmu_total/(1-etmu_photo)
+        photo2fluxout = etmu_total/(1-etmu_photo)
+        flux_out = flux_photo * photo2fluxout
 
+        v2flux = sensitivity * ion_pot * photo2fluxout
         self.put('Energy',    energy)
         self.put('AbsPercent', 100.0*((1-etmu_total)/etmu_total))
-        self.put('Current',   "%12.3g" % (current*1.e6)) # report current in microAmp
-        self.put('FluxAbs',   "%12.3e" % flux_photo)
-        self.put('FluxOut',   "%12.3e" % flux_out)
+        self.put('Current',    "%.6g" % (current*1.e6)) # report current in microAmp
+        self.put('FluxAbs',    "%.6g" % flux_photo)
+        self.put('FluxOut',    "%.6g" % flux_out)
+        self.put('Volts2Flux', "%.6g" % v2flux)
 
         self.put('TimeStamp',
                  time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
@@ -108,8 +110,9 @@ def start_ionchamber(prefix='13XRM:ION:'):
     ion.run()
 
 def get_lastupdate(prefix='13XRM:ION:'):
-    xtime = caget("%sTimeStamp" % prefix)
-    xtime = xtime.strip()
+    ts_pv = get_pv("%sTimeStamp" % prefix)
+    time.sleep(0.1)
+    xtime = ts_pv.get().strip()
     if len(xtime) > 1:
         for i in (':','-'):
             xtime = xtime.replace(i, ' ')
