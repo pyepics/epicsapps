@@ -87,6 +87,17 @@ class ImagePanel_PySpin(ImagePanel_Base):
             self.confpanel.wids['exposure'].SetValue(exptime)
             self.confpanel.wids['exposure_auto'].SetValue(0)
 
+    def GetExposureGain(self):
+        "get current exposure time and gain as dict"
+        pgain = self.camera.GetGain()
+        atime = self.camera.GetExposureTime()
+        return {'exposure_time': atime, 'gain': pgain}
+
+    def SetExposureGain(self, dat):
+        "set current exposure time and gain from dict"
+        self.SetExposureTime(dat['exposure_time'])
+        self.camera.SetGain(dat['gain'], auto=False)
+
     def AutoSetExposureTime(self):
         """auto set exposure time"""
         count, IMAX = 0, 255.0
@@ -94,7 +105,7 @@ class ImagePanel_PySpin(ImagePanel_Base):
         while count < 5:
             count += 1
             img = self.GrabNumpyImage()
-            imgmax = img.max()
+            imgmin, imgmax = np.percentile(img, [1, 99])
             imgave = img.mean()
             pgain = self.camera.GetGain()
             atime = self.camera.GetExposureTime()
@@ -106,7 +117,7 @@ class ImagePanel_PySpin(ImagePanel_Base):
                 else:
                     self.SetExposureTime(0.75*atime)
             elif imgave < 100:
-                if atime > 60:
+                if atime > 45:
                     pgain = 1.75 * pgain
                     self.camera.SetGain(pgain, auto=False)
                     self.confpanel.wids['gain'].SetValue(pgain)

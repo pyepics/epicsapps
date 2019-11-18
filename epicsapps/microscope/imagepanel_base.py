@@ -71,6 +71,14 @@ class ImagePanel_Base(wx.Panel):
         "grab Image as numpy array"
         raise NotImplementedError('must provide GrabNumpyImage()')
 
+    def GetExposureGain(self):
+        "get current exposure time and gain as dict"
+        return {'exposure_time': None, 'gain': None}
+
+    def SetExposureGain(self, dat):
+        "set current exposure time and gain from dict"
+        return self.SetExposureTime(dat['exposure_time'])
+            
     def AutoSetExposureTime(self):
         """auto set exposure time"""
         pass # raise NotImplementedError('must provide AutoSetExposure')
@@ -396,7 +404,6 @@ class ConfPanel_Base(wx.Panel):
     # @EpicsFunction
     def onLampVal(self, evt=None):
         self.lamp_pv.put(float(self.lampval.GetValue()))
-
     
     def onCalib(self, event=None):
         if callable(self.calib_cb):
