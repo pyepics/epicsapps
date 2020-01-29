@@ -8,6 +8,7 @@ import wx
 import time
 import numpy as np
 from threading import Thread
+from collections import deque
 import base64
 from epics import get_pv
 from PIL import Image
@@ -205,7 +206,6 @@ class ImagePanel_Base(wx.Panel):
 
     def zoom_click_mode(self, evt=None):
         self.zoommode = 'click'
-
 
     def onRightDown(self, evt=None):
         wx.CallAfter(self.PopupMenu, self.popup_menu, evt.GetPosition())
@@ -432,6 +432,7 @@ class ZoomPanel(wx.Panel):
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.SetSize(size)
         self.data = None
+        self.zoomhist = deque(maxlen=10)
         self.scale = 1.0
         self.xcen = self.ycen = self.x = self.y = 0
         self.Bind(wx.EVT_PAINT, self.onPaint)
@@ -474,7 +475,6 @@ class ZoomPanel(wx.Panel):
         scale = max(0.10, min(0.98*fw/(ws+0.1), 0.98*fh/(hs+0.1)))
         self.scale = scale
 
-
         image = wx.Image(self.imgsize, self.imgsize, rgb.flatten())
         image = image.Scale(int(scale*ws), int(scale*hs))
         bitmap = wx.Bitmap(image)
@@ -488,4 +488,6 @@ class ZoomPanel(wx.Panel):
         if self.sharpness_label is not None:
             rgb = rgb.sum(axis=2)
             sharpness = ((rgb - rgb.mean())**2).mean()
-            self.sharpness_label.SetLabel("%.3f" % sharpness)
+            self.zoomhist.append(sharpness)
+            sreport = np.array(self.zoomhist).mean()
+            self.sharpness_label.SetLabel("%.1f" % sreport)
