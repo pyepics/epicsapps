@@ -124,7 +124,7 @@ class Instrument(_BaseTable):
 
 class Position(_BaseTable):
     "position table"
-    pvs, instrument, instrument_id, date, name, notes = None, None, None, None, None, None
+    pvs, instrument, instrument_id, modify_time, name, notes = None, None, None, None, None, None
 
 class Position_PV(_BaseTable):
     "position-pv join table"
@@ -562,7 +562,7 @@ arguments
             pos = Position()
             pos.name = posname
             pos.instrument = inst
-            pos.date = datetime.now()
+            pos.modify_time = datetime.now()
 
         pvnames = [pv.name for pv in inst.pvs]
 
