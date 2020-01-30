@@ -633,8 +633,7 @@ class MicroscopeFrame(wx.Frame):
             self.write_message('saved image to %s' % fname)
         return imgdata
 
-
-    def write_htmllog(self, name, thispos):
+    def write_htmllog(self, name=None, thispos=None):
         img_folder = self.imgdir
         junk, img_file = os.path.split(thispos['image'])
         imgfile = os.path.join(img_folder, img_file)

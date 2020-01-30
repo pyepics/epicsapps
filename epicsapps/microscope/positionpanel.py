@@ -5,6 +5,7 @@ import wx.lib.scrolledpanel as scrolled
 import json
 import numpy as np
 import time
+from datetime import datetime
 from collections import OrderedDict
 from epics import caput, get_pv
 from epics.wx import EpicsFunction
@@ -16,7 +17,6 @@ try:
     from epicsscan.scandb import ScanDB, InstrumentDB
 except ImportError:
     ScanDB = InstrumentDB = None
-
 
 from ..utils import MoveToDialog, normalize_pvname, get_pvdesc
 
@@ -38,7 +38,7 @@ def read_xyz(instdb, name, xyz_stages):
     returns dictionary of PositionName: (x, y, z)
     """
     out = OrderedDict()
-    for pname in instdb.get_positionlist(name):
+    for pname in instdb.get_positionlist(name, reverse=True):
         v =  instdb.get_position_vals(name, pname)
         out[pname]  = [v[p] for p in xyz_stages]
     return out
@@ -251,7 +251,7 @@ class TransferPositionsDialog(wx.Frame):
         self.build_dialog()
 
     def build_dialog(self):
-        positions  = self.instdb.get_positionlist(self.offline)
+        positions  = self.instdb.get_positionlist(self.offline, reverse=True)
         panel = scrolled.ScrolledPanel(self)
         self.checkboxes = OrderedDict()
         sizer = wx.GridBagSizer(len(positions)+5, 4)
@@ -360,7 +360,7 @@ class TransferPositionsDialog(wx.Frame):
 
             pred = np.dot(rotmat, vals)
 
-            poslist = idb.get_positionlist(self.instname)
+            poslist = idb.get_positionlist(self.instname, reverse=True)
             saved_temp = None
             if len(poslist) < 1 and self.parent is not None:
                 saved_temp = '__tmp__'
@@ -368,7 +368,7 @@ class TransferPositionsDialog(wx.Frame):
                     saved_temp = '__tmp_a0012AZqspkwx9827nf917+o,ppa+'
                 self.parent.onSave(saved_temp)
                 time.sleep(3.0)
-                poslist = idb.get_positionlist(self.instname)
+                poslist = idb.get_positionlist(self.instname, reverse=True)
 
             pos0 = idb.get_position_vals(self.instname, poslist[0])
             spos = OrderedDict()
@@ -410,7 +410,7 @@ class PositionPanel(wx.Panel):
         self.image_display = None
         self.pos_name =  wx.TextCtrl(self, value="", size=(300, 25),
                                      style= wx.TE_PROCESS_ENTER)
-        self.pos_name.Bind(wx.EVT_TEXT_ENTER, self.onSave1)
+        self.pos_name.Bind(wx.EVT_TEXT_ENTER, self.onSave)
 
         tlabel = wx.StaticText(self, label="Save Position: ")
 
@@ -449,16 +449,10 @@ class PositionPanel(wx.Panel):
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
         self.timer.Start(2500)
 
-    def onSave1(self, event):
-        "save from text enter"
-        self.onSave(event.GetString().strip())
-
-    def onSave2(self, event):
-        "save from button push"
-        self.onSave(self.pos_name.GetValue().strip())
-
-    def onSave(self, name):
-        if len(name) < 1:
+    def onSave(self, event=None, name=None):
+        if name is None:
+            name = event.GetString().strip()
+        if len(name) < 1:            
             return
 
         if name in self.positions and self.viewer.v_replace:
@@ -477,7 +471,7 @@ class PositionPanel(wx.Panel):
         while imgdata is None and count <100:
             imgdata = self.viewer.save_image(imgfile)
             if imgdata is None:
-                time.sleep(0.5)
+                time.sleep(0.05)
             count = count + 1
 
         imgdata['source'] = 'SampleStage'
@@ -486,19 +480,15 @@ class PositionPanel(wx.Panel):
         notes = json.dumps(imgdata)
         fullpath = os.path.join(os.getcwd(), imgfile)
 
-        self.positions[name] = {'image': fullpath,
-                                'timestamp': time.strftime('%b %d %H:%M:%S'),
-                                'position': tmp_pos,
-                                'notes':  notes}
-
-        if name not in self.pos_list.GetItems():
-            self.pos_list.Append(name)
+        thispos = self.positions[name] = {'image': fullpath,
+                                          'timestamp': time.strftime('%b %d %H:%M:%S'),
+                                          'position': tmp_pos,
+                                          'notes':  notes}
 
         self.instdb.save_position(self.instrument, name, tmp_pos,
                                   notes=notes, image=fullpath)
-
-        self.pos_list.SetStringSelection(name)
-        self.viewer.write_htmllog(name, self.positions[name])
+        self.get_positions_from_db()
+        # self.pos_list.SetStringSelection(name)
 
         imgfile_exists = False
         t0 = time.time()
@@ -510,7 +500,7 @@ class PositionPanel(wx.Panel):
                                       (name, imgfile))
         else:
             self.viewer.write_message("COULD NOT SAVE IMAGE FILE!!")
-
+        wx.CallAfter(partial(self.viewer.write_htmllog, name=name, thispos=thispos))
         wx.CallAfter(partial(self.onSelect, event=None, name=name))
 
     def onShow(self, event):
@@ -726,23 +716,24 @@ class PositionPanel(wx.Panel):
         npos = len(self.poslist_select.execute().fetchall())
         now = time.time()
         if (npos != len(self.posnames) or (now - self.last_refresh) > 900.0):
-            # print("Timer ", npos, len(self.posnames), now-self.last_refresh)
             self.get_positions_from_db()
             self.last_refresh = now
 
     def get_positions_from_db(self):
         if self.instdb is None:
             return
-
         positions = OrderedDict()
         iname = self.instrument
-        posnames =  self.instdb.get_positionlist(iname)
+        posnames =  self.instdb.get_positionlist(iname, reverse=True)
         self.posnames = posnames
         for pname in posnames:
             thispos = self.instdb.get_position(iname, pname)
             # print(pname, thispos)
             image = ''
             notes = {}
+            if thispos.modify_time is None:
+                thispos.modify_time = datetime.now()
+
             if thispos.image is not None:
                 image = thispos.image
             if thispos.notes is not None:
