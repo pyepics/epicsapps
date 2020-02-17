@@ -75,7 +75,16 @@ class PySpinCamera(object):
         """start capture"""
         self.cam.Init()
         self.cam.BeginAcquisition()
-        self.SetFramerate(14.25)
+        acq_mode = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionMode'))
+        acq_mode.SetIntValue(acq_mode.GetEntryByName('Continuous').GetValue())
+
+        fauto = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionFrameRateAuto'))
+        fauto.SetIntValue(fauto.GetEntryByName('Off').GetValue())
+        time.sleep(0.25)
+        
+        arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
+        arate.SetValue(15.25)
+        time.sleep(0.25)
         self.SetExposureTime(30.0, auto=False)
 
     def StopCapture(self):
@@ -86,12 +95,9 @@ class PySpinCamera(object):
             pass
 
     def SetFramerate(self, framerate=14.5):
-        acq_mode = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionMode'))
-        acq_mode.SetIntValue(acq_mode.GetEntryByName('Continuous').GetValue())
-
         arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
         arate.SetValue(framerate*1.0)
-        time.sleep(0.1)
+        time.sleep(0.25)
 
     def Exit(self):
         self.StopCapture()
