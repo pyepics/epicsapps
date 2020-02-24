@@ -100,6 +100,37 @@ class VideoDialog(wx.Dialog):
             ok = True
         return response(ok, runtime, filename)
 
+class CompositeDialog(wx.Dialog):
+    """dialog for composite options"""
+    def __init__(self, parent, **kws):
+        title = "Capture Composite Image"
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title)
+
+        panel = GridPanel(self, ncols=3, nrows=2, pad=2, itemstyle=LCEN)
+        
+        self.cal = cal = [abs(x) for x in parent.calibrations[parent.calib_current]]
+        self.filename = wx.TextCtrl(panel, -1, 'Composite.jpg',  size=(150, -1))
+        self.size     = FloatSpin(panel, value=10.0, min_val=0, increment=1)
+
+        panel.Add(SimpleText(panel, 'File Name : '), newrow=True)
+        panel.Add(self.filename)
+        panel.Add(SimpleText(panel, 'Image Size (mm): '), newrow=True)
+        panel.Add(self.size)
+        panel.Add(SimpleText(panel, 'Pixel Size = %.3f x %.3f um' % (cal[0], cal[1])),
+                  dcol=2, newrow=True)
+        panel.Add(OkCancel(panel), dcol=2, newrow=True)
+        panel.pack()
+
+    def GetResponse(self, newname=None):
+        self.Raise()
+        response = namedtuple('CompositeResponse', ('ok', 'size', 'cal', 'filename'))
+        size, filename, ok = 1, '', False
+        if self.ShowModal() == wx.ID_OK:
+            filename = self.filename.GetValue()
+            size = self.size.GetValue()
+            ok = True
+        return response(ok, size, self.cal, filename)
+    
 class MicroscopeFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
     html_header = """<html><head><title>Sample Microscope Log</title></head>
@@ -370,10 +401,14 @@ class MicroscopeFrame(wx.Frame):
         add_menu(self, fmenu, label="&Save Config", text="Save Configuration",
                  action = self.onSaveConfig)
 
-        add_menu(self, fmenu, label="Capture Video",
-                 text="Capture Video",
-                 action = self.onCaptureVideo)
+        # add_menu(self, fmenu, label="Capture Video",
+        #         text="Capture Video",
+        #         action = self.onCaptureVideo)
 
+        add_menu(self, fmenu, label="Build Composite",
+                 text="Build Composite",
+                 action = self.onBuildComposite)
+        
         add_menu(self, fmenu, label="Select &Working Directory\tCtrl+W",
                  text="change Working Folder",
                  action = self.onChangeWorkdir)
@@ -896,6 +931,75 @@ class MicroscopeFrame(wx.Frame):
         dlg.Destroy()
         if res.ok:
             self.imgpanel.CaptureVideo(filename=res.filename, runtime=res.runtime)
+
+    def onBuildComposite(self, event=None):
+        t0 = time.time()
+        dlg = CompositeDialog(self)
+        res = dlg.GetResponse()
+        dlg.Destroy()
+        if res.ok:
+            self.composite_done = False
+            self.composite_fname = res.filename
+            self.composite_size = res.size
+            self.composite_cal = res.cal
+            self.build_composite()
+
+            # self.composite_thread = Thread(target=self.build_composite)
+            # self.composite_timer = wx.Timer(self)
+            # self.Bind(wx.EVT_TIMER, self.onCompositeTimer, self.composite_timer)
+            # self.composite_timer.Start(2000)
+            # self.composite_thread.start()
+
+    def onCompositeTimer(self, event=None, **kws):
+        if self.composite_done:
+            self.composite_thread.join()
+            self.composite_timer.Stop()
+            
+    def build_composite(self, **kws):
+        cal = self.composite_cal
+        size = self.composite_size
+        fname = self.composite_fname
+        if cal is None:
+            cal = [abs(x) for x in self.calibrations[self.calib_current]]
+
+        print("==Build Composite ", size, cal, fname)
+        t0 = time.monotonic()
+        image = self.imgpanel.GrabNumpyImage().astype(np.float32)
+        framesize = (image.shape[0]*cal[0] + image.shape[1]*cal[1])/2000.0
+
+        step = 0.85*framesize
+        nrows = int(1+size/step)
+        xstage = self.ctrlpanel.motors['x']._pvs['VAL']
+        ystage = self.ctrlpanel.motors['y']._pvs['VAL']        
+        xcen = xstage.get()
+        ycen = ystage.get()
+
+        xvals = np.linspace(xcen-nrows*step/2, xcen+nrows*step/2, nrows)
+        yvals = np.linspace(ycen-nrows*step/2, ycen+nrows*step/2, nrows)
+
+        # print(xstage, xcen, xvals)
+        # print(ystage, ycen, yvals)
+
+        
+        xstage.put(xvals[0])
+        ystage.put(yvals[0])
+
+        images = []
+        for iy in range(nrows):
+            ystage.put(yvals[iy], wait=True)
+            for ix in range(nrows):
+                xstage.put(xvals[ix], wait=True)
+                time.sleep(0.025)
+                images.append(self.imgpanel.GrabNumpyImage().astype(np.float32))
+            xstage.put(xvals[0])
+        print("Grabbed %d images in %.1f seconds"  % (len(images), time.monotonic()-t0))
+        xstage.put(xcen)
+        ystage.put(ycen)
+        
+        np.savez('%s.npz' % (fname), xvals, yvals, np.array(images))
+        
+        print('Composite collected to %s.npz  %.1f seconds' % (fname, time.monotonic()-t0))
+        self.composite_done = True
 
     def onSaveConfig(self, event=None):
         fname = FileSave(self, 'Save Configuration File',
