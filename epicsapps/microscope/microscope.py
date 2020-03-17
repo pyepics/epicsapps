@@ -108,8 +108,8 @@ class CompositeDialog(wx.Dialog):
 
         panel = GridPanel(self, ncols=3, nrows=2, pad=2, itemstyle=LCEN)
         
-        self.cal = cal = [abs(x) for x in parent.calibrations[parent.calib_current]]
-        self.filename = wx.TextCtrl(panel, -1, 'Composite.jpg',  size=(150, -1))
+        self.cal = cal = [x for x in parent.calibrations[parent.calib_current]]
+        self.filename = wx.TextCtrl(panel, -1, 'Composite01',  size=(150, -1))
         self.size     = FloatSpin(panel, value=10.0, min_val=0, increment=1)
 
         panel.Add(SimpleText(panel, 'File Name : '), newrow=True)
@@ -407,7 +407,7 @@ class MicroscopeFrame(wx.Frame):
 
         add_menu(self, fmenu, label="Build Composite",
                  text="Build Composite",
-                 action = self.onBuildComposite)
+                 action = self.onBuildCompositeEvent)
         
         add_menu(self, fmenu, label="Select &Working Directory\tCtrl+W",
                  text="change Working Folder",
@@ -932,73 +932,80 @@ class MicroscopeFrame(wx.Frame):
         if res.ok:
             self.imgpanel.CaptureVideo(filename=res.filename, runtime=res.runtime)
 
-    def onBuildComposite(self, event=None):
+    def onBuildCompositeEvent(self, event=None):
         t0 = time.time()
         dlg = CompositeDialog(self)
         res = dlg.GetResponse()
         dlg.Destroy()
+        print("on Build Composite! " , res)
         if res.ok:
-            self.composite_done = False
-            self.composite_fname = res.filename
-            self.composite_size = res.size
-            self.composite_cal = res.cal
-            self.build_composite()
-
-            # self.composite_thread = Thread(target=self.build_composite)
-            # self.composite_timer = wx.Timer(self)
-            # self.Bind(wx.EVT_TIMER, self.onCompositeTimer, self.composite_timer)
-            # self.composite_timer.Start(2000)
-            # self.composite_thread.start()
+            wx.CallAfter(self.onBuildComposite, res)
 
     def onCompositeTimer(self, event=None, **kws):
         if self.composite_done:
             self.composite_thread.join()
             self.composite_timer.Stop()
-            
+            print("composite done!")
+
+    def onBuildComposite(self, res):
+        self.composite_done = False
+        self.composite_fname = res.filename
+        self.composite_size = res.size
+        self.composite_cal = res.cal
+        self.composite_thread = Thread(target=self.build_composite)
+        self.composite_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onCompositeTimer, self.composite_timer)
+        self.composite_timer.Start(1000)
+        self.composite_thread.start()
+
     def build_composite(self, **kws):
         cal = self.composite_cal
         size = self.composite_size
-        fname = self.composite_fname
+        fname = self.composite_fname.strip()
         if cal is None:
-            cal = [abs(x) for x in self.calibrations[self.calib_current]]
+            cal = [x for x in self.calibrations[self.calib_current]]
 
+        compdir = os.path.abspath(os.path.join(self.imgdir, fname))
+        if not os.path.exists(compdir):
+            os.makedirs(compdir)
+        
         print("==Build Composite ", size, cal, fname)
         t0 = time.monotonic()
-        image = self.imgpanel.GrabNumpyImage().astype(np.float32)
-        framesize = (image.shape[0]*cal[0] + image.shape[1]*cal[1])/2000.0
+        image = self.imgpanel.GrabNumpyImage()
+        nx, ny = image.shape[0], image.shape[1]
+        xstep = 1.500*cal[0]
+        ystep = 1.500*cal[1]        
+        caldat = np.array((cal[0], cal[1], 1500))
 
-        step = 0.85*framesize
-        nrows = int(1+size/step)
+        nrows = int(1+size/abs(xstep))
         xstage = self.ctrlpanel.motors['x']._pvs['VAL']
         ystage = self.ctrlpanel.motors['y']._pvs['VAL']        
         xcen = xstage.get()
         ycen = ystage.get()
 
-        xvals = np.linspace(xcen-nrows*step/2, xcen+nrows*step/2, nrows)
-        yvals = np.linspace(ycen-nrows*step/2, ycen+nrows*step/2, nrows)
-
-        # print(xstage, xcen, xvals)
-        # print(ystage, ycen, yvals)
-
+        xvals = np.linspace(xcen-nrows*xstep/2, xcen+nrows*xstep/2, nrows)
+        yvals = np.linspace(ycen-nrows*ystep/2, ycen+nrows*ystep/2, nrows)
         
         xstage.put(xvals[0])
         ystage.put(yvals[0])
 
-        images = []
+        n = 0
+        tsave = 0.
         for iy in range(nrows):
+            xstage.put(xvals[0])
             ystage.put(yvals[iy], wait=True)
             for ix in range(nrows):
                 xstage.put(xvals[ix], wait=True)
-                time.sleep(0.025)
-                images.append(self.imgpanel.GrabNumpyImage().astype(np.float32))
-            xstage.put(xvals[0])
-        print("Grabbed %d images in %.1f seconds"  % (len(images), time.monotonic()-t0))
+                time.sleep(0.05)
+                n += 1 
+                fname = os.path.join(compdir, 'img%d_%d.jpg' % (iy, ix))
+                tx = time.monotonic()
+                self.imgpanel.SaveImage(fname)
+                tsave += (time.monotonic() -tx)               
+                # images.append(thisim)
+        print("Grabbed %d images in %.1f seconds, %.1f saving"  % (n, time.monotonic()-t0, tsave))
         xstage.put(xcen)
         ystage.put(ycen)
-        
-        np.savez('%s.npz' % (fname), xvals, yvals, np.array(images))
-        
-        print('Composite collected to %s.npz  %.1f seconds' % (fname, time.monotonic()-t0))
         self.composite_done = True
 
     def onSaveConfig(self, event=None):
