@@ -46,7 +46,7 @@ except ImportError:
     ConfPanel_ZMQ = ConfPanel_URL
 
 
-ALL_EXP  = wx.ALL|wx.EXPAND|wx.GROW
+ALL_EXP  = wx.ALL|wx.GROW
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
 LEFT_CEN = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL
 LEFT_TOP = wx.ALIGN_LEFT|wx.ALIGN_TOP
@@ -141,7 +141,7 @@ class MicroscopeFrame(wx.Frame):
     def __init__(self, configfile=None, prompt=True, **kws):
         wx.Frame.__init__(self, parent=None, size=(1500, 750), **kws)
         self.SetFont(wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, False))
-
+        self.SetTitle('Sample Microscope')
         if configfile is None:
             configfile = get_default_configfile(CONFFILE)
         if prompt or configfile is None:
