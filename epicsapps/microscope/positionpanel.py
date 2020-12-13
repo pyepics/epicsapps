@@ -170,9 +170,7 @@ class ErasePositionsDialog(wx.Frame):
         self.positions = positions
         panel = scrolled.ScrolledPanel(self)
         self.checkboxes = {}
-        sizer = wx.GridBagSizer(len(positions)+5, 4)
-        sizer.SetVGap(2)
-        sizer.SetHGap(3)
+        sizer = wx.GridBagSizer(2, 3)
         bkws = dict(size=(95, -1))
         btn_ok   = Button(panel, "Erase Selected",   action=self.onOK, **bkws)
         btn_all  = Button(panel, "Select All",    action=self.onAll, **bkws)
@@ -188,7 +186,7 @@ class ErasePositionsDialog(wx.Frame):
         sizer.Add(SimpleText(panel, ' Use "Export Positions" to Save Positions!',
                             colour=wx.Colour(200, 0, 0)), (1, 0), (1, 2),  LEFT_CEN, 2)
 
-        sizer.Add(brow,   (2, 0), (1, 3),  LEFT_CEN, 2)
+        sizer.Add(brow,  (2, 0), (1, 3),  LEFT_CEN, 2)
 
         sizer.Add(SimpleText(panel, ' Position Name'), (3, 0), (1, 1),  LEFT_CEN, 2)
         sizer.Add(SimpleText(panel, 'Erase?'),         (3, 1), (1, 1),  LEFT_CEN, 2)
@@ -217,7 +215,7 @@ class ErasePositionsDialog(wx.Frame):
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1,  ALL_EXP|wx.GROW|wx.ALIGN_LEFT, 1)
         pack(self, mainsizer)
-        self.SetMinSize((400, 350))
+        self.SetSize((625, 750))
         self.Raise()
         self.Show()
 
