@@ -54,9 +54,9 @@ class PySpinCamera(object):
         self._cameras = self._system.GetCameras()
         for cam in self._cameras:
             dev_id = cam.TLDevice.DeviceID.GetValue()
+            dev_serialid = cam.TLDevice.DeviceSerialNumber.GetValue()
             dev_name = cam.TLDevice.DeviceModelName.GetValue()
-            # print(dev_name, dev_id, int(dev_id) == int(self.camera_id))
-            if int(dev_id) == int(self.camera_id):
+            if int(dev_serialid) == int(self.camera_id):
                 self.device_id = dev_id
                 self.device_name = dev_name
                 self.cam = cam
