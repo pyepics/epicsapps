@@ -25,7 +25,7 @@ class ImagePanel_ZMQ(ImagePanel_Base):
                                                  publish_jpeg=False)
 
         ctx = zmq.Context()
-        self.socket = ctx.socket(zmq.REQ)
+        self.socket = ctx.socket(zmq.SUB)
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
         self.connected = False
