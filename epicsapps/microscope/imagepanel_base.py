@@ -24,19 +24,16 @@ class JpegServer(object):
     def __init__(self, port=17166, delay=0.05):
         self.delay = delay
         ctx = zmq.Context()
-        self.socket = ctx.socket(zmq.REP)
+        self.socket = ctx.socket(zmq.PUB)
         self.socket.bind("tcp://*:%d" % port)
         self.data = None
 
     def serve(self):
         while True:
             try:
-                message = self.socket.recv()
-            except:
-                continue
-            try:
                 ncols, nrows, nx = self.data.shape
             except:
+                time.sleep(2)
                 continue
             tmp = io.BytesIO()
             Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG')
@@ -45,6 +42,7 @@ class JpegServer(object):
             self.socket.send_json({'format':'jpeg', 'image':bindat,
                                    'shape': self.data.shape})
             time.sleep(self.delay)
+                  
 
 class ImagePanel_Base(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
@@ -289,6 +287,7 @@ class ImagePanel_Base(wx.Panel):
         self.publisher = JpegServer(port=port)
         self.jpeg_thread = Thread(target=self.publisher.serve)
         self.jpeg_thread.daemon = True
+        time.sleep(0.25)
         self.jpeg_thread.start()
 
     def SaveImage(self, fname, filetype='jpeg'):
