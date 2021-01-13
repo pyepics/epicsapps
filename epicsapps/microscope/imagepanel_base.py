@@ -2,10 +2,11 @@
 Base Image Panel to be inherited by other ImagePanels
 """
 
-import os
+import os, sys
 import io
 import wx
 import time
+import json
 import numpy as np
 from threading import Thread
 from collections import deque
@@ -21,28 +22,43 @@ except ImportError:
     HAS_ZMQ = False
 
 class JpegServer(object):
-    def __init__(self, port=17166, delay=0.05):
+    def __init__(self, port=17166, delay=0.5):
         self.delay = delay
         ctx = zmq.Context()
-        self.socket = ctx.socket(zmq.PUB)
+        self.socket = ctx.socket(zmq.REP)
+        self.socket.setsockopt(zmq.SNDTIMEO, 500)
+        self.socket.setsockopt(zmq.LINGER, 0)
+        self.socket.setsockopt(zmq.CONNECT_TIMEOUT, 500)
+        
         self.socket.bind("tcp://*:%d" % port)
+        print("JPEG Server initialized ", self.socket, port)
         self.data = None
 
     def serve(self):
         while True:
+            try:
+                message = self.socket.recv().decode('utf-8')
+                if not message.startswith('send image'):
+                    continue
+            except:
+                continue
             try:
                 ncols, nrows, nx = self.data.shape
             except:
                 time.sleep(2)
                 continue
             tmp = io.BytesIO()
-            Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG')
+            Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG', quality=25)
             tmp.seek(0)
             bindat = base64.b64encode(tmp.read()).decode('utf-8')
-            self.socket.send_json({'format':'jpeg', 'image':bindat,
+            self.socket.send_json({'format':'jpeg',
+                                   'image': bindat,
                                    'shape': self.data.shape})
             time.sleep(self.delay)
-                  
+
+    def stop(self):
+        print('shutting down Jpeg server')
+        self.socket.term()
 
 class ImagePanel_Base(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
