@@ -6,6 +6,8 @@ as published by the default ImagePanel
 import wx
 import time
 import os
+import sys
+import json
 import numpy as np
 import io
 import zmq
@@ -23,23 +25,41 @@ class ImagePanel_ZMQ(ImagePanel_Base):
         super(ImagePanel_ZMQ, self).__init__(parent, -1,
                                                  size=(800, 600),
                                                  publish_jpeg=False)
+        self.ctx = zmq.Context()
+        self.connstr = "tcp://%s:%s" % (host, port)
+        self.socket = self.ctx.socket(zmq.REQ)
+        self.socket.setsockopt(zmq.SNDTIMEO, 500)
+        self.socket.setsockopt(zmq.RCVTIMEO, 500)
+        self.socket.setsockopt(zmq.LINGER, 500)
+        self.socket.setsockopt(zmq.CONNECT_TIMEOUT, 500)
 
-        ctx = zmq.Context()
-        self.socket = ctx.socket(zmq.SUB)
+        self.socket.connect(self.connstr)
+        self.connected = True
+        
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.timer)
-        self.connected = False
-        if host is not None and port is not None:
-            self.connect(host, port)
 
-    def connect(self, host, port):
-        self.socket.connect("tcp://%s:%s" % (host, port))
-        self.connected = True
         self.Start()
+        
+    def connect(self):
+        if self.host is None or self.port is None:
+            return 
+        self.connected = True
+        time.sleep(1)
+        
+    def reconnect(self):
+        self.socket.close()
 
+        self.socket = self.ctx.socket(zmq.REQ)
+        self.socket.setsockopt(zmq.RCVTIMEO, 500)
+        self.socket.setsockopt(zmq.LINGER, 0)
+        self.socket.setsockopt(zmq.CONNECT_TIMEOUT, 500)
+        self.socket.connect(self.connstr)
+    
+        
     def Start(self):
         "turn camera on"
-        self.timer.Start(25)
+        self.timer.Start(100)
 
     def Stop(self):
         "turn camera off"
@@ -49,10 +69,21 @@ class ImagePanel_ZMQ(ImagePanel_Base):
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True):
         if not self.connected:
             return
-        self.socket.send(b'hit me')
-        sdata = self.socket.recv_json()
+        time.sleep(0.1)
+        try:
+            self.socket.send(b'send image')
+            sdata = self.socket.recv_json()
+        except:
+            et, ev, tb = sys.exc_info()
+            print("Failed to get image: ", et, ev)
+            time.sleep(2)
+            return None
+            
+
+        # print(" -> Grab Imag: got data: ", sdata.keys())        
         imgdat = sdata.get('image', None)
         if imgdat is None:
+            print("no image")
             return
         tmp = io.BytesIO()
         tmp.write(base64.b64decode(imgdat.encode('utf-8')))
