@@ -279,9 +279,13 @@ class PySpinCamera(object):
         format = 'mono'
         if rgb:
             format = 'rgb'
-        out = img.Convert(pixel_formats[format], self.convert_method)
-        self.data = out.GetData()
-        self.data.shape = (ncols, nrows, 3)
+        try:
+            out = img.Convert(pixel_formats[format], self.convert_method)
+            data = out.GetData()
+            data.shape = (ncols, nrows, 3)
+            self.data = data
+        except:
+            pass
         img.Release()
         return wx.Image(nrows, ncols, self.data).Rescale(width, height)
 
