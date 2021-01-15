@@ -35,6 +35,7 @@ from .imagepanel_base import ZoomPanel
 from .imagepanel_pyspin import ImagePanel_PySpin, ConfPanel_PySpin
 from .imagepanel_fly2 import ImagePanel_Fly2AD, ConfPanel_Fly2AD
 from .imagepanel_epicsAD import ImagePanel_EpicsAD, ConfPanel_EpicsAD
+from .imagepanel_epicsarray import ImagePanel_EpicsArray, ConfPanel_EpicsArray
 from .imagepanel_weburl import ImagePanel_URL, ConfPanel_URL
 
 from ..utils import SelectWorkdir, get_icon
@@ -214,10 +215,9 @@ class MicroscopeFrame(wx.Frame):
             ImagePanel, ConfPanel = ImagePanel_ZMQ, ConfPanel_ZMQ
             opts['host'] = self.cam_pubhost
             opts['port'] = self.cam_pubport
-        elif self.cam_type.startswith('sepics'):
-            ImagePanel, ConfPanel = ImagePanel_ZMQ, ConfPanel_ZMQ
-            opts['host'] = self.cam_pubhost
-            opts['port'] = self.cam_pubport
+        elif self.cam_type.startswith('epicsarray'):
+            ImagePanel, ConfPanel = ImagePanel_EpicsArray, ConfPanel_EpicsArray
+            opts['prefix'] = self.cam_pubaddr
 
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))

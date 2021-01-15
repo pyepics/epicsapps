@@ -183,8 +183,9 @@ class ImagePanel_Base(wx.Panel):
 
         self.publisher = None
         if publish_type is not None:
-            self.create_publisher(publish_type, publish_delay,
-                                  publish_port, publish_addr)
+            print("Create Image Publisher ", publish_type, publish_addr)
+            self.create_publisher(publish_type, publish_addr,
+                                  publish_port, publish_delay)
 
     def grab_data(self):
         self.data = self.GrabNumpyImage()
