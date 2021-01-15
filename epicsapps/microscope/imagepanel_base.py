@@ -11,7 +11,7 @@ import numpy as np
 from threading import Thread
 from collections import deque
 import base64
-from epics import get_pv
+from epics import get_pv, Device, poll
 from PIL import Image
 from wxutils import MenuItem, Choice, Button, FloatSpin
 
@@ -29,7 +29,6 @@ class JpegServer(object):
         self.socket.setsockopt(zmq.SNDTIMEO, 500)
         self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.setsockopt(zmq.CONNECT_TIMEOUT, 500)
-        
         self.socket.bind("tcp://*:%d" % port)
         print("JPEG Server initialized ", self.socket, port)
         self.data = None
@@ -59,6 +58,49 @@ class JpegServer(object):
     def stop(self):
         print('shutting down Jpeg server')
         self.socket.term()
+
+class EpicsArrayServer(object):
+    """push to simple epics array -- areadetector like but much simpler"""
+    img_attrs = ('ArrayData', 'UniqueId_RBV', 'NDimensions_RBV',
+                 'ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
+                 'ColorMode_RBV', 'RequestTStamp', 'PublishTStamp')
+
+    def __init__(self, prefix, delay=0.05):
+        self.delay = delay
+        self.prefix = prefix
+        self.data = None
+        self.last_request = -1
+        self.ad_img = Device(prefix + ':image1:', delim='',
+                             attrs=self.img_attrs)
+        poll()
+        self.last_request = self.ad_img.RequestTStamp
+
+    def serve(self):
+        while True:
+            time.sleep(self.delay)
+            if self.data is None:
+                continue
+            if (self.ad_img.RequestTStamp - self.last_request) < self.delay:
+                continue
+
+            self.last_request = self.ad_img.RequestTStamp
+            try:
+                ncols, nrows, nc = self.data.shape
+            except:
+                time.sleep(1)
+                continue
+            print("push epics array ", self.ad_img, time.ctime())
+            self.ad_img.ArraySize0_RBV = ncols
+            self.ad_img.ArraySize1_RBV = nrows
+            self.ad_img.ArraySize2_RBV = nc
+            self.ad_img.ArrayData = self.data.flatten()
+            self.ad_img.PublishTStamp = time.time()
+            self.ad_img.UniqueId_RBV += 1
+
+
+    def stop(self):
+        pass
+
 
 class ImagePanel_Base(wx.Panel):
     """Image Panel for FlyCapture2 camera"""
@@ -93,15 +135,15 @@ class ImagePanel_Base(wx.Panel):
     def SetExposureGain(self, dat):
         "set current exposure time and gain from dict"
         return self.SetExposureTime(dat['exposure_time'])
-            
+
     def AutoSetExposureTime(self):
         """auto set exposure time"""
         pass # raise NotImplementedError('must provide AutoSetExposure')
 
     def __init__(self, parent, camera_id=0, writer=None, output_pv=None,
-                 leftdown_cb=None, motion_cb=None, publish_jpeg=False,
-                 publish_delay=0.2, publish_port=17166, draw_objects=None,
-                 zoompanel=None, **kws):
+                 leftdown_cb=None, motion_cb=None, publish_type=None,
+                 publish_addr='', publish_port=17166, publish_delay=0.1,
+                 draw_objects=None, zoompanel=None, **kws):
 
         super(ImagePanel_Base, self).__init__(parent, -1, size=(800, 600))
         self.img_w = 800.5
@@ -139,10 +181,10 @@ class ImagePanel_Base(wx.Panel):
         self.full_size = None
         self.build_popupmenu()
 
-        self.publish_jpeg = publish_jpeg and HAS_ZMQ
         self.publisher = None
-        if publish_jpeg:
-            self.create_publisher(publish_delay, publish_port)
+        if publish_type is not None:
+            self.create_publisher(publish_type, publish_delay,
+                                  publish_port, publish_addr)
 
     def grab_data(self):
         self.data = self.GrabNumpyImage()
@@ -239,8 +281,6 @@ class ImagePanel_Base(wx.Panel):
         self.image = self.GrabWxImage(scale=self.scale, rgb=True)
         if self.publisher is not None:
             self.publisher.data = self.data
-        # except: #  ValueError:
-        #    return
 
         if self.image is None:
             return
@@ -295,16 +335,20 @@ class ImagePanel_Base(wx.Panel):
                     dc.SetPen(wx.Pen(color, width, style))
                     method(*args, **kws)
 
-    def create_publisher(self, delay, port):
-        if not HAS_ZMQ:
-            return
-        self.publish_jpeg = True
+    def create_publisher(self, type='jpeg', delay=0.1, port=0, addr='')
+        self.publish_type = type
         self.publish_delay = delay
-        self.publisher = JpegServer(port=port)
-        self.jpeg_thread = Thread(target=self.publisher.serve)
-        self.jpeg_thread.daemon = True
-        time.sleep(0.25)
-        self.jpeg_thread.start()
+        self.publish_delay = delay
+        self.publisher = None
+        if type.lower() == 'jpeg' and HAS_ZMQ:
+            self.publisher = JpegServer(port=port)
+        elif type.lower() == 'epics':
+            self.publisher = EpicsArrayServer(port=port)
+        if self.publisher is not None:
+            self.pub_thread = Thread(target=self.publisher.serve)
+            self.pub_thread.daemon = True
+            time.sleep(0.25)
+            self.pub_thread.start()
 
     def SaveImage(self, fname, filetype='jpeg'):
         """save image (jpeg) to file,
@@ -388,7 +432,7 @@ class ConfPanel_Base(wx.Panel):
         sizer = self.sizer
         sizer.Add(self.txt("Image Size:"), (row,   0), (1, 1), LEFT)
         sizer.Add(self.img_size,  (row,   1), (1, 2), LEFT)
-        
+
         if self.calibrations is not None:
             row += 1
             calibs = list(self.calibrations.keys())
@@ -397,7 +441,7 @@ class ConfPanel_Base(wx.Panel):
             _label = self.txt("Calibration:")
             sizer.Add(_label,      (row, 0), (1, 1), wx.ALIGN_LEFT)
             sizer.Add(self.calib,  (row, 1), (1, 2), wx.ALIGN_LEFT)
-            
+
 
         if self.lamp is not None:
             row += 1
@@ -413,16 +457,16 @@ class ConfPanel_Base(wx.Panel):
 
             sizer.Add(self.txt('Lamp Intensity:'), (row, 0), (1, 1), wx.ALIGN_LEFT)
             sizer.Add(self.lampval,                (row, 1), (1, 2), wx.ALIGN_LEFT)
-        
+
         return row +1
 
     # @EpicsFunction
     def onLampVal(self, evt=None):
         self.lamp_pv.put(float(self.lampval.GetValue()))
-    
+
     def onCalib(self, event=None):
         if callable(self.calib_cb):
-            self.calib_cb(self.calibrations, self.calib.GetStringSelection())           
+            self.calib_cb(self.calibrations, self.calib.GetStringSelection())
 
     def onStart(self, event=None, **kws):
         pass

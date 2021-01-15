@@ -107,7 +107,7 @@ class CompositeDialog(wx.Dialog):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title)
 
         panel = GridPanel(self, ncols=3, nrows=2, pad=2, itemstyle=LCEN)
-        
+
         self.cal = cal = [x for x in parent.calibrations[parent.calib_current]]
         self.filename = wx.TextCtrl(panel, -1, 'Composite01',  size=(150, -1))
         self.size     = FloatSpin(panel, value=10.0, min_val=0, increment=1)
@@ -130,7 +130,7 @@ class CompositeDialog(wx.Dialog):
             size = self.size.GetValue()
             ok = True
         return response(ok, size, self.cal, filename)
-    
+
 class MicroscopeFrame(wx.Frame):
     htmllog  = 'SampleStage.html'
     html_header = """<html><head><title>Sample Microscope Log</title></head>
@@ -183,7 +183,10 @@ class MicroscopeFrame(wx.Frame):
         config = self.config
 
         opts = dict(writer=self.write_framerate,
-                    publish_jpeg=bool(self.cam_zmqpush),
+                    publish_type=self.cam_pubtype,
+                    publish_delay=self.cam_pubdelay,
+                    publish_addr=self.cam_pubaddr,
+                    publish_port=self.cam_pubport,
                     leftdown_cb=self.onSelectPixel,
                     motion_cb=self.onPixelMotion,
                     xhair_cb=self.onShowCrosshair,
@@ -209,8 +212,12 @@ class MicroscopeFrame(wx.Frame):
             ImagePanel, ConfPanel = ImagePanel_URL, ConfPanel_URL
         elif self.cam_type.startswith('zmq'):
             ImagePanel, ConfPanel = ImagePanel_ZMQ, ConfPanel_ZMQ
-            opts['host'] = self.cam_zmqhost
-            opts['port'] = self.cam_zmqport
+            opts['host'] = self.cam_pubhost
+            opts['port'] = self.cam_pubport
+        elif self.cam_type.startswith('sepics'):
+            ImagePanel, ConfPanel = ImagePanel_ZMQ, ConfPanel_ZMQ
+            opts['host'] = self.cam_pubhost
+            opts['port'] = self.cam_pubport
 
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
@@ -408,7 +415,7 @@ class MicroscopeFrame(wx.Frame):
         add_menu(self, fmenu, label="Build Composite",
                  text="Build Composite",
                  action = self.onBuildCompositeEvent)
-        
+
         add_menu(self, fmenu, label="Select &Working Directory\tCtrl+W",
                  text="change Working Folder",
                  action = self.onChangeWorkdir)
@@ -567,7 +574,7 @@ class MicroscopeFrame(wx.Frame):
 
         self.calibrations = calibrations
         self.calib_current = current
-       
+
         self.config['calibration'] = []
         for cname, cval in calibrations.items():
             self.config['calibration'].append([cname, "%.4f" % cval[0], "%.4f" % cval[1]])
@@ -600,9 +607,10 @@ class MicroscopeFrame(wx.Frame):
         self.cam_adpref  = cnf.get('ad_prefix', '')
         self.cam_adform  = cnf.get('ad_format', 'JPEG')
         self.cam_weburl  = cnf.get('web_url', 'http://xxx/image.jpg')
-        self.cam_zmqhost = cnf.get('zmq_host', '164.54.160.93')
-        self.cam_zmqport = cnf.get('zmq_port', '17166')
-        self.cam_zmqpush = cnf.get('zmq_push', False)
+        self.cam_pubtype = cnf.get('publish_type', 'None')
+        self.cam_pubaddr = cnf.get('publish_addr', '164.54.160.93')
+        self.cam_pubport = cnf.get('publish_port', '17166')
+        self.cam_pubdelay = cnf.get('publish_delay', '0.1')
         self.calibrations = {}
         self.calib_current = None
         calibs = cnf.get('calibration', [])
@@ -647,7 +655,7 @@ class MicroscopeFrame(wx.Frame):
             name = self.calib_current
         if name in self.calibrations:
             self.current_calib = name
-            
+
         cal = self.calibrations[name]
         self.cam_calibx = abs(float(cal[0]))
         self.cam_caliby = abs(float(cal[0]))
@@ -968,24 +976,24 @@ class MicroscopeFrame(wx.Frame):
         compdir = os.path.abspath(os.path.join(self.imgdir, fname))
         if not os.path.exists(compdir):
             os.makedirs(compdir)
-        
+
         print("==Build Composite ", size, cal, fname)
         t0 = time.monotonic()
         image = self.imgpanel.GrabNumpyImage()
         nx, ny = image.shape[0], image.shape[1]
         xstep = 1.500*cal[0]
-        ystep = 1.500*cal[1]        
+        ystep = 1.500*cal[1]
         caldat = np.array((cal[0], cal[1], 1500))
 
         nrows = int(1+size/abs(xstep))
         xstage = self.ctrlpanel.motors['x']._pvs['VAL']
-        ystage = self.ctrlpanel.motors['y']._pvs['VAL']        
+        ystage = self.ctrlpanel.motors['y']._pvs['VAL']
         xcen = xstage.get()
         ycen = ystage.get()
 
         xvals = np.linspace(xcen-nrows*xstep/2, xcen+nrows*xstep/2, nrows)
         yvals = np.linspace(ycen-nrows*ystep/2, ycen+nrows*ystep/2, nrows)
-        
+
         xstage.put(xvals[0])
         ystage.put(yvals[0])
 
@@ -997,11 +1005,11 @@ class MicroscopeFrame(wx.Frame):
             for ix in range(nrows):
                 xstage.put(xvals[ix], wait=True)
                 time.sleep(0.05)
-                n += 1 
+                n += 1
                 fname = os.path.join(compdir, 'img%d_%d.jpg' % (iy, ix))
                 tx = time.monotonic()
                 self.imgpanel.SaveImage(fname)
-                tsave += (time.monotonic() -tx)               
+                tsave += (time.monotonic() -tx)
                 # images.append(thisim)
         print("Grabbed %d images in %.1f seconds, %.1f saving"  % (n, time.monotonic()-t0, tsave))
         xstage.put(xcen)
