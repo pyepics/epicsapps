@@ -87,6 +87,7 @@ class ConfigFile(object):
             elif os.path.exists(self.default_configfile):
                 fname = self.default_configfile
             else:
+                print("No config file to read: ", fname) 
                 return
 
         self.filename = os.path.abspath(fname)
@@ -97,6 +98,7 @@ class ConfigFile(object):
         try:
             self.config = yaml.load(text, Loader=Loader)
         except:
+            print("Error reading config file ", self.filename)
             pass
 
     def write(self, fname=None, config=None):
