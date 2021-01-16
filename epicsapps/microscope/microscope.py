@@ -160,11 +160,12 @@ class MicroscopeFrame(wx.Frame):
             os.chdir(self.config.get('workdir', os.getcwd()))
         except:
             pass
-
-        ret = SelectWorkdir(self)
-        if ret is None:
-            self.Destroy()
-        os.chdir(ret)
+        
+        if prompt:
+            ret = SelectWorkdir(self)
+            if ret is None:
+                self.Destroy()
+            os.chdir(ret)
 
         self.overlayframe = None
         self.calibframe = None
@@ -213,12 +214,14 @@ class MicroscopeFrame(wx.Frame):
             ImagePanel, ConfPanel = ImagePanel_URL, ConfPanel_URL
         elif self.cam_type.startswith('zmq'):
             ImagePanel, ConfPanel = ImagePanel_ZMQ, ConfPanel_ZMQ
-            opts['host'] = self.cam_pubhost
+            opts['host'] = self.cam_pubaddr
             opts['port'] = self.cam_pubport
+            autofocus_cb = None            
         elif self.cam_type.startswith('epicsarray'):
             ImagePanel, ConfPanel = ImagePanel_EpicsArray, ConfPanel_EpicsArray
             opts['prefix'] = self.cam_pubaddr
-
+            autofocus_cb = None
+            
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
 
@@ -610,7 +613,7 @@ class MicroscopeFrame(wx.Frame):
         self.cam_pubtype = cnf.get('publish_type', 'None')
         self.cam_pubaddr = cnf.get('publish_addr', '164.54.160.93')
         self.cam_pubport = cnf.get('publish_port', '17166')
-        self.cam_pubdelay = cnf.get('publish_delay', '0.1')
+        self.cam_pubdelay = float(cnf.get('publish_delay', '0.25'))
         self.calibrations = {}
         self.calib_current = None
         calibs = cnf.get('calibration', [])
