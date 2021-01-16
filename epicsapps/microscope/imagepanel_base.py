@@ -3,6 +3,7 @@ Base Image Panel to be inherited by other ImagePanels
 """
 
 import os, sys
+import hashlib
 import io
 import wx
 import time
@@ -23,14 +24,14 @@ except ImportError:
 
 class JpegServer(object):
     def __init__(self, port=17166, delay=0.5):
-        self.delay = delay
+        self.delay = delay 
         ctx = zmq.Context()
         self.socket = ctx.socket(zmq.REP)
         self.socket.setsockopt(zmq.SNDTIMEO, 500)
         self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.setsockopt(zmq.CONNECT_TIMEOUT, 500)
         self.socket.bind("tcp://*:%d" % port)
-        print("JPEG Server initialized ", self.socket, port)
+        # print("JPEG Server initialized ", self.socket, port)
         self.data = None
 
     def serve(self):
@@ -47,16 +48,16 @@ class JpegServer(object):
                 time.sleep(2)
                 continue
             tmp = io.BytesIO()
-            Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG', quality=25)
+
+            Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG', quality=70)
+
             tmp.seek(0)
-            bindat = base64.b64encode(tmp.read()).decode('utf-8')
-            self.socket.send_json({'format':'jpeg',
-                                   'image': bindat,
-                                   'shape': self.data.shape})
+            bindat = base64.b64encode(tmp.read())
+            # print("Publish Image ",  len(bindat), self.delay, time.time())   
+            self.socket.send(b'jpeg:%s' % bindat) 
             time.sleep(self.delay)
 
     def stop(self):
-        print('shutting down Jpeg server')
         self.socket.term()
 
 class EpicsArrayServer(object):
@@ -70,9 +71,9 @@ class EpicsArrayServer(object):
         self.prefix = prefix
         self.data = None
         self.last_request = -1
-        self.ad_img = Device(prefix + ':image1:', delim='',
+        self.ad_img = Device(prefix, delim='',
                              attrs=self.img_attrs)
-        poll()
+        time.sleep(0.1)
         self.last_request = self.ad_img.RequestTStamp
 
     def serve(self):
@@ -80,8 +81,11 @@ class EpicsArrayServer(object):
             time.sleep(self.delay)
             if self.data is None:
                 continue
-            if (self.ad_img.RequestTStamp - self.last_request) < self.delay:
-                continue
+            # print("Epics Array Server ", time.ctime(), self.ad_img.RequestTStamp,
+            #       self.last_request, self.data.shape)
+
+            # if (self.ad_img.RequestTStamp - self.last_request) < self.delay:
+            #    continue
 
             self.last_request = self.ad_img.RequestTStamp
             try:
@@ -89,11 +93,18 @@ class EpicsArrayServer(object):
             except:
                 time.sleep(1)
                 continue
-            print("push epics array ", self.ad_img, time.ctime())
+            print("push epics array ", self.ad_img, self.data.shape, time.ctime())
+            d = self.data[:]
+            d = d.reshape( ncols//2, 2, nrows//2, 2, nc).sum(axis=3).sum(axis=1).flatten()
+            tmp = io.BytesIO()
+            Image.frombytes('RGB', (nrows, ncols), d).save(tmp, 'JPEG')
+            tmp.seek(0)
+            bindat = base64.b64encode(tmp.read()).decode('utf-8')
+            print(d.size, len(bindat))
             self.ad_img.ArraySize0_RBV = ncols
             self.ad_img.ArraySize1_RBV = nrows
             self.ad_img.ArraySize2_RBV = nc
-            self.ad_img.ArrayData = self.data.flatten()
+            # self.ad_img.ArrayData  = d
             self.ad_img.PublishTStamp = time.time()
             self.ad_img.UniqueId_RBV += 1
 
@@ -183,7 +194,7 @@ class ImagePanel_Base(wx.Panel):
 
         self.publisher = None
         if publish_type is not None:
-            print("Create Image Publisher ", publish_type, publish_addr)
+            # print("Create Image Publisher ", publish_type, publish_addr)
             self.create_publisher(publish_type, publish_addr,
                                   publish_port, publish_delay)
 
@@ -280,11 +291,11 @@ class ImagePanel_Base(wx.Panel):
         self.scale = max(self.scale, 0.05)
         # try:
         self.image = self.GrabWxImage(scale=self.scale, rgb=True)
+        if self.image is None:
+            return
         if self.publisher is not None:
             self.publisher.data = self.data
 
-        if self.image is None:
-            return
 
         if self.full_size is None:
             img = self.GrabWxImage(scale=1.0, rgb=True)
@@ -336,15 +347,16 @@ class ImagePanel_Base(wx.Panel):
                     dc.SetPen(wx.Pen(color, width, style))
                     method(*args, **kws)
 
-    def create_publisher(self, type='jpeg', delay=0.1, port=0, addr='')
+    def create_publisher(self, type='jpeg', addr='', port=0, delay=0.1):
+
         self.publish_type = type
-        self.publish_delay = delay
+        self.publish_port = port
         self.publish_delay = delay
         self.publisher = None
         if type.lower() == 'jpeg' and HAS_ZMQ:
-            self.publisher = JpegServer(port=port)
-        elif type.lower() == 'epics':
-            self.publisher = EpicsArrayServer(port=port)
+            self.publisher = JpegServer(port=port, delay=delay)
+        elif type.lower() == 'epicsarray':
+            self.publisher = EpicsArrayServer(prefix=addr, delay=delay)
         if self.publisher is not None:
             self.pub_thread = Thread(target=self.publisher.serve)
             self.pub_thread.daemon = True
