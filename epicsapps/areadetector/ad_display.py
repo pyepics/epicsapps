@@ -33,7 +33,7 @@ except ImportError:
     ScanDB = InstrumentDB = None
 
 from .contrast_control import ContrastControl
-from .xrd_integrator import XRD_Integrator
+from .xrd_integrator import XRD_Integrator, HAS_PYFAI
 from .imagepanel import ADMonoImagePanel, ThumbNailImagePanel
 from .pvconfig import PVConfigPanel
 from .ad_config import ADConfig, CONFFILE, get_default_configfile
@@ -47,10 +47,9 @@ class ADFrame(wx.Frame):
     """
     AreaDetector Display Frame
     """
-    def __init__(self, configfile=None, prompt=False, calibration_callback=None):
+    def __init__(self, configfile=None, prompt=False, **kws):
         wx.Frame.__init__(self, None, -1, 'AreaDetector Viewer',
                           style=wx.DEFAULT_FRAME_STYLE)
-
         if configfile is None:
             configfile = get_default_configfile(CONFFILE)
         if prompt or configfile is None:
@@ -78,7 +77,6 @@ class ADFrame(wx.Frame):
 
         self.SetTitle(self.config['title'])
 
-        self.calib = None
         self.ad_img = None
         self.ad_cam = None
         self.lineplotter = None
@@ -290,12 +288,12 @@ class ADFrame(wx.Frame):
             ppath = os.path.abspath(dlg.GetPath())
 
         if os.path.exists(ppath) and HAS_PYFAI:
-            self.integrator = XRD_Integrator(ppath,
-                                 calibration_callback=calibration_callback)
+            self.integrator = XRD_Integrator(ppath)
             self.show1d_btn.Enable(self.integrator.enabled)
 
     def onShowIntegration(self, event=None):
-        if self.calib is None or self.integrator is None:
+        print("onShowIntegration ", self.integrator)
+        if self.integrator is None:
             return
         shown = False
         try:
@@ -308,7 +306,7 @@ class ADFrame(wx.Frame):
         self.show_1dpattern(init=(not shown))
 
     def show_1dpattern(self, init=False):
-        if self.calib is None or self.integrator is None:
+        if self.integrator is None:
             return
 
         img = self.ad_img.PV('ArrayData').get()

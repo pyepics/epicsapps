@@ -2,6 +2,7 @@ import sys
 import os
 import wx
 import wx.lib.scrolledpanel as scrolled
+import wx.dataview as dv
 import json
 import numpy as np
 import time
@@ -12,7 +13,18 @@ from epics.wx import EpicsFunction
 
 from functools import partial
 
-from wxutils import SimpleText, FloatCtrl, MenuItem, Popup, pack, Button
+from wxutils import (SimpleText, FloatCtrl, MenuItem, Popup, pack, Button, GUIColors,
+                     FRAMESTYLE, LEFT, CEN)
+DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE
+
+def add_button(parent, label, size=(-1, -1), action=None):
+    "add simple button with bound action"
+    thisb = wx.Button(parent, label=label, size=size)
+    if hasattr(action, '__call__'):
+        parent.Bind(wx.EVT_BUTTON, action, thisb)
+    return thisb
+
+
 try:
     from epicsscan.scandb import ScanDB, InstrumentDB
 except ImportError:
@@ -31,6 +43,8 @@ LEFT_TOP = wx.ALIGN_LEFT|wx.ALIGN_TOP
 LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
 CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
+
+warn_msg = ' Note: ERASING CANNOT BE UNDONE!! Use "Export Positions" to Save!'
 
 def read_xyz(instdb, name, xyz_stages):
     """
@@ -237,7 +251,182 @@ class ErasePositionsDialog(wx.Frame):
     def onCancel(self, event=None):
         self.Destroy()
 
+#### Erase Many
 
+class PositionModel(dv.DataViewIndexListModel):
+    def __init__(self, instdb, instname='SampleStage'):
+        dv.DataViewIndexListModel.__init__(self, 0)
+        self.instdb = instdb
+        self.instname = instname
+        self.data = []
+        self.posvals = {}
+        self.read_data()
+
+    def read_data(self):
+        self.data = []
+        poslist = self.instdb.get_positionlist(self.instname, reverse=True)
+        for pos in poslist:
+            erase = True
+            if pos in self.posvals:
+                erase = self.posvals[pos]
+            self.data.append([pos, erase])
+            self.posvals[pos] = erase
+        self.Reset(len(self.data))
+
+    def select_all(self, erase=True):
+        for posname in self.posvals:
+            self.posvals[posname] = erase
+        self.read_data()
+
+    def select_above(self, item):
+        itemname = self.GetValue(item, 0)
+        val = True
+        for posname, _x in self.data:
+            self.posvals[posname] = val
+            if posname == itemname:
+                val = False
+        self.read_data()
+
+    def GetColumnType(self, col):
+        if col == 1:
+            return "bool"
+        return "string"
+
+    def GetValueByRow(self, row, col):
+        return self.data[row][col]
+
+    def SetValueByRow(self, value, row, col):
+        self.data[row][col] = value
+        return True
+
+    def GetColumnCount(self):
+        return len(self.data[0])
+
+    def GetCount(self):
+        return len(self.data)
+
+    def Compare(self, item1, item2, col, ascending):
+        """help for sorting data"""
+        if not ascending: # swap sort order?
+            item2, item1 = item1, item2
+        row1 = self.GetRow(item1)
+        row2 = self.GetRow(item2)
+        if col == 1:
+            return cmp(int(self.data[row1][col]), int(self.data[row2][col]))
+        else:
+            return cmp(self.data[row1][col], self.data[row2][col])
+
+    def DeleteRows(self, rows):
+        rows = list(rows)
+        rows.sort(reverse=True)
+        for row in rows:
+            del self.data[row]
+            self.RowDeleted(row)
+
+    def AddRow(self, value):
+        self.data.append(value)
+        self.RowAppended()
+
+
+class EraseManyPositionsFrame(wx.Frame) :
+    """Erase Many Positions"""
+    def __init__(self, instdb, instname, pos=(-1, -1), size=(625, 550), _larch=None):
+        self.instname = instname
+        self.instdb = instdb
+        self.last_refresh = time.monotonic() - 100.0
+        self.Font10=wx.Font(10, wx.SWISS, wx.NORMAL, wx.BOLD, 0, "")
+        titlefont = wx.Font(12, wx.SWISS, wx.NORMAL, wx.BOLD, 0, "")
+
+        wx.Frame.__init__(self, None, -1,
+                          title="Erase Many Positions",
+                          style=FRAMESTYLE, size=size)
+
+        self.dvc = dv.DataViewCtrl(self, style=DVSTYLE)
+        self.dvc.SetMinSize((600, 350))
+
+        self.SetFont(self.Font10)
+        panel = wx.Panel(self, size=(650, -1))
+        panel.SetBackgroundColour(wx.Colour(240, 240, 230))
+
+        self.model = PositionModel(self.instdb, instname=self.instname)
+        self.dvc.AssociateModel(self.model)
+
+        sizer = wx.GridBagSizer(3, 2)
+
+        irow = 0
+        sizer.Add(add_button(panel, label='Select All', size=(150, -1),
+                             action=self.onSelAll),
+                  (irow, 0), (1, 1), LEFT, 2)
+        sizer.Add(add_button(panel, label='Select None', size=(150, -1),
+                             action=self.onSelNone),
+                  (irow, 1), (1, 1), LEFT, 2)
+        sizer.Add(add_button(panel, label='Select All Above Highlighted', size=(250, -1),
+                             action=self.onSelAbove),
+                  (irow, 2), (1, 2), LEFT, 2)
+
+        irow += 1
+        sizer.Add(add_button(panel, label='Erase Selected', size=(150, -1),
+                             action=self.onErase),
+                  (irow, 0), (1, 1), LEFT, 2)
+
+        warn = SimpleText(panel, warn_msg, size=(450, -1),
+                          colour=wx.Colour(200, 0, 0))
+        
+        sizer.Add(warn, (irow, 1), (1, 3),  LEFT_CEN, 2)
+
+        pack(panel, sizer)
+
+        for icol, dat in enumerate((('Position Name',  400, 'text'),
+                                    ('Erase? ',        100, 'bool'))):
+            label, width, dtype = dat
+            method = self.dvc.AppendTextColumn
+            kws = {}
+            if dtype == 'bool':
+                method = self.dvc.AppendToggleColumn
+                kws = {'mode': dv.DATAVIEW_CELL_ACTIVATABLE}
+            method(label, icol, width=width, **kws)
+            c = self.dvc.Columns[icol]
+            c.Alignment = wx.ALIGN_LEFT
+            c.Sortable = False
+
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
+        mainsizer.Add(panel,    0, LEFT|wx.GROW, 1)
+        mainsizer.Add(self.dvc, 1, LEFT|wx.GROW, 1)
+
+        pack(self, mainsizer)
+        self.dvc.EnsureVisible(self.model.GetItem(0))
+        self.Bind(wx.EVT_CLOSE, self.onClose)
+        self.Show()
+        self.Raise()
+
+    def onClose(self, event=None):
+        self.Destroy()
+
+    def onRefresh(self, event=None):
+        self.update()
+        
+    def onErase(self, event=None):
+        for posname, erase in reversed(self.model.data):
+            if erase:
+                self.instdb.remove_position(self.instname, posname)
+        wx.CallAfter(self.update)
+            
+    def onSelAll(self, event=None):
+        self.model.select_all(True)
+
+    def onSelNone(self, event=None):
+        self.model.select_all(False)
+
+    def onSelAbove(self, event=None):
+        if self.dvc.HasSelection():
+            self.model.select_above(self.dvc.GetSelection())
+
+    def update(self):
+        self.model.read_data()
+        self.Refresh()
+        self.dvc.EnsureVisible(self.model.GetItem(0))
+
+        
 class TransferPositionsDialog(wx.Frame):
     """ transfer positions from offline microscope"""
     def __init__(self, offline, instname=None, instdb=None, parent=None):
@@ -618,10 +807,7 @@ class PositionPanel(wx.Panel):
         self.viewer.write_message('Erased Position %s' % posname)
 
     def onEraseMany(self, event=None):
-        if self.instdb is not None:
-            ErasePositionsDialog(self.positions.keys(),
-                                 instname=self.instrument,
-                                 instdb=self.instdb)
+        EraseManyPositionsFrame(self.instdb, self.instrument)
 
     def onMicroscopeTransfer(self, event=None):
         offline =  self.offline_instrument
