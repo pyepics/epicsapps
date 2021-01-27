@@ -12,9 +12,12 @@ from functools import partial
 
 import base64
 import json
-import matplotlib
-matplotlib.use('WXAgg')
-from wxmplot import PlotFrame
+try:
+    import matplotlib
+    matplotlib.use('WXAgg')
+    from wxmplot import PlotFrame
+except:
+    pass
 
 from epics import caput, Motor
 from epics.wx import EpicsFunction
@@ -160,7 +163,7 @@ class MicroscopeFrame(wx.Frame):
             os.chdir(self.config.get('workdir', os.getcwd()))
         except:
             pass
-        
+
         if prompt:
             ret = SelectWorkdir(self)
             if ret is None:
@@ -216,12 +219,12 @@ class MicroscopeFrame(wx.Frame):
             ImagePanel, ConfPanel = ImagePanel_ZMQ, ConfPanel_ZMQ
             opts['host'] = self.cam_pubaddr
             opts['port'] = self.cam_pubport
-            autofocus_cb = None            
+            autofocus_cb = None
         elif self.cam_type.startswith('epicsarray'):
             ImagePanel, ConfPanel = ImagePanel_EpicsArray, ConfPanel_EpicsArray
             opts['prefix'] = self.cam_pubaddr
             autofocus_cb = None
-            
+
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
 
