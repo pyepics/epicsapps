@@ -230,13 +230,15 @@ class MicroscopeFrame(wx.Frame):
 
         offline_inst = config.get('offline_instrument', None)
         offline_xyz = config.get('offline_xyzmotors', None)
+        safe_move   = config.get('safe_move', None)
 
         ppanel = wx.Panel(self)
         self.pospanel = PositionPanel(ppanel, self,
                                       instrument=config['instrument'],
                                       xyzmotors=config['xyzmotors'],
                                       offline_instrument=offline_inst,
-                                      offline_xyzmotors=offline_xyz)
+                                      offline_xyzmotors=offline_xyz,
+                                      safe_move=safe_move)
 
         self.ctrlpanel = ControlPanel(ppanel,
                                       groups=self.stage_groups,

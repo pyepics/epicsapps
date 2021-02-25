@@ -584,7 +584,7 @@ class PositionPanel(wx.Panel):
 
     def __init__(self, parent, viewer, instrument='SampleStage',
                  xyzmotors=None, offline_instrument=None,
-                 offline_xyzmotors=None, **kws):
+                 offline_xyzmotors=None, safe_move=None, **kws):
         wx.Panel.__init__(self, parent, -1, size=(300, 500))
         self.size = (300, 600)
         self.parent = parent
@@ -593,6 +593,7 @@ class PositionPanel(wx.Panel):
         self.xyzmotors = xyzmotors
         self.offline_instrument = offline_instrument
         self.offline_xyzmotors = offline_xyzmotors
+        self.safe_move = safe_move
         self.poslist_select = None
         self.image_display = None
         self.pos_name =  wx.TextCtrl(self, value="", size=(300, 25),
@@ -760,7 +761,41 @@ class PositionPanel(wx.Panel):
             get_pvdesc(pvname)
 
         pos = self.instdb.get_position(instname, posname)
+        orig, safe = {}, {}
+        if self.safe_move is not None:
+            for spv in self.safe_move:
+                pvname = spv.get('pv', None)
+                step = spv.get('step', None)
+                sval = spv.get('value', None)
+                if pvname is not None:
+                    cur_val = get_pv(pvname).get()
+                    orig[pvname] = cur_val
+                    if step is not None:
+                        safe[pvname] = cur_val + step
+                    elif sval is not None:
+                        safe[pvname] = sval
+                    
         time.sleep(0.005)
+
+        def DoMove(pv_data):
+            # do move, maybe moving to "Safe Positions" for some PVs
+            # while move is in progress.
+            if len(safe) > 0:
+                for pvname, sval in safe.items():
+                    get_pv(pvname).put(sval, wait=True)
+
+            # start move of sample stage   
+            for pvname, sval in pv_data.items():
+                get_pv(pvname).put(sval)
+                
+            if len(orig) > 0:
+                # finish move of sample stage before restoring Safe Positions
+                for pvname, sval in pv_data.items():
+                    get_pv(pvname).put(sval, wait=True)
+
+                # then restore safe positions, in order
+                for pvname, sval in orig.items():
+                    get_pv(pvname).put(sval, wait=True)                
 
         pvdata = {}
         for pvpos in pos.pv:
@@ -770,20 +805,17 @@ class PositionPanel(wx.Panel):
             desc = get_pvdesc(pvname)
             pvdata[pvname] = (desc, save_val, curr_val)
 
-        def GoCallback(pvdata):
-            for pvname, sval in pvdata.items():
-                get_pv(pvname).put(sval)
 
         if self.viewer.v_move:
-            m2d = MoveToDialog(self, pvdata, instname, posname,
-                               callback=GoCallback)
-
+            md = MoveToDialog(self, pvdata, instname, posname, callback=DoMove)
             spos = self.viewer.imgpanel.GetScreenPosition()
-            m2d.SetPosition((int(spos[0]+200), int(spos[1]+50)))
-            m2d.Raise()
+            md.SetPosition((int(spos[0]+200), int(spos[1]+50)))
+            md.Raise()
         else:
+            pv_data = {}
             for pvname, data in pvdata.items():
-                get_pv(pvname).put(data[1])
+                pv_data[pvname] = data[1]
+            DoMove(pv_data)
 
         self.viewer.write_message('moved to %s' % posname)
 
