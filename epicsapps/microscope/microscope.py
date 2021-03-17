@@ -25,7 +25,7 @@ from epics.wx import EpicsFunction
 from epics.wx.utils import (add_menu, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from wxutils import (GridPanel, OkCancel, FloatSpin, NumericCombo,
-                     SimpleText, FileSave, FileOpen, pack, Popup)
+                     SimpleText, FileSave, FileOpen, pack, Popup, fix_filename)
 
 from .configfile import MicroscopeConfig, CONFFILE, get_default_configfile
 from .icons import icons
@@ -113,7 +113,7 @@ class CompositeDialog(wx.Dialog):
         panel = GridPanel(self, ncols=3, nrows=2, pad=2, itemstyle=LCEN)
 
         self.cal = cal = [x for x in parent.calibrations[parent.calib_current]]
-        self.filename = wx.TextCtrl(panel, -1, 'Composite01',  size=(150, -1))
+        self.filename = wx.TextCtrl(panel, -1, 'Composite01',  size=(250, -1))
         self.size     = FloatSpin(panel, value=10.0, min_val=0, increment=1)
 
         panel.Add(SimpleText(panel, 'File Name : '), newrow=True)
@@ -951,6 +951,9 @@ class MicroscopeFrame(wx.Frame):
     def onBuildCompositeEvent(self, event=None):
         t0 = time.time()
         dlg = CompositeDialog(self)
+        cur_pos_name = self.pospanel.pos_name.GetValue()
+        comp_name = fix_filename("%s_Composite" % (cur_pos_name))
+        dlg.filename.SetValue(comp_name)
         res = dlg.GetResponse()
         dlg.Destroy()
         print("on Build Composite! " , res)
@@ -1012,7 +1015,7 @@ class MicroscopeFrame(wx.Frame):
             ystage.put(yvals[iy], wait=True)
             for ix in range(nrows):
                 xstage.put(xvals[ix], wait=True)
-                time.sleep(0.05)
+                time.sleep(0.20)
                 n += 1
                 fname = os.path.join(compdir, 'img%d_%d.jpg' % (iy, ix))
                 tx = time.monotonic()
