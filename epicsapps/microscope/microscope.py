@@ -148,7 +148,7 @@ class MicroscopeFrame(wx.Frame):
         self.SetTitle('Sample Microscope')
         if configfile is None:
             configfile = get_default_configfile(CONFFILE)
-        if prompt or configfile is None:
+        if configfile is None:
             default_file = configfile or CONFFILE
             fpath, fname = os.path.split(default_file)
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
@@ -164,11 +164,11 @@ class MicroscopeFrame(wx.Frame):
         except:
             pass
 
-        if prompt:
-            ret = SelectWorkdir(self)
-            if ret is None:
-                self.Destroy()
-            os.chdir(ret)
+
+        ret = SelectWorkdir(self)
+        if ret is None:
+            self.Destroy()
+        os.chdir(ret)
 
         self.overlayframe = None
         self.calibframe = None
