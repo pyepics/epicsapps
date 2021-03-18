@@ -284,10 +284,12 @@ class PySpinCamera(object):
             data = out.GetData()
             data.shape = (ncols, nrows, 3)
             self.data = data
+            out = wx.Image(nrows, ncols, self.data).Rescale(width, height)
         except:
-            pass
+            print("pysin image convert failed ", img)
+            out = None
         img.Release()
-        return wx.Image(nrows, ncols, self.data).Rescale(width, height)
+        return out
 
     def GrabPILImage(self):
         """"""
