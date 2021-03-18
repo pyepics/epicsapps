@@ -992,9 +992,8 @@ class MicroscopeFrame(wx.Frame):
         t0 = time.monotonic()
         image = self.imgpanel.GrabNumpyImage()
         nx, ny = image.shape[0], image.shape[1]
-        xstep = 1.500*cal[0]
-        ystep = 1.500*cal[1]
-        caldat = np.array((cal[0], cal[1], 1500))
+        xstep = 0.950*cal[0]
+        ystep = 0.950*cal[1]
 
         nrows = int(1+size/abs(xstep))
         xstage = self.ctrlpanel.motors['x']._pvs['VAL']
@@ -1005,23 +1004,40 @@ class MicroscopeFrame(wx.Frame):
         xvals = np.linspace(xcen-nrows*xstep/2, xcen+nrows*xstep/2, nrows)
         yvals = np.linspace(ycen-nrows*ystep/2, ycen+nrows*ystep/2, nrows)
 
+        print("==Composite ", nx, ny, nrows,  xstep, nrows*xstep)
+        print("==Composite X ", xvals[:3])
+        print("==Composity Y ", yvals[:3])
+        
         xstage.put(xvals[0])
         ystage.put(yvals[0])
 
         n = 0
         tsave = 0.
+        outbuff = ['# using calibration: %.5f, %.5f' % (cal[0], cal[1]),
+                   '# Files are named imgIY_IX.jpg',
+                   '# IY   IX     Y      X']
+        
         for iy in range(nrows):
+            print(iy)
             xstage.put(xvals[0])
             ystage.put(yvals[iy], wait=True)
             for ix in range(nrows):
                 xstage.put(xvals[ix], wait=True)
-                time.sleep(0.20)
+                time.sleep(0.25)
                 n += 1
                 fname = os.path.join(compdir, 'img%d_%d.jpg' % (iy, ix))
                 tx = time.monotonic()
                 self.imgpanel.SaveImage(fname)
+                img = self.imgpanel.GrabNumpyImage()
+                np.save(fname +'_dat.npy', img)
                 tsave += (time.monotonic() -tx)
+                outbuff.append('%d %d %15.4f  %15.4f' % (iy, ix, yvals[iy], xvals[ix]))
                 # images.append(thisim)
+        outbuff.append('')
+        fout = os.path.join(compdir, 'composite.txt')
+        with open(fout, 'w') as fh:
+            fh.write('\n'.join(outbuff))
+        
         print("Grabbed %d images in %.1f seconds, %.1f saving"  % (n, time.monotonic()-t0, tsave))
         xstage.put(xcen)
         ystage.put(ycen)
