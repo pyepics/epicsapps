@@ -992,8 +992,8 @@ class MicroscopeFrame(wx.Frame):
         t0 = time.monotonic()
         image = self.imgpanel.GrabNumpyImage()
         nx, ny = image.shape[0], image.shape[1]
-        xstep = 0.950*cal[0]
-        ystep = 0.950*cal[1]
+        xstep = 1.250*cal[0]
+        ystep = 1.250*cal[1]
 
         nrows = int(1+size/abs(xstep))
         xstage = self.ctrlpanel.motors['x']._pvs['VAL']
@@ -1023,13 +1023,24 @@ class MicroscopeFrame(wx.Frame):
             ystage.put(yvals[iy], wait=True)
             for ix in range(nrows):
                 xstage.put(xvals[ix], wait=True)
-                time.sleep(0.25)
+                time.sleep(0.1)
                 n += 1
-                fname = os.path.join(compdir, 'img%d_%d.jpg' % (iy, ix))
+                fname = os.path.join(compdir, 'img%d_%d_dat.npy' % (iy, ix))
                 tx = time.monotonic()
-                self.imgpanel.SaveImage(fname)
-                img = self.imgpanel.GrabNumpyImage()
-                np.save(fname +'_dat.npy', img)
+                # self.imgpanel.SaveImage(fname)
+                img = None
+                for _x in range(10):
+                    try:
+                        img = self.imgpanel.GrabNumpyImage()
+                    except:
+                        time.sleep(0.1)
+                    if img is not None:
+                        break
+                if img is None:
+                    print("grabbing image failed... aborting!")
+                    break
+                    
+                np.save(fname, img)
                 tsave += (time.monotonic() -tx)
                 outbuff.append('%d %d %15.4f  %15.4f' % (iy, ix, yvals[iy], xvals[ix]))
                 # images.append(thisim)
