@@ -107,7 +107,7 @@ def run_instruments(configfile=None, prompt=True):
     """Epics Instruments"""
     EpicsInstrumentApp(configfile=configfile, prompt=prompt).MainLoop()
 
-def run_samplemicroscope(configfile=None, prompt=False):
+def run_samplemicroscope(configfile=None, prompt=True):
     """Sample Microscope"""
     MicroscopeApp(configfile=configfile, prompt=prompt).MainLoop()
 
