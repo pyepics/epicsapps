@@ -253,12 +253,23 @@ class PySpinCamera(object):
         return GrabNumPyImage(format=format)
 
     def GrabNumPyImage(self, format='rgb'):
-        """return an image as a NumPy array
-        optionally specifying color
+        """return an image as a NumPy array optionally specifying color
         """
         img = self.cam.GetNextImage()
+        if img.IsIncomplete():
+            t0 = time.time()
+            waiting = True
+            while waiting:
+                img.Release()
+                time.sleep(0.01)
+                img = self.cam.GetNextImage()
+                waiting = img.IsIncomplete() and (time.time() - t0 < 0.5)
+        if img.IsIncomplete():
+            print( "Image incomplete, status %d ..." % img.GetImageStatus())
+                    
+                
         ncols, nrows = img.GetHeight(), img.GetWidth()
-        size = ncols * nrows
+        # size = ncols * nrows
         shape = (ncols, nrows)
         if format in ('rgb', 'bgr'):
             shape = (ncols, nrows, 3)
