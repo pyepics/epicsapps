@@ -109,4 +109,4 @@ class ConfigFile(object):
             config = self.config
 
         with open(fname, 'w') as fh:
-            yaml.dump(config, fh, default_flow_style=None, sort_keys=False)
+            yaml.dump(config, fh, default_flow_style=None)
