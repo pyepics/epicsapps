@@ -1023,7 +1023,7 @@ class MicroscopeFrame(wx.Frame):
             ystage.put(yvals[iy], wait=True)
             for ix in range(nrows):
                 xstage.put(xvals[ix], wait=True)
-                time.sleep(0.1)
+                time.sleep(0.25)
                 n += 1
                 fname = os.path.join(compdir, 'img%d_%d_dat.npy' % (iy, ix))
                 tx = time.monotonic()
