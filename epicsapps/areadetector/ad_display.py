@@ -16,7 +16,12 @@ import matplotlib.cm as colormap
 import wx
 import wx.lib.mixins.inspection
 
-from wxmplot.plotframe import PlotFrame
+HAS_PLOTFRAME = False
+try:
+    wxmplot.plotframe import PlotFrame
+    HAS_PLOTFRAME = True
+except:
+    pass
 
 import epics
 from epics import get_pv
@@ -301,7 +306,7 @@ class ADFrame(wx.Frame):
             shown = True
         except:
             self.int_panel = None
-        if not shown:
+        if not shown and HAS_PLOTFRAME:
             self.int_panel = PlotFrame(self)
         self.show_1dpattern(init=(not shown))
 
@@ -505,7 +510,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
                                    attrs=self.cam_attrs)
 
         if self.config['use_filesaver']:
-            fsaver = "%s%s" % (self.prefix, self.fsaver)            
+            fsaver = "%s%s" % (self.prefix, self.fsaver)
             epics.caput("%sEnableCallbacks" % fsaver, 1)
             epics.caput("%sAutoSave" % fsaver, 0)
             epics.caput("%sAutoIncrement" % fsaver, 0)
