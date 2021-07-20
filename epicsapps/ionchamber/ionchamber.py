@@ -92,11 +92,10 @@ class IonChamber(Device):
         self.put('FluxAbs',    "%.6g" % flux_photo)
         self.put('FluxOut',    "%.6g" % flux_out)
         self.put('Volts2Flux', "%.6g" % v2flux)
-
-        self.put('TimeStamp',
-                 time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        self.put('TimeStamp', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
     def run(self):
+        time.sleep(0.25)
         while True:
             self.calculate()
             time.sleep(0.25)
