@@ -18,7 +18,7 @@ import wx.lib.mixins.inspection
 
 HAS_PLOTFRAME = False
 try:
-    wxmplot.plotframe import PlotFrame
+    from wxmplot.plotframe import PlotFrame
     HAS_PLOTFRAME = True
 except:
     pass
