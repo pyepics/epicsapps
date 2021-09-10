@@ -17,8 +17,8 @@ from ..utils import normalize_pvname
 ALL_EXP  = wx.ALL|wx.EXPAND|wx.ALIGN_LEFT|wx.ALIGN_TOP
 LEFT_BOT = wx.ALIGN_LEFT|wx.ALIGN_BOTTOM
 LEFT_TOP = wx.ALIGN_LEFT|wx.ALIGN_TOP
-CEN_TOP  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_TOP
-CEN_BOT  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_BOTTOM
+CEN_TOP  = wx.ALIGN_TOP
+CEN_BOT  = wx.ALIGN_BOTTOM
 
 def make_steps(precision=3, minstep=0, maxstep=10, decades=7, steps=(1,2,5)):
     """automatically create list of step sizes, generally going as
@@ -140,7 +140,7 @@ class ControlPanel(wx.Panel):
 
         slabel = wx.BoxSizer(wx.HORIZONTAL)
         slabel.Add(wx.StaticText(panel, label=" %s: " % group, size=(120,-1)),
-                   1,  wx.EXPAND|LEFT_BOT)
+                   1,  LEFT_BOT)
         slabel.Add(self.tweak_wids[group], 0,  ALL_EXP)
 
         msizer = wx.BoxSizer(wx.VERTICAL)

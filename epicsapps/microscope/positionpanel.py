@@ -622,7 +622,7 @@ class PositionPanel(wx.Panel):
         sizer.Add(tlabel,         0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(self.pos_name,  0, wx.ALIGN_LEFT|wx.ALL)
         sizer.Add(brow,           0, wx.ALIGN_LEFT|wx.ALL)
-        sizer.Add(self.pos_list,  1, ALL_EXP|wx.ALIGN_CENTER, 3)
+        sizer.Add(self.pos_list,  1, wx.ALIGN_CENTER, 3)
 
         self.pos_list.SetSize((275, 1200))
         pack(self, sizer)

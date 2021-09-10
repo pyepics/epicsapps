@@ -173,7 +173,7 @@ class ImagePanel_Base(wx.Panel):
         self.zoompanel = zoompanel
         self.zoommode = 'click'
         self.SetBackgroundColour("#E4E4E4")
-        self.starttime = time.clock()
+        self.starttime = time.time()
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
 
         self.Bind(wx.EVT_SIZE, self.onSize)
@@ -280,7 +280,7 @@ class ImagePanel_Base(wx.Panel):
 
     def onPaint(self, event):
         self.count += 1
-        now = time.clock()
+        now = time.time()
         elapsed = now - self.starttime
         if elapsed >= 2.0 and self.writer is not None:
             self.fps_current = (self.count/elapsed)
@@ -306,7 +306,7 @@ class ImagePanel_Base(wx.Panel):
             bitmap = wx.Bitmap(self.image)
         except ValueError:
             return
-        t2 = time.clock()
+        t2 = time.time()
         img_w, img_h = self.bitmap_size = bitmap.GetSize()
         pan_w, pan_h = self.panel_size  = self.GetSize()
         pad_w, pad_h = int(1+(pan_w-img_w)/2.0), int(1+(pan_h-img_h)/2.0)
