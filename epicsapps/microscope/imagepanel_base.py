@@ -31,17 +31,20 @@ class JpegServer(object):
         self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.setsockopt(zmq.CONNECT_TIMEOUT, 500)
         self.socket.bind("tcp://*:%d" % port)
-        # print("JPEG Server initialized ", self.socket, port)
         self.data = None
 
     def serve(self):
+        print("Jpeg Serve ")
         while True:
             try:
-                message = self.socket.recv().decode('utf-8')
+                message = self.socket.recv()
+                message = message.decode('utf-8')
                 if not message.startswith('send image'):
                     continue
             except:
+                print(" message not decoded" )
                 continue
+            
             try:
                 ncols, nrows, nx = self.data.shape
             except:
@@ -53,10 +56,11 @@ class JpegServer(object):
 
             tmp.seek(0)
             bindat = base64.b64encode(tmp.read())
-            # print("Publish Image ",  len(bindat), self.delay, time.time())   
+            print("Publish Image ",  len(bindat), self.delay, time.time())   
             self.socket.send(b'jpeg:%s' % bindat) 
             time.sleep(self.delay)
-
+        print("JPEg Serve is done")
+        
     def stop(self):
         self.socket.term()
 
@@ -193,8 +197,9 @@ class ImagePanel_Base(wx.Panel):
         self.build_popupmenu()
 
         self.publisher = None
+        print("Create Image Publisher ", publish_type, publish_addr)
         if publish_type is not None:
-            # print("Create Image Publisher ", publish_type, publish_addr)
+            print("Create Image Publisher ", publish_type, publish_addr)
             self.create_publisher(publish_type, publish_addr,
                                   publish_port, publish_delay)
 
@@ -296,7 +301,6 @@ class ImagePanel_Base(wx.Panel):
         if self.publisher is not None:
             self.publisher.data = self.data
 
-
         if self.full_size is None:
             img = self.GrabWxImage(scale=1.0, rgb=True)
             if img is not None:
@@ -348,7 +352,6 @@ class ImagePanel_Base(wx.Panel):
                     method(*args, **kws)
 
     def create_publisher(self, type='jpeg', addr='', port=0, delay=0.1):
-
         self.publish_type = type
         self.publish_port = port
         self.publish_delay = delay
@@ -357,9 +360,11 @@ class ImagePanel_Base(wx.Panel):
             self.publisher = JpegServer(port=port, delay=delay)
         elif type.lower() == 'epicsarray':
             self.publisher = EpicsArrayServer(prefix=addr, delay=delay)
+            
+        print("create publisher " , type, HAS_ZMQ, self.publisher)
         if self.publisher is not None:
             self.pub_thread = Thread(target=self.publisher.serve)
-            self.pub_thread.daemon = True
+            # self.pub_thread.daemon = True
             time.sleep(0.25)
             self.pub_thread.start()
 
