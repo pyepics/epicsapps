@@ -56,7 +56,7 @@ class JpegServer(object):
 
             tmp.seek(0)
             bindat = base64.b64encode(tmp.read())
-            print("Publish Image ",  len(bindat), self.delay, time.time())   
+            # print("Publish Image ",  len(bindat), self.delay, time.time())   
             self.socket.send(b'jpeg:%s' % bindat) 
             time.sleep(self.delay)
         print("JPEg Serve is done")

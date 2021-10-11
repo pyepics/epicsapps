@@ -295,9 +295,13 @@ class PySpinCamera(object):
             data = out.GetData()
             data.shape = (ncols, nrows, 3)
             self.data = data
+        except:
+            print("pyspin image convert failed ", img)
+            
+        try:
             out = wx.Image(nrows, ncols, self.data).Rescale(width, height)
         except:
-            print("pysin image convert failed ", img)
+            print("pyspin wximage create failed ", img)
             out = None
         img.Release()
         return out
