@@ -25,17 +25,16 @@ class ImageDisplayFrame(wx.Frame):
 
         sizer = wx.BoxSizer(wx.VERTICAL)
 
-        sizer.Add(self.bitmap, 1,
-                  wx.ALL|wx.GROW|wx.ALIGN_CENTER,  3)
-        sizer.Add(self.label, 0,
-                  wx.ALL|wx.GROW|wx.ALIGN_CENTER,  2)
+        sizer.Add(self.bitmap, 1,  wx.ALL|wx.ALIGN_CENTER,  3)
+        sizer.Add(self.label, 0, wx.ALL|wx.ALIGN_CENTER,  2)
 
         panel.SetSizer(sizer)
-        sizer.Fit(panel)
+        s = self.GetBestSize()
         self.SetMinSize((iw, ih))
-        self.SetSize((iw, ih))
+        sizer.Fit(panel)
         self.Show()
         self.Raise()
+        wx.CallAfter(self.SetSize, (s[0]+10, s[1]+75))
 
     def showfile(self, fname, title=None, label=None):
         if title is not None:

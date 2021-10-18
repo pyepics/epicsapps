@@ -292,9 +292,8 @@ class PySpinCamera(object):
             format = 'rgb'
         try:
             out = img.Convert(pixel_formats[format], self.convert_method)
-            data = out.GetData()
-            data.shape = (ncols, nrows, 3)
-            self.data = data
+            self.data = out.GetData()
+            self.data.shape = (ncols, nrows, 3)
         except:
             print("pyspin image convert failed ", img)
             
