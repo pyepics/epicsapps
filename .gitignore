@@ -9,3 +9,9 @@ build
 dist
 junk
 sandbox
+epicsapps.egg-info/top_level.txt
+epicsapps.egg-info/dependency_links.txt
+epicsapps.egg-info/PKG-INFO
+epicsapps.egg-info/entry_points.txt
+epicsapps.egg-info/requires.txt
+epicsapps.egg-info/SOURCES.txt
