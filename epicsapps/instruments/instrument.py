@@ -597,11 +597,11 @@ arguments
             return all([p.put_complete for p in self.restoring_pvs])
         return True
 
-    def get_ordered_position(self, posname, inst, exclude_pvs=None):
+    def get_ordered_position(self, posname, instname, exclude_pvs=None):
         """
         returns ordered list of PVname, positions for restore position
         """
-        inst = self.get_instrument(inst)
+        inst = self.get_instrument(instname)
         if inst is None:
             raise InstrumentDBException(
                 'restore_postion needs valid instrument')
@@ -646,12 +646,14 @@ arguments
 
         return  ordered_pvs
 
-    def restore_position(self, posname, inst, wait=True, timeout=5.0,
+    def restore_position(self, posname, instname, wait=True, timeout=5.0,
                          exclude_pvs=None):
         """
         restore named position for instrument
         """
-        ordered_pvs = self.get_ordered_position(posname, inst, exclude_pvs=exclude_pvs)
+        ordered_pvs = self.get_ordered_position(posname, instname,
+                                                exclude_pvs=exclude_pvs)
+
         epics.ca.poll()
         wait = wait and len(ordered_pvs) == 1
 
