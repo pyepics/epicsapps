@@ -92,8 +92,8 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
         self.db = db
         self.inst = db.get_instrument(inst)
 
-        STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
-        LSTY = wx.ALIGN_LEFT|wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
+        STY  = wx.GROW|wx.ALL
+        LSTY = wx.ALIGN_LEFT|wx.GROW|wx.ALL
         RSTY = wx.ALIGN_RIGHT|STY
         CSTY = wx.ALIGN_CENTER|STY
         CEN  = wx.ALIGN_CENTER|wx.GROW|wx.ALL
@@ -139,8 +139,8 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
                                 action=self.onOK)
         btn_cancel = Button(btn_panel, 'Cancel', size=(70, -1), action=self.onCancel)
 
-        btn_sizer.Add(btn_ok,     0, wx.ALIGN_LEFT,  2)
-        btn_sizer.Add(btn_cancel, 0, wx.ALIGN_RIGHT,  2)
+        btn_sizer.Add(btn_ok,     0, wx.ALL, 2)
+        btn_sizer.Add(btn_cancel, 0, wx.ALL, 2)
         pack(btn_panel, btn_sizer)
 
         ir += 1
@@ -328,8 +328,8 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                                 action=self.OnDone)
         btn_cancel = Button(btn_panel, 'Cancel', size=(70, -1), action=self.onCancel)
 
-        btn_sizer.Add(btn_ok,     0, wx.ALIGN_LEFT,  2)
-        btn_sizer.Add(btn_cancel, 0, wx.ALIGN_RIGHT,  2)
+        btn_sizer.Add(btn_ok,     0, wx.ALL,  2)
+        btn_sizer.Add(btn_cancel, 0, wx.ALL,  2)
         pack(btn_panel, btn_sizer)
 
         irow += 1
@@ -344,9 +344,9 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         pack(panel, sizer)
         panel.SetupScrolling()
         mainsizer = wx.BoxSizer(wx.VERTICAL)
-        mainsizer.Add(panel, 1, LSTY)
+        mainsizer.Add(panel, 1, wx.ALL)
         pack(self, mainsizer)
-        self.SetSize((500, 800))
+        self.SetSize((650, 800))
         self.Layout()
         self.Show()
         self.Raise()
@@ -513,7 +513,7 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
         wx.Frame.__init__(self, None, -1, title, size=(350, 450),
                           style=style, pos=pos)
         self.Handle_FocusEvents()
-        panel = scrolled.ScrolledPanel(self, size=(400, 500),
+        panel = scrolled.ScrolledPanel(self, size=(550, 550),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
 
         colors = GUIColors()
@@ -567,8 +567,6 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
         sizer.Add(wx.StaticLine(panel, size=(500, 2)), (irow, 0), (1, 4),  LEFT_CEN, 2)
 
         pack(panel, sizer)
-        panel.SetMinSize((700, 550))
-
         panel.SetupScrolling()
 
         mainsizer = wx.BoxSizer(wx.VERTICAL)
