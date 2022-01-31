@@ -35,9 +35,9 @@ class RenameDialog(wx.Dialog):
 
         sizer = wx.GridBagSizer(10, 3)
 
-        labstyle  = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
-        rlabstyle = wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
-        tstyle    = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL
+        labstyle  = wx.ALIGN_LEFT|wx.ALL
+        rlabstyle = wx.ALIGN_RIGHT|wx.ALL
+        tstyle    = wx.ALIGN_LEFT
 
         label1  = SimpleText(panel, 'Old name = %s' % posname, style=tstyle)
         label2  = SimpleText(panel, 'New name = ' , style=tstyle)
@@ -58,8 +58,7 @@ class RenameDialog(wx.Dialog):
         btnsizer.AddButton(wx.Button(panel, wx.ID_CANCEL))
 
         btnsizer.Realize()
-        sizer.Add(btnsizer, (3, 0), (1, 2),
-                  wx.ALIGN_CENTER_VERTICAL|wx.ALL, 1)
+        sizer.Add(btnsizer, (3, 0), (1, 2), wx.ALL, 1)
         pack(panel, sizer)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -102,9 +101,9 @@ class MoveToDialog(wx.Dialog):
 
         sizer = wx.GridBagSizer(6, 3)
 
-        labstyle  = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
-        rlabstyle = wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
-        tstyle    = wx.ALIGN_CENTER_VERTICAL
+        labstyle  = wx.ALIGN_LEFT|wx.ALL
+        rlabstyle = wx.ALIGN_RIGHT|wx.ALL
+        tstyle    = wx.ALL
         # title row
         i = 0
         col_labels = [ 'PV', 'Current Value', 'Saved Value']
@@ -140,7 +139,7 @@ class MoveToDialog(wx.Dialog):
 
             if curr_val is None:
                 # may have been removed from instrument definition
-                continue 
+                continue
             save_val = pvpos.value
 
             label = SimpleText(self, desc, style=tstyle,
@@ -158,7 +157,7 @@ class MoveToDialog(wx.Dialog):
             if self.mode != 'show':
                 sizer.Add(cbox,  (irow+2, 3), (1, 1), rlabstyle, 2)
             irow = irow + 1
-             
+
         sizer.Add(wx.StaticLine(self, size=(450, -1),
                                 style=wx.LI_HORIZONTAL),
                   (irow+3, 0), (1, 4), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
@@ -171,8 +170,7 @@ class MoveToDialog(wx.Dialog):
             btnsizer.AddButton(wx.Button(self, wx.ID_CANCEL))
 
         btnsizer.Realize()
-        sizer.Add(btnsizer, (irow+4, 2), (1, 2),
-                  wx.ALIGN_CENTER_VERTICAL|wx.ALL, 1)
+        sizer.Add(btnsizer, (irow+4, 2), (1, 2), wx.ALL, 1)
         pack(self, sizer)
         w, h = self.GetBestSize()
         w = 25*int((w + 26)/25.)
@@ -220,20 +218,16 @@ class InstrumentPanel(wx.Panel):
                                      font=titlefont,
                                      colour=colors.title,
                                      minsize=(175, -1),
-                                     style=wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL)
+                                     style=wx.ALIGN_LEFT)
 
         self.pos_name =  wx.TextCtrl(toprow, value="", size=(300, 25),
                                      style= wx.TE_PROCESS_ENTER)
         self.pos_name.Bind(wx.EVT_TEXT_ENTER, self.onSavePosition)
-
         topsizer = wx.BoxSizer(wx.HORIZONTAL)
-        topsizer.Add(self.inst_title, 1, wx.ALIGN_CENTER|wx.ALIGN_CENTER_VERTICAL, 1)
-        topsizer.Add(SimpleText(toprow, 'Save Position:', size=(150, -1),
-                                style=wx.ALIGN_RIGHT), 0,
-                     wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 1)
+        topsizer.Add(self.inst_title, 1, wx.ALIGN_CENTER, 1)
+        topsizer.Add(SimpleText(toprow, 'Save Position:', size=(150, -1)), 0,  wx.ALIGN_CENTER, 1)
 
-        topsizer.Add(self.pos_name, 1,
-                     wx.GROW|wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL, 1)
+        topsizer.Add(self.pos_name, 1, wx.GROW, 1)
 
         pack(toprow, topsizer)
         self.toprow = toprow
@@ -272,7 +266,7 @@ class InstrumentPanel(wx.Panel):
             self.pos_list.Append(pos.name)
 
         rsizer.Add(brow,          0, wx.ALIGN_LEFT|wx.ALL)
-        rsizer.Add(self.pos_list, 1, wx.EXPAND|wx.ALIGN_CENTER, 1)
+        rsizer.Add(self.pos_list, 1, wx.GROW|wx.ALL, 1)
         pack(rpanel, rsizer)
         self.pos_list.Disable()
 
@@ -351,9 +345,9 @@ class InstrumentPanel(wx.Panel):
                 current_comps.append(ctrl)
                 current_comps.append(label)
 
-                sizer.Add(label,  0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
-                sizer.Add(ctrl,   0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
-                sizer.Add(dlabel, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
+                sizer.Add(label,  0, wx.ALL, 2)
+                sizer.Add(ctrl,   0, wx.ALL, 2)
+                sizer.Add(dlabel, 0, wx.ALL, 2)
 
                 if (pvtype != 'motor' and icomp < len(pvcomps)-1 and
                     pvcomps[icomp+1][1][1] != 'motor'): #  and False):
@@ -372,8 +366,8 @@ class InstrumentPanel(wx.Panel):
                     else:
                         c2 = PVFloatCtrl(panel, pv=pv2, size=(150, -1))
 
-                    sizer.Add(l2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
-                    sizer.Add(c2, 0, wx.ALIGN_CENTER_VERTICAL|wx.ALL, 2)
+                    sizer.Add(l2, 0, wx.ALL, 2)
+                    sizer.Add(c2, 0, wx.ALL, 2)
                     current_comps.append(c2)
                     current_comps.append(l2)
                     """

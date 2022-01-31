@@ -17,9 +17,9 @@ class SettingsFrame(wx.Frame) :
         self.db = db
 
         style    = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
-        labstyle  = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
-        rlabstyle = wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
-        tstyle    = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL
+        labstyle  = wx.ALIGN_LEFT|wx.ALL
+        rlabstyle = wx.ALIGN_RIGHT|wx.ALL
+        tstyle    = wx.ALIGN_LEFT
 
         wx.Frame.__init__(self, None, -1,
                           'Epics Instruments:  Settings')
@@ -139,8 +139,8 @@ class InstSelectionFrame(wx.Frame) :
         titlefont.PointSize += 2
         titlefont.SetWeight(wx.BOLD)
 
-        sizer = wx.GridBagSizer(10, 5)
-        panel = scrolled.ScrolledPanel(self, size=(400, 500),
+        sizer = wx.GridBagSizer(5, 5)
+        panel = scrolled.ScrolledPanel(self, size=(700, 750),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
         # title row
         self.colors = GUIColors()
@@ -177,12 +177,13 @@ class InstSelectionFrame(wx.Frame) :
 
         set_font_with_children(self, font)
 
+        print("setting panel ", panel.GetBestSize())
         pack(panel, sizer)
         panel.SetupScrolling()
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1, wx.GROW|wx.ALL, 1)
 
-
+        self.SetMinSize((750, 450))
         pack(self, mainsizer)
         self.Show()
         self.Raise()
