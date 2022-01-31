@@ -15,7 +15,7 @@ from epics.wx import EpicsFunction, DelayedEpicsCallback
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     FloatCtrl, Choice, YesNo, TextCtrl)                     
+                     FloatCtrl, Choice, YesNo, TextCtrl)
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
@@ -27,9 +27,9 @@ BGCOL  = (250, 250, 240)
 
 POLLTIME = 50
 
-STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
-LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL|wx.ALIGN_CENTER_VERTICAL
-CSTY = wx.ALIGN_CENTER|wx.ALIGN_CENTER_VERTICAL
+STY  = wx.GROW|wx.ALL
+LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL
+CSTY = wx.ALIGN_CENTER
 
 def get_bound(val):
     "return float value of input string or None"
@@ -209,11 +209,11 @@ Matt Newville <newville@cars.uchicago.edu>
         self.time_ctrl  = FloatCtrl(panel, value=-self.tmin, precision=2,
                                     size=(90, -1), action=self.onDisplayTimeVal)
 
-        btnsizer.Add(self.pause_btn,   0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
-        btnsizer.Add(self.resume_btn,  0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
-        btnsizer.Add(time_label,       1, wx.ALIGN_CENTER_HORIZONTAL,    2)
-        btnsizer.Add(self.time_ctrl,   0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
-        btnsizer.Add(self.time_choice, 0, wx.ALIGN_LEFT|wx.ALIGN_CENTER, 2)
+        btnsizer.Add(self.pause_btn,   0, wx.ALIGN_LEFT, 2)
+        btnsizer.Add(self.resume_btn,  0, wx.ALIGN_LEFT, 2)
+        btnsizer.Add(time_label,       1, wx.ALIGN_LEFT, 2)
+        btnsizer.Add(self.time_ctrl,   0, wx.ALIGN_LEFT, 2)
+        btnsizer.Add(self.time_choice, 0, wx.ALIGN_LEFT, 2)
 
         panel.SetAutoLayout(True)
         panel.SetSizer(btnsizer)
@@ -233,13 +233,13 @@ Matt Newville <newville@cars.uchicago.edu>
                  "Copy Plot Image to Clipboard", pp.canvas.Copy_to_Clipboard)
         mfile.AppendSeparator()
 
-       
+
         MenuItem(self, mfile, 'Page Setup...', 'Printer Setup',
                  pp.PrintSetup)
-                  
+
         MenuItem(self, mfile, 'Print Preview...', 'Print Preview',
                  pp.PrintPreview)
-                  
+
         MenuItem(self, mfile, "&Print\tCtrl+P", "Print Plot",
                  pp.Print)
         mfile.AppendSeparator()
@@ -247,11 +247,11 @@ Matt Newville <newville@cars.uchicago.edu>
         MenuItem(self, mfile, "E&xit\tCtrl+Q",
                  "Exit StripChart", self.onExit)
         self.Bind(wx.EVT_CLOSE, self.onExit)
-        
+
         mopt = wx.Menu()
         MenuItem(self, mopt, "Configure Plot\tCtrl+K",
                  "Configure Plot", pp.configure)
-        
+
         mopt.AppendSeparator()
         MenuItem(self, mopt, "Zoom Out\tCtrl+Z",
                  "Zoom out to full data range", pp.unzoom_all)
@@ -276,8 +276,8 @@ Matt Newville <newville@cars.uchicago.edu>
         pvchoice.SetSelection(0)
         logs = Choice(panel, choices=('No', 'Yes'), size=(50, -1))
         logs.SetSelection(0)
-        ymin = wx.TextCtrl(panel, -1, '', size=(75, -1))
-        ymax = wx.TextCtrl(panel, -1, '', size=(75, -1))
+        ymin = wx.TextCtrl(panel, -1, '', size=(75, -1), style=wx.TE_PROCESS_ENTER)
+        ymax = wx.TextCtrl(panel, -1, '', size=(75, -1), style=wx.TE_PROCESS_ENTER)
         desc = wx.TextCtrl(panel, -1, '', size=(150, -1))
         side = Choice(panel, choices=('left', 'right'),
                       action=self.onSide, size=(80, -1))
@@ -544,7 +544,7 @@ Matt Newville <newville@cars.uchicago.edu>
         for pvname, data in self.pvdata.items():
             if (tnow - data[-1][0]) > 15.0:
                 self.pvdata[pvname].append((tnow, data[-1][1]))
-            
+
         # set timescale sec/min/hour
         timescale = 1.0
         if self.time_choice.GetSelection() == 1:
@@ -631,8 +631,8 @@ Matt Newville <newville@cars.uchicago.edu>
                     try:
                         plot(tdat, ydat, drawstyle='steps-post', side=side,
                              ylog_scale=uselog, color=color,
-                             xmin=self.tmin, xmax=0, 
-                             show_legend=True, 
+                             xmin=self.tmin, xmax=0,
+                             show_legend=True,
                              xlabel=xlabel, label=desc)
                         self.plots_drawn[itrace] = True
                     except:
