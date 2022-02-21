@@ -5,7 +5,7 @@ import sys
 import time
 import os
 import shutil
-
+import cv2
 from threading import Thread
 from collections import namedtuple, OrderedDict
 from functools import partial
@@ -163,8 +163,11 @@ class MicroscopeFrame(wx.Frame):
             os.chdir(self.config.get('workdir', os.getcwd()))
         except:
             pass
-
-
+        self.videocam = None
+        vidcam = self.config.get('videocam', None)
+        if vidcam is not None:
+            self.videocam = cv2.VideoCapture(vidcam.strip())
+        
         ret = SelectWorkdir(self)
         if ret is None:
             self.Destroy()
@@ -688,24 +691,44 @@ class MicroscopeFrame(wx.Frame):
         img_folder = self.imgdir
         junk, img_file = os.path.split(thispos['image'])
         imgfile = os.path.join(img_folder, img_file)
+            
+        txt = ["<hr>", "<table><tr><td><a href='{imgfile:s}'> <img src='{imgfile:s}' width=350></a></td>"]
 
-        txt = []
-        html_fmt ="""<hr>
-    <table><tr><td><a href='%s'> <img src='%s' width=350></a></td>
-    <td><table><tr><td>Position:</td><td>%s</td><td>%s</td></tr>
-    <tr><td>Motor Name</td><td>PV Name</td><td>Value</td></tr>
-    %s
-    </table></td></tr></table>"""
+        if len(thispos.get('image2', '')) > 0:
+            junk, img2file = os.path.split(thispos['image2'])
+            img2file = os.path.join(img_folder, img2file)
+
+            txt.append("<td><a href='{img2file:s}'> <img src='{img2file:s}' width=350></a></td>")
+        txt.append("<td><table><tr><td>Position:</td><td>{position:s}</td><td>{tstamp:s}</td></tr>")
+        txt.append("<tr><td>Motor Name</td><td>PV Name</td><td>Value</td></tr>")
+
+                
         pos_fmt ="    <tr><td> %s </td><td> %s </td><td>   %f</td></tr>"
         for pvname, value in thispos['position'].items():
             desc = self.stages.get(pvname).get('desc', pvname)
             txt.append(pos_fmt % (desc, pvname, value))
 
+        txt.append("</table></td></tr></table>")
+        txt.append("")
+        txt = '\n'.join(txt)
         fout = open(self.htmllog, 'a')
-        fout.write(html_fmt % (imgfile, imgfile, name,
-                               thispos['timestamp'],  '\n'.join(txt)))
+        
+        fout.write(txt.format(imgfile=imgfile, img2file=img2file, position=name,
+                              tstamp=thispos['timestamp']))
         fout.close()
 
+
+    def save_videocam(self):
+        out = ''
+        if self.videocam is not None:
+            imgfile = '%s_hutch.jpg' % time.strftime('%b%d_%H%M%S')
+            fullpath = os.path.join(os.getcwd(), self.imgdir, imgfile)
+            status, image = self.videocam.read()
+            if status:
+                cv2.imwrite(fullpath, image)
+                out = fullpath
+        return out
+            
     def write_message(self, msg='', index=0):
         "write to status bar"
         self.statusbar.SetStatusText(msg, index)
