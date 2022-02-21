@@ -596,6 +596,7 @@ class PositionPanel(wx.Panel):
         self.safe_move = safe_move
         self.poslist_select = None
         self.image_display = None
+
         self.pos_name =  wx.TextCtrl(self, value="", size=(300, 25),
                                      style= wx.TE_PROCESS_ENTER)
         self.pos_name.Bind(wx.EVT_TEXT_ENTER, self.onSave)
@@ -668,7 +669,9 @@ class PositionPanel(wx.Panel):
         notes = json.dumps(imgdata)
         fullpath = os.path.join(os.getcwd(), imgfile)
 
+        im2_fullpath = self.viewer.save_videocam()
         thispos = self.positions[name] = {'image': fullpath,
+                                          'image2': im2_fullpath,
                                           'timestamp': time.strftime('%b %d %H:%M:%S'),
                                           'position': tmp_pos,
                                           'notes':  notes}
