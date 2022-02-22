@@ -163,11 +163,7 @@ class MicroscopeFrame(wx.Frame):
             os.chdir(self.config.get('workdir', os.getcwd()))
         except:
             pass
-        self.videocam = None
-        vidcam = self.config.get('videocam', None)
-        if vidcam is not None:
-            self.videocam = cv2.VideoCapture(vidcam.strip())
-        
+        self.videocam = self.config.get('videocam', None)
         ret = SelectWorkdir(self)
         if ret is None:
             self.Destroy()
@@ -721,12 +717,15 @@ class MicroscopeFrame(wx.Frame):
     def save_videocam(self):
         out = ''
         if self.videocam is not None:
+            cam = cv2.VideoCapture(self.videocam.strip())
+
             imgfile = '%s_hutch.jpg' % time.strftime('%b%d_%H%M%S')
             fullpath = os.path.join(os.getcwd(), self.imgdir, imgfile)
-            status, image = self.videocam.read()
+            status, image = cam.read()
             if status:
                 cv2.imwrite(fullpath, image)
                 out = fullpath
+            cam.release()
         return out
             
     def write_message(self, msg='', index=0):
