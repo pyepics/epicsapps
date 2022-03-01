@@ -129,8 +129,14 @@ class ControlPanel(wx.Panel):
 
         # print 'Group Panel ', group, show
         tweaklist = make_steps(precision=precision, maxstep=maxstep)
-        if group.lower().startswith('theta'):
-            tweaklist.extend([10, 20, 30, 45, 90, 180])
+        gname = group.lower()
+        is_angle = False
+        for aname in ('theta', 'chi', 'omega', 'phi', 'rota'):
+            if aname in gname:
+                is_angle = True
+                
+        if is_angle:
+            tweaklist([0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 45, 90, 180])
 
         init_tweak = {'Focus': 5, 'Theta': 8}.get(group, 6)
 
