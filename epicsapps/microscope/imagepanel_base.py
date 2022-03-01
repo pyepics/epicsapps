@@ -25,33 +25,33 @@ except ImportError:
 class JpegServer(object):
     def __init__(self, port=17166, delay=0.5):
         self.delay = delay 
+        self.run = True
         ctx = zmq.Context()
         self.socket = ctx.socket(zmq.REP)
         self.socket.setsockopt(zmq.SNDTIMEO, 500)
+        self.socket.setsockopt(zmq.RCVTIMEO, 500)
         self.socket.setsockopt(zmq.LINGER, 0)
         self.socket.setsockopt(zmq.CONNECT_TIMEOUT, 500)
         self.socket.bind("tcp://*:%d" % port)
         self.data = None
 
+
     def serve(self):
-        print("Jpeg Serve ")
-        while True:
+        while self.run:
             try:
                 message = self.socket.recv()
                 message = message.decode('utf-8')
                 if not message.startswith('send image'):
                     continue
             except:
-                print(" message not decoded" )
                 continue
             
             try:
                 ncols, nrows, nx = self.data.shape
             except:
-                time.sleep(2)
+                time.sleep(1)
                 continue
             tmp = io.BytesIO()
-
             Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG', quality=70)
 
             tmp.seek(0)
@@ -59,10 +59,10 @@ class JpegServer(object):
             # print("Publish Image ",  len(bindat), self.delay, time.time())   
             self.socket.send(b'jpeg:%s' % bindat) 
             time.sleep(self.delay)
-        print("JPEg Serve is done")
-        
+        print("Jpeg Serve is done")
+       
     def stop(self):
-        self.socket.term()
+        self.run = False
 
 class EpicsArrayServer(object):
     """push to simple epics array -- areadetector like but much simpler"""
@@ -111,7 +111,6 @@ class EpicsArrayServer(object):
             # self.ad_img.ArrayData  = d
             self.ad_img.PublishTStamp = time.time()
             self.ad_img.UniqueId_RBV += 1
-
 
     def stop(self):
         pass
@@ -197,7 +196,6 @@ class ImagePanel_Base(wx.Panel):
         self.build_popupmenu()
 
         self.publisher = None
-        print("Create Image Publisher ", publish_type, publish_addr)
         if publish_type is not None:
             print("Create Image Publisher ", publish_type, publish_addr)
             self.create_publisher(publish_type, publish_addr,

@@ -922,10 +922,22 @@ class MicroscopeFrame(wx.Frame):
             self.config['workdir'] = os.path.abspath(os.getcwd())
             self.configfile.write(config=self.config)
             self.imgpanel.Stop()
+            publisher = getattr(self.imgpanel, 'publisher', None)
+            if publisher is not None:
+                publisher.stop()
+            time.sleep(1)
+            pub_thread = getattr(self.imgpanel, 'pub_thread', None)
+            if pub_thread is not None:
+                del pub_thread
+
             try:
                 self.overlayframe.Destroy()
             except:
                 pass
+
+
+
+            
             self.Destroy()
 
     def onExportPositions(self, event=None):
