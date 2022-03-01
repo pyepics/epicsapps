@@ -136,7 +136,7 @@ class ControlPanel(wx.Panel):
                 is_angle = True
                 
         if is_angle:
-            tweaklist([0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 45, 90, 180])
+            tweaklist = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 45, 90, 180]
 
         init_tweak = {'Focus': 5, 'Theta': 8}.get(group, 6)
 
