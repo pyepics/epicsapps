@@ -428,9 +428,9 @@ class ConfPanel_Base(wx.Panel):
         self.xhair_cb = xhair_cb
 
         self.wids = wids = {}
-        self.sizer = wx.GridBagSizer(10, 4)
-        self.sizer.SetVGap(3)
-        self.sizer.SetHGap(5)
+        self.sizer = wx.GridBagSizer(4, 4)
+        self.sizer.SetVGap(4)
+        self.sizer.SetHGap(4)
 
         self.img_size  = self.txt(' ', size=140)
         self.img_size_shown = False
@@ -473,8 +473,7 @@ class ConfPanel_Base(wx.Panel):
 
             sizer.Add(self.txt('Lamp Intensity:'), (row, 0), (1, 1), wx.ALIGN_LEFT)
             sizer.Add(self.lampval,                (row, 1), (1, 2), wx.ALIGN_LEFT)
-
-        return row +1
+        return row
 
     # @EpicsFunction
     def onLampVal(self, evt=None):

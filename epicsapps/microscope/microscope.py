@@ -253,24 +253,23 @@ class MicroscopeFrame(wx.Frame):
         zpanel = wx.Panel(ppanel)
         zlab1 = wx.StaticText(zpanel, label='ZoomBox size (\u03bCm):',
                               size=(150, -1), style=txtstyle)
-        zlab2 = wx.StaticText(zpanel, label='ZoomBox Sharpness:',
-                              size=(150, -1), style=txtstyle)
-        zsharp = wx.StaticText(zpanel, label='=',
-                               size=(100, -1), style=txtstyle)
+        # zlab2 = wx.StaticText(zpanel, label='ZoomBox Sharpness:',
+        #                       size=(150, -1), style=txtstyle)
+        # zsharp = wx.StaticText(zpanel, label='=',
+        #                        size=(100, -1), style=txtstyle)
         self.zoomsize = FloatSpin(zpanel, value=150, min_val=5, increment=5,
                                   action=self.onZoomSize,
                                 size=(80, -1), style=txtstyle)
         self.imgpanel.zoompanel = ZoomPanel(zpanel, imgsize=150,
                                             size=(275, 275),
-                                            sharpness_label=zsharp,
+                                            # sharpness_label=zsharp,
                                             **opts)
         zsizer = wx.GridBagSizer(2, 2)
         zsizer.Add(zlab1,         (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
         zsizer.Add(self.zoomsize, (0, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        zsizer.Add(zlab2,         (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        zsizer.Add(zsharp,        (1, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        zsizer.Add(self.imgpanel.zoompanel, (2, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
-        zsizer.Add((50, 50),      (3, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
+        # zsizer.Add(zlab2,         (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        # zsizer.Add(zsharp,        (2, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(self.imgpanel.zoompanel, (1, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
         zpanel.SetSizer(zsizer)
         zsizer.Fit(zpanel)
 
@@ -279,8 +278,8 @@ class MicroscopeFrame(wx.Frame):
             msizer = wx.GridBagSizer(2, 2)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), LEFT_TOP, 1)
             msizer.Add(self.confpanel, (1, 0), (1, 1), LEFT_TOP, 1)
-            msizer.Add((10, 10),       (2, 0), (1, 1), ALL_EXP, 1)
-            msizer.Add(zpanel,         (3, 0), (1, 1), ALL_EXP, 1)
+            # msizer.Add((1, 1),         (2, 0), (1, 1), ALL_EXP, 1)
+            msizer.Add(zpanel,         (2, 0), (1, 1), LEFT_TOP, 1)
             msizer.Add(self.pospanel,  (0, 1), (5, 1), ALL_EXP, 1)
             self.pospanel.SetMinSize((275, 1000))
 
