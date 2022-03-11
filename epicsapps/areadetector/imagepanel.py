@@ -10,7 +10,12 @@ from epics import PV, Device, poll
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 from wxutils import MenuItem
 
-PIXEL_FMT = "Pixel (%d, %d) Intensity=%.1f"
+PIXEL_FMT  = "Pixel (%d, %d) Intensity=%.1f"
+MAX_INT32  = 2**32
+NMAX_INT32 = MAX_INT32 - 2**14
+
+MAX_INT16  = 2**16
+NMAX_INT16 = MAX_IN16 - 32
 
 class ThumbNailImagePanel(wx.Panel):
     def __init__(self, parent, imgsize=50, size=(200, 200),
@@ -223,6 +228,7 @@ class ADMonoImagePanel(wx.Panel):
         if data is not None:
             w, h = self.GetImageSize()
             data = data.reshape((h, w))
+
             if self.flipv:
                 data = data[::-1, :]
             if self.fliph:
@@ -234,6 +240,12 @@ class ADMonoImagePanel(wx.Panel):
             elif self.rot90 == 3:
                 data = data[::-1, ::-1].transpose()
 
+            maxval = data.max()
+            if maxval > NMAX_INT32:
+                data[np.where(data>NMAX_IN32)] = -1
+            elif (maxval > NMAX_INT16 and maxval < MAX_INT16 + 15): # data in 16-bit
+                data[np.where(data>NMAX_INT16)] = -1
+            data[np.where(data<-1)] = -1
         poll()
         return data
 
