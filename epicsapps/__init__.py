@@ -1,11 +1,8 @@
 #!/usr/bin/env python
 
+from . import instruments, microscope, areadetector, stripchart
 from .ionchamber import start_ionchamber
-try:
-    from . import instruments, microscope, areadetector, stripchart
-    from .apps import run_epicsapps
-except:
-    pass
+from .apps import run_epicsapps
 
 from ._version import get_versions
 __version__ = get_versions()['version']
