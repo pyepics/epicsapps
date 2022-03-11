@@ -15,7 +15,7 @@ MAX_INT32  = 2**32
 NMAX_INT32 = MAX_INT32 - 2**14
 
 MAX_INT16  = 2**16
-NMAX_INT16 = MAX_IN16 - 32
+NMAX_INT16 = MAX_INT16 - 32
 
 class ThumbNailImagePanel(wx.Panel):
     def __init__(self, parent, imgsize=50, size=(200, 200),
@@ -114,7 +114,6 @@ class ADMonoImagePanel(wx.Panel):
                  contrast_level=0, size=(600, 600), **kws):
 
         super(ADMonoImagePanel, self).__init__(parent, -1, size=size)
-
         self.drawing = False
         self.adcam = None
         self.image_id = -1
@@ -241,10 +240,13 @@ class ADMonoImagePanel(wx.Panel):
                 data = data[::-1, ::-1].transpose()
 
             maxval = data.max()
+
             if maxval > NMAX_INT32:
-                data[np.where(data>NMAX_IN32)] = -1
+                data[np.where(data>NMAX_INT32)] = -1
+                # print("data is 32 bit")                
             elif (maxval > NMAX_INT16 and maxval < MAX_INT16 + 15): # data in 16-bit
                 data[np.where(data>NMAX_INT16)] = -1
+                # print("data is 16 bit")
             data[np.where(data<-1)] = -1
         poll()
         return data
@@ -258,6 +260,7 @@ class ADMonoImagePanel(wx.Panel):
         """
         data = self.GrabNumpyImage()
         if data is None:
+            print("no data")
             return
         self.capture_times.append(time.time())
         self.data = data
