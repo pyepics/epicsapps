@@ -271,7 +271,8 @@ class PositionModel(dv.DataViewIndexListModel):
                 erase = self.posvals[pos]
             self.data.append([pos, erase])
             self.posvals[pos] = erase
-        self.Reset(len(self.data))
+        if len(self.data) > 0:
+            self.Reset(len(self.data))
 
     def select_all(self, erase=True):
         for posname in self.posvals:
@@ -293,15 +294,21 @@ class PositionModel(dv.DataViewIndexListModel):
         return "string"
 
     def GetValueByRow(self, row, col):
-        return self.data[row][col]
+        try:
+            return self.data[row][col]
+        except:
+            return None
 
     def SetValueByRow(self, value, row, col):
         self.data[row][col] = value
         return True
 
     def GetColumnCount(self):
-        return len(self.data[0])
-
+        try:
+            return len(self.data[0])
+        except:
+            return 0
+        
     def GetCount(self):
         return len(self.data)
 
@@ -394,7 +401,8 @@ class EraseManyPositionsFrame(wx.Frame) :
         mainsizer.Add(self.dvc, 1, LEFT|wx.GROW, 1)
 
         pack(self, mainsizer)
-        self.dvc.EnsureVisible(self.model.GetItem(0))
+        if len(self.model.data) > 0:
+            self.dvc.EnsureVisible(self.model.GetItem(0))
         self.Bind(wx.EVT_CLOSE, self.onClose)
         self.Show()
         self.Raise()
@@ -409,7 +417,7 @@ class EraseManyPositionsFrame(wx.Frame) :
         for posname, erase in reversed(self.model.data):
             if erase:
                 self.instdb.remove_position(self.instname, posname)
-        wx.CallAfter(self.update)
+        self.update()
             
     def onSelAll(self, event=None):
         self.model.select_all(True)
@@ -424,9 +432,15 @@ class EraseManyPositionsFrame(wx.Frame) :
     def update(self):
         self.model.read_data()
         self.Refresh()
-        self.dvc.EnsureVisible(self.model.GetItem(0))
+        item0 = None
+        try:
+            item0 = self.model.GetItem(0)
+        except:
+            print("Could not get any items")
+        if item0 is not None:
+            self.dvc.EnsureVisible(self.model.GetItem(0))
 
-        
+            
 class TransferPositionsDialog(wx.Frame):
     """ transfer positions from offline microscope"""
     def __init__(self, offline, instname=None, instdb=None, parent=None):
