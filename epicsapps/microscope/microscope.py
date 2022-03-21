@@ -12,12 +12,9 @@ from functools import partial
 
 import base64
 import json
-try:
-    import matplotlib
-    matplotlib.use('WXAgg')
-    from wxmplot import PlotFrame
-except:
-    pass
+import matplotlib
+matplotlib.use('WXAgg')
+from wxmplot import PlotFrame
 
 from epics import caput, Motor
 from epics.wx import EpicsFunction
