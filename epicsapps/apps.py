@@ -10,10 +10,6 @@ from pyshortcuts.utils import get_homedir
 
 from .utils import get_configfolder
 
-from .stripchart import StripChartApp
-from .instruments import EpicsInstrumentApp
-from .microscope import MicroscopeApp
-from .areadetector import areaDetectorApp
 
 HAS_CONDA = os.path.exists(os.path.join(sys.prefix, 'conda-meta'))
 
@@ -105,18 +101,23 @@ APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
 
 def run_instruments(configfile=None, prompt=True):
     """Epics Instruments"""
+
+    from .instruments import EpicsInstrumentApp
     EpicsInstrumentApp(configfile=configfile, prompt=prompt).MainLoop()
 
 def run_samplemicroscope(configfile=None, prompt=True):
     """Sample Microscope"""
+    from .microscope import MicroscopeApp
     MicroscopeApp(configfile=configfile, prompt=prompt).MainLoop()
 
 def run_adviewer(configfile=None, prompt=False):
     """AD Viewer"""
+    from .areadetector import areaDetectorApp
     areaDetectorApp(configfile=configfile, prompt=prompt).MainLoop()
 
 def run_stripchart(configfile=None, prompt=False):
     """StripChart"""
+    from .stripchart import StripChartApp
     StripChartApp(configfile=configfile, prompt=prompt).MainLoop()
 
 ## main wrapper program
