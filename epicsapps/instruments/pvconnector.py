@@ -82,7 +82,7 @@ class EpicsPVList(object):
 
         if pvname in self.pvs:
             return
-        self.pvs[pvname] = epics.get_pv(pvname, form='native')
+        self.pvs[pvname] = epics.get_pv(pvname, form='native', timeout=2.0)
         self.in_progress[pvname] = (None, None, time.time())
         # print(" init_connect ", pvname, self.pvs[pvname])
         if is_motor:
@@ -102,7 +102,7 @@ class EpicsPVList(object):
             all += 1
             if not pv.connected:
                 unconn.append(name)
-            time.sleep(0.005)
+            time.sleep(0.002)
         print("%d unconnected PVs of %d total" % (len(unconn), all))
         s = ''
         for n in unconn:
@@ -131,7 +131,7 @@ class EpicsPVList(object):
         if pvname in self.pvs:
             return
         if pvname not in self.pvs:
-            self.pvs[pvname] = epics.get_pv(pvname, form='native')
+            self.pvs[pvname] = epics.get_pv(pvname, form='native', timeout=1.0)
             self.in_progress[pvname] = (wid, action, time.time())
 #         if is_motor:
 #             idot = pvname.find('.')
@@ -152,7 +152,7 @@ class EpicsPVList(object):
         """if a new epics PV has connected, run the requested action"""
 
         if pvname not in self.pvs:
-            self.pvs[pvname] = epics.get_pv(pvname, form='native')
+            self.pvs[pvname] = epics.get_pv(pvname, form='native', timeout=2.0)
         pv = self.pvs[pvname]
         if not self.pvs[pvname].connected:
             return
