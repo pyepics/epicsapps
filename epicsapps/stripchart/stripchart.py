@@ -20,6 +20,7 @@ from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
 
+from ..utils import SelectWorkdir, get_icon
 ICON_FILE = 'stripchart.ico'
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
@@ -143,7 +144,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.Fit()
 
         try:
-            self.SetIcon(wx.Icon(ICON_FILE, wx.BITMAP_TYPE_ICO))
+            self.SetIcon(wx.Icon(get_icon('stripchart'), wx.BITMAP_TYPE_ICO))            
         except:
             pass
 
@@ -208,7 +209,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.time_ctrl  = FloatCtrl(panel, value=-self.tmin, precision=2,
                                     size=(90, -1), action=self.onDisplayTimeVal)
-
+        
         btnsizer.Add(self.pause_btn,   0, wx.ALIGN_LEFT, 2)
         btnsizer.Add(self.resume_btn,  0, wx.ALIGN_LEFT, 2)
         btnsizer.Add(time_label,       1, wx.ALIGN_LEFT, 2)
@@ -377,7 +378,7 @@ Matt Newville <newville@cars.uchicago.edu>
                     self.pvlabels[ix].SetValue(desc)
                     new_shown = True
             self.needs_refresh = True
-
+            
     @DelayedEpicsCallback
     def onPVChange(self, pvname=None, value=None, timestamp=None, **kw):
         if timestamp is None:
@@ -398,10 +399,11 @@ Matt Newville <newville@cars.uchicago.edu>
                 pass
         # if row == 1:
         #    self.plotpanel.set_y2label('')
-        self.plotpanel.canvas.draw()
+        self.plotpanel.conf.set_viewlimits()
 
+        
     def onPVcolor(self, event=None, row=None, **kws):
-        print("Set Trace color ", row, event.GetValue())
+
         self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
                                             trace=row-1)
         self.needs_refresh = True
@@ -415,8 +417,8 @@ Matt Newville <newville@cars.uchicago.edu>
             new = -0.1
         if abs(new - self.tmin) > 1.e-3*max(new, self.tmin):
             new = new
-
         self.tmin = new
+
         self.plotpanel.axes.set_xlim(self.tmin, 0)
         try:
             for axes in self.plotpanel.fig.get_axes():
@@ -438,10 +440,11 @@ Matt Newville <newville@cars.uchicago.edu>
                 num = 3600.
             elif newval == 'minutes':
                 num = 60.0
-
+        
             self.timelabel = newval
             timeval = self.time_ctrl.GetValue()
             self.time_ctrl.SetValue(timeval * denom/num)
+            self.tmin = -timeval*denom
             self.plotpanel.set_xlabel('Elapsed Time (%s)' % self.timelabel)
         self.needs_refresh = True
 
@@ -543,6 +546,7 @@ Matt Newville <newville@cars.uchicago.edu>
         tnow = time.time()
         for pvname, data in self.pvdata.items():
             if (tnow - data[-1][0]) > 15.0:
+                print("Append Data at ", tnonw, data[-1])
                 self.pvdata[pvname].append((tnow, data[-1][1]))
 
         # set timescale sec/min/hour
@@ -561,10 +565,8 @@ Matt Newville <newville@cars.uchicago.edu>
         did_update = False
         left_axes = self.plotpanel.axes
         # right_axes = self.plotpanel.get_right_axes()
-
         for tracedata in self.get_current_traces():
             irow, pname, uselog, color, ymin, ymax, desc, xside = tracedata
-            # print("Trace: ", irow, pname, xside)
             if len(desc.strip() ) < 1:
                 desc = pname
             if pname not in self.pvdata:
@@ -586,10 +588,10 @@ Matt Newville <newville@cars.uchicago.edu>
             mask = where(tdat > self.tmin)
             if (len(mask[0]) < 2 or
                 ((abs(min(tdat)) / abs(1 -self.tmin)) > 0.1)):
-                data.append((time.time(), data[0][-1]))
+                # data.append((time.time(), data[0][-1]))
                 tdat = timescale*(array([i[0] for i in data]) - tnow)
                 mask = where(tdat > self.tmin)
-
+                
             i0 = mask[0][0]
             if i0 > 0:
                 i0 = i0-1
@@ -604,7 +606,8 @@ Matt Newville <newville@cars.uchicago.edu>
                 ymin = min(ydat)
             if ymax is None:
                 ymax = max(ydat)
-
+            # print(pvname, ymin, ymax, i0, i1)
+            # print(' -> ', ydat)
             # for more than 2 plots, scale to left hand axis
             if itrace ==  0:
                 span1 = (ymax-ymin, ymin)
@@ -641,7 +644,7 @@ Matt Newville <newville@cars.uchicago.edu>
                     try:
                         ppnl.update_line(itrace, tdat, ydat, draw=False,
                                          update_limits=False)
-                        # axes.set_ylim((ymin, ymax), emit=True)
+                        axes.set_ylim((ymin, ymax), emit=False)
                         did_update = True
                     except:
                         update_failed = True
@@ -650,9 +653,12 @@ Matt Newville <newville@cars.uchicago.edu>
                 else:
                     axes.set_yscale('linear')
 
-        self.plotpanel.set_title(time.strftime("%Y-%b-%d %H:%M:%S", time.localtime()))
+        snow = time.strftime("%Y-%b-%d %H:%M:%S", time.localtime())
+        self.plotpanel.set_title(snow, delay_draw=True)
+
         if did_update:
             self.plotpanel.canvas.draw()
+
         self.needs_refresh = update_failed
         return
 
