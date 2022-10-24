@@ -538,11 +538,13 @@ class TransferPositionsDialog(wx.Frame):
             idb = self.instdb
             uscope = idb.get_instrument(self.offline)
             sample = idb.get_instrument(self.instname)
+            print("sample   ", uscope, sample)
             uname = uscope.name.replace(' ', '_')
             sname = sample.name.replace(' ', '_')
             conf_name = "CoordTrans:%s:%s" % (uname, sname)
 
             conf = json.loads(idb.scandb.get_config(conf_name).notes)
+            print("Transfering positions from ", uscope, ' to ', sample)            
             source_pvs = conf['source']
             dest_pvs = conf['dest']
             rotmat = np.array(conf['rotmat'])
@@ -553,16 +555,22 @@ class TransferPositionsDialog(wx.Frame):
                     upos[pname]  = [v[pvn] for pvn in source_pvs]
 
             newnames = upos.keys()
+
             vals = np.ones((4, len(upos)))
             for i, pname in enumerate(newnames):
                 vals[0, i] = upos[pname][0]
                 vals[1, i] = upos[pname][1]
                 vals[2, i] = upos[pname][2]
 
+            # ignore potential problems with multiple OpenMP libraries -
+            # apparently some cameras have a static link to this?
+            os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
             pred = np.dot(rotmat, vals)
-
+            os.environ['KMP_DUPLICATE_LIB_OK'] = 'FALSE'
+            
             poslist = idb.get_positionlist(self.instname, reverse=True)
             saved_temp = None
+
             if len(poslist) < 1 and self.parent is not None:
                 saved_temp = '__tmp__'
                 if saved_temp in newnames:
@@ -586,8 +594,10 @@ class TransferPositionsDialog(wx.Frame):
                 spos[zpv] = pred[2, i] + zoffset
                 nlabel = '%s%s' % (pname, suff)
                 idb.save_position(self.instname, nlabel, spos)
+
             if saved_temp is not None:
                 self.parent.onErase(posname=saved_temp, query=False)
+
         self.Destroy()
 
     def onCancel(self, event=None):
