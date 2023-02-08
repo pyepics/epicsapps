@@ -15,46 +15,32 @@ It was originally written to replace and organize the multitude of similar MEDM
 screens that appear at many workstations using Epics.
 
 
-Dependencies, Installation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-This application needs pyepics, numpy, wxPython, and SQLAlchemy (available
-at `http://www.sqlalchemy.org/ <http://www.sqlalchemy.org/>`_).
-
-To install, use::
-   
-   python setup.py install
-
-from the Instruments folder.   A windows installer may be available. 
-
-
-Getting Started
-~~~~~~~~~~~~~~~~~~~~~~~
+Running Epics Instruments
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 To run Epics Instruments, use::
- 
-   python pyepics_instruments.py
+
+   epicsapps instruments
 
 
-or click on the icon.  
+or click on the icon.
 
 A small window to select an Epics Instrument File, like this
 
 .. image:: images/Inst_Startup.png
 
-If this is your first time using the application, choose a name, and hit
-return to start a new Instrument File.  The next time you run Epics
-Instruments, it should remember which files you've recently used, and
-present you with a drop-down list of Instrument Files.  Since all the
-definitions, positions, and settings are saved in a single file, restoring
-this file will recall the earlier session of instrument definitions and
-saved positions. 
+If this is your first time using the application, choose a name, and hit return
+to start a new Instrument File.  The next time you run Epics Instruments, it
+should remember which files you have recently used, and present you with a
+drop-down list of Instrument Files.  Since all the definitions, positions, and
+settings are saved in a single file, restoring this file will recall the
+earlier session of instrument definitions and saved positions.
 
 
 An Epics **Instrument** is a collection of PVs.  Each Instrument will also
 have a collection of **Positions**, which are just the locations of all the
 PVs in the instrument at the time the Position was saved.  Like a PV, each
-Instrument and each Position for an Instrument has a unique name.  
+Instrument and each Position for an Instrument has a unique name.
 
 
 Defining a New Instrument
@@ -85,7 +71,7 @@ The Instrument File
 All the information for definitions of your Instruments and their Positions
 are saved in a single file -- the Instruments file, with a default
 extension of '.ein' (Epics INstruments).   You can use many different
-Instrument Files for different domains of use. 
+Instrument Files for different domains of use.
 
 The Instrument File is an SQLite database file, and can be browsed and
 manipulated with external tools.  Of course, this can be a very efficient
@@ -93,6 +79,3 @@ way of corrupting the data, so do this with caution.  A further note of
 caution is to avoid having a single Instrument file open by multiple
 applications -- this can also cause corruption.  The Instrument files can
 be moved around and copied without problems.
-
-
- 

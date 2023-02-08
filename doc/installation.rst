@@ -1,6 +1,7 @@
 ====================================
-Installation and Gettnig Started
+Installation and Getting Started
 ====================================
+
 
 The `epicsapp` package can be installed with::
 
