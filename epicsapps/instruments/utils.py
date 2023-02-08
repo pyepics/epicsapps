@@ -127,9 +127,13 @@ class ConnectDialog(wx.Dialog):
         wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(750, 450),
                            title=title)
 
+        panel = GridPanel(self, ncols=5, nrows=6, pad=3,
+                          itemstyle=wx.ALIGN_LEFT)
+
+
         serverdef = 0 if server.startswith('sqlit') else 1
 
-        self.server = Choice(self, choices=('SQLite', 'Postgresql'),
+        self.server = Choice(panel, choices=('SQLite', 'Postgresql'),
                              default=serverdef, size=(200, -1),
                              action=self.onServer)
 
@@ -138,7 +142,7 @@ class ConnectDialog(wx.Dialog):
             for fname in recent_dbs:
                 if os.path.exists(fname):
                     flist.append(fname)
-        self.filebrowser = FileBrowser(self, size=(650, -1))
+        self.filebrowser = FileBrowser(panel, size=(650, -1))
         self.filebrowser.SetHistory(flist)
         self.filebrowser.SetLabel('File:')
         self.filebrowser.fileMask = EIN_WILDCARD
@@ -146,19 +150,16 @@ class ConnectDialog(wx.Dialog):
         if len(flist) > 0:
             self.filebrowser.SetValue(flist[0])
 
-        panel = GridPanel(self, ncols=5, nrows=6, pad=3,
-                          itemstyle=wx.ALIGN_LEFT)
-
-        panel.Add(SimpleText(self, ' Database Type:'), dcol=1, newrow=True)
+        panel.Add(SimpleText(panel, ' Database Type:'), dcol=1, newrow=True)
         panel.Add(self.server, dcol=3)
 
-        panel.Add(HLine(self, size=(400, -1)), dcol=5, newrow=True)
+        panel.Add(HLine(panel, size=(400, -1)), dcol=5, newrow=True)
 
-        panel.Add(SimpleText(self, ' SQLite database file'), dcol=2, newrow=True)
+        panel.Add(SimpleText(panel, ' SQLite database file'), dcol=2, newrow=True)
         panel.Add(self.filebrowser, dcol=3, newrow=True)
 
-        panel.Add(HLine(self, size=(400, -1)), dcol=5, newrow=True)
-        panel.Add(SimpleText(self, ' PostgresQL database connection'),
+        panel.Add(HLine(panel, size=(400, -1)), dcol=5, newrow=True)
+        panel.Add(SimpleText(panel, ' PostgresQL database connection'),
                   dcol=3, newrow=True)
 
         if dbname is None: dbname = ''
@@ -170,30 +171,30 @@ class ConnectDialog(wx.Dialog):
             user = ''
         if password is None:
             password = ''
-        self.dbname = wx.TextCtrl(self, -1, dbname, size=(300, -1))
-        self.host = wx.TextCtrl(self, -1, host, size=(300, -1))
-        self.port = wx.TextCtrl(self, -1, str(port), size=(300, -1))
-        self.user = wx.TextCtrl(self, -1, user, size=(300, -1))
-        self.password = wx.TextCtrl(self, -1, password, size=(300, -1),
+        self.dbname = wx.TextCtrl(panel, -1, dbname, size=(300, -1))
+        self.host = wx.TextCtrl(panel, -1, host, size=(300, -1))
+        self.port = wx.TextCtrl(panel, -1, str(port), size=(300, -1))
+        self.user = wx.TextCtrl(panel, -1, user, size=(300, -1))
+        self.password = wx.TextCtrl(panel, -1, password, size=(300, -1),
                                     style=wx.TE_PASSWORD)
 
-        panel.Add(SimpleText(self, ' Database Name:'), newrow=True)
+        panel.Add(SimpleText(panel, ' Database Name:'), newrow=True)
         panel.Add(self.dbname)
-        panel.Add(SimpleText(self, ' Host:'), newrow=True)
+        panel.Add(SimpleText(panel, ' Host:'), newrow=True)
         panel.Add(self.host)
-        panel.Add(SimpleText(self, ' Port:'), newrow=True)
+        panel.Add(SimpleText(panel, ' Port:'), newrow=True)
         panel.Add(self.port)
-        panel.Add(SimpleText(self, ' User:'), newrow=True)
+        panel.Add(SimpleText(panel, ' User:'), newrow=True)
         panel.Add(self.user)
-        panel.Add(SimpleText(self, ' Password:'), newrow=True)
+        panel.Add(SimpleText(panel, ' Password:'), newrow=True)
         panel.Add(self.password)
 
         btnsizer = wx.StdDialogButtonSizer()
-        btnsizer.AddButton(wx.Button(self, wx.ID_OK))
-        btnsizer.AddButton(wx.Button(self, wx.ID_CANCEL))
+        btnsizer.AddButton(wx.Button(panel, wx.ID_OK))
+        btnsizer.AddButton(wx.Button(panel, wx.ID_CANCEL))
         btnsizer.Realize()
 
-        panel.Add(HLine(self, size=(400, -1)), dcol=5, newrow=True)
+        panel.Add(HLine(panel, size=(400, -1)), dcol=5, newrow=True)
         panel.Add(btnsizer, dcol=3, newrow=True)
         panel.pack()
         self.onServer()
