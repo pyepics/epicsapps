@@ -1,101 +1,91 @@
 
+<!DOCTYPE html>
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Using Epics Motor Setup &mdash; Python Epics Applications</title>
-    
-    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
-        VERSION:     '1.0',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
-      };
-    </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Python Epics Applications" href="index.html" />
-    <link rel="next" title="XRF Collector" href="xrfcollect.html" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Using Epics Motor Setup &#8212; Python Epics Applications</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinxdoc.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Ion Chamber" href="ionchamber.html" />
     <link rel="prev" title="Using Epics Instruments" href="instrument.html" /> 
-  </head>
-  <body>
+  </head><body>
 <div style="background-color: #E4EAED; text-align: left; padding: 0px 0px 15px 15px">
  <h1> <a href="index.html">Epics Applications using PyEpics</a></h1>
 </div>
 
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
-          <a href="xrfcollect.html" title="XRF Collector"
+          <a href="ionchamber.html" title="Ion Chamber"
              accesskey="N">next</a> |</li>
         <li class="right" >
           <a href="instrument.html" title="Using Epics Instruments"
              accesskey="P">previous</a> |</li>
-   <li><a href="installation.html">download</a>|</li>
+   <li><a href="installation.html">Install</a>|</li>
    <li><a href="ad_display.html">AreaDetector</a>|</li>
-   <li><a href="stepscan.html">StepScan</a>|</li>
    <li><a href="stripchart.html">StripChart</a>|</li>
-   <li><a href="#">MotorSetup</a>|</li>
    <li><a href="instrument.html">Instruments</a>|</li>
+   <li><a href="#">MotorSetup</a>|</li>
    &nbsp;&nbsp;<li><a href="search.html">search</a></li>
- 
+
+        <li class="nav-item nav-item-this"><a href="">Using Epics Motor Setup</a></li> 
       </ul>
     </div>
 
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper">
-  <h4>Previous topic</h4>
-  <p class="topless"><a href="instrument.html"
-                        title="previous chapter">Using Epics Instruments</a></p>
-  <h4>Next topic</h4>
-  <p class="topless"><a href="xrfcollect.html"
-                        title="next chapter">XRF Collector</a></p>
-  <h3>This Page</h3>
-  <ul class="this-page-menu">
-    <li><a href="_sources/motorsetup.txt"
-           rel="nofollow">Show Source</a></li>
-  </ul>
-<div id="searchbox" style="display: none">
-  <h3>Quick search</h3>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="instrument.html"
+                          title="previous chapter">Using Epics Instruments</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="ionchamber.html"
+                          title="next chapter">Ion Chamber</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/motorsetup.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
+    </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
-  <div class="section" id="using-epics-motor-setup">
-<h1>Using Epics Motor Setup<a class="headerlink" href="#using-epics-motor-setup" title="Permalink to this headline">¶</a></h1>
+  <section id="using-epics-motor-setup">
+<h1>Using Epics Motor Setup<a class="headerlink" href="#using-epics-motor-setup" title="Permalink to this heading">¶</a></h1>
 <p>Epics Motor Setup is a fairly simple GUI application (using wxPython) for
 setting up Epics Motors.   A full configuration screen is shown for each
 motor, using a Notebook display:</p>
@@ -111,67 +101,66 @@ GSECARS can also use a GSE-wide database.</p>
 <p>To save the <strong>motors.template</strong> information, simply type Ctrl-T to copy the
 full template paragraph to the system clipboard, then copy into the
 appropriate file. A simple example is:</p>
-<div class="highlight-python"><pre>file "$(CARS)/CARSApp/Db/motor.db"
-{
-pattern
-{P,  M,  DTYP,  C,  S,  DESC,  EGU,  DIR,  VELO, VBAS, ACCL, BDST,
-BVEL, BACC, S    REV, UREV, PREC, DHLM, DLLM}
-# VAL=1.999519, OFF=0.799999, NTM=1
-{13IDE:, m1, "OMS VME58", 0, -1, "Upstream Y", mm, Pos, 0.200000, 0.005000, 1.00    0000, 0.000000, 0.200000, 0.200000, 400, 0.023813, 4, 50.00000    0, 0.000000}
-# VAL=2.001424, OFF=-1.000026, NTM=1
-{13IDE:, m2, "OMS VME58", 0, -1, "Inboard Y", mm, Pos, 0.200000, 0.005000, 1.000    000, 0.000000, 0.200000, 0.200000, 400, 0.023813, 4, 50.000000, 0.000000}
-# VAL=1.999519, OFF=1.069979, NTM=1
-{13IDE:, m3, "OMS VME58", 0, -1, "Outboard Y", mm, Pos, 0.200000, 0.005000, 1.000000, 0.000000, 0.200000, 0.200000, 400, 0.023813, 4, 50.000000, 0.000000}
-# VAL=11.035400, OFF=1.505489, NTM=1
-{13IDE:, m4, "OMS VME58", 0, -1, "Upstream X", mm, Pos, 0.500000, 0.005000, 0.500000, 0.000000, 0.500000, 0.200000, 400, -0.035278, 4, 23.494511, -52.000000}
-# VAL=38.084885, OFF=1.505479, NTM=1
-{13IDE:, m5, "OMS VME58", 0, -1, "Downstream X", mm, Pos, 0.500000, 0.005000, 0.500000, 0.000000, 0.500000, 0.200000, 400, 0.035278, 4, 41.000021, -75.000000}
-}</pre>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">file</span> <span class="s2">&quot;$(CARS)/CARSApp/Db/motor.db&quot;</span>
+<span class="p">{</span>
+<span class="n">pattern</span>
+<span class="p">{</span><span class="n">P</span><span class="p">,</span>  <span class="n">M</span><span class="p">,</span>  <span class="n">DTYP</span><span class="p">,</span>  <span class="n">C</span><span class="p">,</span>  <span class="n">S</span><span class="p">,</span>  <span class="n">DESC</span><span class="p">,</span>  <span class="n">EGU</span><span class="p">,</span>  <span class="n">DIR</span><span class="p">,</span>  <span class="n">VELO</span><span class="p">,</span> <span class="n">VBAS</span><span class="p">,</span> <span class="n">ACCL</span><span class="p">,</span> <span class="n">BDST</span><span class="p">,</span>
+<span class="n">BVEL</span><span class="p">,</span> <span class="n">BACC</span><span class="p">,</span> <span class="n">S</span>    <span class="n">REV</span><span class="p">,</span> <span class="n">UREV</span><span class="p">,</span> <span class="n">PREC</span><span class="p">,</span> <span class="n">DHLM</span><span class="p">,</span> <span class="n">DLLM</span><span class="p">}</span>
+<span class="c1"># VAL=1.999519, OFF=0.799999, NTM=1</span>
+<span class="p">{</span><span class="mi">13</span><span class="n">IDE</span><span class="p">:,</span> <span class="n">m1</span><span class="p">,</span> <span class="s2">&quot;OMS VME58&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Upstream Y&quot;</span><span class="p">,</span> <span class="n">mm</span><span class="p">,</span> <span class="n">Pos</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mf">0.005000</span><span class="p">,</span> <span class="mf">1.00</span>    <span class="mi">0000</span><span class="p">,</span> <span class="mf">0.000000</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mf">0.023813</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mf">50.00000</span>    <span class="mi">0</span><span class="p">,</span> <span class="mf">0.000000</span><span class="p">}</span>
+<span class="c1"># VAL=2.001424, OFF=-1.000026, NTM=1</span>
+<span class="p">{</span><span class="mi">13</span><span class="n">IDE</span><span class="p">:,</span> <span class="n">m2</span><span class="p">,</span> <span class="s2">&quot;OMS VME58&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Inboard Y&quot;</span><span class="p">,</span> <span class="n">mm</span><span class="p">,</span> <span class="n">Pos</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mf">0.005000</span><span class="p">,</span> <span class="mf">1.000</span>    <span class="mi">000</span><span class="p">,</span> <span class="mf">0.000000</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mf">0.023813</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mf">50.000000</span><span class="p">,</span> <span class="mf">0.000000</span><span class="p">}</span>
+<span class="c1"># VAL=1.999519, OFF=1.069979, NTM=1</span>
+<span class="p">{</span><span class="mi">13</span><span class="n">IDE</span><span class="p">:,</span> <span class="n">m3</span><span class="p">,</span> <span class="s2">&quot;OMS VME58&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Outboard Y&quot;</span><span class="p">,</span> <span class="n">mm</span><span class="p">,</span> <span class="n">Pos</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mf">0.005000</span><span class="p">,</span> <span class="mf">1.000000</span><span class="p">,</span> <span class="mf">0.000000</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mf">0.023813</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mf">50.000000</span><span class="p">,</span> <span class="mf">0.000000</span><span class="p">}</span>
+<span class="c1"># VAL=11.035400, OFF=1.505489, NTM=1</span>
+<span class="p">{</span><span class="mi">13</span><span class="n">IDE</span><span class="p">:,</span> <span class="n">m4</span><span class="p">,</span> <span class="s2">&quot;OMS VME58&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Upstream X&quot;</span><span class="p">,</span> <span class="n">mm</span><span class="p">,</span> <span class="n">Pos</span><span class="p">,</span> <span class="mf">0.500000</span><span class="p">,</span> <span class="mf">0.005000</span><span class="p">,</span> <span class="mf">0.500000</span><span class="p">,</span> <span class="mf">0.000000</span><span class="p">,</span> <span class="mf">0.500000</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.035278</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mf">23.494511</span><span class="p">,</span> <span class="o">-</span><span class="mf">52.000000</span><span class="p">}</span>
+<span class="c1"># VAL=38.084885, OFF=1.505479, NTM=1</span>
+<span class="p">{</span><span class="mi">13</span><span class="n">IDE</span><span class="p">:,</span> <span class="n">m5</span><span class="p">,</span> <span class="s2">&quot;OMS VME58&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;Downstream X&quot;</span><span class="p">,</span> <span class="n">mm</span><span class="p">,</span> <span class="n">Pos</span><span class="p">,</span> <span class="mf">0.500000</span><span class="p">,</span> <span class="mf">0.005000</span><span class="p">,</span> <span class="mf">0.500000</span><span class="p">,</span> <span class="mf">0.000000</span><span class="p">,</span> <span class="mf">0.500000</span><span class="p">,</span> <span class="mf">0.200000</span><span class="p">,</span> <span class="mi">400</span><span class="p">,</span> <span class="mf">0.035278</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mf">41.000021</span><span class="p">,</span> <span class="o">-</span><span class="mf">75.000000</span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
 </div>
 <p>A few things to note here are:</p>
 <blockquote>
 <div><ol class="arabic simple">
-<li>You may need to change &quot;$(CARS)/CARSApp/Db/motor.db&quot; to point to the correct location of the motor.db file.</li>
-<li>Though the motor &quot;device type&quot; and &quot;card&quot; are filled out, the &quot;slot&quot; is not available as a PV, and so is not filled out.</li>
-<li>The VAL (User Value), OFF (Dial Offset) and NTM field are saved for each motor as a comment.</li>
+<li><p>You may need to change “$(CARS)/CARSApp/Db/motor.db” to point to the correct location of the motor.db file.</p></li>
+<li><p>Though the motor “device type” and “card” are filled out, the “slot” is not available as a PV, and so is not filled out.</p></li>
+<li><p>The VAL (User Value), OFF (Dial Offset) and NTM field are saved for each motor as a comment.</p></li>
 </ol>
 </div></blockquote>
-</div>
+</section>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
-          <a href="xrfcollect.html" title="XRF Collector"
+          <a href="ionchamber.html" title="Ion Chamber"
              >next</a> |</li>
         <li class="right" >
           <a href="instrument.html" title="Using Epics Instruments"
              >previous</a> |</li>
-   <li><a href="installation.html">download</a>|</li>
+   <li><a href="installation.html">Install</a>|</li>
    <li><a href="ad_display.html">AreaDetector</a>|</li>
-   <li><a href="stepscan.html">StepScan</a>|</li>
    <li><a href="stripchart.html">StripChart</a>|</li>
-   <li><a href="#">MotorSetup</a>|</li>
    <li><a href="instrument.html">Instruments</a>|</li>
+   <li><a href="#">MotorSetup</a>|</li>
    &nbsp;&nbsp;<li><a href="search.html">search</a></li>
- 
+
+        <li class="nav-item nav-item-this"><a href="">Using Epics Motor Setup</a></li> 
       </ul>
     </div>
-    <div class="footer">
-        &copy; Copyright 2012, Matthew Newville.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2012, Matthew Newville.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
     </div>
   </body>
 </html>

@@ -1,62 +1,49 @@
 
+<!DOCTYPE html>
 
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-
-
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html lang="en">
   <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    
-    <title>Python Epics Applications &mdash; Python Epics Applications</title>
-    
-    <link rel="stylesheet" href="_static/sphinxdoc.css" type="text/css" />
-    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
-    
-    <script type="text/javascript">
-      var DOCUMENTATION_OPTIONS = {
-        URL_ROOT:    '',
-        VERSION:     '1.0',
-        COLLAPSE_INDEX: false,
-        FILE_SUFFIX: '.html',
-        HAS_SOURCE:  true
-      };
-    </script>
-    <script type="text/javascript" src="_static/jquery.js"></script>
-    <script type="text/javascript" src="_static/underscore.js"></script>
-    <script type="text/javascript" src="_static/doctools.js"></script>
-    <link rel="top" title="Python Epics Applications" href="#" />
-    <link rel="next" title="Overview" href="overview.html" /> 
-  </head>
-  <body>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>Python Epics Applications &#8212; Python Epics Applications</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinxdoc.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation and Getting Started" href="installation.html" /> 
+  </head><body>
 <div style="background-color: #E4EAED; text-align: left; padding: 0px 0px 15px 15px">
  <h1> <a href="#">Epics Applications using PyEpics</a></h1>
 </div>
 
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
-          <a href="overview.html" title="Overview"
+          <a href="installation.html" title="Installation and Getting Started"
              accesskey="N">next</a> |</li>
-   <li><a href="installation.html">download</a>|</li>
+   <li><a href="installation.html">Install</a>|</li>
    <li><a href="ad_display.html">AreaDetector</a>|</li>
-   <li><a href="stepscan.html">StepScan</a>|</li>
    <li><a href="stripchart.html">StripChart</a>|</li>
-   <li><a href="motorsetup.html">MotorSetup</a>|</li>
    <li><a href="instrument.html">Instruments</a>|</li>
+   <li><a href="motorsetup.html">MotorSetup</a>|</li>
    &nbsp;&nbsp;<li><a href="search.html">search</a></li>
- 
+
+        <li class="nav-item nav-item-this"><a href="">Python Epics Applications</a></li> 
       </ul>
     </div>
 
-      <div class="sphinxsidebar">
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
         <div class="sphinxsidebarwrapper"><h3>Download</h3>
 
 Stable Releases:
@@ -75,56 +62,49 @@ Development:
  PDF Format</a>
 <hr> 
 <p>
-<div id="searchbox" style="display: none">
-  <h3>Quick search</h3>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
-      <input type="text" name="q" />
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
-      <input type="hidden" name="check_keywords" value="yes" />
-      <input type="hidden" name="area" value="default" />
     </form>
-    <p class="searchtip" style="font-size: 90%">
-    Enter search terms or a module, class or function name.
-    </p>
+    </div>
 </div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
 
     <div class="document">
       <div class="documentwrapper">
         <div class="bodywrapper">
-          <div class="body">
+          <div class="body" role="main">
             
-  <div class="section" id="python-epics-applications">
-<h1>Python Epics Applications<a class="headerlink" href="#python-epics-applications" title="Permalink to this headline">¶</a></h1>
-<p>PyEpics Apps contains several Epics Applications written in python, using
-the pyepics module (see <a class="reference external" href="http://pyepics.github.com/pyepics/">http://pyepics.github.com/pyepics/</a>).  Many of these are GUI
-Application for interacting with Epics devices through Channel Access.  The
-programs here are meant to be useful as end-user applications, or at least
-as examples showing how one can build complex applications with
-PyEpics. Many of the applications here rely on wxPython, and some also rely
-on other 3rd party modules (such as Image and SQLAlchemy).</p>
+  <section id="python-epics-applications">
+<h1>Python Epics Applications<a class="headerlink" href="#python-epics-applications" title="Permalink to this heading">¶</a></h1>
+<p>PyEpics Apps contains several Epics Applications written in python, using the
+pyepics module (see <a class="reference external" href="https://pyepics.github.com/pyepics/">https://pyepics.github.com/pyepics/</a>).  Many of these are GUI Application
+for interacting with Epics devices through Channel Access.  The programs here
+are meant to be useful as end-user applications, or at least as examples
+showing how one can build complex applications with PyEpics. Many of the
+applications here rely on wxPython, and some also rely on other 3rd party
+modules (such as Image and SQLAlchemy).</p>
 <p>The list of applications should be expanding, but currently include:</p>
-<div class="section" id="areadetector-display">
-<h2>AreaDetector Display<a class="headerlink" href="#areadetector-display" title="Permalink to this headline">¶</a></h2>
+<section id="areadetector-display">
+<h2>AreaDetector Display<a class="headerlink" href="#areadetector-display" title="Permalink to this heading">¶</a></h2>
 <p>An application to control and view images from an Epics Area Detector.  The
 controls available in this viewer are minimal, but you can change mode,
 exposure time and frame rate, and start and stop the Area Detector.  The
 image can be manipulated by zooming, rotating, and so on.</p>
-</div>
-<div class="section" id="step-scan">
-<h2>Step Scan<a class="headerlink" href="#step-scan" title="Permalink to this headline">¶</a></h2>
-<p>A (work in progress!!) scanning program.</p>
-</div>
-<div class="section" id="strip-chart">
-<h2>Strip Chart<a class="headerlink" href="#strip-chart" title="Permalink to this headline">¶</a></h2>
-<p>A simple &quot;live plot&quot; of the recent history of a set of PV values, similar
+</section>
+<section id="strip-chart">
+<h2>Strip Chart<a class="headerlink" href="#strip-chart" title="Permalink to this heading">¶</a></h2>
+<p>A simple “live plot” of the recent history of a set of PV values, similar
 to the common Epics StripTool.  Time ranges and ranges for Y values can be
 changed, and data can be saved to plain text files.</p>
-</div>
-<div class="section" id="epics-instruments">
-<h2>Epics Instruments<a class="headerlink" href="#epics-instruments" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="epics-instruments">
+<h2>Epics Instruments<a class="headerlink" href="#epics-instruments" title="Permalink to this heading">¶</a></h2>
 <p>This application helps you organize PVs, by grouping them into instruments.
 Each instrument is a loose collection of PVs, but can have a set of named
 positions that you can tell it.  That is, you can save the current set of
@@ -133,108 +113,95 @@ values of each instrument, putting all or some of the PVs back to the saved
 values.   The Epics Instrument application organizes instruments with
 tabbed windows, so that you can have a compact view of many instruments,
 saving and restoring positions as you wish.</p>
-</div>
-<div class="section" id="sample-stage">
-<h2>Sample Stage<a class="headerlink" href="#sample-stage" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="sample-stage">
+<h2>Sample Stage<a class="headerlink" href="#sample-stage" title="Permalink to this heading">¶</a></h2>
 <p>A GSECARS-specific GUI for moving a set of motors for a sample stage,
 grabbing microscope images from a webcam, and saving named positions.</p>
-</div>
-<div class="section" id="motor-setup">
-<h2>Motor Setup<a class="headerlink" href="#motor-setup" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="motor-setup">
+<h2>Motor Setup<a class="headerlink" href="#motor-setup" title="Permalink to this heading">¶</a></h2>
 <p>An application for setting up and saving the configuration of Epics Motors.
 For each opened motor, a full setup screen is shown in a tabbed notebook
 display.  A paragraph for a Motors.template file can be saved for each
 motor, or copied to the system clipboard.  In addition, you can save and
-read &quot;known motor types&quot; to a database, which holds most of the motor
+read “known motor types” to a database, which holds most of the motor
 parameters.</p>
 <p>The Local version uses a local sqlite database to store and read the known
 motor types, while the GSE version (which works only at GSECARS, of course)
 connects to a mysql server on the GSECARS network to store are read the
 known motor types.</p>
-</div>
-<div class="section" id="ion-chamber">
-<h2>Ion Chamber<a class="headerlink" href="#ion-chamber" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="ion-chamber">
+<h2>Ion Chamber<a class="headerlink" href="#ion-chamber" title="Permalink to this heading">¶</a></h2>
 <p>This non-GUI application is synchrotron-beamline specific.  It reads
 several settings for the photo-current of an ion chamber and calculates
 absorbed and transmitted flux in photons/sec, and writes these back to PVs
 (an associated .db file and medm .adl file are provided).  The script runs
 in a loop, updating the flux values continuously.</p>
-</div>
-<div class="section" id="xrf-collector">
-<h2>XRF Collector<a class="headerlink" href="#xrf-collector" title="Permalink to this headline">¶</a></h2>
+</section>
+<section id="xrf-collector">
+<h2>XRF Collector<a class="headerlink" href="#xrf-collector" title="Permalink to this heading">¶</a></h2>
 <p>This non-GUI application interacts with a small epics database to save data
 from a multi-element fluorescence detector.  The script runs as a separate
 process, watching PVs and saving data from the detector on demand.
 Associated .db file and medm .adl file are provided.</p>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Overview</a></li>
-<li class="toctree-l1"><a class="reference internal" href="installation.html">Downloading and Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="installation.html#downloads">Downloads</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation and Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#getting-started">Getting Started</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="ad_display.html">Area Detector Display</a></li>
-<li class="toctree-l1"><a class="reference internal" href="stepscan.html">StepScan:  Epics Scans with Python</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_install.html">StepScan Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_concepts.html">Step Scan Concepts</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_usage.html">Using StepScan</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_spec.html">Spec-like Scans with StepScan</a></li>
-<li class="toctree-l2"><a class="reference internal" href="stepscan_gui.html">Using the StepScan GUI</a></li>
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="stripchart.html">Strip Chart Display</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="stripchart.html#dependencies-installation">Dependencies, Installation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="stripchart.html#running-stripchart">Running  Stripchart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="stripchart.html#usage">Usage</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="instrument.html">Using Epics Instruments</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="instrument.html#dependencies-installation">Dependencies, Installation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="instrument.html#getting-started">Getting Started</a></li>
+<li class="toctree-l2"><a class="reference internal" href="instrument.html#running-epics-instruments">Running Epics Instruments</a></li>
 <li class="toctree-l2"><a class="reference internal" href="instrument.html#defining-a-new-instrument">Defining a New Instrument</a></li>
 <li class="toctree-l2"><a class="reference internal" href="instrument.html#editing-an-exisiting-instrument">Editing an Exisiting Instrument</a></li>
 <li class="toctree-l2"><a class="reference internal" href="instrument.html#the-instrument-file">The Instrument File</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="motorsetup.html">Using Epics Motor Setup</a></li>
-<li class="toctree-l1"><a class="reference internal" href="xrfcollect.html">XRF Collector</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ionchamber.html">Ion Chamber</a></li>
+<li class="toctree-l1"><a class="reference internal" href="xrfcollect.html">XRF Collector</a></li>
 </ul>
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
+            <div class="clearer"></div>
           </div>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related">
+    <div class="related" role="navigation" aria-label="related navigation">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="py-modindex.html" title="Python Module Index"
-             >modules</a> |</li>
-        <li class="right" >
-          <a href="overview.html" title="Overview"
+          <a href="installation.html" title="Installation and Getting Started"
              >next</a> |</li>
-   <li><a href="installation.html">download</a>|</li>
+   <li><a href="installation.html">Install</a>|</li>
    <li><a href="ad_display.html">AreaDetector</a>|</li>
-   <li><a href="stepscan.html">StepScan</a>|</li>
    <li><a href="stripchart.html">StripChart</a>|</li>
-   <li><a href="motorsetup.html">MotorSetup</a>|</li>
    <li><a href="instrument.html">Instruments</a>|</li>
+   <li><a href="motorsetup.html">MotorSetup</a>|</li>
    &nbsp;&nbsp;<li><a href="search.html">search</a></li>
- 
+
+        <li class="nav-item nav-item-this"><a href="">Python Epics Applications</a></li> 
       </ul>
     </div>
-    <div class="footer">
-        &copy; Copyright 2012, Matthew Newville.
-      Created using <a href="http://sphinx.pocoo.org/">Sphinx</a> 1.1.3.
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2012, Matthew Newville.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
     </div>
   </body>
 </html>
