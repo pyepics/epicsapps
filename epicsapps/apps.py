@@ -93,7 +93,7 @@ class EpicsApp:
 
 APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('Sample Microscope', 'microscope', icon='microscope'),
-        EpicsApp('areaDetector Viewer', 'adviewer', icon='camera'),
+        EpicsApp('areaDetector Viewer', 'adviewer', icon='areadetector'),
         EpicsApp('StripChart',       'stripchart', icon='stripchart'),
         )
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
