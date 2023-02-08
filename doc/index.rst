@@ -3,14 +3,14 @@
 Python Epics Applications
 ================================
 
-PyEpics Apps contains several Epics Applications written in python, using
-the pyepics module (see `http://pyepics.github.com/pyepics/
-<http://pyepics.github.com/pyepics/>`_).  Many of these are GUI
-Application for interacting with Epics devices through Channel Access.  The
-programs here are meant to be useful as end-user applications, or at least
-as examples showing how one can build complex applications with
-PyEpics. Many of the applications here rely on wxPython, and some also rely
-on other 3rd party modules (such as Image and SQLAlchemy).
+PyEpics Apps contains several Epics Applications written in python, using the
+pyepics module (see `https://pyepics.github.com/pyepics/
+<https://pyepics.github.com/pyepics/>`_).  Many of these are GUI Application
+for interacting with Epics devices through Channel Access.  The programs here
+are meant to be useful as end-user applications, or at least as examples
+showing how one can build complex applications with PyEpics. Many of the
+applications here rely on wxPython, and some also rely on other 3rd party
+modules (such as Image and SQLAlchemy).
 
 The list of applications should be expanding, but currently include:
 
@@ -21,12 +21,6 @@ An application to control and view images from an Epics Area Detector.  The
 controls available in this viewer are minimal, but you can change mode,
 exposure time and frame rate, and start and stop the Area Detector.  The
 image can be manipulated by zooming, rotating, and so on.
-
-
-Step Scan
-~~~~~~~~~~~~~~
-
-A (work in progress!!) scanning program.
 
 
 Strip Chart
@@ -48,7 +42,6 @@ values of each instrument, putting all or some of the PVs back to the saved
 values.   The Epics Instrument application organizes instruments with
 tabbed windows, so that you can have a compact view of many instruments,
 saving and restoring positions as you wish.
-
 
 
 Sample Stage
@@ -93,16 +86,10 @@ Associated .db file and medm .adl file are provided.
 .. toctree::
    :maxdepth: 2
 
-   overview
    installation
    ad_display
-   stepscan
    stripchart
    instrument
    motorsetup
-   xrfcollect
    ionchamber
-
-
-
-
+   xrfcollect

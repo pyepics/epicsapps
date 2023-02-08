@@ -8,35 +8,23 @@ zooming, updating the plotted time range, saving figures as high-quality
 PNGs, and saving data to ASCII files.  Stripchart is inspired somewhat by the
 classic Epics Stripchart application written with X/Motif, but has many differences.
 
-Dependencies, Installation
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-This application needs pyepics, numpy, matplotlib, and wxPython. 
-
-It also the wxmplot plotting library, which can be found at
-`http://pypi.python.org/pypi/wxmplot/
-<http://pypi.python.org/pypi/wxmplot/>`_, with development versions at
-`http://github.com/newville/wxmplot/
-<http://github.com/newville/wxmplot/>`_ and may be installed wth::
-
-   easy_install -U wxmplot
-
-
-Installation of the striphart can be done with::
-
-   python setup.py install
-
 
 Running  Stripchart
 ~~~~~~~~~~~~~~~~~~~~~~
 
-To run this application, simply run stripchart.py at the command line::
+To run the Stripchart application from the command line, use::
 
-    python pyepics_stripchart.py
+    epicsapps stripchart
 
 
-and enter the base name of the PVs to follow.  A sample display would look
-like this:
+and enter the base name of the PVs to follow.  Running
+
+    epicsapps -m
+
+will create a folder on your Desktop called "Epics Apps" with a runnable link for the stripchart application.
+
+
+A sample display would look like this:
 
 .. image:: images/StripChart_Basic.png
 
@@ -52,11 +40,8 @@ and the contents and location of a plot legend.  Text for titles, axes
 labels, and legend can include latex strings for math/Greek characters.
 
 From the main plot, Ctrl-C works to copy to the system clipboard, and
-Ctrl-P will open a print dialog. 
+Ctrl-P will open a print dialog.
 
 
 
 .. image:: images/StripChart_Config.png
-
-
-
