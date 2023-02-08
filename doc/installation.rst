@@ -3,7 +3,7 @@ Installation and Getting Started
 ====================================
 
 
-The `epicsapp` package can be installed with::
+The latest version of the `epicsapps` package is |release|,  which can be installed with::
 
      pip install epicsapps
 
