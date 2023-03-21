@@ -7,14 +7,13 @@ import json
 import numpy as np
 import time
 from datetime import datetime
-from collections import OrderedDict
 from epics import caput, get_pv
 from epics.wx import EpicsFunction
 
 from functools import partial
 
-from wxutils import (SimpleText, FloatCtrl, MenuItem, Popup, pack, Button, GUIColors,
-                     FRAMESTYLE, LEFT, CEN)
+from wxutils import (SimpleText, FloatCtrl, MenuItem, Popup, pack,
+                     Button, GUIColors, FRAMESTYLE, LEFT, CEN)
 DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE
 
 def add_button(parent, label, size=(-1, -1), action=None):
@@ -167,7 +166,6 @@ def make_uscope_rotation(scandb,
                  rotmat=mat_ss2us.tolist())
     print("Saving Calibration %s" %  conf_ss2us)
     scandb.set_config(conf_ss2us, json.dumps(ss2us))
-    scandb.commit()
 
 ######################
 
@@ -791,7 +789,6 @@ class PositionPanel(wx.Panel):
             posvals[pvname] =  val
         
 
-        print("onGo Pos ", pos, self.safe_move)
         orig, safe = {}, {}
         if self.safe_move is not None:
             for spv in self.safe_move:
@@ -830,7 +827,7 @@ class PositionPanel(wx.Panel):
 
         pvdata = {}
         for pvname, value in posvals.items():
-            save_val = value
+            save_val = str(value)
             curr_val = get_pv(pvname).get(as_string=True)
             desc = get_pvdesc(pvname)
             pvdata[pvname] = (desc, save_val, curr_val)
