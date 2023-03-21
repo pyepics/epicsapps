@@ -51,7 +51,7 @@ def read_xyz(instdb, name, xyz_stages):
     read XYZ Positions from instrument
     returns dictionary of PositionName: (x, y, z)
     """
-    out = OrderedDict()
+    out = {}
     for pname in instdb.get_positionlist(name, reverse=True):
         v =  instdb.get_position_vals(name, pname)
         out[pname]  = [v[p] for p in xyz_stages]
@@ -454,7 +454,7 @@ class TransferPositionsDialog(wx.Frame):
     def build_dialog(self):
         positions  = self.instdb.get_positionlist(self.offline, reverse=True)
         panel = scrolled.ScrolledPanel(self)
-        self.checkboxes = OrderedDict()
+        self.checkboxes = {}
         sizer = wx.GridBagSizer(len(positions)+5, 4)
         sizer.SetVGap(2)
         sizer.SetHGap(3)
@@ -548,7 +548,7 @@ class TransferPositionsDialog(wx.Frame):
             source_pvs = conf['source']
             dest_pvs = conf['dest']
             rotmat = np.array(conf['rotmat'])
-            upos = OrderedDict()
+            upos = {}
             for pname, cbox in self.checkboxes.items():
                 if cbox.IsChecked():
                     v =  idb.get_position_vals(self.offline, pname)
@@ -580,7 +580,7 @@ class TransferPositionsDialog(wx.Frame):
                 poslist = idb.get_positionlist(self.instname, reverse=True)
 
             pos0 = idb.get_position_vals(self.instname, poslist[0])
-            spos = OrderedDict()
+            spos = {}
             for pvname in sorted(pos0.keys()):
                 spos[pvname] = 0.000
 
@@ -618,7 +618,6 @@ class PositionPanel(wx.Panel):
         self.offline_instrument = offline_instrument
         self.offline_xyzmotors = offline_xyzmotors
         self.safe_move = safe_move
-        self.poslist_select = None
         self.image_display = None
 
         self.pos_name =  wx.TextCtrl(self, value="", size=(300, 25),
@@ -781,13 +780,18 @@ class PositionPanel(wx.Panel):
             return
 
         instname = self.instrument
-        # pre-load to make sure the PVs are connected
-        for pv in self.instdb.get_instrument(instname).pv:
-            pvname = normalize_pvname(pv.name)
-            get_pv(pvname)
-            get_pvdesc(pvname)
 
         pos = self.instdb.get_position(instname, posname)
+        # pre-load to make sure the PVs are connected
+        posvals = {}
+        for name, val in self.instdb.get_position_vals(instname, posname).items():
+            pvname = normalize_pvname(name)
+            get_pv(pvname)
+            get_pvdesc(pvname)
+            posvals[pvname] =  val
+        
+
+        print("onGo Pos ", pos, self.safe_move)
         orig, safe = {}, {}
         if self.safe_move is not None:
             for spv in self.safe_move:
@@ -825,13 +829,11 @@ class PositionPanel(wx.Panel):
                     get_pv(pvname).put(sval, wait=True)                
 
         pvdata = {}
-        for pvpos in pos.pv:
-            pvname = normalize_pvname(pvpos.pv.name)
-            save_val = pvpos.value
+        for pvname, value in posvals.items():
+            save_val = value
             curr_val = get_pv(pvname).get(as_string=True)
             desc = get_pvdesc(pvname)
             pvdata[pvname] = (desc, save_val, curr_val)
-
 
         if self.viewer.v_move:
             md = MoveToDialog(self, pvdata, instname, posname, callback=DoMove)
@@ -951,12 +953,9 @@ class PositionPanel(wx.Panel):
         self.last_refresh = 0
 
     def onTimer(self, evt=None):
-        if self.poslist_select is None:
-            inst = self.instdb.get_instrument(self.instrument)
-            cls, tab = self.instdb.scandb.get_table('position')
-
-            self.poslist_select = tab.select().where(tab.c.instrument_id==inst.id)
-        npos = len(self.poslist_select.execute().fetchall())
+        inst = self.instdb.get_instrument(self.instrument)
+        poslist = self.scandb.get_rows('position', where={'instrument_id':inst.id})
+        npos = len(poslist)
         now = time.time()
         if (npos != len(self.posnames) or (now - self.last_refresh) > 900.0):
             self.get_positions_from_db()
@@ -965,13 +964,13 @@ class PositionPanel(wx.Panel):
     def get_positions_from_db(self):
         if self.instdb is None:
             return
-        positions = OrderedDict()
+        positions = {}
         iname = self.instrument
         posnames =  self.instdb.get_positionlist(iname, reverse=True)
         self.posnames = posnames
+        self.instdb.make_pvmap()
         for pname in posnames:
             thispos = self.instdb.get_position(iname, pname)
-            # print(pname, thispos)
             image = ''
             notes = {}
             if thispos.modify_time is None:
@@ -981,9 +980,9 @@ class PositionPanel(wx.Panel):
                 image = thispos.image
             if thispos.notes is not None:
                 notes = thispos.notes
-            pdat = OrderedDict()
-            for pvpos in thispos.pv:
-                pdat[pvpos.pv.name] =  pvpos.value
+            pdat = {}
+            for name, val in self.instdb.get_position_vals(iname, pname).items():
+                pdat[name] =  val
             positions[pname] = dict(position=pdat, image=image, notes=notes)
         self.set_positions(positions)
 
@@ -1024,7 +1023,7 @@ class PositionPanel(wx.Panel):
             return -2
         for line in text[1:]:
             name, pos, notes, img, ts = json.loads(line)
-            tmp_pos = OrderedDict(pos)
+            tmp_pos = dict(pos)
 
             try:
                 self.positions[name] = {'image': img, 'timestamp': ts,
