@@ -5,13 +5,20 @@ import sys
 import time
 import os
 import shutil
-import cv2
+
 from threading import Thread
 from collections import namedtuple, OrderedDict
 from functools import partial
 
 import base64
 import json
+
+try:
+    import cv2
+    HAS_CV2 = True
+except ImportError:
+    HAS_CV2 = False
+
 import matplotlib
 matplotlib.use('WXAgg')
 from wxmplot import PlotFrame
@@ -683,7 +690,7 @@ class MicroscopeFrame(wx.Frame):
         img_folder = self.imgdir
         junk, img_file = os.path.split(thispos['image'])
         imgfile = os.path.join(img_folder, img_file)
-            
+
         txt = ["<hr>", "<table><tr><td><a href='{imgfile:s}'> <img src='{imgfile:s}' width=350></a></td>"]
 
         if len(thispos.get('image2', '')) > 0:
@@ -694,7 +701,7 @@ class MicroscopeFrame(wx.Frame):
         txt.append("<td><table><tr><td>Position:</td><td>{position:s}</td><td>{tstamp:s}</td></tr>")
         txt.append("<tr><td>Motor Name</td><td>PV Name</td><td>Value</td></tr>")
 
-                
+
         pos_fmt ="    <tr><td> %s </td><td> %s </td><td>   %f</td></tr>"
         for pvname, value in thispos['position'].items():
             desc = self.stages.get(pvname).get('desc', pvname)
@@ -704,7 +711,7 @@ class MicroscopeFrame(wx.Frame):
         txt.append("")
         txt = '\n'.join(txt)
         fout = open(self.htmllog, 'a')
-        
+
         fout.write(txt.format(imgfile=imgfile, img2file=img2file, position=name,
                               tstamp=thispos['timestamp']))
         fout.close()
@@ -712,7 +719,7 @@ class MicroscopeFrame(wx.Frame):
 
     def save_videocam(self):
         out = ''
-        if self.videocam is not None:
+        if HAS_CV2 and self.videocam is not None:
             cam = cv2.VideoCapture(self.videocam.strip())
 
             imgfile = '%s_hutch.jpg' % time.strftime('%b%d_%H%M%S')
@@ -723,7 +730,7 @@ class MicroscopeFrame(wx.Frame):
                 out = fullpath
             cam.release()
         return out
-            
+
     def write_message(self, msg='', index=0):
         "write to status bar"
         self.statusbar.SetStatusText(msg, index)
@@ -933,7 +940,7 @@ class MicroscopeFrame(wx.Frame):
 
 
 
-            
+
             self.Destroy()
 
     def onExportPositions(self, event=None):
@@ -1037,7 +1044,7 @@ class MicroscopeFrame(wx.Frame):
         print("==Composite ", nx, ny, nrows,  xstep, nrows*xstep)
         print("==Composite X ", xvals[:3])
         print("==Composity Y ", yvals[:3])
-        
+
         xstage.put(xvals[0])
         ystage.put(yvals[0])
 
@@ -1046,7 +1053,7 @@ class MicroscopeFrame(wx.Frame):
         outbuff = ['# using calibration: %.5f, %.5f' % (cal[0], cal[1]),
                    '# Files are named imgIY_IX.jpg',
                    '# IY   IX     Y      X']
-        
+
         for iy in range(nrows):
             print(iy)
             xstage.put(xvals[0])
@@ -1069,7 +1076,7 @@ class MicroscopeFrame(wx.Frame):
                 if img is None:
                     print("grabbing image failed... aborting!")
                     break
-                    
+
                 np.save(fname, img)
                 tsave += (time.monotonic() -tx)
                 outbuff.append('%d %d %15.4f  %15.4f' % (iy, ix, yvals[iy], xvals[ix]))
@@ -1078,7 +1085,7 @@ class MicroscopeFrame(wx.Frame):
         fout = os.path.join(compdir, 'composite.txt')
         with open(fout, 'w') as fh:
             fh.write('\n'.join(outbuff))
-        
+
         print("Grabbed %d images in %.1f seconds, %.1f saving"  % (n, time.monotonic()-t0, tsave))
         xstage.put(xcen)
         ystage.put(ycen)
