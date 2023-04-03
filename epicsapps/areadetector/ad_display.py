@@ -458,29 +458,20 @@ Matt Newville <newville@cars.uchicago.edu>"""
         posname = self.scandb_sel.GetStringSelection()
         instname = self.scandb_instname
 
-        # pre-load to make sure the PVs are connected
-        for pv in self.instdb.get_instrument(instname).pv:
-            pvname = normalize_pvname(pv.name)
-            get_pv(pvname)
-            get_pvdesc(pvname)
-
-        pos = self.instdb.get_position(instname, posname)
-        time.sleep(0.005)
-
         pvdata = {}
-        for pvpos in pos.pv:
-            pvname = normalize_pvname(pvpos.pv.name)
-            save_val = pvpos.value
-            curr_val = get_pv(pvname).get(as_string=True)
-            desc = get_pvdesc(pvname)
-            pvdata[pvname] = (desc, save_val, curr_val)
+        for name, value in self.instdb.get_position_vals(instname, posname).items():
+            pvname   = normalize_pvname(name)
+            this_pv  = get_pv(pvname)
+            desc     = get_pvdesc(pvname)
+            curr_val = this_pv.get(as_string=True)
+            pvdata[pvname] = (desc, str(value), curr_val)       
 
         def GoCallback(pvdata):
             for pvname, sval in pvdata.items():
                 get_pv(pvname).put(sval)
-        m2d = MoveToDialog(self, pvdata, instname, posname,
-                           callback=GoCallback)
-        m2d.Raise()
+        
+        MoveToDialog(self, pvdata, instname, posname,
+                     callback=GoCallback).Raise()
 
     @EpicsFunction
     def onButton(self, event=None, key='free'):
