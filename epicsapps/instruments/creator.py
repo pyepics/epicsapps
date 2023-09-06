@@ -57,7 +57,8 @@ class InitialData:
 
 def  make_newdb(dbname, server= 'sqlite'):
     engine  = create_engine('%s:///%s' % (server, dbname))
-    metadata =  MetaData(engine)
+    metadata =  MetaData()
+    metadata.reflect(engine)
 
     instrument = NamedTable('instrument', metadata,
                             cols=[Column('show', Integer, default=1),
