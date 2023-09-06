@@ -779,7 +779,6 @@ class PositionPanel(wx.Panel):
 
         instname = self.instrument
 
-        pos = self.instdb.get_position(instname, posname)
         # pre-load to make sure the PVs are connected
         posvals = {}
         for name, val in self.instdb.get_position_vals(instname, posname).items():
