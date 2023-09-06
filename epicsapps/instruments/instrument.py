@@ -16,21 +16,14 @@ import time
 import socket
 
 from datetime import datetime
+from sqlalchemy import Row
 
-from .utils import backup_versions, save_backup, get_pvtypes, normalize_pvname
+from .utils import backup_versions, save_backup, normalize_pvname
 from .creator import make_newdb
 
-from sqlalchemy import MetaData, create_engine, and_, text
-from sqlalchemy.orm import sessionmaker,  mapper, clear_mappers, relationship
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm.exc import  NoResultFound
-from sqlalchemy.pool import SingletonThreadPool
-import sqlalchemy.dialects.sqlite
+from .simpledb import (SimpleDB, isSimpleDB, get_credentials, json_encode,
+                       isotime, isotime2datetime)
 
-# import logging
-# logging.basicConfig(level=logging.INFO, filename='inst_sql.log')
-# logging.getLogger('sqlalchemy.engine').setLevel(logging.DEBUG)
-# logging.getLogger('sqlalchemy.pool').setLevel(logging.DEBUG)
 
 from . import upgrades
 
@@ -40,46 +33,14 @@ def isInstrumentDB(dbname):
           'info', 'instrument', 'position', 'pv',
        'info' table must have an entries named 'version' and 'create_date'
     """
-    result = False
-    try:
-        engine = create_engine('sqlite:///%s' % dbname,
-                               poolclass=SingletonThreadPool)
-        meta = MetaData(engine)
-        meta.reflect()
-        if ('info' in meta.tables and
-            'instrument' in meta.tables and
-            'position' in meta.tables and
-            'pv' in meta.tables):
-            keys = [row.key for row in
-                    meta.tables['info'].select().execute().fetchall()]
-            result = 'version' in keys and 'create_date' in keys
-    except:
-        pass
-    return result
-
-def json_encode(val):
-    "simple wrapper around json.dumps"
-    if val is None or isinstance(val, (str, unicode)):
-        return val
-    return  json.dumps(val)
+    return isSimpleDB(dbname,
+                      tables=['info', 'instrument', 'position', 'pv'])
 
 def valid_score(score, smin=0, smax=5):
     """ensure that the input score is an integr
     in the range [smin, smax]  (inclusive)"""
     return max(smin, min(smax, int(score)))
 
-
-def isotime2datetime(isotime):
-    "convert isotime string to datetime object"
-    sdate, stime = isotime.replace('T', ' ').split(' ')
-    syear, smon, sday = [int(x) for x in sdate.split('-')]
-    sfrac = '0'
-    if '.' in stime:
-        stime, sfrac = stime.split('.')
-    shour, smin, ssec  = [int(x) for x in stime.split(':')]
-    susec = int(1e6*float('.%s' % sfrac))
-
-    return datetime(syear, smon, sday, shour, smin, ssec, susec)
 
 def None_or_one(val, msg='Expected 1 or None result'):
     """expect result (as from query.all() to return
@@ -101,174 +62,53 @@ class InstrumentDBException(Exception):
     def __str__(self):
         return self.msg
 
-
-class _BaseTable(object):
-    "generic class to encapsulate SQLAlchemy table"
-    def __repr__(self):
-        name = self.__class__.__name__
-        fields = ['%s' % getattr(self, 'name', 'UNNAMED')]
-        return "<%s(%s)>" % (name, ', '.join(fields))
-
-class Info(_BaseTable):
-    "general information table (versions, etc)"
-    key, value = None, None
-    def __repr__(self):
-        name = self.__class__.__name__
-        fields = ['%s=%s' % (getattr(self, 'key', '?'),
-                             getattr(self, 'value', '?'))]
-        return "<%s(%s)>" % (name, ', '.join(fields))
-
-class Instrument(_BaseTable):
-    "instrument table"
-    name, notes = None, None
-
-class Position(_BaseTable):
-    "position table"
-    pvs, instrument, instrument_id, modify_time, name, notes = None, None, None, None, None, None
-
-class Position_PV(_BaseTable):
-    "position-pv join table"
-    name, notes, pv, value = None, None, None, None
-    def __repr__(self):
-        name = self.__class__.__name__
-        fields = ['%s=%s' % (getattr(self, 'pv', '?'),
-                             getattr(self, 'value', '?'))]
-        return "<%s(%s)>" % (name, ', '.join(fields))
-
-class Command(_BaseTable):
-    "command table"
-    name, notes = None, None
-
-class PVType(_BaseTable):
-    "pvtype table"
-    name, notes = None, None
-
-class PV(_BaseTable):
-    "pv table"
-    name, notes = None, None
-
-class Instrument_PV(_BaseTable):
-    "intruemnt-pv join table"
-    name, id, instrument, pv, display_order = None, None, None, None, None
-    def __repr__(self):
-        name = self.__class__.__name__
-        fields = ['%s/%s' % (getattr(getattr(self, 'instrument', '?'),'name','?'),
-                             getattr(getattr(self, 'pv', '?'), 'name', '?'))]
-        return "<%s(%s)>" % (name, ', '.join(fields))
-
-class Instrument_Precommand(_BaseTable):
-    "instrument precommand table"
-    name, notes = None, None
-
-class Instrument_Postcommand(_BaseTable):
-    "instrument postcommand table"
-    name, notes = None, None
-
-class InstrumentDB(object):
+class InstrumentDB(SimpleDB):
     "interface to Instrument Database"
-    def __init__(self, dbname=None, server='sqlite', **kws):
-        self.dbname = dbname
-        self.server = server
+    def __init__(self, dbname=None, **kws):
+        if dbname is None:
+            self.conndict = get_credentials(envvar='ESCAN_CREDENTIALS')
+            dbname = self.conndict.get('dbname', dbname)
+        else:
+            self.conndict = {'dbname': dbname}
+        self.conndict.update(kws)
         self.tables = None
         self.engine = None
         self.session = None
         self.conn    = None
         self.metadata = None
         self.pvs = {}
-        self.restoring_pvs = []
-        if dbname is not None:
-            self.connect(dbname, server=server, **kws)
+        self.pvtypes = {}
+        SimpleDB.__init__(self, **self.conndict)
+        self.connect_pvs()
+
+
+    def connect_pvs(self):
+        for row in self.get_rows('pv'):
+            self.pvs[row.name] = epics.get_pv(row.name, form='time')
+        time.sleep(0.01)
 
     def create_newdb(self, dbname, connect=False):
         "create a new, empty database"
         backup_versions(dbname)
         make_newdb(dbname)
+        self.conndict['dbname'] = dbname
         if connect:
             time.sleep(0.5)
-            self.connect(dbname, backup=False)
+            self.connect(**self.conndict)
 
     def check_version(self):
-        conn = self.conn
-        qvers = "select value from info where key='version'"
-        version_string = conn.execute(qvers).fetchone()[0]
+        version_string = self.get_info('version')
         if version_string < '1.2':
             print('Upgrading Database to Version 1.2')
             for statement in upgrades.sqlcode['1.2']:
-                conn.execute(statement)
-            conn.execute("update info set value='1.2' where key='version'")
-            self.session.commit()
+                self.session.execute(statement)
+            self.set_info('version', '1.2')
 
         if version_string < '1.3':
             print('Upgrading Database to Version 1.3')
             for statement in upgrades.sqlcode['1.3']:
-                conn.execute(statement)
-            conn.execute("update info set value='1.3' where key='version'")
-            self.session.commit()
-
-    def connect(self, dbname, server='sqlite', backup=True,
-                user='', password='',  host='', port=None):
-        "connect to an existing database"
-        self.dbname = dbname
-        self.engine = None
-        self.connstr = None
-        if server.startswith('sqlite'):
-            if not os.path.exists(dbname):
-                raise IOError("Database '%s' not found!" % dbname)
-
-            if not isInstrumentDB(dbname):
-                raise ValueError("'%s' is not an Instrument file!" % dbname)
-
-            if backup:
-                save_backup(dbname)
-            self.connstr = 'sqlite:///%s' % self.dbname
-            self.engine = create_engine(self.connstr, poolclass=SingletonThreadPool)
-        elif server.startswith('post'):
-            self.connstr= 'postgresql://%s:%s@%s:%d/%s' % (user, password,
-                                                           host, int(port),
-                                                           dbname)
-            if port in (None, 'None', ''):
-                port = 5432
-            self.engine = create_engine(self.connstr)
-
-        if self.engine is None:
-                raise ValueError("could not connect to '%s'!" % dbname)
-
-        self.conn = self.engine.connect()
-        self.session = sessionmaker(bind=self.engine)()
-        self.check_version()
-
-        self.metadata =  MetaData(self.engine)
-        self.metadata.reflect()
-        tables = self.tables = self.metadata.tables
-
-        try:
-            clear_mappers()
-        except:
-            pass
-
-        mapper(Info,     tables['info'])
-        mapper(PV,       tables['pv'])
-
-        mapper(Instrument, tables['instrument'],
-               properties={'pvs': relationship(PV,
-                                               backref='instrument',
-                                    secondary=tables['instrument_pv'])})
-
-        mapper(PVType,   tables['pvtype'],
-               properties={'pv':
-                           relationship(PV, backref='pvtype')})
-
-        mapper(Position, tables['position'],
-               properties={'instrument': relationship(Instrument,
-                                                      backref='positions'),
-                           'pvs': relationship(Position_PV) })
-
-        mapper(Instrument_PV, tables['instrument_pv'],
-               properties={'pv':relationship(PV),
-                           'instrument':relationship(Instrument)})
-
-        mapper(Position_PV, tables['position_pv'],
-               properties={'pv':relationship(PV)})
+                self.session.execute(statement)
+            self.set_info('version', '1.3')
 
 
     def commit(self):
@@ -276,34 +116,9 @@ class InstrumentDB(object):
         self.set_info('modify_date', datetime.isoformat(datetime.now()))
         return self.session.commit()
 
-    def close(self):
-        "close session"
-        self.set_hostpid(clear=True)
-        self.session.commit()
-        self.session.flush()
-        self.session.close()
-
     def query(self, *args, **kws):
         "generic query"
         return self.session.query(*args, **kws)
-
-    def get_info(self, key, default=None):
-        """get a value from a key in the info table"""
-        errmsg = "get_info expected 1 or None value for key='%s'"
-        out = self.query(Info).filter(Info.key==key).all()
-        thisrow = None_or_one(out, errmsg % key)
-        if thisrow is None:
-            return default
-        return thisrow.value
-
-    def set_info(self, key, value):
-        """set key / value in the info table"""
-        table = self.tables['info']
-        vals  = self.query(table).filter(Info.key==key).all()
-        if len(vals) < 1:
-            table.insert().execute(key=key, value=value)
-        else:
-            table.update(whereclause=text("key='%s'" % key)).execute(value=value)
 
     def set_hostpid(self, clear=False):
         """set hostname and process ID, as on intial set up"""
@@ -321,285 +136,229 @@ class InstrumentDB(object):
                 (db_host_name == socket.gethostname() and
                  db_process_id == str(os.getpid())))
 
-    def __addRow(self, table, argnames, argvals, **kws):
-        """add generic row"""
-        me = table() #
-        for name, val in zip(argnames, argvals):
-            setattr(me, name, val)
-        for key, val in kws.items():
-            if key == 'attributes':
-                val = json_encode(val)
-            setattr(me, key, val)
-        try:
-            self.session.add(me)
-            # self.session.commit()
-        except IntegrityError(msg):
-            self.session.rollback()
-            raise Warning('Could not add data to table %s\n%s' % (table, msg))
-
-        return me
-
-
-    def _get_foreign_keyid(self, table, value, name='name',
-                           keyid='id', default=None):
-        """generalized lookup for foreign key
-arguments
-    table: a valid table class, as mapped by mapper.
-    value: can be one of the following
-         table instance:  keyid is returned
-         string:          'name' attribute (or set which attribute with 'name' arg)
-            a valid id
-            """
-        if isinstance(value, table):
-            return getattr(table, keyid)
-        else:
-            if isinstance(value, (str, unicode)):
-                xfilter = getattr(table, name)
-            elif isinstance(value, int):
-                xfilter = getattr(table, keyid)
-            else:
-                return default
-            try:
-                query = self.query(table).filter(
-                    xfilter==value)
-                return getattr(query.one(), keyid)
-            except (IntegrityError, NoResultFound):
-                return default
-
-        return default
-
     def get_all_instruments(self):
         """return instrument list
         """
-        return [f for f in self.query(Instrument).order_by(Instrument.display_order)]
+        return self.get_rows('instrument')
 
     def get_instrument(self, name):
         """return instrument by name
         """
-        if isinstance(name, Instrument):
-            return name
-        out = self.query(Instrument).filter(Instrument.name==name).all()
-        return None_or_one(out, 'get_instrument expected 1 or None Instrument')
+        return self.get_rows('instrument', where={'name': name},
+                             limit_one=True, none_if_empty=True)
 
-    def get_ordered_instpvs(self, inst):
-        """get ordered list of PVs for an instrument"""
+    # def get_ordered_instpvs(self, inst):
+    def get_instrument_pvs(self, inst):
+        """get dict of {pvname: pv_id} ordered by 'display_order' for an instrument"""
         inst = self.get_instrument(inst)
-        IPV = Instrument_PV
-        return self.query(IPV).filter(IPV.instrument_id==inst.id
-                                      ).order_by(IPV.display_order).all()
+        instpvs = {}
+        allpvs = self.get_allpvs()
+        for row in self.get_rows('instrument_pv',
+                                 where={'instrument_id':inst.id},
+                                 order_by='display_order'):
+            instpvs[allpvs[row.pv_id]] = row.pv_id
+        return instpvs
+
+    def get_pvtypes_dict(self):
+        self.pvtypes = {t.name: t.id for t in self.get_rows('pvtype')}
+
+    def get_pvtypes(self, pvobj):
+        """create tuple of choices for PV Type for database,
+        which sets how to display PV entry.
+
+        if pvobj is an epics.PV, the epics record type and
+        pv.type are used to select the choices.
+
+        if pvobj is an instrument.PV (ie, a db entry), the
+        pvobj.pvtype.name field is used.
+        """
+        if isinstance(pvobj, epics.PV):
+            prefix = pvobj.pvname
+            suffix = None
+            typename = pvobj.type
+            if '.' in prefix:
+                prefix, suffix = prefix.split('.')
+            rectype = epics.caget(f"{prefix}.RTYP")
+            if rectype == 'motor' and suffix in (None, 'VAL'):
+                typename = 'motor'
+            if pvobj.type == 'char' and pvobj.count > 1:
+                typename = 'string'
+
+        elif isinstance(pvobj, Row) and 'pvtype_id' in pvobj._fields:
+            if len(self.pvtypes) < 1:
+                self.get_pvtypes_dict()
+            for key, val in self.pvtypes.items():
+                if val == pvobj.pvtype_id:
+                    typename = key
+
+        choices = ('numeric', 'string')
+        if typename == 'motor':
+            choices = ('motor', 'numeric', 'string')
+        elif typename in ('enum', 'time_enum'):
+            choices = ('enum', 'numeric', 'string')
+        elif typename in ('string', 'time_string'):
+            choices = ('string', 'numeric')
+        return choices
 
     def set_pvtype(self, name, pvtype):
         """ set a pv type"""
         pv = self.get_pv(name)
-        out = self.query(PVType).all()
-        _pvtypes = dict([(t.name, t.id) for t in out])
-        if pvtype  in _pvtypes:
-            pv.pvtype_id = _pvtypes[pvtype]
-        else:
-            self.__addRow(PVType, ('name',), (pvtype,))
-            out = self.query(PVType).all()
-            _pvtypes = dict([(t.name, t.id) for t in out])
-            if pvtype  in _pvtypes:
-                pv.pvtype_id = _pvtypes[pvtype]
-        self.commit()
+        if pv is None:
+            print("PV not found ", name)
+            return
+        if len(self.pvtypes) < 1:
+            self.get_pvtypes_dict()
+        if pvtype not in self.pvtypes:
+            self.add_row('pvtype', name=pvtype)
+            self.get_pvtypes_dict()
+        if pvtype in self.pvtypes:
+            self.update('pv', where={name: pv.name},
+                        pvtype_id=_types[pvtype])
 
     def get_allpvs(self):
-        return self.query(PV).all()
+        return {row.id: row.name for row in self.get_rows('pv')}
 
     def get_pv(self, name, form='time'):
         """return pv by name
         """
-        if isinstance(name, PV):
-            return name
-        name = normalize_pvname(name)
-        out = self.query(PV).filter(PV.name==name).all()
-        ret = None_or_one(out, 'get_pv expected 1 or None PV')
-        # print('instrument.get_pv ',name, out, ret)
-        if ret is None and name.endswith('.VAL'):
-            name = name[:-4]
-            out = self.query(PV).filter(PV.name==name).all()
-            if out is not None:
-                # update pv name to end in '.VAL' here!
-                idx = out[0].id
-                self.tables['pv'].update(whereclause=text("id=%i" % idx)).execute(name="%s.VAL" % name)
-            ret = None_or_one(out, 'get_pv expected 1 or None PV')
-        return ret
+        norm_name = normalize_pvname(name)
+        row = self.get_rows('pv', where={'name': norm_name},
+                             limit_one=True, none_if_empty=True)
+        if row is None and norm_name != name:
+            # ensure that "normalized name" is used, fix if needed
+            row = self.get_rows('pv', where={'name': name},
+                                limit_one=True, none_if_empty=True)
+            if row is not None:
+                self.update('pv', where={'name': name}, name=norm_name)
+        return row
 
     def rename_position(self, oldname, newname, instrument=None):
         """rename a position"""
         pos = self.get_position(oldname, instrument=instrument)
         if pos is not None:
-            pos.name = newname
-            self.commit()
+            self.update('position', where={name: pos.name},
+                        name=newname)
 
     def get_positions(self, instrument):
         """return list of positions for an instrument
         """
         inst = self.get_instrument(instrument)
-        return self.query(Position).filter(Position.instrument_id==inst.id).all()
+        return self.get_rows('position', where={'instrument_id': inst.id})
 
     def get_position(self, name, instrument=None):
         """return position from name and instrument
         """
-        inst = None
+        where = {'name': name}
         if instrument is not None:
-            inst = self.get_instrument(instrument)
+            where['instrument_id'] = self.get_instrument(instrument).id
+        return self.get_rows('position', where=where,
+                             limit_one=True, none_if_empty=True)
 
-        filter = (Position.name==name)
-        if inst is not None:
-            filter = and_(filter, Position.instrument_id==inst.id)
-
-        out =  self.query(Position).filter(filter).all()
-        return None_or_one(out, 'get_position expected 1 or None Position')
-
-    def get_position_pv(self, name, instrument=None):
-        """return position from namea and instrument
+    def add_instrument(self, name, pvs=None, **kws):
+        """add instrument  notes and attributes optional
+        returns Instruments instance
         """
-        inst = None
-        if instrument is not None:
-            inst = self.get_instrument(instrument)
-
-        filter = (Position.name==name)
-        if inst is not None:
-            filter = and_(filter, Position.instrument_id==inst.id)
-
-        out =  self.query(Position).filter(filter).all()
-        return None_or_one(out, 'get_position expected 1 or None Position')
-
-    def add_instrument(self, name, pvs=None, notes=None,
-                       attributes=None, **kws):
-        """add instrument
-        notes and attributes optional
-        returns Instruments instance"""
-        kws['notes'] = notes
-        kws['attributes'] = attributes
-        name = name.strip()
-        inst = self.__addRow(Instrument, ('name',), (name,), **kws)
+        kws['name'] = name.strip()
+        inst = self.add_row('instrument', **kws)
         if pvs is not None:
             pvlist = []
             for pvname in pvs:
                 thispv = self.get_pv(pvname)
                 if thispv is None:
                     thispv = self.add_pv(pvname)
-                pvlist.append(thispv)
-            inst.pvs = pvlist
-        self.session.add(inst)
+                pvlist.append(thispv.id)
+            for i, pvid in enumerate(pvlist):
+                self.add_row('instrument_pv', instrument_id=inst.id,
+                             pv_id=pvid, display_order=i)
+
         self.commit()
         return inst
 
-    def add_pv(self, name, notes=None, attributes=None, pvtype=None, **kws):
+    def add_pv(self, name, pvtype=None, **kws):
         """add pv
         notes and attributes optional
         returns PV instance"""
         name = normalize_pvname(name)
-        out =  self.query(PV).filter(PV.name==name).all()
-        if len(out) > 0:
+        out = self.get_pv(name)
+        if out is not None:
             return
 
         kws['notes'] = notes
         kws['attributes'] = attributes
-        row = self.__addRow(PV, ('name',), (name,), **kws)
         if pvtype is None:
-            self.pvs[name] = epics.get_pv(name, form='native')
-            self.pvs[name].get()
-            pvtype = get_pvtypes(self.pvs[name])[0]
-        self.set_pvtype(name, pvtype)
-        self.session.add(row)
-        self.commit()
+            self.pvs[name] = epics.get_pv(name, form='time')
+            self.pvs[name].get(timeout=1.0)
+            pvtype = self.get_pvtypes(self.pvs[name])[0]
+        row = self.add_row('pv', name=name, pvtype_id=pvtype_id)
         return row
 
-    def add_info(self, key, value):
-        """add Info key value pair -- returns Info instance"""
-        row = self.__addRow(Info, ('key', 'value'), (key, value))
-        self.commit()
-        return row
-
-    def remove_position(self, posname, inst):
-        inst = self.get_instrument(inst)
+    def remove_position(self, posname, instname):
+        inst = self.get_instrument(instname)
         if inst is None:
             raise InstrumentDBException('Save Postion needs valid instrument')
 
         posname = posname.strip()
-        pos  = self.get_position(posname, inst)
+        pos  = self.get_position(posname, instname)
         if pos is None:
             raise InstrumentDBException("Postion '%s' not found for '%s'" %
-                                        (posname, inst.name))
+                                        (posname, instname))
 
-        tab = self.tables['position_pv']
-        self.conn.execute(tab.delete().where(tab.c.position_id==pos.id))
-        self.conn.execute(tab.delete().where(tab.c.position_id==None))
+        self.delete_rows('position_pv', {'position_id': pos.id})
+        self.delete_rows('position_pv', {'position_id': None})
+        self.delete_rows('position', {'id': pos.id})
 
-        tabl = self.tables['position']
-        self.conn.execute(tabl.delete().where(tabl.c.id==pos.id))
-
-        self.commit()
-
-    def remove_instrument(self, inst):
-        inst = self.get_instrument(inst)
+    def remove_instrument(self, instname):
+        inst = self.get_instrument(instname)
         if inst is None:
             raise InstrumentDBException('Save Postion needs valid instrument')
 
-        for pos in self.get_positions(inst):
-            self.remove_position(pos.name, inst)
+        for pos in self.get_positions(instname):
+            self.remove_position(pos.name, instname)
 
-        for tablename in ('position', 'instrument_pv'):
-            tab = self.tables[tablename]
-            self.conn.execute(tab.delete().where(tab.c.instrument_id==inst.id))
+        self.delete_rows('position',      {'instrument_id': inst.id})
+        self.delete_rows('instrument_pv', {'instrument_id': inst.id})
+        self.delete_rows('instrument_pv', {'id': inst.id})
 
-        tab = self.tables['instrument']
-        self.conn.execute(tab.delete().where(tab.c.id==inst.id))
-
-    def save_position(self, posname, inst, values, **kw):
+    def save_position(self, posname, instname, values, notes=None, **kws):
         """save position for instrument
         """
-        inst = self.get_instrument(inst)
+        inst = self.get_instrument(instname)
         if inst is None:
             raise InstrumentDBException('Save Postion needs valid instrument')
 
         posname = posname.strip()
-        pos  = self.get_position(posname, inst)
+        pos  = self.get_position(posname, instname)
         if pos is None:
-            pos = Position()
-            pos.name = posname
-            pos.instrument = inst
-            pos.modify_time = datetime.now()
+            pos = self.add_row('position', name=posname,
+                               instrument_id=inst.id, notes=notes,
+                               modify_time=datetime.now())
 
-        pvnames = [pv.name for pv in inst.pvs]
+        else:
+            where = {'name': posname, 'instrument_id': inst.id}
+            kwargs = {'modify_time': datetime.now}
+            if notes is not None:
+                kwargs['notes'] = notes
+            pos = self.update('position', where=where, **kwargs)
 
+        instpvs = self.get_instrument_pvs(instname)
         # check for missing pvs in values
         missing_pvs = []
-        for pv in pvnames:
-            if pv not in values:
-                missing_pvs.append(pv)
+        for pvname in instpvs:
+            if pvname not in values:
+                missing_pvs.append(pvname)
 
         if len(missing_pvs) > 0:
-            raise InstrumentDBException('Save Postion: missing pvs:\n %s' %
-                                        missing_pvs)
+            raise InstrumentDBException(f'Save Postion: missing pvs:\n {missing_pvs}')
 
-        pos_pvs = []
-        for name in pvnames:
-            ppv = Position_PV()
-            ppv.pv = self.get_pv(name)
-            ppv.notes = "'%s' / '%s'" % (inst.name, posname)
-            ppv.value = values[name]
-            pos_pvs.append(ppv)
-        pos.pvs = pos_pvs
+        for name, pvid in instpvs.items():
+            self.insert('position_pv', position_id=pos.id,
+                        pv_id=pvid, value=values['name'],
+                        notes=f"'{inst.name}' / '{posname}'")
 
-        tab = self.tables['position_pv']
-        self.conn.execute(tab.delete().where(tab.c.position_id == None))
-
-        self.session.add(pos)
-        self.commit()
-
-    def restore_complete(self):
-        "return whether last restore_position has completed"
-        if len(self.restoring_pvs) > 0:
-            return all([p.put_complete for p in self.restoring_pvs])
-        return True
 
     def get_ordered_position(self, posname, instname, exclude_pvs=None):
         """
-        returns ordered list of PVname, positions for restore position
+        return dict of {pvname: value} for position, ordered by display order
         """
         inst = self.get_instrument(instname)
         if inst is None:
@@ -607,69 +366,57 @@ arguments
                 'restore_postion needs valid instrument')
 
         posname = posname.strip()
-        pos  = self.get_position(posname, inst)
+        pos  = self.get_position(posname, instname)
         if pos is None:
             raise InstrumentDBException(
-                "restore_postion  position '%s' not found" % posname)
+                f"restore_postion  position '{posname}' not found")
 
         if exclude_pvs is None:
             exclude_pvs = []
 
-        pv_values = {}
-        for pvpos in pos.pvs:
-            pvname = pvpos.pv.name
-            if pvname not in exclude_pvs:
-                pv_values[pvname] = pvpos.value
+        allpvs = self.get_allpvs()
+        pvvals = {}
+        for row in self.get_rows('position_pv', where={'position_id': pos.id}):
+            pvvals[row.pv_id] = row.value
 
         # ordered_pvs will hold ordered list of pv, vals in "move order"
-        IPV = Instrument_PV
-        instpvs =  self.query(IPV).filter(IPV.instrument_id==inst.id).all()
-        max_order = 1
-        for i in instpvs:
-            move_order = getattr(i, 'move_order', 1)
-            if move_order is None:
-                move_order = 1
-            if move_order > max_order:
-                max_order = move_order
+        ordered_pvs = {}
+        for row in self.get_rows('instrument_pv',
+                                 where={'instrument_id': inst.id},
+                                 order_by='display_order'):
+            ordered_pvs[allpvs[row.pv_id]] = pvvals.get(row.pv_id, None)
+        return ordered_pvs
 
-        ordered_pvs = [[] for i  in range(1+max_order)]
-        # print(" Get Ordered position: ")
-        for ipv in instpvs:
-            move_order = getattr(ipv, 'move_order', 1)
-            if move_order is None:
-                move_order = 1
-            i = move_order - 1
-            pvname = ipv.pv.name
-            # print(" -- ", i, pvname, epics.get_pv(pvname), pv_values[pvname])
-            if pvname in pv_values:
-                ordered_pvs[i].append((epics.get_pv(pvname), pv_values[pvname]))
-
-        return  ordered_pvs
 
     def restore_position(self, posname, instname, wait=True, timeout=5.0,
                          exclude_pvs=None):
         """
         restore named position for instrument
         """
+        t0 = time.time()
         ordered_pvs = self.get_ordered_position(posname, instname,
                                                 exclude_pvs=exclude_pvs)
 
-        epics.ca.poll()
-        wait = wait and len(ordered_pvs) == 1
-
-        for pvlist in ordered_pvs:
+        work_pvs = []
+        for pvname, value in ordered_pvs.items():
             # put values without waiting
-            for thispv, val in pvlist:
-                if not thispv.connected:
-                    thispv.wait_for_connection(timeout=timeout)
+            thispv = self.pvs[pvname]
+            if not thispv.connected():
+                thispv.wait_for_connection(timeout=1.0)
+            if thispv.connected():
                 try:
-                    thispv.put(val)
+                    thispv.put(val, wait=False, use_complete=True)
                 except:
                     pass
-            # wait for all puts at this level, if desired
-            if wait:
-                for thispv, val in pvlist:
-                    try:
-                        thispv.put(val, wait=True)
-                    except:
-                        pass
+                if wait:
+                    work_pvs.append(thispv)
+
+        complete = True
+        if wait:
+            complete = False
+            while not all([p.put_complete for p in work_pvs]):
+                time.sleep(0.025)
+                if time.time() > (t0+timeout):
+                    complete = True
+                    break
+        return complete
