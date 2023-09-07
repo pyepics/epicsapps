@@ -4,9 +4,7 @@ import epics
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 from epics import Motor
 
-MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
-                '.HLS', '.LLS', '.SPMG', '.DESC')
-
+from .utils import MOTOR_FIELDS, normalize_pvname
 
 class PVNameCtrl(wx.TextCtrl):
     """Text Control for an Epics PV that should try to be connected.
@@ -53,14 +51,11 @@ class EpicsPVList(object):
         self.timeout = timeout
         self.etimer = wx.Timer(parent)
         parent.Bind(wx.EVT_TIMER, self.onTimer, self.etimer)
-        # self.etimer.Start(250)
-        # print("Connector! ")
         self.need_connecting = []
 
     def onTimer(self, event=None):
         "timer event handler: looks for in_progress, may timeout"
         time.sleep(0.01)
-        # print("PV Connect timer ", len(self.in_progress))
         if len(self.in_progress) == 0:
             return
         for pvname in self.in_progress:
@@ -76,24 +71,18 @@ class EpicsPVList(object):
         """
         if pvname is None or len(pvname) < 1:
             return
-        if '.' not in pvname:
-            pvname = '%s.VAL' % pvname
-        pvname = str(pvname)
+        pvname = normalize_pvname(pvname)
 
         if pvname in self.pvs:
             return
-        self.pvs[pvname] = epics.get_pv(pvname, form='native', timeout=2.0)
+        self.pvs[pvname] = epics.get_pv(pvname, form='native')
         self.in_progress[pvname] = (None, None, time.time())
-        # print(" init_connect ", pvname, self.pvs[pvname])
         if is_motor:
-            idot = pvname.find('.')
-            basname = pvname[:idot]
-            x = Motor(basname)
-            # for ext in MOTOR_FIELDS:
-            #    pvname = "%s%s" % (basname, ext)
-            #    self.need_connecting.append(pvname)
-            #    self.pvs[pvname] = epics.get_pv(pvname)
-            #    self.in_progress[pvname] = (None, None, time.time())
+            prefix = pvname.replace('.VAL', '')
+            for field in MOTOR_FIELDS:
+                fname = f"{prefix}{field}"
+                self.pvs[fname] = epics.get_pv(fname, form='native')
+                self.in_progress[fname] = (None, None, time.time())
 
     def show_unconnected(self):
         all = 0
