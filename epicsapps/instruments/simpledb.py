@@ -165,6 +165,8 @@ class SimpleDB(object):
         "connect to an existing database"
 
         self.dbname = dbname
+        if port is not None:
+            port = int(port)
         connect_args = {}
         if server.startswith('post') or server.startswith('pg'):
             server ='postgresql'
