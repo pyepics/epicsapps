@@ -17,15 +17,14 @@ import socket
 
 from datetime import datetime
 from sqlalchemy import Row
-
-from .utils import backup_versions, save_backup, normalize_pvname
+from larch.utils import debugtime
+from .utils import backup_versions, save_backup, normalize_pvname, MOTOR_FIELDS
 from .creator import make_newdb
 
 from .simpledb import (SimpleDB, isSimpleDB, get_credentials, json_encode,
                        isotime, isotime2datetime)
-
-
 from . import upgrades
+
 
 def isInstrumentDB(dbname):
     """test if a file is a valid Instrument Library file:
@@ -34,7 +33,7 @@ def isInstrumentDB(dbname):
        'info' table must have an entries named 'version' and 'create_date'
     """
     return isSimpleDB(dbname,
-                      tables=['info', 'instrument', 'position', 'pv'])
+                      required_tables=['info', 'instrument', 'position', 'pv'])
 
 def valid_score(score, smin=0, smax=5):
     """ensure that the input score is an integr
@@ -77,15 +76,26 @@ class InstrumentDB(SimpleDB):
         self.conn    = None
         self.metadata = None
         self.pvs = {}
-        self.pvtypes = {}
+        self.motor_pvs = {}
+        self.pvtype_names = {}
+        self.pvtype_ids = {}
         SimpleDB.__init__(self, **self.conndict)
         self.connect_pvs()
 
-
     def connect_pvs(self):
         for row in self.get_rows('pv'):
-            self.pvs[row.name] = epics.get_pv(row.name, form='time')
+            self.pvs[row.name] = epics.get_pv(row.name)
+
+        self.map_pvtypes()
         time.sleep(0.01)
+        for row in self.get_rows('pv'):
+            tname = self.pvtype_names.get(row.pvtype_id, 'other')
+            if tname == 'other':
+                self.update('pv', where={'name': row.name}, pvtype_id=1)
+            if tname == 'motor':
+                prefix = row.name.replace('.VAL', '')
+                for field in MOTOR_FIELDS:
+                    epics.get_pv(f'{prefix}{field}')
 
     def create_newdb(self, dbname, connect=False):
         "create a new, empty database"
@@ -149,18 +159,21 @@ class InstrumentDB(SimpleDB):
 
     # def get_ordered_instpvs(self, inst):
     def get_instrument_pvs(self, inst):
-        """get dict of {pvname: pv_id} ordered by 'display_order' for an instrument"""
+        """get dict of {pvname: (pv_id, epics_pv} ordered by
+        'display_order' for an instrument"""
         inst = self.get_instrument(inst)
         instpvs = {}
         allpvs = self.get_allpvs()
         for row in self.get_rows('instrument_pv',
                                  where={'instrument_id':inst.id},
                                  order_by='display_order'):
-            instpvs[allpvs[row.pv_id]] = row.pv_id
+            pvname = allpvs[row.pv_id]
+            instpvs[pvname] = (row.pv_id, self.pvs[pvname])
         return instpvs
 
-    def get_pvtypes_dict(self):
-        self.pvtypes = {t.name: t.id for t in self.get_rows('pvtype')}
+    def map_pvtypes(self):
+        self.pvtype_ids   = {t.name: t.id for t in self.get_rows('pvtype')}
+        self.pvtype_names = {t.id: t.name for t in self.get_rows('pvtype')}
 
     def get_pvtypes(self, pvobj):
         """create tuple of choices for PV Type for database,
@@ -185,11 +198,11 @@ class InstrumentDB(SimpleDB):
                 typename = 'string'
 
         elif isinstance(pvobj, Row) and 'pvtype_id' in pvobj._fields:
-            if len(self.pvtypes) < 1:
-                self.get_pvtypes_dict()
-            for key, val in self.pvtypes.items():
-                if val == pvobj.pvtype_id:
-                    typename = key
+            if len(self.pvtype_ids) < 1:
+                self.map_pvtypes()
+            for _name, _id in self.pvtype_ids.items():
+                if _id == pvobj.pvtype_id:
+                    typename = name
 
         choices = ('numeric', 'string')
         if typename == 'motor':
@@ -202,23 +215,23 @@ class InstrumentDB(SimpleDB):
 
     def set_pvtype(self, name, pvtype):
         """ set a pv type"""
-        pv = self.get_pv(name)
-        if pv is None:
-            print("PV not found ", name)
+        pvrow = self.get_pv(name)
+        if pvrow is None:
+            print("PV not found in database table: ", name)
             return
-        if len(self.pvtypes) < 1:
-            self.get_pvtypes_dict()
-        if pvtype not in self.pvtypes:
+        if len(self.pvtype_ids) < 1:
+            self.map_pvtypes()
+        if pvtype not in self.pvtype_ids:
             self.add_row('pvtype', name=pvtype)
-            self.get_pvtypes_dict()
-        if pvtype in self.pvtypes:
-            self.update('pv', where={name: pv.name},
-                        pvtype_id=_types[pvtype])
+            self.map_pvtypes()
+        if pvtype in self.pvtype_ids:
+            self.update('pv', where={'name': pvrow.name},
+                        pvtype_id=self.pvtype_ids[pvtype])
 
     def get_allpvs(self):
         return {row.id: row.name for row in self.get_rows('pv')}
 
-    def get_pv(self, name, form='time'):
+    def get_pv(self, name, add=False):
         """return pv by name
         """
         norm_name = normalize_pvname(name)
@@ -230,13 +243,15 @@ class InstrumentDB(SimpleDB):
                                 limit_one=True, none_if_empty=True)
             if row is not None:
                 self.update('pv', where={'name': name}, name=norm_name)
+        if row is None and add:
+            self.add_pv(norm_name)
         return row
 
     def rename_position(self, oldname, newname, instrument=None):
         """rename a position"""
         pos = self.get_position(oldname, instrument=instrument)
         if pos is not None:
-            self.update('position', where={name: pos.name},
+            self.update('position', where={'name': pos.name},
                         name=newname)
 
     def get_positions(self, instrument):
@@ -263,9 +278,7 @@ class InstrumentDB(SimpleDB):
         if pvs is not None:
             pvlist = []
             for pvname in pvs:
-                thispv = self.get_pv(pvname)
-                if thispv is None:
-                    thispv = self.add_pv(pvname)
+                thispv = self.get_pv(pvname, add=True)
                 pvlist.append(thispv.id)
             for i, pvid in enumerate(pvlist):
                 self.add_row('instrument_pv', instrument_id=inst.id,
@@ -279,16 +292,18 @@ class InstrumentDB(SimpleDB):
         notes and attributes optional
         returns PV instance"""
         name = normalize_pvname(name)
-        out = self.get_pv(name)
-        if out is not None:
+        thispv = self.get_pv(name, add=False)
+        if thispv is not None:
             return
 
+        if len(self.pvtype_ids) < 1:
+            self.map_pvtypes()
         kws['notes'] = notes
         kws['attributes'] = attributes
         if pvtype is None:
-            self.pvs[name] = epics.get_pv(name, form='time')
+            self.pvs[name] = epics.get_pv(name)
             self.pvs[name].get(timeout=1.0)
-            pvtype = self.get_pvtypes(self.pvs[name])[0]
+            pvtype_id = self.get_pvtypes(self.pvs[name])[0]
         row = self.add_row('pv', name=name, pvtype_id=pvtype_id)
         return row
 
