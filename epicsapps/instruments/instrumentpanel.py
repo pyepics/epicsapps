@@ -1,8 +1,6 @@
 #!/usr/bin/python
 
 import time
-from collections import OrderedDict
-
 import wx
 
 import epics
@@ -20,10 +18,10 @@ MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
 class RenameDialog(wx.Dialog):
     """Rename a Position"""
     msg = '''Select Recent Instrument File, create a new one'''
-    def __init__(self, parent, posname, inst, **kws):
+    def __init__(self, parent, posname, instname, **kws):
         self.posname = posname
-        self.inst = inst
-        title = "Rename Position '%s' for '%s' ?" % (posname, inst.name)
+        self.instname = instname
+        title = "Rename Position '{posname}' for '{instname}' ?"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title)
         panel = wx.Panel(self)
         colors = GUIColors()
@@ -39,8 +37,8 @@ class RenameDialog(wx.Dialog):
         rlabstyle = wx.ALIGN_RIGHT|wx.ALL
         tstyle    = wx.ALIGN_LEFT
 
-        label1  = SimpleText(panel, 'Old name = %s' % posname, style=tstyle)
-        label2  = SimpleText(panel, 'New name = ' , style=tstyle)
+        label1  = SimpleText(panel, 'Old name= {posname}', style=tstyle)
+        label2  = SimpleText(panel, 'New name= ' , style=tstyle)
         self.newname =  wx.TextCtrl(panel, value=posname, size=(225, 25))
 
         sizer.Add(label1, (0, 0), (1, 2), labstyle, 1)
@@ -76,16 +74,17 @@ class MoveToDialog(wx.Dialog):
         self.mode = mode
 
         self.pvs = {}
-        for xpv in db.get_instrument(instname).pvs:
-            pvname = normalize_pvname(xpv.name)
-            self.pvs[pvname] = epics.get_pv(pvname)
+        for pvname, dat in db.get_instrument_pvs(instname).items():
+            rowid, thispv = dat
+            pvname = normalize_pvname(pvname)
+            self.pvs[pvname] = thispv
 
         thispos = db.get_position(posname, instname)
         if thispos is None:
             return
-        title = "Move Instrument %s to Position '%s'?" % (instname, posname)
+        title = "Move Instrument {instname} to Position '{posname}'?"
         if mode == 'show':
-            title = "Instrument %s  / Position '%s'" % (instname, posname)
+            title = "Instrument {instname} / Position '{posname}'"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title,
                            size=(500, 325))
         self.build_dialog(parent, thispos)
@@ -179,21 +178,21 @@ class MoveToDialog(wx.Dialog):
 
 class InstrumentPanel(wx.Panel):
     """ create Panel for an instrument"""
-    def __init__(self, parent, inst, db=None, writer=None,
+    def __init__(self, parent, instname, db=None, writer=None,
                  pvlist=None, size=(-1, -1)):
 
         self.last_draw = 0
-        self.inst = inst
+        self.instname = instname
         self.pvlist = pvlist
 
         self.db = db
         self.write_message = writer
         self.pvs = {}
-        self.pv_components  = OrderedDict()
+        self.pv_components = {}
 
         wx.Panel.__init__(self, parent, size=size)
-        for dbpv in self.db.get_ordered_instpvs(inst):
-            self.add_pv(dbpv.pv.name)
+        for pvname in self.db.get_instrument_pvs(instname):
+            self.add_pv(pvname)
 
         self.colors = colors = GUIColors()
         self.parent = parent
@@ -214,7 +213,7 @@ class InstrumentPanel(wx.Panel):
         splitter.SetMinimumPaneSize(225)
 
         toprow = wx.Panel(self.leftpanel)
-        self.inst_title = SimpleText(toprow,  ' %s ' % inst.name,
+        self.inst_title = SimpleText(toprow,  f' {instname} ',
                                      font=titlefont,
                                      colour=colors.title,
                                      minsize=(175, -1),
@@ -225,7 +224,8 @@ class InstrumentPanel(wx.Panel):
         self.pos_name.Bind(wx.EVT_TEXT_ENTER, self.onSavePosition)
         topsizer = wx.BoxSizer(wx.HORIZONTAL)
         topsizer.Add(self.inst_title, 1, wx.ALIGN_CENTER, 1)
-        topsizer.Add(SimpleText(toprow, 'Save Position:', size=(150, -1)), 0,  wx.ALIGN_CENTER, 1)
+        topsizer.Add(SimpleText(toprow, 'Save Position:', size=(150, -1)),
+                     0,  wx.ALIGN_CENTER, 1)
 
         topsizer.Add(self.pos_name, 1, wx.GROW, 1)
 
@@ -262,8 +262,9 @@ class InstrumentPanel(wx.Panel):
         self.pos_list.Bind(wx.EVT_LEFT_DCLICK, self.OnMove)
 
         self.pos_list.Clear()
-        for pos in inst.positions:
-            self.pos_list.Append(pos.name)
+
+        for posrow in db.get_positions(instname):
+            self.pos_list.Append(posrow.name)
 
         rsizer.Add(brow,          0, wx.ALIGN_LEFT|wx.ALL)
         rsizer.Add(self.pos_list, 1, wx.GROW|wx.ALL, 1)
@@ -302,15 +303,11 @@ class InstrumentPanel(wx.Panel):
         current_comps = [self.toprow]
         pvcomps = list(self.pv_components.items())
 
-        # print 'redraw leftpanel: ', self.inst, time.ctime() #, pvcomps
-
         skip = []
         for icomp, val in enumerate(pvcomps):
             pvname, comp = val
             connected, pvtype, pv = comp
             grow = 0
-            #print(" comp : ", icomp, connected, pvtype, pv)
-
             panel = None
             if pvtype == 'motor':
                 try:
@@ -337,7 +334,7 @@ class InstrumentPanel(wx.Panel):
                 # print(" Show PV ", pv, pvtype)
                 if 'enum' in pvtype:
                     ctrl = PVEnumChoice(panel, pv=pv, size=(150, -1))
-                elif 'string' in pvtype: #  in ('string', 'unicode'):
+                elif 'string' in pvtype: #
                     ctrl = PVTextCtrl(panel, pv=pv, size=(200, -1))
                 else:
                     ctrl = PVFloatCtrl(panel, pv=pv, size=(150, -1))
@@ -394,22 +391,21 @@ class InstrumentPanel(wx.Panel):
         self.pos_list.SetBackgroundColour(wx.WHITE)
         self.pos_list.Enable()
         self.last_draw = time.time()
-        # print "Panel Enabled! ", self.inst, time.ctime()
 
     @EpicsFunction
     def add_pv(self, pvname):
         """add a PV to the left panel"""
         pvname = normalize_pvname(pvname)
-        self.pv_components[pvname] = (False, None, None)
-        db_pv = self.db.get_pv(pvname)
-
-        if db_pv.pvtype is None:
-            print('Return because no pvtype?' , pvname, db_pv)
-            return
-        if db_pv.pvtype.name == 'motor':
+        if len(self.db.pvtype_ids) < 1:
+            self.db.map_pvtypes()
+        pvrow = self.db.get_pv(pvname)
+        pvtype = self.db.pvtype_names.get(pvrow.pvtype_id, 'numeric')
+        self.pv_components[pvname] = (False, pvtype,
+                                      self.db.get_pv(pvrow.name, None))
+        if pvtype == 'motor':
             idot = pvname.find('.')
-            for ext in MOTOR_FIELDS:
-                self.pvlist.connect_pv('%s%s' % (pvname[:idot], ext))
+            for field in MOTOR_FIELDS:
+                self.pvlist.connect_pv(f'{pvname[:idot]}{field}')
         self.PV_Panel(pvname)
         self.last_draw = 0.0
 
@@ -455,7 +451,7 @@ class InstrumentPanel(wx.Panel):
         # pv.get_ctrlvars()
         pvtype = self.pv_components[pvname][1]
         if pvtype is None:
-            db_pv = self.db.get_pv(pvname)
+            pvrow = self.db.get_pv(pvname)
             try:
                 pvtype = str(db_pv.pvtype.name)
             except AttributeError:
@@ -472,8 +468,8 @@ class InstrumentPanel(wx.Panel):
         for pv in self.pvs.values():
             values[pv.pvname] = pv.get(as_string=True)
         # print("Saving Current Position ", posname, values)
-        self.db.save_position(posname, self.inst, values)
-        self.write("Saved position '%s' for '%s'" % (posname, self.inst.name))
+        self.db.save_position(posname, self.instname, values)
+        self.write("Saved position '%s' for '%s'" % (posname, self.instname))
 
     def onSavePosition(self, evt=None):
         posname = evt.GetString().strip()
@@ -481,7 +477,7 @@ class InstrumentPanel(wx.Panel):
         verify = int(self.db.get_info('verify_overwrite'))
         if verify and posname in self.pos_list.GetItems():
 
-            thispos = self.db.get_position(posname, self.inst)
+            thispos = self.db.get_position(posname, self.instname)
             postext = ["\nSaved Values were:\n"]
             for pvpos in thispos.pvs:
                 postext.append('  %s= %s' % (pvpos.pv.name, pvpos.value))
@@ -500,15 +496,15 @@ class InstrumentPanel(wx.Panel):
 
     @EpicsFunction
     def restore_position(self, posname, exclude_pvs=None, timeout=60.0):
-        msg= "Moving to '%s' to position '%s'" % (self.inst.name, posname)
+        msg= "Moving to '%s' to position '%s'" % (self.instname, posname)
         self.write(msg)
-        self.db.restore_position(posname, self.inst, wait=False,
+        self.db.restore_position(posname, self.instname, wait=False,
                                 exclude_pvs=exclude_pvs)
 
     def OnMove(self, evt=None):
         """ on GoTo """
         posname = self.pos_list.GetStringSelection()
-        thispos = self.db.get_position(posname, self.inst)
+        thispos = self.db.get_position(posname, self.instname)
         if thispos is None:
             return
 
@@ -516,7 +512,7 @@ class InstrumentPanel(wx.Panel):
         if verify == 0:
             self.restore_position(posname)
         elif verify == 1:
-            dlg = MoveToDialog(self, posname, self.inst.name, self.db, pvs=self.pvs)
+            dlg = MoveToDialog(self, posname, self.instname, self.db, pvs=self.pvs)
             dlg.Raise()
             if dlg.ShowModal() == wx.ID_OK:
                 exclude_pvs = []
@@ -531,10 +527,10 @@ class InstrumentPanel(wx.Panel):
     def OnShowPos(self, evt=None):
         """ on Show Position """
         posname = self.pos_list.GetStringSelection()
-        thispos = self.db.get_position(posname, self.inst)
+        thispos = self.db.get_position(posname, self.instname)
         if thispos is None:
             return
-        dlg = MoveToDialog(self, posname, self.inst.name, self.db, pvs=self.pvs,
+        dlg = MoveToDialog(self, posname, self.instname, self.db, pvs=self.pvs,
                            mode='show')
         dlg.Raise()
         if dlg.ShowModal() == wx.ID_OK:
@@ -584,13 +580,13 @@ class InstrumentPanel(wx.Panel):
         elif wid == self.popup_rename:
             posname = namelist[idx]
             newname = None
-            dlg = RenameDialog(self, posname, self.inst)
+            dlg = RenameDialog(self, posname, self.instname)
             dlg.Raise()
             if dlg.ShowModal() == wx.ID_OK:
                 newname = dlg.newname.GetValue()
             dlg.Destroy()
             if newname is not None:
-                self.db.rename_position(posname, newname, instrument=self.inst)
+                self.db.rename_position(posname, newname, instrument=self.instname)
                 namelist[idx] = newname
 
 
@@ -609,7 +605,7 @@ class InstrumentPanel(wx.Panel):
             if ret != wx.ID_YES:
                 return
 
-        self.db.remove_position(posname, self.inst)
+        self.db.remove_position(posname, self.instname)
         ipos  =  self.pos_list.GetSelection()
         self.pos_list.Delete(ipos)
-        self.write("Erased position '%s' for '%s'" % (posname, self.inst.name))
+        self.write("Erased position '%s' for '%s'" % (posname, self.instname))

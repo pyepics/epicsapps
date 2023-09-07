@@ -21,6 +21,9 @@ ALL_EXP  = wx.ALL|wx.EXPAND
 EIN_WILDCARD = 'Epics Instrument Files (*.ein)|*.ein|All files (*.*)|*.*'
 
 
+MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '.TWR', '.TWF',
+                '_able.VAL', '.HLS', '.LLS', '.SPMG', '.DESC', '.STOP', '.RBV')
+
 def get_pvtypes(pvobj, instrument=None):
     print("USE InstrumentDB.get_pvtypes")
 

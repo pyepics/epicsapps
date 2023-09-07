@@ -136,7 +136,7 @@ class InstrumentFrame(wx.Frame):
                 db.create_newdb(dbname, connect=True)
         self.config['dbname'] = dbname
         self.config['server'] = server
-        self.config['connstr'] = db.connstr
+        self.config['connstr'] = db.conndict
 
         if server.lower().startswith('sqlite'):
             if dbname in self.config['recent_dbs']:
@@ -148,16 +148,17 @@ class InstrumentFrame(wx.Frame):
             self.config['user'] = user
             self.config['password'] = password
 
-        for pv in db.get_allpvs():
-            self.pvlist.init_connect(pv.name)
-        time.sleep(0.50)
+        for pvid, pvname in db.get_allpvs().items():
+            self.pvlist.init_connect(pvname)
+        time.sleep(0.10)
         self.pvlist.show_unconnected()
+        print("Instrument Connected ", dbname, db)
         return db, dbname
 
     def create_Frame(self):
         self.nb = flat_nb.FlatNotebook(self, wx.ID_ANY,
                                        agwStyle=FNB_STYLE)
-
+        print("CREATE FRAME")
         colors = self.colors
         self.nb.SetActiveTabColour(colors.nb_active)
         self.nb.SetTabAreaColour(colors.nb_area)
@@ -185,24 +186,24 @@ class InstrumentFrame(wx.Frame):
         if self.nb.GetPageCount() > 0:
             self.nb.DeleteAllPages()
 
-        for inst in self.db.get_all_instruments():
-            if inst.show is None:
-                inst.show = 1
-            if int(inst.show) == 1:
-                self.add_instrument_page(inst)
+        for row in self.db.get_all_instruments():
+            if row.show is None:
+                row.show = 1
+            if int(row.show) == 1:
+                self.add_instrument_page(row.name)
 
-    def add_instrument_page(self, inst):
-        panel = InstrumentPanel(self, inst, db=self.db,
+    def add_instrument_page(self, instname):
+        panel = InstrumentPanel(self, instname, db=self.db,
                                 size=(925, -1),
                                 pvlist = self.pvlist,
                                 writer = self.write_message)
 
-        self.panels[inst.name] = panel
-        self.nb.AddPage(panel, inst.name, True)
+        self.panels[instname] = panel
+        self.nb.AddPage(panel, instname, True)
 
-    def connect_pvs(self, inst, wait_time=0.10):
+    def connect_pvs(self, instname, wait_time=0.10):
         """connect to PVs for an instrument.."""
-        panel = self.panels[inst.name]
+        panel = self.panels[instname]
         return
 
     def create_Menus(self):
@@ -367,7 +368,7 @@ class InstrumentFrame(wx.Frame):
                                 size=(925, -1),
                                 writer = self.write_message)
 
-        self.nb.AddPage(panel, inst.name, True)
+        self.nb.AddPage(panel, newname, True)
         EditInstrumentFrame(parent=self, db=self.db, inst=inst)
 
     def onEditInstrument(self, event=None):
@@ -388,7 +389,7 @@ class InstrumentFrame(wx.Frame):
 
     def onRemoveInstrument(self, event=None):
         inst = self.nb.GetCurrentPage().inst
-        iname = inst.name
+        iname = instname
 
         MSG = "Permanently Remove Instrument '%s'?\nThis cannot be undone!"
 
@@ -489,14 +490,17 @@ class InstrumentFrame(wx.Frame):
     # @EpicsFunction
     def onClose(self, event):
         self.configfile.write(config=self.config)
-        display_order = [self.nb.GetPage(i).inst.name for i in range(self.nb.GetPageCount())]
+        pages = [self.nb.GetPage(i).instname for i in range(self.nb.GetPageCount())]
         for inst in self.db.get_all_instruments():
-            inst.show = 0
-            if inst.name in display_order:
-                inst.show = 1
-                inst.display_order = display_order.index(inst.name)
+            show = 0
+            display_order = len(pages) + 1
+            if inst.name in pages:
+                show = 1
+                display_order = pages.index(inst.name)
+            self.db.update('instrument', where={'name':inst.name},
+                           show=show, display_order=display_order)
+
         self.db.set_hostpid(clear=True)
-        self.db.commit()
         time.sleep(0.1)
         for name, pv in self.pvlist.pvs.items():
             try:
