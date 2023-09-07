@@ -185,11 +185,14 @@ class InstrumentFrame(wx.Frame):
     def create_nbpages(self):
         if self.nb.GetPageCount() > 0:
             self.nb.DeleteAllPages()
-
         for row in self.db.get_all_instruments():
             if row.show is None:
-                row.show = 1
-            if int(row.show) == 1:
+                self.db.update('instrument', where={'name': row.name},
+                               show=1)
+                show = 1
+            else:
+                show = int(row.show)
+            if show:
                 self.add_instrument_page(row.name)
 
     def add_instrument_page(self, instname):
@@ -373,37 +376,32 @@ class InstrumentFrame(wx.Frame):
 
     def onEditInstrument(self, event=None):
         "edit the current instrument"
-        inst = self.nb.GetCurrentPage().inst
-        EditInstrumentFrame(parent=self, db=self.db, inst=inst)
+        instname = self.nb.GetCurrentPage().instname
+        EditInstrumentFrame(parent=self, db=self.db, instname=instname)
 
     def onEnterPosition(self, event=None):
         "enter a new position for the current instrument"
         page = self.nb.GetCurrentPage()
-        inst = page.inst
-        NewPositionFrame(parent=self, db=self.db, inst=inst,
+        NewPositionFrame(parent=self, db=self.db, instname=page.instname,
                          page=page)
 
     def onErasePositions(self, event=None):
         ErasePositionsFrame(self, self.nb.GetCurrentPage())
 
-
     def onRemoveInstrument(self, event=None):
-        inst = self.nb.GetCurrentPage().inst
-        iname = instname
+        instname = self.nb.GetCurrentPage().instname
 
-        MSG = "Permanently Remove Instrument '%s'?\nThis cannot be undone!"
-
-        ret = Popup(self, MSG % iname, 'Remove Instrument',
+        msg = f"Permanently Remove Instrument '{instname}'?\nThis cannot be undone!"
+        ret = Popup(self, msg, 'Remove Instrument',
                     style=wx.YES_NO|wx.ICON_QUESTION)
         if ret != wx.ID_YES:
             return
-        self.db.remove_instrument(inst)
-        self.db.commit()
+        self.db.remove_instrument(instname)
         pages = {}
         for i in range(self.nb.GetPageCount()):
             pages[self.nb.GetPageText(i)] = i
 
-        self.nb.DeletePage(pages[iname])
+        self.nb.DeletePage(pages[instname])
 
     def onSettings(self, event=None):
         try:

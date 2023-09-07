@@ -72,7 +72,7 @@ class MoveToDialog(wx.Dialog):
         self.instname = instname
         self.pvs  = pvs
         self.mode = mode
-
+        self.db = db
         self.pvs = {}
         for pvname, dat in db.get_instrument_pvs(instname).items():
             rowid, thispv = dat
@@ -82,9 +82,9 @@ class MoveToDialog(wx.Dialog):
         thispos = db.get_position(posname, instname)
         if thispos is None:
             return
-        title = "Move Instrument {instname} to Position '{posname}'?"
+        title = f"Move Instrument {instname} to Position '{posname}'?"
         if mode == 'show':
-            title = "Instrument {instname} / Position '{posname}'"
+            title = f"Instrument {instname} / Position '{posname}'"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title,
                            size=(500, 325))
         self.build_dialog(parent, thispos)
@@ -98,7 +98,7 @@ class MoveToDialog(wx.Dialog):
         titlefont.PointSize += 2
         titlefont.SetWeight(wx.BOLD)
 
-        sizer = wx.GridBagSizer(6, 3)
+        sizer = wx.GridBagSizer(3, 3)
 
         labstyle  = wx.ALIGN_LEFT|wx.ALL
         rlabstyle = wx.ALIGN_RIGHT|wx.ALL
@@ -110,7 +110,8 @@ class MoveToDialog(wx.Dialog):
             col_labels.append('Move?')
         for titleword in col_labels:
             style = rlabstyle
-            if 'PV' in titleword: style = labstyle
+            if 'PV' in titleword:
+                style = labstyle
             txt =SimpleText(self, titleword, font=titlefont,
                             size=(125, -1),
                             colour=colors.title, style=style)
@@ -123,24 +124,19 @@ class MoveToDialog(wx.Dialog):
 
         self.checkboxes = {}
         irow = 0
-        for pvpos in thispos.pvs:
-            pvname = pvpos.pv.name
+        pos_pvs = self.db.get_ordered_position(thispos.name, self.instname)
+        for pvname, save_val in pos_pvs.items():
+            pvname = normalize_pvname(pvname)
             desc = get_pvdesc(pvname)
             if desc != pvname:
-                desc = "%s (%s)" % (desc, pvname)
+                desc = f"{desc} ({pvname})"
             curr_val = None
             if pvname in self.pvs:
                 curr_val = self.pvs[pvname].get(as_string=True)
-            elif pvname.endswith('.VAL') and pvname[:4] in self.pvs:
-                curr_val = self.pvs[pvname[:-4]].get(as_string=True)
-            elif pvname+'.VAL' in self.pvs:
-                curr_val = self.pvs[pvname+'.VAL'].get(as_string=True)
 
             if curr_val is None:
                 # may have been removed from instrument definition
                 continue
-            save_val = pvpos.value
-
             label = SimpleText(self, desc, style=tstyle,
                                colour=colors.pvname)
             curr  = SimpleText(self, curr_val, style=tstyle)
@@ -191,6 +187,8 @@ class InstrumentPanel(wx.Panel):
         self.pv_components = {}
 
         wx.Panel.__init__(self, parent, size=size)
+        print("InstrumentPanel ", instname)
+        print("PVs: ", db.get_instrument_pvs(instname))
         for pvname in self.db.get_instrument_pvs(instname):
             self.add_pv(pvname)
 
@@ -519,7 +517,7 @@ class InstrumentPanel(wx.Panel):
                 for pvname, data, in dlg.checkboxes.items():
                     if not data[0].IsChecked():
                         exclude_pvs.append(pvname)
-                self.restore_position(posname, exclude_pvs=exclude_pvs)
+                self.restore_position(posname, exclude_pvs=exclude_pvs, wait=True)
             else:
                 return
             dlg.Destroy()

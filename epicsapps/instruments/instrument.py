@@ -283,8 +283,6 @@ class InstrumentDB(SimpleDB):
             for i, pvid in enumerate(pvlist):
                 self.add_row('instrument_pv', instrument_id=inst.id,
                              pv_id=pvid, display_order=i)
-
-        self.commit()
         return inst
 
     def add_pv(self, name, pvtype=None, **kws):
@@ -413,20 +411,25 @@ class InstrumentDB(SimpleDB):
                                                 exclude_pvs=exclude_pvs)
 
         work_pvs = []
+        print("## RESTORE POSITION ", ordered_pvs, exclude_pvs)
         for pvname, value in ordered_pvs.items():
             # put values without waiting
+            if pvname in exclude_pvs:
+                continue
             thispv = self.pvs[pvname]
-            if not thispv.connected():
+            print(pvname, value, thispv, thispv.connected)
+            if not thispv.connected:
                 thispv.wait_for_connection(timeout=1.0)
-            if thispv.connected():
+            if thispv.connected:
                 try:
-                    thispv.put(val, wait=False, use_complete=True)
+                    thispv.put(value, wait=False, use_complete=True)
                 except:
                     pass
                 if wait:
                     work_pvs.append(thispv)
 
         complete = True
+        print("wait: ", wait, work_pvs)
         if wait:
             complete = False
             while not all([p.put_complete for p in work_pvs]):
@@ -434,4 +437,5 @@ class InstrumentDB(SimpleDB):
                 if time.time() > (t0+timeout):
                     complete = True
                     break
+        print("put complete")
         return complete

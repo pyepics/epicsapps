@@ -63,11 +63,11 @@ class FocusEventFrame(wx.Window):
 class NewPositionFrame(wx.Frame, FocusEventFrame) :
     """ Edit / Add Instrument"""
     def __init__(self, parent=None, pos=(-1, -1),
-                 inst=None, db=None, page=None):
+                 instname=None, db=None, page=None):
 
         title = 'New Position'
-        if inst is not None:
-            title = 'New Position for Instrument  %s ' % inst.name
+        if instname is not None:
+            title = f'New Position for Instrument  {instname}'
 
         style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
         wx.Frame.__init__(self, None, -1, title, size=(350, 450),
@@ -90,8 +90,8 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
         self.parent = parent
         self.page = page
         self.db = db
-        self.inst = db.get_instrument(inst)
-
+        self.inst = db.get_instrument(instname)
+        print("new position " , instname, self.inst)
         STY  = wx.GROW|wx.ALL
         LSTY = wx.ALIGN_LEFT|wx.GROW|wx.ALL
         RSTY = wx.ALIGN_RIGHT|STY
@@ -106,7 +106,7 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
         sizer = wx.GridBagSizer(12, 3)
 
         ir = 0
-        sizer.Add(SimpleText(panel, " New Position for '%s'" % self.inst.name,
+        sizer.Add(SimpleText(panel, f"New Position for '{instname}'",
                              font=titlefont,  colour=colors.title),
                   (ir, 0), (1, 2), LSTY, 2)
 
@@ -123,9 +123,9 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
 
         self.positions = []
         ir += 1
-        for p in self.inst.pvs:
+        for pvname in self.db.get_instrument_pvs(instname):
             val =  wx.TextCtrl(panel, value='', size=(150, -1))
-            sizer.Add(SimpleText(panel, p.name), (ir, 0), (1, 1), LSTY, 2)
+            sizer.Add(SimpleText(panel, pvname), (ir, 0), (1, 1), LSTY, 2)
             sizer.Add(val,                       (ir, 1), (1, 1), LSTY, 2)
             self.positions.append(val)
             ir += 1
@@ -178,13 +178,13 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
 class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
     """ Edit / Add Instrument"""
     def __init__(self, parent=None, pos=(-1, -1),
-                 inst=None, db=None):
+                 instname=None, db=None):
 
         self.epics_pvs = {}
 
         title = 'Add New Instrument'
         if inst is not None:
-            title = 'Edit Instrument  %s ' % inst.name
+            title = f'Edit Instrument  {instname}'
 
         style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
         wx.Frame.__init__(self, None, -1, title,
@@ -206,7 +206,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
 
         self.parent = parent
         self.db = db
-        self.inst = db.get_instrument(inst)
+        self.inst = db.get_instrument(instname)
         self.connecting_pvs = {}
 
         STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
@@ -234,8 +234,8 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
 
         irow = 2
         self.curpvs, self.newpvs = [], {}
-        if inst is not None:
-            self.name.SetValue(inst.name)
+        if instname is not None:
+            self.name.SetValue(instname)
             sizer.Add(SimpleText(panel, 'Current PVs', font=titlefont,
                                  colour=self.colors.title, style=LSTY),
                       (2, 0), (1, 1), LSTY, 2)
@@ -246,12 +246,13 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                                  colour=self.colors.title, style=CSTY),
                       (2, 2), (1, 1), RSTY, 2)
 
-            ordered_pvs  = db.get_ordered_instpvs(inst)
+            instpvs =  db.get_instrument_pvs(instname)
             # move_choices = ["1"]
             # if len(ordered_pvs) > 1:
             #   move_choices = ["%i" % (i+1) for i in range(len(ordered_pvs))]
 
-            for instpv in ordered_pvs:
+            for instpv in instpvs:
+                print(instpv)
                 pv = instpv.pv
                 # move_order = instpv.move_order
                 # if move_order is None:
@@ -503,11 +504,9 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
         self.parent = parent
         self.db = db = parent.db
         self.page = page
-        inst = page.inst
-
-        if inst is None:
+        if page.instname is None:
             return
-        title = "Erase Positions for '%s'" % inst.name
+        title = f"Erase Positions for '{page.instname}'"
 
         style = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
         wx.Frame.__init__(self, None, -1, title, size=(350, 450),
@@ -525,8 +524,9 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
         titlefont.SetWeight(wx.BOLD)
 
 
-        self.inst = db.get_instrument(inst)
-        posnames = [p.name for p in db.get_positions(inst)]
+        inst = db.get_instrument(page.instname)
+        print(page.instname, inst, db.get_positions(page.instname))
+        posnames = [p.name for p in db.get_positions(page.instname)]
 
         ALL_EXP  = wx.ALL|wx.EXPAND
         CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
