@@ -171,7 +171,8 @@ class MicroscopeFrame(wx.Frame):
         ret = SelectWorkdir(self)
         if ret is None:
             self.Destroy()
-        os.chdir(ret)
+        if ret is not None:
+            os.chdir(ret)
 
         self.overlayframe = None
         self.calibframe = None
@@ -993,7 +994,6 @@ class MicroscopeFrame(wx.Frame):
         dlg.filename.SetValue(comp_name)
         res = dlg.GetResponse()
         dlg.Destroy()
-        print("on Build Composite! " , res)
         if res.ok:
             wx.CallAfter(self.onBuildComposite, res)
 
