@@ -172,7 +172,6 @@ class InstSelectionFrame(wx.Frame) :
 
         set_font_with_children(self, font)
 
-        print("setting panel ", panel.GetBestSize())
         pack(panel, sizer)
         panel.SetupScrolling()
         mainsizer = wx.BoxSizer(wx.VERTICAL)
@@ -201,7 +200,6 @@ class InstSelectionFrame(wx.Frame) :
 
             elif checked and pagename not in pagemap:
                 inst = self.db.get_instrument(pagename)
-                print("Add Inst ", pagename, inst)
                 self.parent.add_instrument_page(inst.name)
                 pagemap = self.get_page_map()
         self.Destroy()

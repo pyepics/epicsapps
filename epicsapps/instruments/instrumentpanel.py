@@ -86,7 +86,7 @@ class MoveToDialog(wx.Dialog):
         if mode == 'show':
             title = f"Instrument {instname} / Position '{posname}'"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title,
-                           size=(500, 325))
+                           size=(700, 200))
         self.build_dialog(parent, thispos)
 
     @EpicsFunction
@@ -105,7 +105,7 @@ class MoveToDialog(wx.Dialog):
         tstyle    = wx.ALL
         # title row
         i = 0
-        col_labels = [ 'PV', 'Current Value', 'Saved Value']
+        col_labels = ['PV Name', 'Current Value', 'Saved Value']
         if self.mode != 'show':
             col_labels.append('Move?')
         for titleword in col_labels:
@@ -118,7 +118,7 @@ class MoveToDialog(wx.Dialog):
             sizer.Add(txt, (0, i), (1, 1), style, 2)
             i = i + 1
 
-        sizer.Add(wx.StaticLine(self, size=(450, -1),
+        sizer.Add(wx.StaticLine(self, size=(650, -1),
                                 style=wx.LI_HORIZONTAL),
                   (1, 0), (1, 4), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
 
@@ -153,7 +153,7 @@ class MoveToDialog(wx.Dialog):
                 sizer.Add(cbox,  (irow+2, 3), (1, 1), rlabstyle, 2)
             irow = irow + 1
 
-        sizer.Add(wx.StaticLine(self, size=(450, -1),
+        sizer.Add(wx.StaticLine(self, size=(650, -1),
                                 style=wx.LI_HORIZONTAL),
                   (irow+3, 0), (1, 4), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 0)
 
@@ -167,10 +167,11 @@ class MoveToDialog(wx.Dialog):
         btnsizer.Realize()
         sizer.Add(btnsizer, (irow+4, 2), (1, 2), wx.ALL, 1)
         pack(self, sizer)
-        w, h = self.GetBestSize()
-        w = 25*int((w + 26)/25.)
-        h = 25*int((h + 26)/25.)
-        self.SetSize((w, h))
+        wc, hc = self.GetSize()
+        wb, hb = self.GetBestSize()
+        w = min(max(wb, wc), 700)
+        h = min(max(hb, hc), 350)
+        self.SetSize((25*int((w + 10)/25.), 25*int((h + 10)/25.)))
 
 class InstrumentPanel(wx.Panel):
     """ create Panel for an instrument"""
@@ -187,8 +188,6 @@ class InstrumentPanel(wx.Panel):
         self.pv_components = {}
 
         wx.Panel.__init__(self, parent, size=size)
-        print("InstrumentPanel ", instname)
-        print("PVs: ", db.get_instrument_pvs(instname))
         for pvname in self.db.get_instrument_pvs(instname):
             self.add_pv(pvname)
 
@@ -237,13 +236,13 @@ class InstrumentPanel(wx.Panel):
         self.etimer_count = 0
         self.etimer_poll = 25
 
-        self.Bind(wx.EVT_TIMER, self.OnPutTimer, self.puttimer)
+        self.Bind(wx.EVT_TIMER, self.onPutTimer, self.puttimer)
 
         rsizer = wx.BoxSizer(wx.VERTICAL)
         btn_goto = Button(rpanel, "Go To", size=(70, -1),
-                              action=self.OnMove)
+                              action=self.onMove)
         btn_show = Button(rpanel, "Show", size=(70, -1),
-                              action=self.OnShowPos)
+                              action=self.onShowPos)
         btn_erase = Button(rpanel, "Erase",  size=(70, -1),
                                action=self.onErase)
 
@@ -257,7 +256,7 @@ class InstrumentPanel(wx.Panel):
         self.pos_list.SetForegroundColour((10, 10, 10))
         self.pos_list.Bind(wx.EVT_RIGHT_DOWN, self.onRightClick)
         self.pos_list.Bind(wx.EVT_LISTBOX, self.onPosSelect)
-        self.pos_list.Bind(wx.EVT_LEFT_DCLICK, self.OnMove)
+        self.pos_list.Bind(wx.EVT_LEFT_DCLICK, self.onMove)
 
         self.pos_list.Clear()
 
@@ -329,7 +328,6 @@ class InstrumentPanel(wx.Panel):
                                     colour=self.colors.pvname,
                                     minsize=(250,-1), style=wx.ALIGN_LEFT)
 
-                # print(" Show PV ", pv, pvtype)
                 if 'enum' in pvtype:
                     ctrl = PVEnumChoice(panel, pv=pv, size=(150, -1))
                 elif 'string' in pvtype: #
@@ -413,14 +411,6 @@ class InstrumentPanel(wx.Panel):
             return
         self.write_message(msg, status=status)
 
-    def OnPutTimer(self, evt=None):
-        """Timer Event for GoTo to look if move is complete."""
-        if len(self.restoring_pvs) > 0:
-            self.restore_complete = all([p.put_complete for p in self.restoring_pvs])
-
-
-        if self.restore_complete:
-            self.puttimer.Stop()
 
     def PV_Panel(self, pvname): # , panel, sizer, current_wid=None):
         """ try to create a PV Panel for the given pv
@@ -493,13 +483,19 @@ class InstrumentPanel(wx.Panel):
         evt.Skip()
 
     @EpicsFunction
-    def restore_position(self, posname, exclude_pvs=None, timeout=60.0):
-        msg= "Moving to '%s' to position '%s'" % (self.instname, posname)
-        self.write(msg)
-        self.db.restore_position(posname, self.instname, wait=False,
-                                exclude_pvs=exclude_pvs)
+    def restore_position(self, posname, exclude_pvs=None):
+        self.restore_posname = posname
+        self.write(f"Move '{self.instname}' to position '{self.restore_posname}' in progress")
+        self.db.restore_position(posname, self.instname, exclude_pvs=exclude_pvs)
+        self.puttimer.Start(100)
 
-    def OnMove(self, evt=None):
+    def onPutTimer(self, evt=None):
+        """Timer Event for GoTo to look if move is complete."""
+        if self.db.restore_complete():
+            self.puttimer.Stop()
+            self.write(f"Move '{self.instname}' to position '{self.restore_posname}' complete")
+
+    def onMove(self, evt=None):
         """ on GoTo """
         posname = self.pos_list.GetStringSelection()
         thispos = self.db.get_position(posname, self.instname)
@@ -517,19 +513,19 @@ class InstrumentPanel(wx.Panel):
                 for pvname, data, in dlg.checkboxes.items():
                     if not data[0].IsChecked():
                         exclude_pvs.append(pvname)
-                self.restore_position(posname, exclude_pvs=exclude_pvs, wait=True)
+                self.restore_position(posname, exclude_pvs=exclude_pvs)
             else:
                 return
             dlg.Destroy()
 
-    def OnShowPos(self, evt=None):
+    def onShowPos(self, evt=None):
         """ on Show Position """
         posname = self.pos_list.GetStringSelection()
         thispos = self.db.get_position(posname, self.instname)
         if thispos is None:
             return
-        dlg = MoveToDialog(self, posname, self.instname, self.db, pvs=self.pvs,
-                           mode='show')
+        dlg = MoveToDialog(self, posname, self.instname, self.db,
+                           pvs=self.pvs,  mode='show')
         dlg.Raise()
         if dlg.ShowModal() == wx.ID_OK:
             pass
