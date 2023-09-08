@@ -372,7 +372,7 @@ class InstrumentFrame(wx.Frame):
                                 writer = self.write_message)
 
         self.nb.AddPage(panel, inst.name, True)
-        EditInstrumentFrame(parent=self, db=self.db, inst=inst.name)
+        EditInstrumentFrame(parent=self, db=self.db, instname=inst.name)
 
     def onEditInstrument(self, event=None):
         "edit the current instrument"
