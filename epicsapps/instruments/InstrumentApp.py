@@ -150,15 +150,14 @@ class InstrumentFrame(wx.Frame):
 
         for pvid, pvname in db.get_allpvs().items():
             self.pvlist.init_connect(pvname)
-        time.sleep(0.10)
-        self.pvlist.show_unconnected()
-        print("Instrument Connected ", dbname, db)
+        time.sleep(0.025)
+        # self.pvlist.show_unconnected()
+        print("Instrument Connected ", dbname)
         return db, dbname
 
     def create_Frame(self):
         self.nb = flat_nb.FlatNotebook(self, wx.ID_ANY,
                                        agwStyle=FNB_STYLE)
-        print("CREATE FRAME")
         colors = self.colors
         self.nb.SetActiveTabColour(colors.nb_active)
         self.nb.SetTabAreaColour(colors.nb_area)
@@ -361,18 +360,19 @@ class InstrumentFrame(wx.Frame):
         count = 1
         while inst is not None:
             count += 1
-            newname = "%s(%i)" % (basename, count)
+            newname = f"{basename}({count})"
             inst = self.db.get_instrument(newname)
 
         inst = self.db.add_instrument(newname)
+        print("onAddInstrument : add_instrument ", newname, inst)
 
-        panel = InstrumentPanel(self, inst, db=self.db,
+        panel = InstrumentPanel(self, inst.name, db=self.db,
                                 pvlist=self.pvlist,
                                 size=(925, -1),
                                 writer = self.write_message)
 
-        self.nb.AddPage(panel, newname, True)
-        EditInstrumentFrame(parent=self, db=self.db, inst=inst)
+        self.nb.AddPage(panel, inst.name, True)
+        EditInstrumentFrame(parent=self, db=self.db, inst=inst.name)
 
     def onEditInstrument(self, event=None):
         "edit the current instrument"
