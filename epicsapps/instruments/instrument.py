@@ -79,6 +79,7 @@ class InstrumentDB(SimpleDB):
         self.motor_pvs = {}
         self.pvtype_names = {}
         self.pvtype_ids = {}
+        self.restoring_pvs = []
         SimpleDB.__init__(self, **self.conndict)
         self.connect_pvs()
 
@@ -158,10 +159,10 @@ class InstrumentDB(SimpleDB):
                              limit_one=True, none_if_empty=True)
 
     # def get_ordered_instpvs(self, inst):
-    def get_instrument_pvs(self, inst):
+    def get_instrument_pvs(self, instname):
         """get dict of {pvname: (pv_id, epics_pv} ordered by
         'display_order' for an instrument"""
-        inst = self.get_instrument(inst)
+        inst = self.get_instrument(instname)
         instpvs = {}
         allpvs = self.get_allpvs()
         for row in self.get_rows('instrument_pv',
@@ -202,7 +203,7 @@ class InstrumentDB(SimpleDB):
                 self.map_pvtypes()
             for _name, _id in self.pvtype_ids.items():
                 if _id == pvobj.pvtype_id:
-                    typename = name
+                    typename = _name
 
         choices = ('numeric', 'string')
         if typename == 'motor':
@@ -213,12 +214,20 @@ class InstrumentDB(SimpleDB):
             choices = ('string', 'numeric')
         return choices
 
+    def get_pvtype(self, pvname):
+        pvrow = self.get_pv(pvname)
+        if pvrow is None:
+            raise InstrumentDBException(f"PV '{name}' not found in database")
+        if len(self.pvtype_ids) < 1:
+            self.map_pvtypes()
+        return self.pvtype_names[pvrow.pvtype_id]
+
+
     def set_pvtype(self, name, pvtype):
         """ set a pv type"""
         pvrow = self.get_pv(name)
         if pvrow is None:
-            print("PV not found in database table: ", name)
-            return
+            raise InstrumentDBException(f"PV '{name}' not found in database")
         if len(self.pvtype_ids) < 1:
             self.map_pvtypes()
         if pvtype not in self.pvtype_ids:
@@ -273,17 +282,37 @@ class InstrumentDB(SimpleDB):
         """add instrument  notes and attributes optional
         returns Instruments instance
         """
+        curr_inst = self.get_rows('instrument', where={'name': name},
+                             limit_one=True, none_if_empty=True)
+        if curr_inst is not None:
+            raise InstrumentDBException(f"Instrument '{name}' already exists")
+
         kws['name'] = name.strip()
-        inst = self.add_row('instrument', **kws)
+        self.add_row('instrument', **kws)
+        inst = self.get_rows('instrument', where={'name': name}, limit_one=True)
         if pvs is not None:
-            pvlist = []
-            for pvname in pvs:
-                thispv = self.get_pv(pvname, add=True)
-                pvlist.append(thispv.id)
-            for i, pvid in enumerate(pvlist):
-                self.add_row('instrument_pv', instrument_id=inst.id,
-                             pv_id=pvid, display_order=i)
+            self.add_instrument_pvs(name, pvs)
         return inst
+
+    def add_instrument_pvs(self, instname, pvlist):
+        inst = self.get_instrument(instname)
+        if inst is None:
+            raise InstrumentDBException(f"No Instrument '{name}' found")
+        npvs = 1+len(self.get_instrument_pvs(instname))
+        for i, pvname in enumerate(pvlist):
+            thispv = self.get_pv(pvname, add=True)
+            self.add_row('instrument_pv', instrument_id=inst.id,
+                         pv_id=thispv.id, display_order=(npvs+i))
+
+    def remove_instrument_pv(self, instname, pvname):
+        inst = self.get_instrument(instname)
+        if inst is None:
+            raise InstrumentDBException(f"No Instrument '{name}' found")
+
+        thispv = self.get_pv(pvname, add=False)
+        if thispv is not None:
+            self.delete_rows('instrument_pv',
+                            {'instrument_id': inst.id, 'pv_id': thispv.id})
 
     def add_pv(self, name, pvtype=None, **kws):
         """add pv
@@ -330,7 +359,7 @@ class InstrumentDB(SimpleDB):
 
         self.delete_rows('position',      {'instrument_id': inst.id})
         self.delete_rows('instrument_pv', {'instrument_id': inst.id})
-        self.delete_rows('instrument_pv', {'id': inst.id})
+        self.delete_rows('instrument', {'id': inst.id})
 
     def save_position(self, posname, instname, values, notes=None, **kws):
         """save position for instrument
@@ -342,9 +371,10 @@ class InstrumentDB(SimpleDB):
         posname = posname.strip()
         pos  = self.get_position(posname, instname)
         if pos is None:
-            pos = self.add_row('position', name=posname,
-                               instrument_id=inst.id, notes=notes,
-                               modify_time=datetime.now())
+            self.add_row('position', name=posname,
+                         instrument_id=inst.id, notes=notes,
+                         modify_time=datetime.now())
+            pos = self.get_position(posname, instname)
 
         else:
             where = {'name': posname, 'instrument_id': inst.id}
@@ -354,6 +384,7 @@ class InstrumentDB(SimpleDB):
             pos = self.update('position', where=where, **kwargs)
 
         instpvs = self.get_instrument_pvs(instname)
+
         # check for missing pvs in values
         missing_pvs = []
         for pvname in instpvs:
@@ -363,9 +394,11 @@ class InstrumentDB(SimpleDB):
         if len(missing_pvs) > 0:
             raise InstrumentDBException(f'Save Postion: missing pvs:\n {missing_pvs}')
 
-        for name, pvid in instpvs.items():
+        for name, pvdat in instpvs.items():
+            pvid = pvdat[0]
+            value = values[name]
             self.insert('position_pv', position_id=pos.id,
-                        pv_id=pvid, value=values['name'],
+                        pv_id=pvid, value=values[name],
                         notes=f"'{inst.name}' / '{posname}'")
 
 
@@ -401,8 +434,7 @@ class InstrumentDB(SimpleDB):
         return ordered_pvs
 
 
-    def restore_position(self, posname, instname, wait=True, timeout=5.0,
-                         exclude_pvs=None):
+    def restore_position(self, posname, instname, exclude_pvs=None):
         """
         restore named position for instrument
         """
@@ -410,14 +442,12 @@ class InstrumentDB(SimpleDB):
         ordered_pvs = self.get_ordered_position(posname, instname,
                                                 exclude_pvs=exclude_pvs)
 
-        work_pvs = []
-        print("## RESTORE POSITION ", ordered_pvs, exclude_pvs)
+        self.restoring_pvs = []
         for pvname, value in ordered_pvs.items():
             # put values without waiting
             if pvname in exclude_pvs:
                 continue
             thispv = self.pvs[pvname]
-            print(pvname, value, thispv, thispv.connected)
             if not thispv.connected:
                 thispv.wait_for_connection(timeout=1.0)
             if thispv.connected:
@@ -425,17 +455,12 @@ class InstrumentDB(SimpleDB):
                     thispv.put(value, wait=False, use_complete=True)
                 except:
                     pass
-                if wait:
-                    work_pvs.append(thispv)
+                self.restoring_pvs.append(thispv)
 
-        complete = True
-        print("wait: ", wait, work_pvs)
-        if wait:
-            complete = False
-            while not all([p.put_complete for p in work_pvs]):
-                time.sleep(0.025)
-                if time.time() > (t0+timeout):
-                    complete = True
-                    break
-        print("put complete")
-        return complete
+    def restore_complete(self):
+        work_pvs = self.restoring_pvs[:]
+        self.restoring_pvs = []
+        for pv in work_pvs:
+            if not pv.put_complete:
+                self.restoring_pvs.append(pv)
+        return len(self.restoring_pvs) == 0
