@@ -24,10 +24,7 @@ def add_button(parent, label, size=(-1, -1), action=None):
     return thisb
 
 
-try:
-    from epicsscan.scandb import ScanDB, InstrumentDB
-except ImportError:
-    ScanDB = InstrumentDB = None
+from ..instruments import InstrumentDB
 
 from ..utils import MoveToDialog, normalize_pvname, get_pvdesc
 
@@ -51,9 +48,9 @@ def read_xyz(instdb, name, xyz_stages):
     returns dictionary of PositionName: (x, y, z)
     """
     out = {}
-    for pname in instdb.get_positionlist(name, reverse=True):
-        v =  instdb.get_position_vals(name, pname)
-        out[pname]  = [v[p] for p in xyz_stages]
+    for row in instdb.get_positions(name, reverse=True):
+        vals =  instdb.get_position_values(row.name, name)
+        out[row.name]  = [vals[pos] for pos in xyz_stages]
     return out
 
 def params2rotmatrix(params, mat):
@@ -121,7 +118,7 @@ def calc_rotmatrix(d1, d2):
     mat = params2rotmatrix(params, mat)
     return mat, v1, v2
 
-def make_uscope_rotation(scandb,
+def make_uscope_rotation(instdb,
                          offline_inst='IDE_Microscope',
                          offline_xyz=('13IDE:m1.VAL', '13IDE:m2.VAL', '13IDE:m3.VAL'),
                          online_inst='IDE_SampleStage',
@@ -137,8 +134,6 @@ def make_uscope_rotation(scandb,
     Note:
         The result is saved as a json dictionary to the config table
     """
-    instdb = InstrumentDB(scandb)
-
     pos_us = read_xyz(instdb, offline_inst, offline_xyz)
     pos_ss = read_xyz(instdb, online_inst, online_xyz)
     # print('pos us: ', pos_us['A2'])
@@ -157,7 +152,7 @@ def make_uscope_rotation(scandb,
 
     us2ss = dict(source=offline_xyz, dest=online_xyz,
                  rotmat=mat_us2ss.tolist())
-    scandb.set_config(conf_us2ss, json.dumps(us2ss))
+    instdb.set_config(conf_us2ss, json.dumps(us2ss))
 
     # calculate the rotation matrix going the other way
     mat_ss2us, v1, v2 = calc_rotmatrix(pos_ss, pos_us)
@@ -165,7 +160,7 @@ def make_uscope_rotation(scandb,
     ss2us = dict(source=online_xyz, dest=offline_xyz,
                  rotmat=mat_ss2us.tolist())
     print("Saving Calibration %s" %  conf_ss2us)
-    scandb.set_config(conf_ss2us, json.dumps(ss2us))
+    instdb.set_config(conf_ss2us, json.dumps(ss2us))
 
 ######################
 
@@ -262,13 +257,14 @@ class PositionModel(dv.DataViewIndexListModel):
 
     def read_data(self):
         self.data = []
-        poslist = self.instdb.get_positionlist(self.instname, reverse=True)
+        poslist = self.instdb.get_positions(self.instname)
         for pos in poslist:
+            posname = pos.name
             erase = True
-            if pos in self.posvals:
-                erase = self.posvals[pos]
-            self.data.append([pos, erase])
-            self.posvals[pos] = erase
+            if posname in self.posvals:
+                erase = self.posvals[posname]
+            self.data.append([posname, erase])
+            self.posvals[posname] = erase
         if len(self.data) > 0:
             self.Reset(len(self.data))
 
@@ -306,7 +302,7 @@ class PositionModel(dv.DataViewIndexListModel):
             return len(self.data[0])
         except:
             return 0
-        
+
     def GetCount(self):
         return len(self.data)
 
@@ -376,7 +372,7 @@ class EraseManyPositionsFrame(wx.Frame) :
 
         warn = SimpleText(panel, warn_msg, size=(450, -1),
                           colour=wx.Colour(200, 0, 0))
-        
+
         sizer.Add(warn, (irow, 1), (1, 3),  LEFT_CEN, 2)
 
         pack(panel, sizer)
@@ -410,13 +406,13 @@ class EraseManyPositionsFrame(wx.Frame) :
 
     def onRefresh(self, event=None):
         self.update()
-        
+
     def onErase(self, event=None):
         for posname, erase in reversed(self.model.data):
             if erase:
                 self.instdb.remove_position(self.instname, posname)
         self.update()
-            
+
     def onSelAll(self, event=None):
         self.model.select_all(True)
 
@@ -438,7 +434,7 @@ class EraseManyPositionsFrame(wx.Frame) :
         if item0 is not None:
             self.dvc.EnsureVisible(self.model.GetItem(0))
 
-            
+
 class TransferPositionsDialog(wx.Frame):
     """ transfer positions from offline microscope"""
     def __init__(self, offline, instname=None, instdb=None, parent=None):
@@ -450,7 +446,7 @@ class TransferPositionsDialog(wx.Frame):
         self.build_dialog()
 
     def build_dialog(self):
-        positions  = self.instdb.get_positionlist(self.offline, reverse=True)
+        positions  = self.instdb.get_position_values(self.offline, reverse=True)
         panel = scrolled.ScrolledPanel(self)
         self.checkboxes = {}
         sizer = wx.GridBagSizer(len(positions)+5, 4)
@@ -541,15 +537,15 @@ class TransferPositionsDialog(wx.Frame):
             sname = sample.name.replace(' ', '_')
             conf_name = "CoordTrans:%s:%s" % (uname, sname)
 
-            conf = json.loads(idb.scandb.get_config(conf_name).notes)
-            print("Transfering positions from ", uscope, ' to ', sample)            
+            conf = json.loads(idb.get_config(conf_name).notes)
+            print("Transfering positions from ", uscope, ' to ', sample)
             source_pvs = conf['source']
             dest_pvs = conf['dest']
             rotmat = np.array(conf['rotmat'])
             upos = {}
             for pname, cbox in self.checkboxes.items():
                 if cbox.IsChecked():
-                    v =  idb.get_position_vals(self.offline, pname)
+                    v =  idb.get_position_values(pname, self.offline)
                     upos[pname]  = [v[pvn] for pvn in source_pvs]
 
             newnames = upos.keys()
@@ -565,8 +561,8 @@ class TransferPositionsDialog(wx.Frame):
             os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
             pred = np.dot(rotmat, vals)
             os.environ['KMP_DUPLICATE_LIB_OK'] = 'FALSE'
-            
-            poslist = idb.get_positionlist(self.instname, reverse=True)
+
+            poslist = idb.get_positions(self.instname, reverse=True)
             saved_temp = None
 
             if len(poslist) < 1 and self.parent is not None:
@@ -575,9 +571,9 @@ class TransferPositionsDialog(wx.Frame):
                     saved_temp = '__tmp_a0012AZqspkwx9827nf917+o,ppa+'
                 self.parent.onSave(saved_temp)
                 time.sleep(3.0)
-                poslist = idb.get_positionlist(self.instname, reverse=True)
+                poslist = idb.get_positions(self.instname, reverse=True)
 
-            pos0 = idb.get_position_vals(self.instname, poslist[0])
+            pos0 = idb.get_position_values(poslist[0], self.instname)
             spos = {}
             for pvname in sorted(pos0.keys()):
                 spos[pvname] = 0.000
@@ -650,8 +646,7 @@ class PositionPanel(wx.Panel):
         pack(self, sizer)
         self.SetSize((275, 1300))
 
-        self.scandb = ScanDB()
-        self.instdb = InstrumentDB(self.scandb)
+        self.instdb = InstrumentDB()
 
         self.last_refresh = 0
         self.get_positions_from_db()
@@ -662,7 +657,7 @@ class PositionPanel(wx.Panel):
     def onSave(self, event=None, name=None):
         if name is None:
             name = event.GetString().strip()
-        if len(name) < 1:            
+        if len(name) < 1:
             return
 
         if name in self.positions and self.viewer.v_replace:
@@ -697,6 +692,7 @@ class PositionPanel(wx.Panel):
                                           'position': tmp_pos,
                                           'notes':  notes}
 
+        print("Save Position ", self.instrument, name, tmp_pos)
         self.instdb.save_position(self.instrument, name, tmp_pos,
                                   notes=notes, image=fullpath)
         self.get_positions_from_db()
@@ -781,12 +777,12 @@ class PositionPanel(wx.Panel):
 
         # pre-load to make sure the PVs are connected
         posvals = {}
-        for name, val in self.instdb.get_position_vals(instname, posname).items():
+        for name, val in self.instdb.get_position_values(instname, posname).items():
             pvname = normalize_pvname(name)
             get_pv(pvname)
             get_pvdesc(pvname)
             posvals[pvname] =  val
-        
+
 
         orig, safe = {}, {}
         if self.safe_move is not None:
@@ -801,7 +797,7 @@ class PositionPanel(wx.Panel):
                         safe[pvname] = cur_val + step
                     elif sval is not None:
                         safe[pvname] = sval
-                    
+
         time.sleep(0.005)
 
         def DoMove(pv_data):
@@ -811,10 +807,10 @@ class PositionPanel(wx.Panel):
                 for pvname, sval in safe.items():
                     get_pv(pvname).put(sval, wait=True)
 
-            # start move of sample stage   
+            # start move of sample stage
             for pvname, sval in pv_data.items():
                 get_pv(pvname).put(sval)
-                
+
             if len(orig) > 0:
                 # finish move of sample stage before restoring Safe Positions
                 for pvname, sval in pv_data.items():
@@ -822,7 +818,7 @@ class PositionPanel(wx.Panel):
 
                 # then restore safe positions, in order
                 for pvname, sval in orig.items():
-                    get_pv(pvname).put(sval, wait=True)                
+                    get_pv(pvname).put(sval, wait=True)
 
         pvdata = {}
         for pvname, value in posvals.items():
@@ -875,7 +871,7 @@ class PositionPanel(wx.Panel):
     def onMicroscopeCalibrate(self, event=None, **kws):
         online = self.instrument
         offline = self.offline_instrument
-        if len(online) > 0 and len(offline) > 0 and self.scandb is not None:
+        if len(online) > 0 and len(offline) > 0 and self.instdb is not None:
             # offline_xyz = self.offline_xyzmotors
             offline_xyz = [s.strip() for s in self.offline_xyzmotors]
             online_xyz  = [s.strip() for s in self.xyzmotors]
@@ -883,7 +879,7 @@ class PositionPanel(wx.Panel):
                 print("calibrate %s to %s " % (offline, online))
                 # print(offline_xyz, online_xyz)
 
-                make_uscope_rotation(self.scandb,
+                make_uscope_rotation(self.instdb,
                                      offline_inst=offline,
                                      offline_xyz=offline_xyz,
                                      online_inst=online,
@@ -950,7 +946,7 @@ class PositionPanel(wx.Panel):
 
     def onTimer(self, evt=None):
         inst = self.instdb.get_instrument(self.instrument)
-        poslist = self.scandb.get_rows('position', where={'instrument_id':inst.id})
+        poslist = self.instdb.get_rows('position', where={'instrument_id':inst.id})
         npos = len(poslist)
         now = time.time()
         if (npos != len(self.posnames) or (now - self.last_refresh) > 900.0):
