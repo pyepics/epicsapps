@@ -439,7 +439,10 @@ class InstrumentFrame(wx.Frame):
             time.sleep(1)
             self.db, self.dbname = self.connect_db(dbname)
             self.db.set_hostpid(clear=False)
-            self.configfile.write(config=self.config)
+            try:
+                self.configfile.write(config=self.config)
+            except:
+                pass
             self.create_nbpages()
 
     def onSave(self, event=None):
@@ -459,7 +462,10 @@ class InstrumentFrame(wx.Frame):
 
             time.sleep(1.0)
             self.dbname = outfile
-            self.configfile.write(config=self.config)
+            try:
+                self.configfile.write(config=self.config)
+            except:
+                pass
 
             self.db = InstrumentDB(outfile)
 
@@ -487,7 +493,10 @@ class InstrumentFrame(wx.Frame):
 
     # @EpicsFunction
     def onClose(self, event):
-        self.configfile.write(config=self.config)
+        try:
+            self.configfile.write(config=self.config)
+        except:
+            pass
         pages = [self.nb.GetPage(i).instname for i in range(self.nb.GetPageCount())]
         for inst in self.db.get_all_instruments():
             show = 0
