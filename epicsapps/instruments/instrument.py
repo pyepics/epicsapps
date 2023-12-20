@@ -147,6 +147,21 @@ class InstrumentDB(SimpleDB):
                 (db_host_name == socket.gethostname() and
                  db_process_id == str(os.getpid())))
 
+    def set_config(self, name, notes):
+        """set configuration data (name / notes)
+        """
+        val = self.get_rows('config', where={'name': name}, none_if_empty=True)
+        if val is None:
+            self.insert('config', name=name, notes=notes)
+        else:
+            self.update('config', where={'name':name}, notes=notes)
+
+
+    def get_config(self, name):
+        return self.get_rows('config', where={'name': name},
+                             none_if_empty=True, limit_one=True)
+
+
     def get_all_instruments(self):
         """return instrument list
         """
@@ -158,7 +173,6 @@ class InstrumentDB(SimpleDB):
         return self.get_rows('instrument', where={'name': name},
                              limit_one=True, none_if_empty=True)
 
-    # def get_ordered_instpvs(self, inst):
     def get_instrument_pvs(self, instname):
         """get dict of {pvname: (pv_id, epics_pv} ordered by
         'display_order' for an instrument"""
@@ -402,7 +416,7 @@ class InstrumentDB(SimpleDB):
                         notes=f"'{inst.name}' / '{posname}'")
 
 
-    def get_ordered_position(self, posname, instname, exclude_pvs=None):
+    def get_position_values(self, posname, instname, exclude_pvs=None):
         """
         return dict of {pvname: value} for position, ordered by display order
         """
@@ -439,11 +453,11 @@ class InstrumentDB(SimpleDB):
         restore named position for instrument
         """
         t0 = time.time()
-        ordered_pvs = self.get_ordered_position(posname, instname,
-                                                exclude_pvs=exclude_pvs)
+        posdict = self.get_position_values(posname, instname,
+                                           exclude_pvs=exclude_pvs)
 
         self.restoring_pvs = []
-        for pvname, value in ordered_pvs.items():
+        for pvname, value in posdict.items():
             # put values without waiting
             if pvname in exclude_pvs:
                 continue
