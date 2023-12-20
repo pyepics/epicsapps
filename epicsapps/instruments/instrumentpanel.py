@@ -124,7 +124,7 @@ class MoveToDialog(wx.Dialog):
 
         self.checkboxes = {}
         irow = 0
-        pos_pvs = self.db.get_ordered_position(thispos.name, self.instname)
+        pos_pvs = self.db.get_position_values(thispos.name, self.instname)
         for pvname, save_val in pos_pvs.items():
             pvname = normalize_pvname(pvname)
             desc = get_pvdesc(pvname)
