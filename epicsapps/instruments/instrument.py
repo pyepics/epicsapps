@@ -453,6 +453,8 @@ class InstrumentDB(SimpleDB):
         restore named position for instrument
         """
         t0 = time.time()
+        if exclude_pvs is None:
+            exclude_pvs = []
         posdict = self.get_position_values(posname, instname,
                                            exclude_pvs=exclude_pvs)
 
