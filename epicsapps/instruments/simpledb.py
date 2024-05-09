@@ -188,14 +188,14 @@ class SimpleDB(object):
         else:
             connect_str = f'{server}+{dialect}://{connect_str}'
 
-        # print("CONN ", connect_str, connect_args)
+        print("CONN ", connect_str, connect_args)
 
         self.engine = create_engine(connect_str, connect_args=connect_args)
         self.metadata = MetaData()
         try:
             self.metadata.reflect(bind=self.engine)
         except:
-            raise ValueError(f'{dnamme:s} is not a valid database' % dbname)
+            raise ValueError(f'{dbname:s} is not a valid database')
 
         tables = self.tables = self.metadata.tables
 
