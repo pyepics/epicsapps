@@ -1,4 +1,3 @@
-six>1.11
 numpy>=1.15
 wxmplot>=0.9.38
 wxpython>=4.0.3
