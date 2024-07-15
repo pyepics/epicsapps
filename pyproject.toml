@@ -2,13 +2,6 @@
 requires = ["setuptools>=45", "setuptools_scm>=6.2"]
 build-backend = "setuptools.build_meta"
 
-[tool.setuptools_scm]
-write_to = "epicsapps/version.py"
-version_scheme = "post-release"
-
-[tool.setuptools.packages.find]
-include = ["epicsapps"]
-
 [project]
 name = "epicsapps"
 dynamic = ["version"]
@@ -38,6 +31,13 @@ dependencies = [
              'lmfit', 'pyshortcuts', 'xraydb'
              ]
 
+[project.scripts]
+epicsapps = "epicsapps:run_epicsapps"
+epics_adviewer = "epicsapps:run_adviewer"
+epics_instruments = "epicsapps:run_instruments"
+epics_stripchart = "epicsapps:run_stripchart"
+
+
 [project.urls]
 Homepage = " https://github.com/pyepics/epicsapps"
 Documentation = "https://pyepics.github.io/epicsapps/"
@@ -48,3 +48,10 @@ dev = ["build", "twine"]
 doc = ["Sphinx"]
 test = ["pytest", "pytest-cov", "coverage"]
 all = ["epicsapps[dev, doc, test]"]
+
+[tool.setuptools_scm]
+write_to = "epicsapps/version.py"
+version_scheme = "post-release"
+
+[tool.setuptools.packages.find]
+include = ["epicsapps"]

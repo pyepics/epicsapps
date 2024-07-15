@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-from .apps import run_epicsapps
+from .apps import (run_epicsapps, run_adviewer, run_instruments,
+                   run_stripchart)
 
-from ._version import get_versions
-__version__ = get_versions()['version']
-del get_versions
-
+from .version import __version__, __version_tuple__

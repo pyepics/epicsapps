@@ -35,29 +35,6 @@ here, _ = os.path.split(__file__)
 icondir = os.path.join(here, 'icons')
 
 
-def fix_darwin_shebang(script):
-    """
-    fix anaconda python apps on MacOs to launch with pythonw
-    """
-    pyapp = os.path.join(sys.prefix, 'python.app', 'Contents', 'MacOS', 'python')
-    # strip off any arguments:
-    script = script.split(' ', 1)[0]
-    if not os.path.exists(script):
-        script = os.path.join(sys.exec_prefix, 'bin', script)
-
-    if platform == 'darwin' and os.path.exists(pyapp) and os.path.exists(script):
-        with open(script, 'r') as fh:
-            try:
-                lines = fh.readlines()
-            except IOError:
-                lines = ['-']
-
-        if len(lines) > 1:
-            text = ["#!%s\n" % pyapp]
-            text.extend(lines[1:])
-            time.sleep(.05)
-            with open(script, 'w') as fh:
-                fh.write("".join(text))
 
 class EpicsApp:
     """
@@ -85,17 +62,12 @@ class EpicsApp:
                       terminal=self.terminal,
                       folder=self.folder)
 
-        if platform == 'darwin' and HAS_CONDA:
-            try:
-                fix_darwin_shebang(script)
-            except:
-                print("Warning: could not fix Mac exe for ", script)
-
 APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('Sample Microscope', 'microscope', icon='microscope'),
         EpicsApp('areaDetector Viewer', 'adviewer', icon='areadetector'),
         EpicsApp('StripChart',       'stripchart', icon='stripchart'),
         )
+
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
 
 

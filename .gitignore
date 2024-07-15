@@ -9,6 +9,7 @@ build
 dist
 junk
 sandbox
+epicsapps/version.py
 epicsapps.egg-info/top_level.txt
 epicsapps.egg-info/dependency_links.txt
 epicsapps.egg-info/PKG-INFO
