@@ -82,7 +82,7 @@ def run_samplemicroscope(configfile=None, prompt=True):
     from .microscope import MicroscopeApp
     MicroscopeApp(configfile=configfile, prompt=prompt).MainLoop()
 
-def run_adviewer(configfile=None, prompt=False):
+def run_adviewer(configfile=None, prompt=True):
     """AD Viewer"""
     from .areadetector import areaDetectorApp
     areaDetectorApp(configfile=configfile, prompt=prompt).MainLoop()

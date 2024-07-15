@@ -36,6 +36,24 @@ def get_default_configfile(fname):
         return out
     return None
 
+def read_recents_file(fname='recent_ad_pvs.txt'):
+    fname = os.path.join(get_configfolder(), fname)
+    lines = ['#']
+    out = []
+    if os.path.exists(fname):
+        with open(fname, 'r') as fh:
+            lines = fh.readlines()
+    for line in lines:
+        if not line.startswith('#') and len(line) > 2:
+            out.append(line[:-1])
+    return out
+
+def write_recents_file(fname='recent_ad_pvs.txt', nlist=None):
+    if nlist is not None and len(nlist) > 0:
+        fname = os.path.join(get_configfolder(), fname)
+        with open(fname, 'w') as fh:
+            fh.write('\n'.join(nlist))
+
 class ConfigFile(object):
     """
     Configuration File, using YAML
@@ -87,7 +105,7 @@ class ConfigFile(object):
             elif os.path.exists(self.default_configfile):
                 fname = self.default_configfile
             else:
-                print("No config file to read: ", fname) 
+                print("No config file to read: ", fname)
                 return
 
         self.filename = os.path.abspath(fname)
