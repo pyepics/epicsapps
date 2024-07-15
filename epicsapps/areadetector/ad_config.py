@@ -44,11 +44,11 @@ scandb_instrument: None
 
 epics_controls:
  - ['Trigger Mode',   'cam1:TriggerMode', true, pvenum, _RBV,  150,  10]
- - ['Num Images',       'cam1:NumImages', true, pvfloat, _RBV, 100, 10]
+ - ['Num Images',     'cam1:NumImages', true, pvfloat, _RBV, 100, 10]
  - ['Acquire Period', 'cam1:AcquirePeriod', true,pvfloat, _RBV, 100, 10]
  - ['Acquire Time',   'cam1:AcquireTime', true, pvfloat, _RBV, 100, 10]
  - ['Acquire Status', 'cam1:Acquire', true, pvtext, false, 250, 10]
- - ['Acquire Busy',  'cam1:AcquireBusy', true, pvtext, false, 250, 10]
+ - ['Acquire Busy',   'cam1:AcquireBusy', true, pvtext, false, 250, 10]
  - ['Acquire Message', 'cam1:StatusMessage_RBV', true, pvtext, false, 250, 10]
 
 """

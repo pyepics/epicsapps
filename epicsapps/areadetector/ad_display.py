@@ -15,6 +15,8 @@ import matplotlib.cm as colormap
 
 import wx
 import wx.lib.mixins.inspection
+import wx.lib.filebrowsebutton as filebrowse
+FileBrowser = filebrowse.FileBrowseButtonWithHistory
 
 HAS_PLOTFRAME = False
 try:
@@ -30,7 +32,8 @@ from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 from ..utils import MoveToDialog, normalize_pvname, get_pvdesc
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
-                     FileOpen, SavedParameterDialog, Font, FloatSpin)
+                     FileOpen, SavedParameterDialog, Font, FloatSpin,
+                     Button, Choice, TextCtrl, HLine, fix_filename)
 
 try:
     from epicsscan.scandb import ScanDB, InstrumentDB
@@ -42,43 +45,168 @@ from .xrd_integrator import XRD_Integrator, HAS_PYFAI
 from .imagepanel import ADMonoImagePanel, ThumbNailImagePanel
 from .pvconfig import PVConfigPanel
 from .ad_config import ADConfig, CONFFILE, get_default_configfile
-from ..utils import SelectWorkdir, get_icon
+from ..utils import (SelectWorkdir, get_icon, get_configfolder,
+                     read_recents_file, write_recents_file)
 
 labstyle = wx.ALIGN_LEFT|wx.EXPAND|wx.ALIGN_CENTER_VERTICAL
 rlabstyle = wx.ALIGN_RIGHT|wx.RIGHT|wx.TOP|wx.EXPAND
 txtstyle = wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
+YAML_WILDCARD = 'ADViewer Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
+
+class ConnectDialog(wx.Dialog):
+    """Connect to an Epics AreaDetector or YAML config file"""
+    msg = """Select AreaDetector by simple PV or configuration file"""
+    def __init__(self, parent=None, configfile=None, pvname=None,
+                 recent_configs=None, recent_pvs=None,
+                 title='Connect to an AreaDetector'):
+        self.mode = 'pvname'
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(800, 300),
+                           title=title)
+
+        panel = GridPanel(self, ncols=5, nrows=6, pad=3,
+                          itemstyle=wx.ALIGN_LEFT)
+
+        conflist = []
+        if recent_configs is not None:
+            for fname in recent_configs:
+                if os.path.exists(fname):
+                    conflist.append(fname)
+
+        pvlist = []
+        if recent_pvs is not None:
+            for name in recent_pvs:
+                pvlist.append(name)
+
+        self.mode_message = SimpleText(panel, size=(500, -1), label='')
+
+        self.filebrowser = FileBrowser(panel, size=(650, -1))
+        self.filebrowser.SetHistory(conflist)
+        self.filebrowser.SetLabel('Recent Configuration File:')
+        self.filebrowser.fileMask = YAML_WILDCARD
+        self.filebrowser.changeCallback = self.onConfigFile
+
+        if len(conflist) > 0:
+            self.filebrowser.SetValue(conflist[0])
+
+        self.pvchoice = Choice(panel, size=(300, -1),
+                                choices=pvlist, action=self.onPVChoice)
+
+        self.pvname = TextCtrl(panel, size=(300, -1), value='',
+                               action=self.onPVName, act_on_losefocus=False)
+        self.pvname.SetToolTip('PV Prefix, not including "cam1:" or "image1:"')
+
+        panel.Add(self.filebrowser, dcol=3, newrow=True)
+
+        panel.Add(HLine(panel, size=(500, -1)), dcol=5, newrow=True)
+        panel.Add(SimpleText(panel, 'Recently Used PV: '), dcol=1, newrow=True)
+        panel.Add(self.pvchoice, dcol=2)
+        panel.Add(SimpleText(panel, " PV Prefix:"), dcol=1, newrow=True)
+        panel.Add(self.pvname, dcol=2)
+
+
+        panel.Add(HLine(panel, size=(500, -1)), dcol=5, newrow=True)
+        panel.Add(self.mode_message, dcol=3, newrow=True)
+
+        btnsizer = wx.StdDialogButtonSizer()
+        btnsizer.AddButton(wx.Button(panel, wx.ID_OK))
+        btnsizer.AddButton(wx.Button(panel, wx.ID_CANCEL))
+        btnsizer.Realize()
+
+        panel.Add(HLine(panel, size=(400, -1)), dcol=5, newrow=True)
+        panel.Add(btnsizer, dcol=3, newrow=True)
+
+        panel.pack()
+
+    def onPVChoice(self, event=None, **kws):
+        s = event.GetString()
+        self.pvname.SetValue(s)
+        self.mode = 'pvname'
+        self.mode_message.SetLabel(f"will use PV Prefix '{s}'")
+
+    def onPVName(self, value=None, **kws):
+        s = value
+        self.mode = 'pvname'
+        self.mode_message.SetLabel(f"will use PV Prefix '{s}'")
+
+    def onConfigFile(self, event=None, key=None, **kws):
+        s = event.GetString()
+        self.mode = 'conffile'
+        self.mode_message.SetLabel(f"will use File '{s}'")
+
+    def onPV(self, event=None, key=None, **kws):
+        self.mode = 'pvname'
+
+    def GetResponse(self, newname=None):
+        self.Raise()
+        response = namedtuple('adconnect', ('ok', 'mode', 'conffile',
+                                            'pvname'))
+        ok = False
+        mode, conffile, pvname = 'pvname', '', ''
+        if self.ShowModal() == wx.ID_OK:
+            ok = True
+            mode = self.mode
+            pvname = self.pvname.GetValue()
+            for attr in ('image1:', 'cam1:'):
+                if attr in pvname:
+                    pvname = pvname.split(attr)[0]
+            conffile = self.filebrowser.GetValue()
+        return response(ok, mode, conffile, pvname)
+
 class ADFrame(wx.Frame):
     """
     AreaDetector Display Frame
     """
-    def __init__(self, configfile=None, prompt=False, **kws):
+    def __init__(self, configfile=None, pvname=None, prompt=False, **kws):
         wx.Frame.__init__(self, None, -1, 'AreaDetector Viewer',
                           style=wx.DEFAULT_FRAME_STYLE)
-        if configfile is None:
+        if configfile is None and pvname is None:
             configfile = get_default_configfile(CONFFILE)
-        if prompt or configfile is None:
-            default_file = configfile or CONFFILE
-            fpath, fname = os.path.split(default_file)
-            wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
-            configfile = FileOpen(self, "Read Detector Configuration File",
-                                  default_file=fname,
-                                  default_dir=fpath,
-                                  wildcard=wcard)
-        if configfile is None:
-            sys.exit()
+            pvlist = read_recents_file('ad_pv_prefixes.txt')
+            conflist = read_recents_file('ad_config_files.txt')
 
-        self.read_config(fname=configfile)
+            dlg = ConnectDialog(parent=self, recent_pvs=pvlist,
+                                recent_configs=conflist)
+
+            response = dlg.GetResponse()
+            dlg.Destroy()
+            if not response.ok:
+                sys.exit()
+            if response.mode == 'pvname':
+                if configfile is None:
+                    cfile = fix_filename(f'ad_{response.pvname}.yaml')
+                    configfile = os.path.join(get_configfolder(), cfile)
+                    if not os.path.exists(configfile):
+                        cfile = fix_filename(f'ad_{response.pvname}_1.yaml')
+
+                    config = ADConfig()
+                    config.filename = configfile
+                    config.prefix = response.pvname
+                    config.write(configfile)
+
+                    if configfile in conflist:
+                        conflist.remove(configfile)
+                    conflist.insert(0, configfile)
+                    write_recents_file('ad_config_files.txt', conflist)
+                    time.sleep(1.0)
+
+                self.read_config(fname=configfile)
+                self.prefix = response.pvname
+                if response.pvname in pvlist:
+                    pvlist.remove(response.pvname)
+                pvlist.insert(0, response.pvname)
+                write_recents_file('ad_pv_prefixes.txt', pvlist)
+            else:
+                self.read_config(fname=response.conffile)
+                if response.conffile in conflist:
+                    conflist.remove(response.conffile)
+                conflist.insert(0, response.conffile)
+                write_recents_file('ad_config_files.txt', conflist)
+
         try:
             os.chdir(self.config.get('workdir', os.getcwd()))
         except:
             pass
-
-        if prompt:
-            ret = SelectWorkdir(self)
-            if ret is None:
-                self.Destroy()
-            os.chdir(ret)
 
         self.SetTitle(self.config['title'])
 
@@ -464,12 +592,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
             this_pv  = get_pv(pvname)
             desc     = get_pvdesc(pvname)
             curr_val = this_pv.get(as_string=True)
-            pvdata[pvname] = (desc, str(value), curr_val)       
+            pvdata[pvname] = (desc, str(value), curr_val)
 
         def GoCallback(pvdata):
             for pvname, sval in pvdata.items():
                 get_pv(pvname).put(sval)
-        
+
         MoveToDialog(self, pvdata, instname, posname,
                      callback=GoCallback).Raise()
 
