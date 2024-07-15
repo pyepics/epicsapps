@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=45", "setuptools_scm>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools_scm]
+write_to = "epicsapps/version.py"
+version_scheme = "post-release"
+
+[tool.setuptools.packages.find]
+include = ["epicsapps"]
+
+[project]
+name = "epicsapps"
+dynamic = ["version"]
+requires-python = ">= 3.9"
+description = "A collection of applications using PyEpics"
+readme = "README.md"
+authors = [
+    {name = "Matthew Newville", email = "newville@cars.uchicago.edu"}
+]
+license = {file = "LICENSE"}
+keywords = ["epics", "experimental data acquistion"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    ]
+dependencies = [
+             'pyepics',
+             'sqlalchemy', 'pyyaml',
+             'numpy', 'matplotlib',
+             'wxpython', 'wxmplot', 'wxutils',
+             'lmfit', 'pyshortcuts', 'xraydb'
+             ]
+
+[project.urls]
+Homepage = " https://github.com/pyepics/epicsapps"
+Documentation = "https://pyepics.github.io/epicsapps/"
+Tracker = "https://github.com/pyepics/epicsapps/issues"
+
+[project.optional-dependencies]
+dev = ["build", "twine"]
+doc = ["Sphinx"]
+test = ["pytest", "pytest-cov", "coverage"]
+all = ["epicsapps[dev, doc, test]"]
