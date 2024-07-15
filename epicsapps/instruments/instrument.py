@@ -17,7 +17,6 @@ import socket
 
 from datetime import datetime
 from sqlalchemy import Row
-from larch.utils import debugtime
 from .utils import backup_versions, save_backup, normalize_pvname, MOTOR_FIELDS
 from .creator import make_newdb
 
