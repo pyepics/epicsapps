@@ -670,6 +670,7 @@ class PositionPanel(wx.Panel):
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
         imgfile = os.path.join(self.viewer.imgdir, imgfile)
         tmp_pos = self.viewer.ctrlpanel.read_position()
+        print("Read position ", tmp_pos)
         imgdata, count = None, 0
         if not os.path.exists(self.viewer.imgdir):
             os.makedirs(self.viewer.imgdir)
@@ -693,7 +694,7 @@ class PositionPanel(wx.Panel):
                                           'notes':  notes}
 
         print("Save Position ", self.instrument, name, tmp_pos)
-        self.instdb.save_position(self.instrument, name, tmp_pos,
+        self.instdb.save_position(name, self.instrument, tmp_pos,
                                   notes=notes, image=fullpath)
         self.get_positions_from_db()
         # self.pos_list.SetStringSelection(name)
@@ -777,7 +778,7 @@ class PositionPanel(wx.Panel):
 
         # pre-load to make sure the PVs are connected
         posvals = {}
-        for name, val in self.instdb.get_position_values(instname, posname).items():
+        for name, val in self.instdb.get_position_values(posname, instname).items():
             pvname = normalize_pvname(name)
             get_pv(pvname)
             get_pvdesc(pvname)
@@ -853,7 +854,7 @@ class PositionPanel(wx.Panel):
 
         pos_names = self.pos_list.GetItems()
         ipos = pos_names.index(posname)
-        self.instdb.remove_position(self.instrument, posname)
+        self.instdb.remove_position(posname, self.instrument)
         self.positions.pop(posname)
         self.pos_list.Delete(ipos)
         self.pos_name.Clear()
@@ -958,11 +959,13 @@ class PositionPanel(wx.Panel):
             return
         positions = {}
         iname = self.instrument
-        posnames =  self.instdb.get_positionlist(iname, reverse=True)
+        posnames =  [row.name for row in self.instdb.get_positions(iname)]
         self.posnames = posnames
-        self.instdb.make_pvmap()
+        # self.instdb.make_pvmap()
         for pname in posnames:
-            thispos = self.instdb.get_position(iname, pname)
+            print("POS ", pname)
+            thispos = self.instdb.get_position(pname, iname)
+            print("Position : ", pname, thispos)
             image = ''
             notes = {}
             if thispos.modify_time is None:
@@ -973,7 +976,7 @@ class PositionPanel(wx.Panel):
             if thispos.notes is not None:
                 notes = thispos.notes
             pdat = {}
-            for name, val in self.instdb.get_position_vals(iname, pname).items():
+            for name, val in self.instdb.get_position_values(pname, iname).items():
                 pdat[name] =  val
             positions[pname] = dict(position=pdat, image=image, notes=notes)
         self.set_positions(positions)

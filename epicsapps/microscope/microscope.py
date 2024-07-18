@@ -239,7 +239,7 @@ class MicroscopeFrame(wx.Frame):
         ppanel = wx.Panel(self)
         self.pospanel = PositionPanel(ppanel, self,
                                       instrument=config['instrument'],
-                                      xyzmotors=config['xyzmotors'],
+                                      xyzmotors=config.get('xyzmotors', ()),
                                       offline_instrument=offline_inst,
                                       offline_xyzmotors=offline_xyz,
                                       safe_move=safe_move)
@@ -605,6 +605,7 @@ class MicroscopeFrame(wx.Frame):
         "read config file"
         self.configfile = MicroscopeConfig(fname=fname)
         cnf = self.config = self.configfile.config
+
         self.orientation = cnf.get('orientation', 'landscape')
         self.title       = cnf.get('title', 'Microscope')
 
@@ -660,7 +661,7 @@ class MicroscopeFrame(wx.Frame):
                                     show=show)
             if group not in self.stage_groups:
                 self.stage_groups.append(group)
-
+                
     def get_calibration(self, name=None):
         if name is None:
             name = self.calib_current
