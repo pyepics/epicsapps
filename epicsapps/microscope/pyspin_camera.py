@@ -41,10 +41,11 @@ class PySpinCamera(object):
         self.cam = None
         self.device_id = None
         self.camera_id = camera_id
+        self.imageproc = PySpin.ImageProcessor()
         # DEFAULT, NO_COLOR_PROCESSING, NEAREST_NEIGHBOR, EDGE_SENSING, HQ_LINEAR,
         # RIGOROUS, IPP, DIRECTIONAL_FILTER, WEIGHTED_DIRECTIONAL_FILTER
         # PySpin.NEAREST_NEIGHBOR)
-        self.convert_method = PySpin.DEFAULT
+        # self.convert_method = PySpin.DEFAULT
         self.Connect()
         atexit.register(self.Exit)
 
@@ -75,17 +76,27 @@ class PySpinCamera(object):
         """start capture"""
         self.cam.Init()
         self.cam.BeginAcquisition()
-        acq_mode = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionMode'))
-        acq_mode.SetIntValue(acq_mode.GetEntryByName('Continuous').GetValue())
 
-        fauto = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionFrameRateAuto'))
-        fauto.SetIntValue(fauto.GetEntryByName('Off').GetValue())
+        try:
+            acq_mode = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionMode'))
+            acq_mode.SetIntValue(acq_mode.GetEntryByName('Continuous').GetValue())
+        except:
+            pass
+            
+        try:
+            fauto = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionFrameRateAuto'))
+            fauto.SetIntValue(fauto.GetEntryByName('Off').GetValue())
+        except:
+            pass
+            
         time.sleep(0.25)
-        
-        arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
-        arate.SetValue(15.25)
-        time.sleep(0.25)
-        self.SetExposureTime(30.0, auto=False)
+        try:
+            arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
+            arate.SetValue(18)
+            time.sleep(0.25)
+            self.SetExposureTime(30.0, auto=False)
+        except:
+            pass
 
     def StopCapture(self):
         """"""
@@ -94,9 +105,10 @@ class PySpinCamera(object):
         except:
             pass
 
-    def SetFramerate(self, framerate=14.5):
+    def SetFramerate(self, framerate=18.0):
         arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
         arate.SetValue(framerate*1.0)
+        print("Set Frame rate")
         time.sleep(0.25)
 
     def Exit(self):
@@ -273,10 +285,10 @@ class PySpinCamera(object):
         shape = (ncols, nrows)
         if format in ('rgb', 'bgr'):
             shape = (ncols, nrows, 3)
-        # print("Grab NP Image ", pixel_formats[format], format, self.convert_method, time.time()-self.t0)
-        out = img.Convert(pixel_formats[format], self.convert_method)
+ 
+        out = self.imageproc.Convert(img, pixel_formats[format]).GetData()
         img.Release()
-        return out.GetData().reshape(shape)
+        return out.reshape(shape)
 
     def GrabWxImage(self, scale=1.00, rgb=True, quality=wx.IMAGE_QUALITY_HIGH):
         """returns a wximage
@@ -291,16 +303,12 @@ class PySpinCamera(object):
         if rgb:
             format = 'rgb'
         try:
-            out = img.Convert(pixel_formats[format], self.convert_method)
+            out = self.imageproc.Convert(img, pixel_formats[format])
             self.data = out.GetData()
             self.data.shape = (ncols, nrows, 3)
-        except:
-            print("pyspin image convert failed ", img)
-            
-        try:
             out = wx.Image(nrows, ncols, self.data).Rescale(width, height)
         except:
-            print("pyspin wximage create failed ", img)
+            print("pyspin wximage convert failed ", img)
             out = None
         img.Release()
         return out

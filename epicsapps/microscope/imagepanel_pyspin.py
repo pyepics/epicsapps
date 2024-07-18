@@ -18,12 +18,12 @@ from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
 HAS_PYSPIN = False
-try:
-    import PySpin
-    from .pyspin_camera import PySpinCamera
-    HAS_PYSPIN = True
-except ImportError:
-    pass
+#try:
+import PySpin
+from .pyspin_camera import PySpinCamera
+#HAS_PYSPIN = True
+#except ImportError:
+#    print("no pyspin imported?")
 
 MAX_EXPOSURE_TIME = 58
 
@@ -31,8 +31,8 @@ class ImagePanel_PySpin(ImagePanel_Base):
     """Image Panel for Spinnaker camera"""
     def __init__(self, parent,  camera_id=0, writer=None,
                  autosave_file=None, output_pv=None, **kws):
-        if not HAS_PYSPIN:
-            raise ValueError("PySpin library not available")
+        # if not HAS_PYSPIN:
+        #     raise ValueError("PySpin library not available")
         super(ImagePanel_PySpin, self).__init__(parent, -1,
                                               size=(800, 600),
                                               writer=writer,
@@ -45,7 +45,7 @@ class ImagePanel_PySpin(ImagePanel_Base):
         self.img_w = 800.5
         self.img_h = 600.5
         self.writer = writer
-
+        print("IMAGE PANEL PYSPIN ", self.camera)
         self.confpanel = None
         self.capture_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.capture_timer)
@@ -54,13 +54,13 @@ class ImagePanel_PySpin(ImagePanel_Base):
         "turn camera on"
         self.camera.Connect()
         self.cam_name = self.camera.device_name
-        try:
+        if True: #try:
             self.camera.StartCapture()
             height, width = self.camera.GetSize()
             self.img_w = float(width+0.5)
             self.img_h = float(height+0.5)
-        except:
-            pass
+        # except:
+        #    pass
         if self.output_pv is not None:
             for attr  in ('ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
                           'ColorMode_RBV', 'ArrayData'):
@@ -130,12 +130,12 @@ class ImagePanel_PySpin(ImagePanel_Base):
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True,
                     quality=wx.IMAGE_QUALITY_HIGH):
-        try:
+        if True: # try:
             wximg = self.camera.GrabWxImage(scale=scale, rgb=rgb,
                                             quality=quality)
-        except:
-            return
-        self.data = self.camera.data
+        # except:
+        #     return
+        # self.data = self.camera.data
         return wximg
 
     def GrabNumpyImage(self):

@@ -59,7 +59,6 @@ class JpegServer(object):
             # print("Publish Image ",  len(bindat), self.delay, time.time())   
             self.socket.send(b'jpeg:%s' % bindat) 
             time.sleep(self.delay)
-        print("Jpeg Serve is done")
        
     def stop(self):
         self.run = False
@@ -97,14 +96,12 @@ class EpicsArrayServer(object):
             except:
                 time.sleep(1)
                 continue
-            print("push epics array ", self.ad_img, self.data.shape, time.ctime())
             d = self.data[:]
             d = d.reshape( ncols//2, 2, nrows//2, 2, nc).sum(axis=3).sum(axis=1).flatten()
             tmp = io.BytesIO()
             Image.frombytes('RGB', (nrows, ncols), d).save(tmp, 'JPEG')
             tmp.seek(0)
             bindat = base64.b64encode(tmp.read()).decode('utf-8')
-            print(d.size, len(bindat))
             self.ad_img.ArraySize0_RBV = ncols
             self.ad_img.ArraySize1_RBV = nrows
             self.ad_img.ArraySize2_RBV = nc
@@ -175,6 +172,7 @@ class ImagePanel_Base(wx.Panel):
         self.draw_objects = None
         self.zoompanel = zoompanel
         self.zoommode = 'click'
+        self.autosave_thread = None
         self.SetBackgroundColour("#E4E4E4")
         self.starttime = time.time()
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
@@ -197,7 +195,7 @@ class ImagePanel_Base(wx.Panel):
 
         self.publisher = None
         if publish_type is not None:
-            print("Create Image Publisher ", publish_type, publish_addr)
+            # print("Create Image Publisher ", publish_type, publish_addr)
             self.create_publisher(publish_type, publish_addr,
                                   publish_port, publish_delay)
 
@@ -330,23 +328,24 @@ class ImagePanel_Base(wx.Panel):
                 if color is None:
                     color = obj.get('colour', 'Black')
                 color = wx.Colour(*color)
-                width = obj.get('width', 1.0)
+                width = int(obj.get('width', 1.0))
                 style = obj.get('style', wx.SOLID)
                 args  = obj.get('args', [])
                 kws   = obj.get('kws', {})
 
                 method = getattr(dc, 'Draw%s' % (shape.title()), None)
                 if shape.title() == 'Line':
-                    args = [pad_w + args[0]*img_w,
-                            pad_h + args[1]*img_h,
-                            pad_w + args[2]*img_w,
-                            pad_h + args[3]*img_h]
+                    args = [int(pad_w + args[0]*img_w),
+                            int(pad_h + args[1]*img_h),
+                            int(pad_w + args[2]*img_w),
+                            int(pad_h + args[3]*img_h)]
                 elif shape.title() == 'Circle':
-                    args = [pad_w + args[0]*img_w,
-                            pad_h + args[1]*img_h,  args[2]*img_w]
+                    args = [int(pad_w + args[0]*img_w),
+                            int(pad_h + args[1]*img_h),
+                            int(args[2]*img_w)]
 
                 if method is not None:
-                    dc.SetPen(wx.Pen(color, width, style))
+                    dc.SetPen(wx.Pen(color, int(width), wx.SOLID))
                     method(*args, **kws)
 
     def create_publisher(self, type='jpeg', addr='', port=0, delay=0.1):
@@ -359,7 +358,6 @@ class ImagePanel_Base(wx.Panel):
         elif type.lower() == 'epicsarray':
             self.publisher = EpicsArrayServer(prefix=addr, delay=delay)
             
-        print("create publisher " , type, HAS_ZMQ, self.publisher)
         if self.publisher is not None:
             self.pub_thread = Thread(target=self.publisher.serve)
             # self.pub_thread.daemon = True
@@ -501,7 +499,7 @@ class ZoomPanel(wx.Panel):
         super(ZoomPanel, self).__init__(parent, size=size)
         self.sharpness_label = sharpness_label
         self.sharpness_data = []
-        self.imgsize = max(10, imgsize)
+        self.imgsize = max(10, min(500, imgsize))
         self.SetBackgroundColour("#CCBBAAA")
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.SetSize(size)
@@ -515,7 +513,7 @@ class ZoomPanel(wx.Panel):
         data, xcen, ycen = self.data, self.xcen, self.ycen
         if data is None or xcen is None or ycen is None:
             return
-
+        self.imgsize = max(10, min(500, self.imgsize))        
         h, w, x = data.shape
 
         if ycen < self.imgsize/2.0:
@@ -539,6 +537,7 @@ class ZoomPanel(wx.Panel):
             hs, ws, nc = data.shape
         else:
             hs, ws = data.shape
+            nc = 0
         self.lims = (hmin, wmin)
         if len(dshape) == 3:
             rgb = data
@@ -548,8 +547,8 @@ class ZoomPanel(wx.Panel):
         fh, fw = self.GetSize()
         scale = max(0.10, min(0.98*fw/(ws+0.1), 0.98*fh/(hs+0.1)))
         self.scale = scale
-
         image = wx.Image(self.imgsize, self.imgsize, rgb.flatten())
+        
         image = image.Scale(int(scale*ws), int(scale*hs))
         bitmap = wx.Bitmap(image)
         bw, bh = bitmap.GetSize()
