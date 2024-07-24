@@ -113,11 +113,8 @@ class ConfigFile(object):
         text = None
         with open(self.filename, 'r') as fh:
             text = fh.read()
-        try:
-            self.config = yaml.load(text, Loader=Loader)
-        except:
-            print("Error reading config file ", self.filename)
-            pass
+        self.config = yaml.load(text, Loader=Loader)
+
 
     def write(self, fname=None, config=None):
         if fname is None:
