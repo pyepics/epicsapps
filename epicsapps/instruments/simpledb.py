@@ -165,8 +165,11 @@ class SimpleDB(object):
         "connect to an existing database"
 
         self.dbname = dbname
-        if port is not None:
-            port = int(port)
+        if port not in (None, 'None', ''):
+            try:
+                port = int(port)
+            except:
+                pass
         connect_args = {}
         if server.startswith('post') or server.startswith('pg'):
             server ='postgresql'
@@ -374,7 +377,8 @@ class SimpleDB(object):
             if order_key is None:
                 order_key = getattr(tab.c, f"{order_by}_id", None)
             if order_key is None:
-                self.table_error(f"no column '{order_by}'", tablename, 'get_rows')
+                print(f"no column '{order_by}'", tablename, 'get_rows')
+                # self.table_error(f"no column '{order_by}'", tablename, 'get_rows')
         if order_key is not None:
             query = query.order_by(order_key)
 
