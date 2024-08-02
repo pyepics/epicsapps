@@ -455,23 +455,21 @@ class InstrumentPanel(wx.Panel):
         values = {}
         for pv in self.pvs.values():
             values[pv.pvname] = pv.get(as_string=True)
-        # print("Saving Current Position ", posname, values)
         self.db.save_position(posname, self.instname, values)
         self.write("Saved position '%s' for '%s'" % (posname, self.instname))
 
     def onSavePosition(self, evt=None):
         posname = evt.GetString().strip()
-        # print("onSave Position ", evt, posname)
         verify = int(self.db.get_info('verify_overwrite'))
         if verify and posname in self.pos_list.GetItems():
+            pos_pvs = self.db.get_position_values(posname, self.instname)
+            postext = ["Saved PV Values were:\n"]
+            for pvname, save_val in pos_pvs.items():
+                postext.append(f'  {pvname} = {save_val}')
 
-            thispos = self.db.get_position(posname, self.instname)
-            postext = ["\nSaved Values were:\n"]
-            for pvpos in thispos.pvs:
-                postext.append('  %s= %s' % (pvpos.pv.name, pvpos.value))
             postext = '\n'.join(postext)
 
-            ret = Popup(self, "Overwrite %s?: \n%s" % (posname, postext),
+            ret = Popup(self, f"Overwrite {posname}?: \n{postext}",
                         'Verify Overwrite',
                         style=wx.YES_NO|wx.ICON_QUESTION)
             if ret != wx.ID_YES:
