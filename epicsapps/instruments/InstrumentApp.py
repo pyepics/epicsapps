@@ -158,6 +158,7 @@ class InstrumentFrame(wx.Frame):
     def create_Frame(self):
         self.nb = flat_nb.FlatNotebook(self, wx.ID_ANY,
                                        agwStyle=FNB_STYLE)
+        self.nb.Bind(wx.EVT_NOTEBOOK_PAGE_CHANGED, self.onNBChanged)
         colors = self.colors
         self.nb.SetActiveTabColour(colors.nb_active)
         self.nb.SetTabAreaColour(colors.nb_area)
@@ -203,6 +204,17 @@ class InstrumentFrame(wx.Frame):
         self.panels[instname] = panel
         self.nb.AddPage(panel, instname, True)
 
+    def onNBChanged(self, event=None):
+        pages = [self.nb.GetPage(i) for i in range(self.nb.GetPageCount())]
+        current_page = self.nb.GetCurrentPage()
+        for page in pages:
+            page.pos_timer.Stop()
+       
+        callback = getattr(current_page, 'onPanelExposed', None)
+        if callable(callback):
+            callback()
+            current_page.pos_timer.Start(2500)
+            
     def connect_pvs(self, instname, wait_time=0.10):
         """connect to PVs for an instrument.."""
         panel = self.panels[instname]

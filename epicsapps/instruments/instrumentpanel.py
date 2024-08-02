@@ -258,10 +258,9 @@ class InstrumentPanel(wx.Panel):
         self.pos_list.Bind(wx.EVT_LISTBOX, self.onPosSelect)
         self.pos_list.Bind(wx.EVT_LEFT_DCLICK, self.onMove)
 
-        self.pos_list.Clear()
-
-        for posrow in db.get_positions(instname):
-            self.pos_list.Append(posrow.name)
+        self.pos_timer = wx.Timer(self.pos_list)
+        self.pos_list.Bind(wx.EVT_TIMER, self.onPositionTimer, self.pos_timer)
+        self.refresh_position_list()
 
         rsizer.Add(brow,          0, wx.ALIGN_LEFT|wx.ALL)
         rsizer.Add(self.pos_list, 1, wx.GROW|wx.ALL, 1)
@@ -278,6 +277,27 @@ class InstrumentPanel(wx.Panel):
 
         pack(self, sizer)
         self.redraw_leftpanel()
+
+    def onPanelExposed(self, **kws):
+        # called when notebook is selected
+        self.refresh_position_list()
+
+    def onPositionTimer(self, evt=None):
+        self.refresh_position_list()
+        
+    def refresh_position_list(self, **kws):
+        new_list = [p.name for p in self.db.get_positions(self.instname)]
+        old_list = self.pos_list.GetItems()
+
+        try:
+            if old_list != new_list:
+                self.pos_list.Clear()
+                for name in new_list:
+                    self.pos_list.Append(name)
+        except:
+            print("could not refresh position list")
+
+        
 
     def undisplay_pv(self, pvname):
         "remove pv from display"
