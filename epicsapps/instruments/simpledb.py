@@ -191,7 +191,7 @@ class SimpleDB(object):
         else:
             connect_str = f'{server}+{dialect}://{connect_str}'
 
-        print("CONN ", connect_str, connect_args)
+        # print("CONN ", connect_str, connect_args)
 
         self.engine = create_engine(connect_str, connect_args=connect_args)
         self.metadata = MetaData()
