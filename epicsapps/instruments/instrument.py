@@ -393,7 +393,7 @@ class InstrumentDB(SimpleDB):
             kwargs = {'modify_time': isotime()}
             if notes is not None:
                 kwargs['notes'] = notes
-            pos = self.update('position', where=where, **kwargs)
+            self.update('position', where=where, **kwargs)
 
         instpvs = self.get_instrument_pvs(instname)
 
