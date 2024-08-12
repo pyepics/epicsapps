@@ -969,7 +969,7 @@ class PositionPanel(wx.Panel):
             image = ''
             notes = {}
             if thispos.modify_time is None:
-                thispos.modify_time = datetime.now()
+                thispos.modify_time = datatime.isoformat(datetime.now(), sep=' ')
 
             if thispos.image is not None:
                 image = thispos.image

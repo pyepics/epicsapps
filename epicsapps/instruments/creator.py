@@ -117,7 +117,7 @@ def  make_newdb(dbname, server= 'sqlite'):
     for name, notes in InitialData.pvtype:
         pvtype.insert().execute(name=name, notes=notes)
 
-    now = datetime.isoformat(datetime.now())
+    now = datetime.isoformat(datetime.now(), sep=' ')
 
     for key, value in InitialData.info:
         if value == '<now>':

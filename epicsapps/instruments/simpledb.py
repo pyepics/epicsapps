@@ -238,7 +238,7 @@ class SimpleDB(object):
         val = self.get_rows('info', where={'key': key}, none_if_empty=True)
         ivals = {'value': value}
         if with_modify_time:
-            ivals['modify_time'] = datetime.now()
+            ivals['modify_time'] = isotime()
         if val is None:
             ivals['key'] = key
             query = tab.insert().values(**ivals)

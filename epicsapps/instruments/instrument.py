@@ -15,13 +15,12 @@ import epics
 import time
 import socket
 
-from datetime import datetime
 from sqlalchemy import Row
 from .utils import backup_versions, save_backup, normalize_pvname, MOTOR_FIELDS
 from .creator import make_newdb
 
 from .simpledb import (SimpleDB, isSimpleDB, get_credentials, json_encode,
-                       isotime, isotime2datetime)
+                       isotime)
 from . import upgrades
 
 
@@ -123,7 +122,7 @@ class InstrumentDB(SimpleDB):
 
     def commit(self):
         "commit session state"
-        self.set_info('modify_date', datetime.isoformat(datetime.now()))
+        self.set_info('modify_date', isotime())
         return self.session.commit()
 
     def query(self, *args, **kws):
@@ -386,12 +385,12 @@ class InstrumentDB(SimpleDB):
         if pos is None:
             self.add_row('position', name=posname,
                          instrument_id=inst.id, notes=notes,
-                         modify_time=datetime.now())
+                         modify_time=isotime())
             pos = self.get_position(posname, instname)
 
         else:
             where = {'name': posname, 'instrument_id': inst.id}
-            kwargs = {'modify_time': datetime.now}
+            kwargs = {'modify_time': isotime()}
             if notes is not None:
                 kwargs['notes'] = notes
             pos = self.update('position', where=where, **kwargs)
