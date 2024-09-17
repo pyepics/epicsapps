@@ -237,6 +237,8 @@ class SimpleDB(object):
                     if not full_row:
                         xout = xout.value
                     out[row.key] = cast(xout, as_int, as_bool)
+                if len(out) == 0:
+                    out = cast(default, as_int, as_bool)
         else:
             out = {}
             for row in allrows:
