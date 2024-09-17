@@ -304,7 +304,8 @@ class InstrumentFrame(wx.Frame):
         """connect to an epics db to act as a server for external access."""
         connect = False
         epics_prefix = ''
-        if (1 == int(self.db.get_info('epics_use', default=0))):
+
+        if 1 == self.db.get_info('epics_use', as_int=True, default=0):
             epics_prefix = self.db.get_info('epics_prefix', default='')
             if len(epics_prefix) > 1:
                 connect = True
