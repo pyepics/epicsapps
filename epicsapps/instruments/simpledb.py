@@ -237,8 +237,9 @@ class SimpleDB(object):
         tab = self.tables['info']
         val = self.get_rows('info', where={'key': key}, none_if_empty=True)
         ivals = {'value': value}
-        if with_modify_time:
+        if with_modify_time and 'modify_time' in tab.c:
             ivals['modify_time'] = isotime()
+            print("WIll set info ", tab.c)
         if val is None:
             ivals['key'] = key
             query = tab.insert().values(**ivals)
@@ -254,8 +255,11 @@ class SimpleDB(object):
         where = {}
         if key is not None:
             where['key'] = key
+        gi_kws = {}
+        if order_by in self.tables['info'].c:
+            gi_kws['order_by'] = order_by
+        allrows = self.get_rows('info', where, **gi_kws)
 
-        allrows = self.get_rows('info', where, order_by=order_by)
         def cast(val, as_int, as_bool):
             if (as_int or as_bool):
                 if val is None:
@@ -369,18 +373,18 @@ class SimpleDB(object):
         where = self.handle_where(tablename, where=where, funcname='get_rows', **kws)
         query = tab.select().where(where)
 
-        order_key = None
         if order_by is None:
-            order_key = getattr(tab.c, "id", None)
-        else:
-            order_key = getattr(tab.c, order_by, None)
-            if order_key is None:
-                order_key = getattr(tab.c, f"{order_by}_id", None)
-            if order_key is None:
-                print(f"no column '{order_by}'", tablename, 'get_rows')
-                # self.table_error(f"no column '{order_by}'", tablename, 'get_rows')
-        if order_key is not None:
-            query = query.order_by(order_key)
+            if 'id' in tab.c:
+                order_by = 'id'
+        elif order_by not in tab.c:
+            oid = f'{order_by}_id'
+            if oid in tab.c:
+                order_by = oid
+            else:
+                order_by = None
+
+        if order_by is not None:
+            query = query.order_by(order_by)
 
         result = self.execute(query)
         if limit_one:
