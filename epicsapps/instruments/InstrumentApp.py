@@ -88,7 +88,6 @@ class InstrumentFrame(wx.Frame):
                    user=None, password=None, host=None, port=None,
                    recent_dbs=None, new=False, prompt=False, **kws):
         """connects to a db, possibly creating a new one"""
-        # print(" connect_db ", dbname, server, prompt)
         if prompt or dbname is None:
             dlg = ConnectDialog(parent=self, dbname=dbname, server=server,
                                 user=user, password=password, host=host,
@@ -119,7 +118,8 @@ class InstrumentFrame(wx.Frame):
 
         if server.startswith('sqlite'):
             if isInstrumentDB(dbname):
-                db.connect(dbname)
+                if getattr(db, 'engine', None) is None:
+                    db.connect(dbname, server='sqlite')
                 set_hostpid = True
                 if not db.check_hostpid():
                     hostname = db.get_info('host_name')
@@ -152,7 +152,6 @@ class InstrumentFrame(wx.Frame):
             self.pvlist.init_connect(pvname)
         time.sleep(0.025)
         # self.pvlist.show_unconnected()
-        print("Instrument Connected ", dbname)
         return db, dbname
 
     def create_Frame(self):
@@ -209,12 +208,12 @@ class InstrumentFrame(wx.Frame):
         current_page = self.nb.GetCurrentPage()
         for page in pages:
             page.pos_timer.Stop()
-       
+
         callback = getattr(current_page, 'onPanelExposed', None)
         if callable(callback):
             callback()
             current_page.pos_timer.Start(2500)
-            
+
     def connect_pvs(self, instname, wait_time=0.10):
         """connect to PVs for an instrument.."""
         panel = self.panels[instname]
