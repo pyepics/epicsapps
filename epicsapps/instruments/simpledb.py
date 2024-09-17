@@ -237,7 +237,10 @@ class SimpleDB(object):
                     if not full_row:
                         xout = xout.value
                     out[row.key] = cast(xout, as_int, as_bool)
-                if len(out) == 0 and default is not None:
+                if len(out) == 0 and (default is not None or
+                                      as_int is not None or
+                                      as_bool is not None):
+                    if default is None: default = 0
                     out = cast(default, as_int, as_bool)
         else:
             out = {}
