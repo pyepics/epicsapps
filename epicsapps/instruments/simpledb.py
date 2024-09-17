@@ -1,75 +1,52 @@
 #!/usr/bin/env python
 """
-Simple database interface using SQLAlchemy 1.3 to 2.0
+Simple database interface using SQLAlchemy 2.0
 """
 
 import os
 import time
 import random
 import logging
-import yaml
 from datetime import datetime
 
 from sqlalchemy import MetaData, create_engine, text, and_
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.sqltypes import INTEGER
 
-from base64 import b64encode
-from hashlib import pbkdf2_hmac
-PW_ALGOR = 'sha512'
-PW_NITER = 50000
+def get_credentials(credfile=None, envvar='ESCAN_CREDENTIALS', ):
+    """look up credentials either from `credfile` (if not None)
+    or from a file held in the supplied environment variable
 
-def hash_password(password):
-    """securely hash password with salt"""
-    salt   = b64encode(os.urandom(24))
-    result = b64encode(pbkdf2_hmac(PW_ALGOR,
-                                   password.encode('utf-8'),
-                                   salt, PW_NITER))
-    return '$'.join((PW_ALGOR, '%8.8d'%PW_NITER,
-                     salt.decode('utf-8'),
-                     result.decode('utf-8')))
-
-def test_password(password, hash, minimum_runtime=0.05):
-    """test if password matches hash
-
-    does a deliberately slow string comparison, and also uses
-    a minimum runtime (default 0.05 sec) to help confuse attacks.
-
-    does a slow-as-possible compare of 2 strings, a and b
-    returns whether the two strings are equal
-    this is meant to confuse and slow down attempts to guess / crack
-    passwords that time how long a string comparison takes to fail.
-
+    The file should be "basically yaml", but is parsed by hand.
+    It should look like this:
+dbname: my_escan_db
+host:   host_machine_name_or_ip
+server: postgresql
+port:  5432
+user:  db_user_name
+password: db_user_password
     """
-    t0 = time.time()
-    try:
-        algor, niter, salt, result = hash.split('$')
-    except:
-        algor, niter, salt, hash = PW_ALGOR, PW_NITER, '_null_', '%bad%'
-    test = b64encode(pbkdf2_hmac(algor, password.encode('utf-8'),
-                                 salt.encode('utf-8'),
-                                 int(niter))).decode('utf-8')
-
-    isgood = 0
-    if len(test) != len(result):
-        isgood = 1
-    for x, y in zip(test, result):
-        isgood |= ord(x) ^ ord(y)
-    result = (isgood == 0)
-    while time.time() < (t0 + minimum_runtime):
-        time.sleep(5.e-4)
-    return result
-
-
-def get_credentials(envvar='ESCAN_CREDENTIALS'):
-    """look up credentials file (yaml format) from environment variable"""
-    conn = {}
-    credfile = os.environ.get(envvar, None)
+    conn = {'dbname': 'escandb', 'server': 'postgresql',
+            'host': 'localhost',  'port': 5432,
+            'user': '', 'password': '_invalid_password_'}
+    if credfile is None:
+        credfile = os.environ.get(envvar, None)
     if credfile is not None and os.path.exists(credfile):
         with open(credfile, 'r') as fh:
-            text = fh.read()
-            text.replace('=', ': ')
-            conn = yaml.load(text, Loader=yaml.Loader)
+            lines = fh.readlines()
+        for line in lines:
+            if ':' in line:
+                words = [x.strip() for x in line[:-1].split(':', 1)]
+            elif '=' in line:
+                words = [x.strip() for x in line[:-1].split('=', 1)]
+            else:
+                words = [x.strip() for x in line[:-1].split(' ', 1)]
+            key, val  = words
+            for d in ("'", '"'):
+                if val.startswith(d) and val.endswith(d):
+                    val = val[1:-1]
+            if key in conn:
+                conn[key] = val
     return conn
 
 def json_encode(val):
@@ -82,30 +59,6 @@ def isotime(dtime=None, sep=' '):
     if dtime is None:
         dtime = datetime.now()
     return datetime.isoformat(dtime, sep=sep)
-
-def isotime2datetime(xisotime):
-    "convert isotime string to datetime object"
-    sdate, stime = xisotime.replace('T', ' ').split(' ')
-    syear, smon, sday = [int(x) for x in sdate.split('-')]
-    sfrac = '0'
-    if '.' in stime:
-        stime, sfrac = stime.split('.')
-    shour, smin, ssec  = [int(x) for x in stime.split(':')]
-    susec = int(1e6*float('.%s' % sfrac))
-    return datetime(syear, smon, sday, shour, smin, ssec, susec)
-
-def make_datetime(t=None, iso=False):
-    """unix timestamp to datetime iso format
-    if t is None, current time is used"""
-    if t is None:
-        dt = datetime.now()
-    else:
-        dt = datetime.utcfromtimestamp(t)
-    if iso:
-        return datetime.isoformat(dt)
-    return dt
-
-
 
 def isSimpleDB(dbname, required_tables=('info',)):
     """test if a file is a valid sqlite3 SimpleDB file
@@ -132,7 +85,7 @@ def isSimpleDB(dbname, required_tables=('info',)):
     return valid
 
 class SimpleDB(object):
-    """simple, common interface to Sqlite/Postgres databases
+    """simple, common interface to Postgres/SQLite3 databases
 
     Intended as mixin class, with attributes:
 
@@ -151,7 +104,7 @@ class SimpleDB(object):
     get_rows()
 
     """
-    def __init__(self, dbname=None, server='sqlite', user='',
+    def __init__(self, dbname=None, server='postgresql', user='',
                  password='',  host='', port=5432, dialect=None, logfile=None):
         self.engine = None
         self.metadata = None
@@ -160,8 +113,8 @@ class SimpleDB(object):
             self.connect(dbname, server=server, user=user,
                          password=password, port=port, host=host, dialect=dialect)
 
-    def connect(self, dbname, server='sqlite', user='',
-                password='', port=None, host='', dialect=None):
+    def connect(self, dbname, server='postgresql', user='',
+                password='', port=None, host='localhost', dialect=None):
         "connect to an existing database"
 
         self.dbname = dbname
@@ -190,8 +143,6 @@ class SimpleDB(object):
             connect_str = f'{server}://{connect_str}'
         else:
             connect_str = f'{server}+{dialect}://{connect_str}'
-
-        # print("CONN ", connect_str, connect_args)
 
         self.engine = create_engine(connect_str, connect_args=connect_args)
         self.metadata = MetaData()
@@ -225,21 +176,22 @@ class SimpleDB(object):
         with Session(self.engine) as session, session.begin():
             result = session.execute(query)
             if set_modify_date:
-                session.execute(self.set_info('modify_date', isotime(),
-                                              do_execute=False))
+                q = self.set_info('modify_date', isotime(), do_execute=False)
+                if q is not None:
+                    session.execute(q)
             session.flush()
         return result
 
     def set_info(self, key, value, with_modify_time=True, do_execute=True):
         """set key / value in the info table
-        do_execute=False to avoid executing, and only return query
+
+        use do_execute=False to avoid executing, and return the query
         """
         tab = self.tables['info']
         val = self.get_rows('info', where={'key': key}, none_if_empty=True)
         ivals = {'value': value}
         if with_modify_time and 'modify_time' in tab.c:
             ivals['modify_time'] = isotime()
-            print("WIll set info ", tab.c)
         if val is None:
             ivals['key'] = key
             query = tab.insert().values(**ivals)
@@ -247,8 +199,8 @@ class SimpleDB(object):
             query = tab.update().where(tab.c.key==key).values(**ivals)
         if do_execute:
             self.execute(query, set_modify_date=True)
+            return
         return query
-
 
     def get_info(self, key=None, default=None, prefix=None, as_int=False,
                  as_bool=False, order_by='modify_time', full_row=False):
@@ -273,25 +225,27 @@ class SimpleDB(object):
             return val
 
         if prefix is None:
-            thisrow = None if len(allrows)==0 else allrows[0]
-            out = None
-            if thisrow is None:
-                if key is not None: # will add to info
-                    self.set_info(key, default)
-                out = default
-            else:
-                out = thisrow
+            if len(allrows) == 1:
+                xout = allrows[0]
                 if not full_row:
-                    out = out.value
-            out = cast(out, as_int, as_bool)
+                    xout = xout.value
+                out = cast(xout, as_int, as_bool)
+            else:
+                out = {}
+                for row in allrows:
+                    xout = row
+                    if not full_row:
+                        xout = xout.value
+                    out[row.key] = cast(xout, as_int, as_bool)
         else:
-            out = []
+            out = {}
             for row in allrows:
                 if row.key.startswith(prefix):
                     xout = row
                     if not full_row:
                         xout = xout.value
-                    out.append(cast(xout, as_int, as_bool))
+                    out[row.key] = cast(xout, as_int, as_bool)
+
         return out
 
     def set_modify_time(self):
