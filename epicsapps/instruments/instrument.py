@@ -19,8 +19,7 @@ from sqlalchemy import Row
 from .utils import backup_versions, save_backup, normalize_pvname, MOTOR_FIELDS
 from .creator import make_newdb
 
-from .simpledb import (SimpleDB, isSimpleDB, get_credentials, json_encode,
-                       isotime)
+from .simpledb import (SimpleDB, isSimpleDB, get_credentials, isotime)
 from . import upgrades
 
 
