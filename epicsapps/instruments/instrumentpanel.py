@@ -86,7 +86,7 @@ class MoveToDialog(wx.Dialog):
         if mode == 'show':
             title = f"Instrument {instname} / Position '{posname}'"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title,
-                           size=(700, 200))
+                           size=(700, 400))
         self.build_dialog(parent, thispos)
 
     @EpicsFunction
@@ -140,10 +140,15 @@ class MoveToDialog(wx.Dialog):
             label = SimpleText(self, desc, style=tstyle,
                                colour=colors.pvname)
             curr  = SimpleText(self, curr_val, style=tstyle)
-            saved = SimpleText(self, save_val, style=tstyle)
+            if save_val is None:
+                save_label = 'not saved'
+            else:
+                save_label = save_val
+
+            saved = SimpleText(self, save_label, style=tstyle)
             if self.mode != 'show':
                 cbox  = wx.CheckBox(self, -1, "Move")
-                cbox.SetValue(True)
+                cbox.SetValue(save_val is not None)
                 self.checkboxes[pvname] = (cbox, save_val)
 
             sizer.Add(label, (irow+2, 0), (1, 1), labstyle,  2)
@@ -171,7 +176,7 @@ class MoveToDialog(wx.Dialog):
         wb, hb = self.GetBestSize()
         w = min(max(wb, wc), 700)
         h = min(max(hb, hc), 350)
-        self.SetSize((25*int((w + 10)/25.), 25*int((h + 10)/25.)))
+        self.SetSize((25*int((w + 12)/25.), 25*int((h + 12)/25.)))
 
 class InstrumentPanel(wx.Panel):
     """ create Panel for an instrument"""
