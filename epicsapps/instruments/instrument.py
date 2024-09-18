@@ -336,12 +336,15 @@ class InstrumentDB(SimpleDB):
 
         if len(self.pvtype_ids) < 1:
             self.map_pvtypes()
-        kws['notes'] = notes
-        kws['attributes'] = attributes
-        if pvtype is None:
-            self.pvs[name] = epics.get_pv(name)
-            self.pvs[name].get(timeout=1.0)
+        # kws['notes'] = ''
+        # kws['attributes'] = attributes
+
+        self.pvs[name] = epics.get_pv(name)
+        self.pvs[name].get(timeout=1.0)
+        pvtype_id = self.pvtype_ids.get(pvtype, None)
+        if pvtype_id is None:
             pvtype_id = self.get_pvtypes(self.pvs[name])[0]
+
         row = self.add_row('pv', name=name, pvtype_id=pvtype_id)
         return row
 
@@ -382,14 +385,21 @@ class InstrumentDB(SimpleDB):
         posname = posname.strip()
         pos  = self.get_position(posname, instname)
         if pos is None:
-            self.add_row('position', name=posname,
-                         instrument_id=inst.id, notes=notes,
-                         modify_time=isotime())
+            ptab = self.tables['position']
+            kwargs = {'name': posname,
+                   'instrument_id': inst.id, 'notes': notes}
+            if 'modify_time' in ptab.c:
+                kwargs['modify_time'] = isotime()
+            self.add_row('position', **kwargs)
             pos = self.get_position(posname, instname)
 
         else:
             where = {'name': posname, 'instrument_id': inst.id}
-            kwargs = {'modify_time': isotime()}
+            kwargs = {}
+            ptab = self.tables['position']
+            if 'modify_time' in ptab.c:
+                kwargs['modify_time'] = isotime()
+
             if notes is not None:
                 kwargs['notes'] = notes
             self.update('position', where=where, **kwargs)
