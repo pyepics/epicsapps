@@ -230,13 +230,13 @@ class InstrumentPanel(wx.Panel):
         self.toprow = toprow
 
         # start a timer to check for when to fill in PV panels
-        self.puttimer = wx.Timer(self)
+        self.put_timer = wx.Timer(self)
         self.restore_complete = False
         self.restoring_pvs = []
         self.etimer_count = 0
         self.etimer_poll = 25
 
-        self.Bind(wx.EVT_TIMER, self.onPutTimer, self.puttimer)
+        self.Bind(wx.EVT_TIMER, self.onPut_Timer, self.put_timer)
 
         rsizer = wx.BoxSizer(wx.VERTICAL)
         btn_goto = Button(rpanel, "Go To", size=(70, -1),
@@ -284,7 +284,7 @@ class InstrumentPanel(wx.Panel):
 
     def onPositionTimer(self, evt=None):
         self.refresh_position_list()
-        
+
     def refresh_position_list(self, **kws):
         new_list = [p.name for p in self.db.get_positions(self.instname)]
         old_list = self.pos_list.GetItems()
@@ -297,7 +297,7 @@ class InstrumentPanel(wx.Panel):
         except:
             print("could not refresh position list")
 
-        
+
 
     def undisplay_pv(self, pvname):
         "remove pv from display"
@@ -505,12 +505,12 @@ class InstrumentPanel(wx.Panel):
         self.restore_posname = posname
         self.write(f"Move '{self.instname}' to position '{self.restore_posname}' in progress")
         self.db.restore_position(posname, self.instname, exclude_pvs=exclude_pvs)
-        self.puttimer.Start(100)
+        self.put_timer.Start(100)
 
-    def onPutTimer(self, evt=None):
+    def onPut_Timer(self, evt=None):
         """Timer Event for GoTo to look if move is complete."""
         if self.db.restore_complete():
-            self.puttimer.Stop()
+            self.put_timer.Stop()
             self.write(f"Move '{self.instname}' to position '{self.restore_posname}' complete")
 
     def onMove(self, evt=None):

@@ -208,11 +208,13 @@ class InstrumentFrame(wx.Frame):
         current_page = self.nb.GetCurrentPage()
         for page in pages:
             page.pos_timer.Stop()
-
+            page.put_timer.Stop()
         callback = getattr(current_page, 'onPanelExposed', None)
+
+        # print("onNB Changed ", callback)
         if callable(callback):
             callback()
-            current_page.pos_timer.Start(2500)
+            current_page.pos_timer.Start(1000)
 
     def connect_pvs(self, instname, wait_time=0.10):
         """connect to PVs for an instrument.."""
@@ -319,6 +321,7 @@ class InstrumentFrame(wx.Frame):
             self.server_timer = wx.Timer(self)
             self.Bind(wx.EVT_TIMER, self.OnServerTimer, self.server_timer)
             self.server_timer.Start(250)
+            print("SERVER TIMER ", self.server_timer)
 
     def OnServerTimer(self, evt=None):
         """Epics Server Events:
@@ -401,19 +404,30 @@ class InstrumentFrame(wx.Frame):
         ErasePositionsFrame(self, self.nb.GetCurrentPage())
 
     def onRemoveInstrument(self, event=None):
-        instname = self.nb.GetCurrentPage().instname
+        current_page = self.nb.GetCurrentPage()
+        instname = current_page.instname
 
         msg = f"Permanently Remove Instrument '{instname}'?\nThis cannot be undone!"
         ret = Popup(self, msg, 'Remove Instrument',
                     style=wx.YES_NO|wx.ICON_QUESTION)
         if ret != wx.ID_YES:
             return
-        self.db.remove_instrument(instname)
+        current_page.pos_timer.Stop()
+        current_page.put_timer.Stop()
+
         pages = {}
         for i in range(self.nb.GetPageCount()):
             pages[self.nb.GetPageText(i)] = i
 
         self.nb.DeletePage(pages[instname])
+        self.db.remove_instrument(instname)
+        print("Remove Inst Done ")
+        # pages = {}
+        # for i in range(self.nb.GetPageCount()):
+        #    pages[self.nb.GetPageText(i)] = i
+        #print("Pages ", pages)
+
+        # self.nb.DeletePage(pages[instname])
 
     def onSettings(self, event=None):
         try:
@@ -486,6 +500,7 @@ class InstrumentFrame(wx.Frame):
             insts = [(i, self.nb.GetPageText(i)) for i in range(self.nb.GetPageCount())]
 
             for nbpage, name in insts:
+                print(' Get Page ', nbpage, name)
                 self.nb.GetPage(nbpage).db = self.db
                 self.nb.GetPage(nbpage).inst = self.db.get_instrument(name)
 
