@@ -303,6 +303,7 @@ class InstrumentDB(SimpleDB):
         inst = self.get_rows('instrument', where={'name': name}, limit_one=True)
         if pvs is not None:
             self.add_instrument_pvs(name, pvs)
+        self.connect_pvs()
         return inst
 
     def add_instrument_pvs(self, instname, pvlist):
@@ -314,6 +315,7 @@ class InstrumentDB(SimpleDB):
             thispv = self.get_pv(pvname, add=True)
             self.add_row('instrument_pv', instrument_id=inst.id,
                          pv_id=thispv.id, display_order=(npvs+i))
+        self.connect_pvs()
 
     def remove_instrument_pv(self, instname, pvname):
         inst = self.get_instrument(instname)
@@ -346,6 +348,7 @@ class InstrumentDB(SimpleDB):
             pvtype_id = self.get_pvtypes(self.pvs[name])[0]
 
         row = self.add_row('pv', name=name, pvtype_id=pvtype_id)
+        self.connect_pvs()
         return row
 
     def remove_position(self, posname, instname):
