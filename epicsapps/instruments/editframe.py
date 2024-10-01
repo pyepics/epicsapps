@@ -424,28 +424,37 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                     instpanel.PV_Panel(pvname)
 
         pagemap = self.get_page_map()
+
+        self.etimer.Stop()
+        db.connect_pvs()
+        page = self.parent.nb.GetPage(pagemap[newname])
+
         self.parent.nb.DeletePage(pagemap[newname])
         self.parent.add_instrument_page(instname)
         time.sleep(0.25)
-        self.etimer.Stop()
 
         # set order for PVs (as for next time)
         inst = db.get_instrument(instname)
+        print("INST with PVS ", inst)
         instpvs = db.get_instrument_pvs(instname)
-        # for opv in instpvs:
-        #     opv.display_order = -1
-        # for i, pv in enumerate(inst.pvs):
-        #    for opv in instpvs:
-        #        if opv.pv == pv:
-        #            opv.display_order = i
-        # for opv in instpvs:
-        #    opv.display_order = i
-        #    i = i + 1
+        print("INSTPVS ", instpvs)
+        display_order = {}
+        for opv in instpvs:
+            display_order[opv] = -1
 
-        self.Destroy()
+#        for i, pv in enumerate(inst.pvs):
+#            print("--- pv ", i, pv)
+#             for opv in instpvs:
+#                 if opv.pv == pv:
+#                     opv.display_order = i
+#         for opv in instpvs:
+#             opv.display_order = i
+#             i = i + 1
+        # self.Destroy()
 
     def onCancel(self, event=None):
         self.Destroy()
+
 
 class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
     """ Edit / Add Instrument"""
