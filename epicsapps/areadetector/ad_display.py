@@ -9,7 +9,7 @@ import time
 import json
 from functools import partial
 from collections import namedtuple
-
+from pathlib import Path
 import numpy as np
 import matplotlib.cm as colormap
 
@@ -202,6 +202,15 @@ class ADFrame(wx.Frame):
                     conflist.remove(response.conffile)
                 conflist.insert(0, response.conffile)
                 write_recents_file('ad_config_files.txt', conflist)
+        else:
+            configfile = Path(configfile).absolute().as_posix()
+            self.read_config(fname=configfile)
+
+            conflist = read_recents_file('ad_config_files.txt')
+            if configfile in conflist:
+                conflist.remove(configfile)
+            conflist.insert(0, configfile)
+            write_recents_file('ad_config_files.txt', conflist)
 
         try:
             os.chdir(self.config.get('workdir', os.getcwd()))
