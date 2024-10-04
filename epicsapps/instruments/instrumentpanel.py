@@ -283,9 +283,15 @@ class InstrumentPanel(wx.Panel):
         pack(self, sizer)
         self.redraw_leftpanel()
 
-    def onPanelExposed(self, **kws):
+    def onPanelExposed(self, updates=False, **kws):
         # called when notebook is selected
-        self.refresh_position_list()
+        if updates:
+            self.refresh_position_list()
+            page.pos_timer.Start()
+            page.put_timer.Start()
+        else:
+            page.pos_timer.Stop()
+            page.put_timer.Stop()
 
     def onPositionTimer(self, evt=None):
         self.refresh_position_list()
@@ -301,7 +307,6 @@ class InstrumentPanel(wx.Panel):
                     self.pos_list.Append(name)
         except:
             print("could not refresh position list")
-
 
 
     def undisplay_pv(self, pvname):

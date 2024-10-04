@@ -207,14 +207,14 @@ class InstrumentFrame(wx.Frame):
         pages = [self.nb.GetPage(i) for i in range(self.nb.GetPageCount())]
         current_page = self.nb.GetCurrentPage()
         for page in pages:
-            page.pos_timer.Stop()
-            page.put_timer.Stop()
-        callback = getattr(current_page, 'onPanelExposed', None)
+            callback = getattr(current_page, 'onPanelExposed', None)
+            if callable(callback)
+                callback(updates=False)
 
+        callback = getattr(current_page, 'onPanelExposed', None)
         # print("onNB Changed ", callback)
         if callable(callback):
-            callback()
-            current_page.pos_timer.Start(1000)
+            callback(updates=True)
 
     def connect_pvs(self, instname, wait_time=0.10):
         """connect to PVs for an instrument.."""
