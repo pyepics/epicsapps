@@ -195,13 +195,13 @@ class InstSelectionFrame(wx.Frame) :
         for pagename, cb in self.hideframes.items():
             checked = cb.IsChecked()
             if not checked and pagename in pagemap:
+                page = self.parent.nb.GetPage(pagemap[pagename])
+                page.pos_timer.Stop()
+                page.put_timer.Stop()
                 self.parent.nb.DeletePage(pagemap[pagename])
-                pagemap = self.get_page_map()
-
             elif checked and pagename not in pagemap:
                 inst = self.db.get_instrument(pagename)
                 self.parent.add_instrument_page(inst.name)
-                pagemap = self.get_page_map()
         self.Destroy()
 
     def OnCancel(self, event=None):

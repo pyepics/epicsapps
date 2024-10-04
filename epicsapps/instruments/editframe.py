@@ -429,15 +429,16 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         db.connect_pvs()
         page = self.parent.nb.GetPage(pagemap[newname])
 
+        page.pos_timer.Stop()
+        page.put_timer.Stop()
         self.parent.nb.DeletePage(pagemap[newname])
         self.parent.add_instrument_page(instname)
         time.sleep(0.25)
 
         # set order for PVs (as for next time)
         inst = db.get_instrument(instname)
-        print("INST with PVS ", inst)
         instpvs = db.get_instrument_pvs(instname)
-        print("INSTPVS ", instpvs)
+
         display_order = {}
         for opv in instpvs:
             display_order[opv] = -1
@@ -462,6 +463,7 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
         self.parent = parent
         self.db = db = parent.db
         self.page = page
+
         if page.instname is None:
             return
         title = f"Erase Positions for '{page.instname}'"
@@ -548,6 +550,8 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
             for pname, cbox in self.checkboxes.items():
                 if cbox.IsChecked():
                      self.db.remove_position(pname, inst)
+        self.page.pos_timer.Stop()
+        self.page.put_timer.Stop()
         self.page.pos_list.Clear()
         for pos in self.inst.positions:
             self.page.pos_list.Append(pos.name)
