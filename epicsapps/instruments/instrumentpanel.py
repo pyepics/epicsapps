@@ -186,7 +186,7 @@ class InstrumentPanel(wx.Panel):
         self.last_draw = 0
         self.instname = instname
         self.pvlist = pvlist
-
+        self.restore_posname = None
         self.db = db
         self.write_message = writer
         self.pvs = {}
@@ -285,13 +285,13 @@ class InstrumentPanel(wx.Panel):
 
     def onPanelExposed(self, updates=False, **kws):
         # called when notebook is selected
+        # print("Panel Exposed ", updates, self.instname)
         if updates:
             self.refresh_position_list()
-            page.pos_timer.Start()
-            page.put_timer.Start()
+            self.pos_timer.Start(1000)
         else:
-            page.pos_timer.Stop()
-            page.put_timer.Stop()
+            self.pos_timer.Stop()
+        self.put_timer.Stop()
 
     def onPositionTimer(self, evt=None):
         self.refresh_position_list()
@@ -299,7 +299,7 @@ class InstrumentPanel(wx.Panel):
     def refresh_position_list(self, **kws):
         new_list = [p.name for p in self.db.get_positions(self.instname)]
         old_list = self.pos_list.GetItems()
-
+        # print("REF POS LIST ", self.instname, len(new_list), len(old_list))
         try:
             if old_list != new_list:
                 self.pos_list.Clear()
@@ -320,8 +320,15 @@ class InstrumentPanel(wx.Panel):
         """ redraws the left panel """
         if (time.time() - self.last_draw) < 0.5:
             return
+        self.put_timer.Stop()
+        self.pos_timer.Stop()
 
-        self.Freeze()
+        try:
+            self.Freeze()
+            frozen = True
+        except:
+            froze = False
+
         self.Hide()
         self.leftsizer.Clear()
 
@@ -412,7 +419,8 @@ class InstrumentPanel(wx.Panel):
 
         self.Refresh()
         self.Layout()
-        self.Thaw()
+        if frozen:
+            self.Thaw()
         self.Show()
         self.pos_list.SetBackgroundColour(wx.WHITE)
         self.pos_list.Enable()
@@ -515,13 +523,14 @@ class InstrumentPanel(wx.Panel):
         self.restore_posname = posname
         self.write(f"Move '{self.instname}' to position '{self.restore_posname}' in progress")
         self.db.restore_position(posname, self.instname, exclude_pvs=exclude_pvs)
-        self.put_timer.Start(100)
+        self.put_timer.Start(250)
 
     def onPut_Timer(self, evt=None):
         """Timer Event for GoTo to look if move is complete."""
-        if self.db.restore_complete():
+        if self.restore_posname is not None and self.db.restore_complete():
             self.put_timer.Stop()
             self.write(f"Move '{self.instname}' to position '{self.restore_posname}' complete")
+            self.restore_posname = None
 
     def onMove(self, evt=None):
         """ on GoTo """
