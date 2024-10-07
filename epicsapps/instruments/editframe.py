@@ -320,8 +320,6 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         self.Show()
         self.Raise()
 
-
-
     def get_page_map(self):
         out = {}
         for i in range(self.parent.nb.GetPageCount()):
@@ -442,20 +440,10 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         display_order = {}
         for opv in instpvs:
             display_order[opv] = -1
-
-#        for i, pv in enumerate(inst.pvs):
-#            print("--- pv ", i, pv)
-#             for opv in instpvs:
-#                 if opv.pv == pv:
-#                     opv.display_order = i
-#         for opv in instpvs:
-#             opv.display_order = i
-#             i = i + 1
-        # self.Destroy()
+        self.Destroy()
 
     def onCancel(self, event=None):
         self.Destroy()
-
 
 class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
     """ Edit / Add Instrument"""
