@@ -182,17 +182,24 @@ class InstrumentFrame(wx.Frame):
         self.Refresh()
 
     def create_nbpages(self):
+        self.initializing = True
         if self.nb.GetPageCount() > 0:
             self.nb.DeleteAllPages()
         for row in self.db.get_all_instruments():
             if row.show is None:
-                self.db.update('instrument', where={'name': row.name},
-                               show=1)
+                self.db.update('instrument',
+                               where={'name': row.name}, show=1)
                 show = 1
             else:
                 show = int(row.show)
             if show:
                 self.add_instrument_page(row.name)
+        current_page = self.nb.GetCurrentPage()
+        self.initializing = False
+
+        callback = getattr(current_page, 'onPanelExposed', None)
+        if callable(callback):
+            wx.CallAfter(callback, {'updates': True})
 
     def add_instrument_page(self, instname):
         panel = InstrumentPanel(self, instname, db=self.db,
@@ -206,14 +213,15 @@ class InstrumentFrame(wx.Frame):
     def onNBChanged(self, event=None):
         pages = [self.nb.GetPage(i) for i in range(self.nb.GetPageCount())]
         current_page = self.nb.GetCurrentPage()
+        # print("onNB CHANGED ", len(pages), self.initializing)
+
         for page in pages:
-            callback = getattr(current_page, 'onPanelExposed', None)
-            if callable(callback)
+            callback = getattr(page, 'onPanelExposed', None)
+            if callable(callback) and not self.initializing:
                 callback(updates=False)
 
         callback = getattr(current_page, 'onPanelExposed', None)
-        # print("onNB Changed ", callback)
-        if callable(callback):
+        if callable(callback) and not self.initializing:
             callback(updates=True)
 
     def connect_pvs(self, instname, wait_time=0.10):
@@ -321,7 +329,6 @@ class InstrumentFrame(wx.Frame):
             self.server_timer = wx.Timer(self)
             self.Bind(wx.EVT_TIMER, self.OnServerTimer, self.server_timer)
             self.server_timer.Start(250)
-            print("SERVER TIMER ", self.server_timer)
 
     def OnServerTimer(self, evt=None):
         """Epics Server Events:
@@ -379,7 +386,6 @@ class InstrumentFrame(wx.Frame):
             inst = self.db.get_instrument(newname)
 
         inst = self.db.add_instrument(newname)
-        print("onAddInstrument : add_instrument ", newname, inst)
 
         panel = InstrumentPanel(self, inst.name, db=self.db,
                                 pvlist=self.pvlist,
@@ -421,7 +427,6 @@ class InstrumentFrame(wx.Frame):
 
         self.nb.DeletePage(pages[instname])
         self.db.remove_instrument(instname)
-        print("Remove Inst Done ")
         # pages = {}
         # for i in range(self.nb.GetPageCount()):
         #    pages[self.nb.GetPageText(i)] = i
@@ -500,7 +505,7 @@ class InstrumentFrame(wx.Frame):
             insts = [(i, self.nb.GetPageText(i)) for i in range(self.nb.GetPageCount())]
 
             for nbpage, name in insts:
-                print(' Get Page ', nbpage, name)
+                # print(' Get Page ', nbpage, name)
                 self.nb.GetPage(nbpage).db = self.db
                 self.nb.GetPage(nbpage).inst = self.db.get_instrument(name)
 
