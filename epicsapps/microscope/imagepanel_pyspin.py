@@ -130,12 +130,12 @@ class ImagePanel_PySpin(ImagePanel_Base):
 
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True,
                     quality=wx.IMAGE_QUALITY_HIGH):
-        if True: # try:
+        try:
             wximg = self.camera.GrabWxImage(scale=scale, rgb=rgb,
                                             quality=quality)
-        # except:
-        #     return
-        # self.data = self.camera.data
+        except:
+            wximg = None
+        self.data = self.camera.data
         return wximg
 
     def GrabNumpyImage(self):
