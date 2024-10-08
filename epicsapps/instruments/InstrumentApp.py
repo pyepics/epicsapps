@@ -196,10 +196,19 @@ class InstrumentFrame(wx.Frame):
                 self.add_instrument_page(row.name)
         current_page = self.nb.GetCurrentPage()
         self.initializing = False
+        self.init_stime = time.time()
+        self.init_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onInitTimer, self.init_timer)
+        self.init_timer.Start(2000)
 
-        callback = getattr(current_page, 'onPanelExposed', None)
-        if callable(callback):
-            wx.CallAfter(callback, {'updates': True})
+    def onInitTimer(self, evt=None):
+        print(f"init timer done {time.time()- self.init_stime:.3f}")
+        if time.time() > 10 + self.init_stime:
+            self.init_timer.Stop()
+            current_page = self.nb.GetCurrentPage()
+            callback = getattr(current_page, 'onPanelExposed', None)
+            if callable(callback):
+                wx.CallAfter(callback, {'updates': True})
 
     def add_instrument_page(self, instname):
         panel = InstrumentPanel(self, instname, db=self.db,
