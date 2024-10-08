@@ -963,9 +963,7 @@ class PositionPanel(wx.Panel):
         self.posnames = posnames
         # self.instdb.make_pvmap()
         for pname in posnames:
-            print("POS ", pname)
             thispos = self.instdb.get_position(pname, iname)
-            print("Position : ", pname, thispos)
             image = ''
             notes = {}
             if thispos.modify_time is None:
