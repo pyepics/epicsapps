@@ -107,7 +107,7 @@ class EpicsArrayServer(object):
             self.ad_img.ArraySize2_RBV = nc
             # self.ad_img.ArrayData  = d
             self.ad_img.PublishTStamp = time.time()
-            self.ad_img.UniqueId_RBV += 1
+            # self.ad_img.UniqueId_RBV += 1
 
     def stop(self):
         pass
