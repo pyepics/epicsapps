@@ -695,6 +695,7 @@ class MicroscopeFrame(wx.Frame):
 
         txt = ["<hr>", "<table><tr><td><a href='{imgfile:s}'> <img src='{imgfile:s}' width=350></a></td>"]
 
+        img2file = ''
         if len(thispos.get('image2', '')) > 0:
             junk, img2file = os.path.split(thispos['image2'])
             img2file = os.path.join(img_folder, img2file)
