@@ -10,6 +10,7 @@ from wxutils import pack, Popup, Button, SimpleText
 
 from ..utils import  GUIColors, get_pvtypes, get_pvdesc, normalize_pvname
 
+# from larch.utils import debugtimer
 ALL_EXP  = wx.ALL|wx.EXPAND
 
 MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
@@ -285,7 +286,6 @@ class InstrumentPanel(wx.Panel):
 
     def onPanelExposed(self, updates=False, **kws):
         # called when notebook is selected
-        # print("Panel Exposed ", updates, self.instname)
         if updates:
             self.refresh_position_list()
             self.pos_timer.Start(1000)
@@ -308,7 +308,6 @@ class InstrumentPanel(wx.Panel):
         except:
             print("could not refresh position list")
 
-
     def undisplay_pv(self, pvname):
         "remove pv from display"
         if pvname in self.pv_components:
@@ -318,20 +317,15 @@ class InstrumentPanel(wx.Panel):
     @EpicsFunction
     def redraw_leftpanel(self, force=False):
         """ redraws the left panel """
-        if (time.time() - self.last_draw) < 0.5:
+        t0 = time.time()
+        if (t0 - self.last_draw) < 0.5:
             return
+        # print("redraw leftpanel ", self.instname)
+        
         self.put_timer.Stop()
         self.pos_timer.Stop()
 
-        try:
-            self.Freeze()
-            frozen = True
-        except:
-            froze = False
-
-        self.Hide()
         self.leftsizer.Clear()
-
         self.leftsizer.Add(self.toprow, 0, wx.ALIGN_LEFT|wx.TOP, 2)
 
         current_comps = [self.toprow]
@@ -406,9 +400,9 @@ class InstrumentPanel(wx.Panel):
             if panel is not None:
                 current_comps.append(panel)
                 self.leftsizer.Add(panel, 0,  wx.ALIGN_LEFT|wx.TOP|wx.ALL|wx.GROW, 1)
-
+            # dt.add(f'add comp {val}')
+        
         pack(self.leftpanel, self.leftsizer)
-
         for wid in self.leftpanel.Children:
             if wid not in current_comps and wid != self.toprow:
                 try:
@@ -417,15 +411,13 @@ class InstrumentPanel(wx.Panel):
                 except:
                     pass
 
-        self.Refresh()
         self.Layout()
-        if frozen:
-            self.Thaw()
         self.Show()
         self.pos_list.SetBackgroundColour(wx.WHITE)
         self.pos_list.Enable()
         self.last_draw = time.time()
 
+        
     @EpicsFunction
     def add_pv(self, pvname):
         """add a PV to the left panel"""
