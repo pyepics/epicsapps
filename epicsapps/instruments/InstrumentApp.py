@@ -214,7 +214,7 @@ class InstrumentFrame(wx.Frame):
         self.init_timer.Start(2000)
 
     def onInitTimer(self, evt=None):
-        print(f"init timer done {time.time()- self.init_stime:.3f}")
+        # print(f"init timer done {time.time()- self.init_stime:.3f}")
         if time.time() > 10 + self.init_stime:
             self.init_timer.Stop()
             current_page = self.nb.GetCurrentPage()
