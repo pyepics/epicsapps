@@ -34,7 +34,7 @@ dependencies = ['pyepics',
              'wxutils',
              'lmfit',
              'pyshortcuts',
-             'xraydb'
+             'xraydb',
              'tabulate',
              ]
 
