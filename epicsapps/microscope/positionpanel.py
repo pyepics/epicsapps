@@ -331,7 +331,7 @@ class PositionModel(dv.DataViewIndexListModel):
 
 class EraseManyPositionsFrame(wx.Frame) :
     """Erase Many Positions"""
-    def __init__(self, instdb, instname, pos=(-1, -1), size=(625, 550), _larch=None):
+    def __init__(self, instdb, instname, pos=(-1, -1), size=(625, 550)):
         self.instname = instname
         self.instdb = instdb
         self.last_refresh = time.monotonic() - 100.0

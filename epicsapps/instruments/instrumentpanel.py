@@ -10,7 +10,6 @@ from wxutils import pack, Popup, Button, SimpleText
 
 from ..utils import  GUIColors, get_pvtypes, get_pvdesc, normalize_pvname
 
-# from larch.utils import debugtimer
 ALL_EXP  = wx.ALL|wx.EXPAND
 
 MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
@@ -321,7 +320,7 @@ class InstrumentPanel(wx.Panel):
         if (t0 - self.last_draw) < 0.5:
             return
         # print("redraw leftpanel ", self.instname)
-        
+
         self.put_timer.Stop()
         self.pos_timer.Stop()
 
@@ -401,7 +400,7 @@ class InstrumentPanel(wx.Panel):
                 current_comps.append(panel)
                 self.leftsizer.Add(panel, 0,  wx.ALIGN_LEFT|wx.TOP|wx.ALL|wx.GROW, 1)
             # dt.add(f'add comp {val}')
-        
+
         pack(self.leftpanel, self.leftsizer)
         for wid in self.leftpanel.Children:
             if wid not in current_comps and wid != self.toprow:
@@ -417,7 +416,7 @@ class InstrumentPanel(wx.Panel):
         self.pos_list.Enable()
         self.last_draw = time.time()
 
-        
+
     @EpicsFunction
     def add_pv(self, pvname):
         """add a PV to the left panel"""

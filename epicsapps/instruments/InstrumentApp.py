@@ -32,7 +32,7 @@ from .epics_server import EpicsInstrumentServer
 
 from .pvconnector import EpicsPVList
 
-from ..utils import get_icon
+from ..utils import get_icon, debugtimer
 
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON|flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS
 FNB_STYLE |= flat_nb.FNB_DROPDOWN_TABS_LIST|flat_nb.FNB_NO_NAV_BUTTONS
@@ -48,7 +48,6 @@ Using two applications with a single file can cause data corruption!
 Would you like this application to use this instrument file?
 """
 
-from larch.utils import debugtimer
 class InstrumentFrame(wx.Frame):
     def __init__(self, parent=None, configfile=None, prompt=False, **kws):
 
@@ -77,7 +76,7 @@ class InstrumentFrame(wx.Frame):
         self.epics_server = None
         self.server_timer = None
         self.db, self.dbname = self.connect_db(prompt=prompt, **self.config)
-       
+
         if self.db is None:
             return
         dt.add('db connected')
@@ -87,14 +86,14 @@ class InstrumentFrame(wx.Frame):
         self.create_Menus()
         dt.add('create menu')
         self.create_Frame()
-        dt.add('create frame') 
+        dt.add('create frame')
         self.Bind(wx.EVT_CLOSE, self.onClose)
-        dt.add('before enable epics')        
+        dt.add('before enable epics')
         self.enable_epics_server()
         dt.add('after enable epics')
         # dt.show()
         # print(time.ctime())
-        
+
     def connect_db(self, dbname=None, server='sqlite',
                    user=None, password=None, host=None, port=None,
                    recent_dbs=None, new=False, prompt=False, **kws):
@@ -222,7 +221,7 @@ class InstrumentFrame(wx.Frame):
             callback = getattr(current_page, 'onPanelExposed', None)
             if callable(callback):
                 wx.CallAfter(callback, {'updates': True})
-                
+
     def add_instrument_page(self, instname):
         panel = InstrumentPanel(self, instname, db=self.db,
                                 size=(925, -1),
@@ -233,11 +232,11 @@ class InstrumentFrame(wx.Frame):
         self.nb.AddPage(panel, instname, True)
 
     def onNBClosing(self, event=None):
-        current_page = self.nb.GetCurrentPage()        
+        current_page = self.nb.GetCurrentPage()
         callback = getattr(current_page, 'onPanelExposed', None)
         if callable(callback):
-            callback(updates=False)        
-        
+            callback(updates=False)
+
     def onNBChanged(self, event=None):
         pages = [self.nb.GetPage(i) for i in range(self.nb.GetPageCount())]
         current_page = self.nb.GetCurrentPage()

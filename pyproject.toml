@@ -23,12 +23,19 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     ]
-dependencies = [
-             'pyepics',
-             'sqlalchemy', 'pyyaml',
-             'numpy', 'matplotlib',
-             'wxpython', 'wxmplot', 'wxutils',
-             'lmfit', 'pyshortcuts', 'xraydb'
+dependencies = ['pyepics',
+             'sqlalchemy',
+             'psycopg2',
+             'pyyaml',
+             'numpy',
+             'matplotlib',
+             'wxpython',
+             'wxmplot',
+             'wxutils',
+             'lmfit',
+             'pyshortcuts',
+             'xraydb'
+             'tabulate',
              ]
 
 [project.scripts]
