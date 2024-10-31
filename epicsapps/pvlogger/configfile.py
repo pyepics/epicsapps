@@ -5,7 +5,7 @@ from ..utils import ConfigFile, load_yaml, get_default_configfile
 # default pvlogger configuration
 _configtext = """
 folder: pvlog
-update_rate: 5 seconds
+update_seconds: 5
 workdir: C:
 instruments:
 - SampleStage
