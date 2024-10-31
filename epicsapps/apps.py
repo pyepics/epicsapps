@@ -8,17 +8,7 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from pyshortcuts import make_shortcut, platform
 from pyshortcuts.utils import get_homedir
 
-from .utils import get_configfolder
-
-
-HAS_CONDA = os.path.exists(os.path.join(sys.prefix, 'conda-meta'))
-
-HAS_WXPYTHON = False
-try:
-    import wx
-    HAS_WXPYTHON = True
-except ImportError:
-    pass
+from .utils import get_configfolder, HAS_WXPYTHON
 
 def use_mpl_wxagg():
     """import matplotlib, set backend to WXAgg"""
@@ -33,7 +23,6 @@ def use_mpl_wxagg():
 
 here, _ = os.path.split(__file__)
 icondir = os.path.join(here, 'icons')
-
 
 
 class EpicsApp:
@@ -66,14 +55,13 @@ APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('Sample Microscope', 'microscope', icon='microscope'),
         EpicsApp('areaDetector Viewer', 'adviewer', icon='areadetector'),
         EpicsApp('StripChart',       'stripchart', icon='stripchart'),
+        EpicsApp('PVLogger',         'pvlogger', icon='logger'),
         )
 
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
 
-
 def run_instruments(configfile=None, prompt=True):
     """Epics Instruments"""
-
     from .instruments import EpicsInstrumentApp
     EpicsInstrumentApp(configfile=configfile, prompt=prompt).MainLoop()
 
@@ -92,6 +80,17 @@ def run_stripchart(configfile=None, prompt=False):
     from .stripchart import StripChartApp
     StripChartApp(configfile=configfile, prompt=prompt).MainLoop()
 
+def run_pvlogger(configfile=None, prompt=False, use_cli=False):
+    """PV Logger"""
+    from .pvlogger import PVLogger, PVLoggerApp
+    if PVLoggerApp is not None and not use_cli:
+        PVLoggerApp(prompt=prompt).MainLoop()
+    elif use_cli and configfile is not None:
+        PVLogger(configfile=configfile, prompt=prompt).run()
+    else:
+        print("cannot run PVLogger: configfile needed for CLI mode")
+
+
 ## main wrapper program
 def run_epicsapps():
     """
@@ -102,6 +101,7 @@ def run_epicsapps():
   adviewer     [filename] Area Detector Viewer
   instruments  [filename] Epics Instruments
   microscope   [filename] Sample Microscope Viewer
+  pvlogger     [filenmae] Epics PV Logger
   stripchart              Epics PV Stripchart
 
 notes:
@@ -122,6 +122,9 @@ notes:
     parser.add_argument('-n', '--no-prompt', dest='no_prompt',
                         action='store_true', default=False,
                         help='suppress prompt, use default configuration')
+    parser.add_argument('-c', '--cli', dest='use_cli',
+                        action='store_true', default=False,
+                        help='use Command-line interface, no GUI (pvlogger only)')
 
 
     parser.add_argument('appname', nargs='?', help='application name')
@@ -139,13 +142,19 @@ notes:
         use_mpl_wxagg()
         isapp = args.appname.lower().startswith
         fapp = None
+        kwargs = {'configfile': args.filename, 'prompt': args.prompt}
         if isapp('inst'):
             fapp = run_instruments
         if isapp('micro'):
             fapp = run_samplemicroscope
         elif isapp('strip'):
             fapp = run_stripchart
+        elif isapp('pvlog'):
+            fapp = run_pvlogger
+            kwargs['use_cli'] = args.use_cli
         elif isapp('adview'):
             fapp = run_adviewer
         if fapp is not None:
-            fapp(configfile=args.filename, prompt=args.prompt)
+            fapp(**kwargs)
+        else:
+            print(__doc__)
