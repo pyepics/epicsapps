@@ -4,9 +4,9 @@ from ..utils import ConfigFile, load_yaml, get_default_configfile
 
 # default pvlogger configuration
 _configtext = """
-folder: pvlog
+folder: "pvlog"
 update_seconds: 5
-workdir: C:
+workdir: "C:/Users"
 instruments:
 - SampleStage
 - Small KB Mirror Stripes
