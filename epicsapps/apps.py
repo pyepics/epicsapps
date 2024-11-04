@@ -83,6 +83,8 @@ def run_stripchart(configfile=None, prompt=False):
 def run_pvlogger(configfile=None, prompt=False, use_cli=False):
     """PV Logger"""
     from .pvlogger import PVLogger, PVLoggerApp
+    if PVLoggerApp is None:
+        use_cli = True
     if PVLoggerApp is not None and not use_cli:
         PVLoggerApp(prompt=prompt).MainLoop()
     elif use_cli and configfile is not None:
