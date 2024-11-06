@@ -1,6 +1,23 @@
 import os
+import str
+
 import epics
 
+BAD_FILECHARS = ';~,`!%$@$&^?*#:"/|\'\\\t\r\n (){}[]<>'
+GOOD_FILECHARS = '_'*len(BAD_FILECHARS)
+
+TRANS_FILE = str.maketrans(BAD_FILECHARS, GOOD_FILECHARS)
+
+def fix_filename(s):
+    """fix string to be a 'good' filename.
+    This may be a more restrictive than the OS, but
+    avoids nasty cases."""
+    t = str(s).translate(TRANS_FILE)
+    if t.count('.') > 1:
+        for i in range(t.count('.') - 1):
+            idot = t.find('.')
+            t = f"{t[:idot]}_{t[idot+1:]}"
+    return t
 
 def normalize_pvname(pvname):
     pvname = str(pvname)
