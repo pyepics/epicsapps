@@ -1,47 +1,61 @@
-import os
+from os import environ as ENV
+from pathlib import Path
+import yaml
+
+# note: toml.loads cannot load strings that toml.dumps writes,
+#       especialy with complex data structures.
+# For Py3.11+, we use toml.dumps() and tomllib.loads().
+# For Py<3.11, we use toml.dumps() and tomli.loads().
+import toml
+try:
+    import tomllib
+except ImportErorr:
+    import tomli as tomllib
+
 from pyshortcuts.utils import get_homedir
 
-import yaml
-from yaml import Loader, Dumper
 
 def load_yaml(text):
     """very simple yaml loader"""
-    return yaml.load(text, Loader=Loader)
+    return yaml.load(text, Loader=yaml.Loader)
+
+def load_toml(text):
+    """very simple toml loader"""
+    return tomllib.loads(text)
 
 def get_configfolder():
     """
     get an epicsapps config folder
-
     Returns:
         path name of config folder, typically $HOME/.config/epicsapps
 
     """
-    escancred = os.environ.get('ESCAN_CREDENTIALS', None)
+    escancred = ENV.get('ESCAN_CREDENTIALS', None)
     if escancred is not None:
-        confdir, _ = os.path.split(escancred)
+        confdir = Path(escancred).parent
     else:
-        confdir = os.path.join(get_homedir(), '.config', 'epicsapps')
+        confdir = Path(get_homedir(), '.config', 'epicsapps')
 
-        if not os.path.exists(confdir):
+        if not confdir.exists():
             try:
-                os.makedirs(confdir)
+                confdir.mkdir(mode=0o755, parents=True, exist_ok=True)
             except FileExistsError:
                 pass
     return confdir
 
 def get_default_configfile(fname):
     """get the default configfile, if it exists or None if it does not"""
-    out = os.path.join(get_configfolder(), fname)
-    if os.path.exists(out):
-        return out
+    path = Path(get_configfolder(), fname)
+    if path.exist():
+        return path.as_posix()
     return None
 
 def read_recents_file(fname='recent_ad_pvs.txt'):
-    fname = os.path.join(get_configfolder(), fname)
+    fpath = Path(get_configfolder(), fname)
     lines = ['#']
     out = []
-    if os.path.exists(fname):
-        with open(fname, 'r') as fh:
+    if fpath.exists():
+        with open(fpath, 'r') as fh:
             lines = fh.readlines()
     for line in lines:
         if not line.startswith('#') and len(line) > 2:
@@ -50,13 +64,13 @@ def read_recents_file(fname='recent_ad_pvs.txt'):
 
 def write_recents_file(fname='recent_ad_pvs.txt', nlist=None):
     if nlist is not None and len(nlist) > 0:
-        fname = os.path.join(get_configfolder(), fname)
-        with open(fname, 'w') as fh:
+        fpath = Path(get_configfolder(), fname)
+        with open(fpath, 'w') as fh:
             fh.write('\n'.join(nlist))
 
 class ConfigFile(object):
     """
-    Configuration File, using YAML
+    Configuration File, using either YAML or TOML
     The ConfigFile will have attributes / methods:
 
     config:          dict of configuration data
@@ -70,7 +84,7 @@ class ConfigFile(object):
     def __init__(self, fname, default_config=None):
         self.filename = fname
         self.default_config = {}
-        self.default_configfile = os.path.join(get_configfolder(), fname)
+        self.default_configfile =Path(get_configfolder(), fname).absolute().as_posix()
         if default_config is not None:
             self.default_config.update(default_config)
 
@@ -98,22 +112,41 @@ class ConfigFile(object):
               file will be read.
 
         """
-        if not os.path.exists(fname):
-            tmp = os.path.join(get_configfolder(), fname)
-            if os.path.exists(tmp):
-                fname = tmp
-            elif os.path.exists(self.default_configfile):
-                fname = self.default_configfile
-            else:
-                print("No config file to read: ", fname)
-                return
+        fpath = Path(fname).absolute()
+        if not fpath.exists():
+            for fpath in (Path(get_configfolder(), fname),
+                          Path(self.default_configfile)):
+                if fpath.exists():
+                    break
 
-        self.filename = os.path.abspath(fname)
+        if not fpath.exists():
+            print("No config file to read: ", fname)
+            return
 
+
+        self.filename = fpath.absolute().as_posix()
+        stem  = fpath.suffix
         text = None
         with open(self.filename, 'r') as fh:
             text = fh.read()
-        self.config = yaml.load(text, Loader=Loader)
+
+        formats = ['toml', 'yaml']
+        if fpath.suffix == 'yaml':
+            formats = ['yaml', 'toml']
+        for form in formats:
+            if form == 'toml':
+                try:
+                    self.config = tomllib.loads(text)
+                except:
+                    pass
+            elif form == 'yaml':
+                try:
+                    self.config = yaml.load(text, Loader=yaml.Loader)
+                except:
+                    pass
+            if self.config is not None:
+                break
+
 
 
     def write(self, fname=None, config=None):
@@ -123,5 +156,11 @@ class ConfigFile(object):
         if config is None:
             config = self.config
 
-        with open(fname, 'w') as fh:
-            yaml.dump(config, fh, default_flow_style=None)
+        fpath = Path(fname)
+
+        if fpath.stem == 'yaml':
+            with open(fpath, 'w') as fh:
+                yaml.dump(config, fh, default_flow_style=None)
+        else:
+            with open(fpath, 'w') as fh:
+                fh.write(toml.dumps(config))

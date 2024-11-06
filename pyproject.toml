@@ -36,6 +36,7 @@ dependencies = ['pyepics',
              'pyshortcuts',
              'xraydb',
              'tabulate',
+             'tomli',
              ]
 
 [project.scripts]
