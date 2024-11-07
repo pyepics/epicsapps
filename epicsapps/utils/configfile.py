@@ -138,12 +138,13 @@ class ConfigFile(object):
                 try:
                     self.config = tomllib.loads(text)
                 except:
-                    pass
+                    print("Warning could not read TOML Config")
             elif form == 'yaml':
                 try:
                     self.config = yaml.load(text, Loader=yaml.Loader)
                 except:
                     pass
+
             if self.config is not None:
                 break
 
