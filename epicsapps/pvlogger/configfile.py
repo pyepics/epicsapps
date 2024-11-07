@@ -7,24 +7,17 @@ _configtext = """
 folder: "pvlog"
 update_seconds: 5
 workdir: ""
-instruments:
-- SampleStage
-- Small KB Mirror Stripes
+instruments: []
+
 pvs:
-- S:SRcurrentAI.VAL        | Storage Ring Current
-- RF-ACIS:FePermit:Sect1To35IdM.VAL | Shutter Permit
-- S13ID:DSID:GapM.VAL      | ID Gap, ID-C/D
-- S13ID:DSID:TaperGapM.VAL | ID Gap Taper, ID-C/D
-- S13ID:USID:GapM.VAL      | ID Gap, ID-E
-- S13ID:USID:TaperGapM.VAL | ID Gap Taper, ID-E
+  - S:SRcurrentAI.VAL        | Storage Ring Current | 0.002
 
 """
 
-CONFIGFILE = 'pvlogger.yaml'
+CONFIGFILE = 'pvlog.yaml'
 
 class PVLoggerConfig(ConfigFile):
-    def __init__(self, fname='areadetector.yaml', default_config=None):
+    def __init__(self, fname=CONFIGFILE, default_config=None):
         if default_config is None:
             default_config = load_yaml(_configtext)
-
         ConfigFile.__init__(self, fname, default_config=default_config)
