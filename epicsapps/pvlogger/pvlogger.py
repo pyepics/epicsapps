@@ -38,9 +38,9 @@ class LoggedPV():
 
         self.pvname = normalize_pvname(pvname)
         logname = self.pvname.replace('.', '_') + '.log'
-        self.filename = Path(fix_filename(logname, new=True)
-                             ).absolute().as_posix()
-        self.datafile = open(self.filename, 'a')
+        fpath = Path(fix_filename(logname, new=True))
+        self.datafile = open(fpath, 'a')
+        self.filename = fpath.as_posix()
         self.needs_flush = False
         self.lastflush = 0.0
 
@@ -208,6 +208,13 @@ class PVLogger():
 
         with open("_PVLOG.toml", "w+") as fh:
             fh.write(toml.dumps(out))
+
+        pfiles = ["# PV Name                                |    Log File "]
+        for lpv in self.pvs.values():
+            pfiles.append(f"{lpv.pvname:40s} | {lpv.filename:40s}")
+        pfiles.append("")
+        with open("_PVLOG_filelist.txt", "w+") as fh:
+            fh.write('\n'.join(pfiles))
 
     def add_pv(self, pvname, desc=None, adel=ARCHIVE_DELTA):
         if pvname not in self.pvs:
