@@ -41,7 +41,7 @@ def get_configfolder():
                 confdir.mkdir(mode=0o755, parents=True, exist_ok=True)
             except FileExistsError:
                 pass
-    return confdir
+    return confdir.as_posix()
 
 def get_default_configfile(fname):
     """get the default configfile, if it exists or None if it does not"""
