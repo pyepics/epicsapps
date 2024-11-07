@@ -6,7 +6,7 @@ from ..utils import ConfigFile, load_yaml, get_default_configfile
 _configtext = """
 folder: "pvlog"
 update_seconds: 5
-workdir: "C:/Users"
+workdir: ""
 instruments:
 - SampleStage
 - Small KB Mirror Stripes
