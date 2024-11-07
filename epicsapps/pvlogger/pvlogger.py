@@ -6,8 +6,8 @@ import os
 import time
 from collections import deque
 from pathlib import Path
-import json
 
+import toml
 from epics import get_pv, caget
 
 from ..instruments import InstrumentDB
@@ -182,8 +182,11 @@ class PVLogger():
                 descpvs[pvname] = get_pv(f"{pref}.DESC")
 
         time.sleep(0.01)
-        desc_lines = []
-        motor_lines = []
+        out = {'folder': self.folder,
+               'workdir': self.workdir,
+               'update_seconds': self.update_secs,
+               'pvs': [], 'motors': [], 'instruments': inst_map}
+
         self.pvs = {}
         for ipv, pvname in enumerate(_pvnames):
             desc = _pvdesc[ipv]
@@ -192,28 +195,19 @@ class PVLogger():
                 desc = descpvs[pvname].get()
             if adel == '<auto>':
                 adel = ARCHIVE_DELTA
-            desc_lines.append(f"{ipv:04d}  | {pvname} | {desc} | {adel}")
+            out['pvs'].append(f" {pvname} | {desc} | {adel}")
             self.add_pv(pvname, desc=desc, adel=adel)
             if 'motor' == rtyppvs[pvname].get():
                 prefix = pvname
                 if pvname.endswith('.VAL'):
                     prefix = prefix[:-4]
-                motor_lines.append(prefix + '.VAL')
+                out['motors'].append(prefix + '.VAL')
                 for mfield in motor_fields:
                     self.add_pv(f"{prefix}{mfield}",
                                 desc=f"{desc} {mfield}",  adel=adel)
 
-        motor_lines.append('')
-        desc_lines.append('')
-
-        with open("_PVs.txt", "w+") as fh:
-            fh.write('\n'.join(desc_lines))
-
-        with open("_Motors.txt", "w+") as fh:
-            fh.write('\n'.join(motor_lines))
-
-        with open("_Instruments.json", "w+") as fh:
-            json.dump(inst_map, fh)
+        with open("_PVLOG.toml", "w+") as fh:
+            fh.write(toml.dumps(out))
 
     def add_pv(self, pvname, desc=None, adel=ARCHIVE_DELTA):
         if pvname not in self.pvs:
