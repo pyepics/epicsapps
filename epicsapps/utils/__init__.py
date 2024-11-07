@@ -5,7 +5,9 @@ from .configfile import (ConfigFile, get_configfolder,
                          read_recents_file, write_recents_file)
 
 from .utils import (get_pvtypes, get_pvdesc,
-                    normalize_pvname, fix_filename)
+                    normalize_pvname,
+                    fix_filename, new_filename,
+                    get_timestamp)
 
 HAS_WXPYTHON = False
 try:
