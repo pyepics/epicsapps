@@ -13,16 +13,16 @@ from epics import get_pv, caget
 from ..instruments import InstrumentDB
 
 from ..utils import (get_pvtypes, get_pvdesc, normalize_pvname,
-                             debugtimer)
+                     debugtimer, fix_filename)
 
 from .configfile import PVLoggerConfig
 
 
-SLEEPTME = 0.05
+FLUSHTIME = 30.0
+SLEEPTIME = 0.5
 RUN_FOLDER = 'pvlog'
-motor_fields = ('.VAL','.OFF','.FOFF','.SET','.HLS','.LLS',
-                '.DIR','_able.VAL','.SPMG','.DESC')
-
+motor_fields = ('.VAL', '.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
+                '.DIR', '_able.VAL', '.SPMG', '.DESC')
 
 class PVLogger():
     about_msg =  """Epics PV Logger, CLI
@@ -30,12 +30,11 @@ class PVLogger():
 """
     def __init__(self, configfile=None, prompt=None, wxparent=None):
         self.data = {}
+        self.datafiles = {}
+        self.lastflush = {}
         self.pvs = []
-        self.wxparent = wxparent
-        print("PVLogger CONF FILE ", configfile)
         if configfile is not None:
             self.read_configfile(configfile)
-
 
     def read_configfile(self, configfile):
         print('read config file ', configfile)
@@ -64,7 +63,6 @@ class PVLogger():
             _pvdesc.append(desc.strip())
 
         inst_names = cnf.get('instruments', [])
-
         escan_cred = os.environ.get('ESCAN_CREDENTIALS', '')
         inst_map = {}
         if len(inst_names) > 0 and len(escan_cred) > 0:
@@ -78,9 +76,6 @@ class PVLogger():
                         _pvdesc.append('<auto>')
                 except AttributeError:
                     pass
-
-        with open("Instruments.json", "w") as fh:
-            json.dump(inst_map, fh)
 
         descpvs = {}
         rtyppvs = {}
@@ -103,31 +98,52 @@ class PVLogger():
             if desc == '<auto>' and pvname in descpvs:
                 desc = descpvs[pvname].get()
             desc_lines.append(f"{ipv:04d}  | {pvname} | {desc}")
-            self.pvs.append(get_pv(pvname))
+            self.add_pv(pvname)
             if 'motor' == rtyppvs[pvname].get():
                 prefix = pvname
                 if pvname.endswith('.VAL'):
                     prefix = prefix[:-4]
                 motor_lines.append(prefix + '.VAL')
-                mot_names = [f"{prefix}{i}" for i in motor_fields]
-                mot_names.extend([f"{prefix}.DESC"])
-                for mname in mot_names:
-                    self.pvs.append(get_pv(mname))
-
+                for mfield in motor_fields:
+                    self.add_pv(f"{prefix}{mfield}")
 
         motor_lines.append('')
         desc_lines.append('')
-        with open("PVs.txt", "w") as fh:
+
+        with open("_PVs.txt", "w+") as fh:
             fh.write('\n'.join(desc_lines))
-        with open("Motors.txt", "w") as fh:
+
+        with open("_Motors.txt", "w+") as fh:
             fh.write('\n'.join(motor_lines))
 
+        with open("_Instruments.json", "w+") as fh:
+            json.dump(inst_map, fh)
 
+    def add_pv(self, pvname):
+        if pvname not in self.pvs:
+            self.pvs.append(get_pv(pvname))
+            self.data[pvname] = deque()
+            self.datafiles[pvname] = open(fix_filename(f"{pvname}.log"), 'w+')
+            self.lastflush[pvname] = 0.
 
     def onChanges(self, pvname, value, char_value='', timestamp=0, **kws):
-        self.data[pvname].append((value, char_value, timestamp))
+        self.data[pvname].append((timestamp, value, char_value))
 
 
     def run(self):
         self.connect_pvs()
         print(" Run: ", len(self.pvs))
+        for pv in self.pvs:
+            pv.clear_callbacks()
+            pv.add_callback(self.onChanges)
+
+        while True:
+            time.sleep(SLEEPTIME)
+
+            for pvname, data in self.data.items():
+                if len(data) > 0:
+                    n = len(data)   # use this to permit inserts while writing
+                    now = time.time()
+                    print(pvname, self.datafiles[pvname], len(data))
+                    if now > self.lastflush[pvname] + FLUSHTIME:
+                        self.datafiles[pvname].flush()
