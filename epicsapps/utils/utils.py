@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 from pathlib import Path
 import epics
 
@@ -6,6 +7,13 @@ BAD_FILECHARS = ';~,`!%$@$&^?*#:"/|\'\\\t\r\n (){}[]<>'
 GOOD_FILECHARS = '_'*len(BAD_FILECHARS)
 
 TRANS_FILE = str.maketrans(BAD_FILECHARS, GOOD_FILECHARS)
+
+def get_timestamp():
+    """return ISO format of current timestamp:
+    2012-04-27 17:31:12
+    """
+    return datetime.isoformat(datetime.now(),
+                              sep=' ', timespec='seconds')
 
 def new_filename(filename):
     """
@@ -57,6 +65,15 @@ def fix_filename(filename, new=True):
     if new:
         fname = new_filename(fname)
     return fname
+
+def fix_varname(s):
+    """fix string to be a 'good' variable name."""
+    t = str(s).translate(TRANS_FILE)
+    t = t.replace('.', '_').replace('-', '_')
+    while t.endswith('_'):
+        t = t[:-1]
+    return t
+
 
 def normalize_pvname(pvname):
     pvname = str(pvname)
