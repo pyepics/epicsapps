@@ -9,11 +9,12 @@ from pathlib import Path
 
 import toml
 from epics import get_pv, caget
+from pyshortcuts import debugtimer, fix_filename, isotime
 
 from ..instruments import InstrumentDB
 
-from ..utils import (get_pvtypes, get_pvdesc, normalize_pvname,
-                     debugtimer, fix_filename, get_timestamp)
+from ..utils import (get_pvtypes, get_pvdesc, normalize_pvname)
+
 
 from .configfile import PVLoggerConfig
 
@@ -86,7 +87,7 @@ class LoggedPV():
                     f"# pvname     = {self.pvname}",
                     f"# label      = {self.desc}",
                     f"# delta      = {self.adel}",
-                    f"# start_time = {get_timestamp()}"]
+                    f"# start_time = {isotime()}"]
 
             for attr in ('count', 'nelm', 'type', 'units',
                     'precision', 'host', 'access'):
