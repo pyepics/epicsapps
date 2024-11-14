@@ -3,11 +3,6 @@ from datetime import datetime
 from pathlib import Path
 import epics
 
-BAD_FILECHARS = ';~,`!%$@$&^?*#:"/|\'\\\t\r\n (){}[]<>'
-GOOD_FILECHARS = '_'*len(BAD_FILECHARS)
-
-TRANS_FILE = str.maketrans(BAD_FILECHARS, GOOD_FILECHARS)
-
 def get_timestamp():
     """return ISO format of current timestamp:
     2012-04-27 17:31:12
@@ -15,64 +10,6 @@ def get_timestamp():
     return datetime.isoformat(datetime.now(),
                               sep=' ', timespec='seconds')
 
-def new_filename(filename):
-    """
-    increment filename to unused filename
-    """
-    fpath = Path(filename)
-    if fpath.exists():
-        fstem = fpath.stem
-        fsuffix = fpath.suffix
-        if fsuffix.startswith('.'):
-            fsuffix = fsuffix[1:]
-        if len(fsuffix) == 0:
-            fsuffix = 'txt'
-        int_suffix = True
-        fsint = 0
-        try:
-            fsint = int(fsuffix)
-        except (ValueError, TypeError):
-            int_suffix = False
-        while fpath.exists():
-            fsint += 1
-            if int_suffix:
-                fpath = Path(f"{fstem}.{fsint:03d}")
-            else:
-                if '_' in fstem:
-                    w = fstem.split('_')
-                    try:
-                        fsint = int(w[-1])
-                        fstem = '_'.join(w[:-1])
-                    except (ValueError, TypeError):
-                        pass
-                fpath = Path(f"{fstem}_{fsint:03d}.{fsuffix}")
-
-    return fpath.as_posix()
-
-
-def fix_filename(filename, new=True):
-    """
-    fix string to be a 'good' filename.
-    This may be a more restrictive than the OS, but avoids nasty cases.
-
-    new : increment filename if filename is in use.
-    """
-    fname = str(filename).translate(TRANS_FILE)
-    if fname.count('.') > 1:
-        for i in range(fnamecount('.') - 1):
-            idot = fname.find('.')
-            fname = f"{fname[:idot]}_{fname[idot+1:]}"
-    if new:
-        fname = new_filename(fname)
-    return fname
-
-def fix_varname(s):
-    """fix string to be a 'good' variable name."""
-    t = str(s).translate(TRANS_FILE)
-    t = t.replace('.', '_').replace('-', '_')
-    while t.endswith('_'):
-        t = t[:-1]
-    return t
 
 
 def normalize_pvname(pvname):
