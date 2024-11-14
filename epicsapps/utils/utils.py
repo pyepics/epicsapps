@@ -1,16 +1,5 @@
 import os
-from datetime import datetime
-from pathlib import Path
 import epics
-
-def get_timestamp():
-    """return ISO format of current timestamp:
-    2012-04-27 17:31:12
-    """
-    return datetime.isoformat(datetime.now(),
-                              sep=' ', timespec='seconds')
-
-
 
 def normalize_pvname(pvname):
     pvname = str(pvname)
