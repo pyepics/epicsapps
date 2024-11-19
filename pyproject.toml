@@ -33,7 +33,7 @@ dependencies = ['pyepics',
              'wxmplot',
              'wxutils',
              'lmfit',
-             'pyshortcuts>=1.9.2',
+             'pyshortcuts>=1.9.5',
              'xraydb',
              'tabulate',
              'tomli',
@@ -44,7 +44,6 @@ epicsapps = "epicsapps:run_epicsapps"
 epics_adviewer = "epicsapps:run_adviewer"
 epics_instruments = "epicsapps:run_instruments"
 epics_stripchart = "epicsapps:run_stripchart"
-
 
 [project.urls]
 Homepage = " https://github.com/pyepics/epicsapps"
