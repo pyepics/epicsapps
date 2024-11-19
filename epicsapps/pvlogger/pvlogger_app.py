@@ -4,34 +4,43 @@ Epics PV Logger Application, wx
 """
 import os
 import time
+from pathlib import Path
 from numpy import array, where
 from functools import partial
+from collections import namedtuple
 
 import wx
 import wx.lib.colourselect  as csel
+import wx.lib.mixins.inspection
+import wx.lib.filebrowsebutton as filebrowse
+FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
+
 
 from epics import get_pv
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
-from .utils import (get_icon, get_pvtypes, get_pvdesc, normalize_pvname,
-                    SelectWorkdir, GUIColors)
+                     HLine, SelectWorkdir, GUIColors, Button)
 
-from .debugtimer import debugtimer
 
-from .configfile import (ConfigFile, get_configfolder,
-                         get_default_configfile, load_yaml,
-                         read_recents_file, write_recents_file)
+from epicsapps.utils import (get_pvtypes, get_pvdesc, normalize_pvname,
+                             debugtimer)
 
-from .moveto_dialog import MoveToDialog
-                     FloatCtrl, Choice, YesNo, TextCtrl)
+from .configfile import ConfigFile
+
+
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
 
-from ..utils import SelectWorkdir, get_icon
-ICON_FILE = 'stripchart.ico'
+from ..utils import (SelectWorkdir, get_icon,
+                     get_configfolder,
+                     get_default_configfile, load_yaml,
+                     read_recents_file, write_recents_file)
+
+
+ICON_FILE = 'logging.ico'
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
 BGCOL  = (250, 250, 240)
@@ -41,6 +50,8 @@ POLLTIME = 50
 STY  = wx.GROW|wx.ALL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL
 CSTY = wx.ALIGN_CENTER
+FRAME_STYLE = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
+CONFIG_FILE = 'pvlog.toml'
 
 def get_bound(val):
     "return float value of input string or None"
@@ -53,110 +64,104 @@ def get_bound(val):
         val = None
     return val
 
-YAML_WILDCARD = 'ADViewer Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
+TOML_WILDCARD = 'PVLogger Config Files (*.toml)|*.toml|All files (*.*)|*.*'
 
 class ConnectDialog(wx.Dialog):
-    """Connect to an Epics AreaDetector or YAML config file"""
-    msg = """Select AreaDetector by simple PV or configuration file"""
+    """Connect to a PVLog TOML config file to start data collection
+    or view data
+    """
+    conflist = 'pvlog_config_files.txt'
+    msg = """Epics PV Logger Application"""
     def __init__(self, parent=None, configfile=None, pvname=None,
                  recent_configs=None, recent_pvs=None,
-                 title='Connect to an AreaDetector'):
-        self.mode = 'pvname'
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(800, 300),
+                 title='Epics PV Logger Application'):
+        self.mode = 'view'
+        self.view_folder = '.'
+        self.config_file = ''
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(650, 250),
                            title=title)
 
         panel = GridPanel(self, ncols=5, nrows=6, pad=3,
                           itemstyle=wx.ALIGN_LEFT)
 
+        self.config_file = ''
         conflist = []
-        if recent_configs is not None:
-            for fname in recent_configs:
-                if os.path.exists(fname):
-                    conflist.append(fname)
+        for fname in read_recents_file(self.conflist):
+            if Path(fname).exists():
+                conflist.append(fname)
 
-        pvlist = []
-        if recent_pvs is not None:
-            for name in recent_pvs:
-                pvlist.append(name)
+        self.mode_message = SimpleText(panel, size=(450, -1),
+                            label=' PVLogger: Collect Data or View Existing Data?',
+                            colour=wx.Colour(120, 5, 5), style=wx.LEFT)
 
-        self.mode_message = SimpleText(panel, size=(500, -1), label='')
+        self.view_title = SimpleText(panel, size=(150, -1),
+                                     label=' View Mode: ', style=wx.LEFT)
+        self.collect_title = SimpleText(panel, size=(150, -1),
+                                        label=' Collect Mode: ', style=wx.LEFT)
 
-        self.filebrowser = FileBrowser(panel, size=(650, -1))
+        self.view_folder_label = SimpleText(panel, size=(400, -1),
+                                            label='', style=wx.LEFT)
+
+        self.dir_dialog = Button(panel, ' Select PVLogger Data Folder',
+                                 size=(300, -1), action=self.onViewFolder)
+
+        self.filebrowser = FileBrowserHist(panel, size=(450, -1))
         self.filebrowser.SetHistory(conflist)
-        self.filebrowser.SetLabel('Recent Configuration File:')
-        self.filebrowser.fileMask = YAML_WILDCARD
+        self.filebrowser.SetLabel('')
+        self.filebrowser.fileMask = TOML_WILDCARD
         self.filebrowser.changeCallback = self.onConfigFile
 
         if len(conflist) > 0:
             self.filebrowser.SetValue(conflist[0])
 
-        self.pvchoice = Choice(panel, size=(300, -1),
-                                choices=pvlist, action=self.onPVChoice)
+        panel.Add(self.mode_message, dcol=2)
+        panel.Add(HLine(panel, size=(500, 2)), dcol=2, newrow=True)
+        panel.Add(self.view_title, newrow=True)
+        panel.Add(self.dir_dialog)
+        panel.Add(self.view_folder_label, dcol=2, newrow=True)
 
-        self.pvname = TextCtrl(panel, size=(300, -1), value='',
-                               action=self.onPVName, act_on_losefocus=False)
-        self.pvname.SetToolTip('PV Prefix, not including "cam1:" or "image1:"')
+        panel.Add(HLine(panel, size=(500, 2)), dcol=2, newrow=True)
 
-        panel.Add(self.filebrowser, dcol=3, newrow=True)
+        panel.Add(self.collect_title, newrow=True)
+        panel.Add(self.filebrowser)
+        panel.Add(HLine(panel, size=(500, -1)), dcol=2, newrow=True)
 
-        panel.Add(HLine(panel, size=(500, -1)), dcol=5, newrow=True)
-        panel.Add(SimpleText(panel, 'Recently Used PV: '), dcol=1, newrow=True)
-        panel.Add(self.pvchoice, dcol=2)
-        panel.Add(SimpleText(panel, " PV Prefix:"), dcol=1, newrow=True)
-        panel.Add(self.pvname, dcol=2)
-
-
-        panel.Add(HLine(panel, size=(500, -1)), dcol=5, newrow=True)
-        panel.Add(self.mode_message, dcol=3, newrow=True)
-
-        btnsizer = wx.StdDialogButtonSizer()
-        btnsizer.AddButton(wx.Button(panel, wx.ID_OK))
-        btnsizer.AddButton(wx.Button(panel, wx.ID_CANCEL))
-        btnsizer.Realize()
-
-        panel.Add(HLine(panel, size=(400, -1)), dcol=5, newrow=True)
-        panel.Add(btnsizer, dcol=3, newrow=True)
-
+        panel.Add(OkCancel(panel), dcol=2, newrow=True)
         panel.pack()
 
-    def onPVChoice(self, event=None, **kws):
-        s = event.GetString()
-        self.pvname.SetValue(s)
-        self.mode = 'pvname'
-        self.mode_message.SetLabel(f"will use PV Prefix '{s}'")
-
-    def onPVName(self, value=None, **kws):
-        s = value
-        self.mode = 'pvname'
-        self.mode_message.SetLabel(f"will use PV Prefix '{s}'")
-
     def onConfigFile(self, event=None, key=None, **kws):
-        s = event.GetString()
-        self.mode = 'conffile'
-        self.mode_message.SetLabel(f"will use File '{s}'")
+        self.config_file = event.GetString()
+        self.mode = 'collect'
 
-    def onPV(self, event=None, key=None, **kws):
-        self.mode = 'pvname'
+    def onViewFolder(self, event=None, **kws):
+        dlg = wx.DirDialog(self, 'Select PV Logger Data Folder',
+                       style=wx.DD_DEFAULT_STYLE|wx.DD_CHANGE_DIR)
+
+        path = Path(os.curdir).absolute().as_posix()
+        dlg.SetPath(path)
+        if  dlg.ShowModal() == wx.ID_OK:
+            path = Path(dlg.GetPath()).absolute().as_posix()
+            self.mode = 'view'
+            self.view_folder = path
+            self.view_folder_label.SetLabel(path)
+            os.chdir(path)
+        dlg.Destroy()
+
+
 
     def GetResponse(self, newname=None):
         self.Raise()
-        response = namedtuple('adconnect', ('ok', 'mode', 'conffile',
-                                            'pvname'))
-        ok = False
-        mode, conffile, pvname = 'pvname', '', ''
-        if self.ShowModal() == wx.ID_OK:
-            ok = True
-            mode = self.mode
-            pvname = self.pvname.GetValue()
-            for attr in ('image1:', 'cam1:'):
-                if attr in pvname:
-                    pvname = pvname.split(attr)[0]
-            conffile = self.filebrowser.GetValue()
-        return response(ok, mode, conffile, pvname)
+        response = namedtuple('pvlogger', ('ok', 'mode', 'config_file', 'view_folder'))
+        ok = (self.ShowModal() == wx.ID_OK)
+        print("Mode  ", self.mode, ok)
+        print("View Folder", self.view_folder)
+        print("FileName ", self.config_file)
+
+        return response(ok, self.mode, self.config_file, self.view_folder)
 
 
 
-class PVLogger(wx.Frame):
+class PVLoggerFrame(wx.Frame):
     default_colors = ((0, 0, 0), (0, 0, 255), (255, 0, 0),
                       (0, 0, 0), (255, 0, 255), (0, 125, 0))
 
@@ -164,7 +169,44 @@ class PVLogger(wx.Frame):
 Matt Newville <newville@cars.uchicago.edu>
 """
 
-    def __init__(self, parent=None, conffile=None):
+    def __init__(self, configfile=None):
+        wx.Frame.__init__(self, None, -1, 'Epics PV Logger Application',
+                          style=FRAME_STYLE, size=(600, 500))
+
+        if configfile is None:
+            dlg = ConnectDialog(parent=self)
+            response = dlg.GetResponse()
+            dlg.Destroy()
+
+            print("Got Connection Response ")
+            print(response)
+            if not response.ok:
+                sys.exit()
+            if response.mode == 'pvname':
+                if configfile is None:
+                    cfile = fix_filename(f'ad_{response.pvname}.yaml')
+                    configfile = os.path.join(get_configfolder(), cfile)
+                    if not os.path.exists(configfile):
+                        cfile = fix_filename(f'ad_{response.pvname}_1.yaml')
+
+                    config = ADConfig()
+                    config.filename = configfile
+                    config.prefix = response.pvname
+                    config.write(configfile)
+
+                    if configfile in conflist:
+                        conflist.remove(configfile)
+                    conflist.insert(0, configfile)
+                    write_recents_file('ad_config_files.txt', conflist)
+                    time.sleep(1.0)
+
+                self.read_config(fname=configfile)
+                self.prefix = response.pvname
+                if response.pvname in pvlist:
+                    pvlist.remove(response.pvname)
+                pvlist.insert(0, response.pvname)
+                write_recents_file('ad_pv_prefixes.txt', pvlist)
+
         self.pvdata = {}
         self.pvs = []
         self.pvlist = [' -- ']
@@ -180,6 +222,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.tmin = -60.0
         self.timelabel = 'seconds'
+        mode = 'view_only'
 
         self.create_frame(parent)
         self.timer = wx.Timer(self)
@@ -752,7 +795,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.needs_refresh = update_failed
         return
 
-class StripChartApp(wx.App):
+class PVLoggerApp(wx.App):
     def __init__(self, configfile=None, prompt=True, debug=False, **kws):
         self.configfile = configfile
         self.prompt = prompt
@@ -760,7 +803,7 @@ class StripChartApp(wx.App):
         wx.App.__init__(self, **kws)
 
     def createApp(self):
-        self.frame = StripChartFrame()
+        self.frame = PVLoggerFrame()
         self.frame.Show()
         self.SetTopWindow(self.frame)
 
