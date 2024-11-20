@@ -15,7 +15,6 @@ import wx.lib.mixins.inspection
 import wx.lib.filebrowsebutton as filebrowse
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
-
 from epics import get_pv
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 
@@ -28,8 +27,6 @@ from epicsapps.utils import (get_pvtypes, get_pvdesc, normalize_pvname,
                              debugtimer)
 
 from .configfile import ConfigFile
-
-
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
@@ -103,7 +100,7 @@ class ConnectDialog(wx.Dialog):
                                             label='', style=wx.LEFT)
 
         self.dir_dialog = Button(panel, ' Select PVLogger Data Folder',
-                                 size=(300, -1), action=self.onViewFolder)
+                                 size=(250, -1), action=self.onViewFolder)
 
         self.filebrowser = FileBrowserHist(panel, size=(450, -1))
         self.filebrowser.SetHistory(conflist)
@@ -140,25 +137,28 @@ class ConnectDialog(wx.Dialog):
         path = Path(os.curdir).absolute().as_posix()
         dlg.SetPath(path)
         if  dlg.ShowModal() == wx.ID_OK:
-            path = Path(dlg.GetPath()).absolute().as_posix()
-            self.mode = 'view'
-            self.view_folder = path
-            self.view_folder_label.SetLabel(path)
-            os.chdir(path)
+            path = Path(dlg.GetPath()).absolute()
         dlg.Destroy()
 
+        if path.exists():
+            conffile = Path(path, '_PVLOG.toml')
+            if conffile.exists():
+                self.mode = 'view'
+                self.view_folder = path.as_posix()
+                self.view_folder_label.SetLabel(
+                    f'Data Path: {self.view_folder}')
+                os.chdir(path)
+            else:
+                Popup(self,
+                      f"The Folder\n '{path.as_posix()}'\nis not a valid PV Logger Data Folder",
+                      "Not a valid PV Logger Data Folder")
 
 
     def GetResponse(self, newname=None):
         self.Raise()
         response = namedtuple('pvlogger', ('ok', 'mode', 'config_file', 'view_folder'))
         ok = (self.ShowModal() == wx.ID_OK)
-        print("Mode  ", self.mode, ok)
-        print("View Folder", self.view_folder)
-        print("FileName ", self.config_file)
-
         return response(ok, self.mode, self.config_file, self.view_folder)
-
 
 
 class PVLoggerFrame(wx.Frame):
@@ -173,39 +173,19 @@ Matt Newville <newville@cars.uchicago.edu>
         wx.Frame.__init__(self, None, -1, 'Epics PV Logger Application',
                           style=FRAME_STYLE, size=(600, 500))
 
-        if configfile is None:
-            dlg = ConnectDialog(parent=self)
-            response = dlg.GetResponse()
-            dlg.Destroy()
-
-            print("Got Connection Response ")
-            print(response)
-            if not response.ok:
-                sys.exit()
-            if response.mode == 'pvname':
-                if configfile is None:
-                    cfile = fix_filename(f'ad_{response.pvname}.yaml')
-                    configfile = os.path.join(get_configfolder(), cfile)
-                    if not os.path.exists(configfile):
-                        cfile = fix_filename(f'ad_{response.pvname}_1.yaml')
-
-                    config = ADConfig()
-                    config.filename = configfile
-                    config.prefix = response.pvname
-                    config.write(configfile)
-
-                    if configfile in conflist:
-                        conflist.remove(configfile)
-                    conflist.insert(0, configfile)
-                    write_recents_file('ad_config_files.txt', conflist)
-                    time.sleep(1.0)
-
-                self.read_config(fname=configfile)
-                self.prefix = response.pvname
-                if response.pvname in pvlist:
-                    pvlist.remove(response.pvname)
-                pvlist.insert(0, response.pvname)
-                write_recents_file('ad_pv_prefixes.txt', pvlist)
+        dlg = ConnectDialog(parent=self)
+        response = dlg.GetResponse()
+        dlg.Destroy()
+#
+        print("Got Connection Response ")
+        print(response)
+        if not response.ok:
+            sys.exit()
+        if response.mode == 'view':
+            print("View Mode ", response.view_folder)
+        else: # collect
+            print("Collect Mode ", response.config_file)
+            print("enable folders ")
 
         self.pvdata = {}
         self.pvs = []
@@ -221,20 +201,14 @@ Matt Newville <newville@cars.uchicago.edu>
         self.paused = False
 
         self.tmin = -60.0
-        self.timelabel = 'seconds'
-        mode = 'view_only'
 
         self.create_frame(parent)
-        self.timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
-        self.timer.Start(POLLTIME)
+        # self.timer = wx.Timer(self)
+        # self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
+        # self.timer.Start(POLLTIME)
 
     def create_frame(self, parent, size=(750, 450), **kwds):
         self.parent = parent
-
-        kwds['style'] = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
-        kwds['size']  = size
-        wx.Frame.__init__(self, parent, -1, 'Epics PV Strip Chart', **kwds)
 
         self.build_statusbar()
 
