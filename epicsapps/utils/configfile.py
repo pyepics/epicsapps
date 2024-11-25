@@ -9,7 +9,7 @@ import yaml
 import toml
 try:
     import tomllib
-except ImportErorr:
+except ImportError:
     import tomli as tomllib
 
 from pyshortcuts.utils import get_homedir
@@ -46,7 +46,7 @@ def get_configfolder():
 def get_default_configfile(fname):
     """get the default configfile, if it exists or None if it does not"""
     path = Path(get_configfolder(), fname)
-    if path.exist():
+    if path.exists():
         return path.as_posix()
     return None
 
@@ -131,7 +131,7 @@ class ConfigFile(object):
             text = fh.read()
 
         formats = ['toml', 'yaml']
-        if fpath.suffix == 'yaml':
+        if fpath.suffix.endswith('yaml'):
             formats = ['yaml', 'toml']
         for form in formats:
             if form == 'toml':
@@ -140,10 +140,11 @@ class ConfigFile(object):
                 except:
                     print("Warning could not read TOML Config")
             elif form == 'yaml':
-                try:
-                    self.config = yaml.load(text, Loader=yaml.Loader)
-                except:
-                    pass
+                # try:
+                self.config = yaml.load(text, Loader=yaml.Loader)
+                #    
+                #except:
+                #    pass
 
             if self.config is not None:
                 break
