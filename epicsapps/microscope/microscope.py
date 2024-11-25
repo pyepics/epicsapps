@@ -29,7 +29,9 @@ from epics.wx import EpicsFunction
 from epics.wx.utils import (add_menu, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from wxutils import (GridPanel, OkCancel, FloatSpin, NumericCombo,
-                     SimpleText, FileSave, FileOpen, pack, Popup, fix_filename)
+                     SimpleText, FileSave, FileOpen, pack, Popup)
+
+from pyshortcuts import fix_filename
 
 from .configfile import MicroscopeConfig, CONFFILE, get_default_configfile
 from .icons import icons
@@ -661,7 +663,7 @@ class MicroscopeFrame(wx.Frame):
                                     show=show)
             if group not in self.stage_groups:
                 self.stage_groups.append(group)
-                
+
     def get_calibration(self, name=None):
         if name is None:
             name = self.calib_current
