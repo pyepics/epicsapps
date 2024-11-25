@@ -151,7 +151,7 @@ class InstrumentFrame(wx.Frame):
             self.config['recent_dbs'] = []
 
         if server.lower().startswith('sqlite'):
-            if dbname in self.config.['recent_dbs']:
+            if dbname in self.config['recent_dbs']:
                 self.config['recent_dbs'].remove(dbname)
             self.config['recent_dbs'].insert(0, dbname)
         else:
