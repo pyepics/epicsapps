@@ -29,11 +29,12 @@ import epics
 from epics import get_pv
 from epics.wx import (DelayedEpicsCallback, EpicsFunction)
 
+from pyshortcuts import fix_filename
 from ..utils import MoveToDialog, normalize_pvname, get_pvdesc
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     Button, Choice, TextCtrl, HLine, fix_filename)
+                     Button, Choice, TextCtrl, HLine)
 
 try:
     from epicsscan.scandb import ScanDB, InstrumentDB
