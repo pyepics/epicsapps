@@ -22,9 +22,9 @@ from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
                      HLine, SelectWorkdir, GUIColors, Button)
 
+from pyshortcuts import debugtimer
+from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 
-from epicsapps.utils import (get_pvtypes, get_pvdesc, normalize_pvname,
-                             debugtimer)
 
 from .configfile import ConfigFile
 
