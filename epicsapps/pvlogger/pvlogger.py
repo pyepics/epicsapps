@@ -9,7 +9,7 @@ from pathlib import Path
 
 import toml
 from epics import get_pv, caget
-from pyshortcuts import debugtimer, fix_filename, isotime
+from pyshortcuts import debugtimer, fix_filename, new_filename, isotime
 
 from ..instruments import InstrumentDB
 
@@ -39,7 +39,8 @@ class LoggedPV():
 
         self.pvname = normalize_pvname(pvname)
         logname = self.pvname.replace('.', '_') + '.log'
-        fpath = Path(fix_filename(logname, new=True))
+        logname = fix_filename(logname)
+        fpath = Path(new_filename(logname))
         self.datafile = open(fpath, 'a')
         self.filename = fpath.as_posix()
         self.needs_flush = False
