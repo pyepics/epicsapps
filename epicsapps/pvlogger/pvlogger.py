@@ -9,7 +9,7 @@ from pathlib import Path
 
 import toml
 from epics import get_pv, caget, PV
-from pyshortcuts import debugtimer, fix_filename, new_filename, isotime
+from pyshortcuts import debugtimer, fix_filename, new_filename, isotime, gformat
 
 from ..instruments import InstrumentDB
 
@@ -47,12 +47,14 @@ class LoggedPV():
         self.value = None
         if self.pvname.endswith('.VAL'):
             if isinstance(mdelpv, PV):
-                if (mdelpv.wait_for_connection(timeout=connection_timeout)
-                      and mdelpv.write_access and
-                      self.mdel not in (None, 'None', '<auto>')):
-                    mdelpv.put(self.mdel)
-                    time.sleep(0.001)
-                    self.mdel = mdelpv.get()
+                if mdelpv.wait_for_connection(timeout=connection_timeout):
+                    if (mdelpv.write_access and
+                        self.mdel not in (None, 'None', '<auto>')):
+                        mdelpv.put(self.mdel)
+                        time.sleep(0.001)
+                        self.mdel = mdelpv.get()
+                    elif self.mdel in (None, 'None', '<auto>'):
+                        self.mdel = mdelpv.get()
 
         try:
             self.mdel = float(self.mdel)
@@ -60,10 +62,11 @@ class LoggedPV():
         except:
             self.mdel_is_float = False
 
-        if desc is None and isinstance(descpv, PV):
-            if descpv.wait_for_connection(timeout=connection_timeout):
+        if self.desc in (None, 'None', '<auto>') and isinstance(descpv, PV):
+            if not descpv.connected:
+                descpv.wait_for_connection(timeout=connection_timeout)
+            if descpv.connected:
                 self.desc = descpv.get()
-
         self.pv = get_pv(self.pvname, callback=self.onChanges,
                          connection_callback=self.onConnect)
 
@@ -123,7 +126,7 @@ class LoggedPV():
                     buff.append(f"#      {index} = {nam}")
 
             buff.extend(["#---------------------------------",
-                         "# timestamp   value    char_value", ""])
+                         "# timestamp       value               char_value", ""])
             self.datafile.write('\n'.join(buff))
             self.needs_header = False
         n = len(self.data)
@@ -131,7 +134,7 @@ class LoggedPV():
             buff = []
             for i in range(n):
                 ts, val, cval = self.data.popleft()
-                buff.append(f"{ts:.3f}  {val}   {cval}")
+                buff.append(f"{ts:.3f}  {gformat(val, length=18)}   {cval}")
             buff.append('')
             self.datafile.write('\n'.join(buff))
             self.needs_flush = True
@@ -228,6 +231,7 @@ class PVLogger():
                               descpv=descpv, mdelpv=mdelpv)
 
             out['pvs'].append(' | '.join([lpv.pvname, lpv.desc, str(lpv.mdel)]))
+            # print("ADD PV ", lpv.pvname, lpv.desc, str(lpv.mdel), descpv, mdelpv)
             rtype_pv = rtyppvs.get(pvname, None)
             if rtype_pv is not None and 'motor' == rtype_pv.get():
                 desc = lpv.desc
