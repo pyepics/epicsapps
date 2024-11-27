@@ -8,7 +8,7 @@ from collections import deque
 from pathlib import Path
 
 import toml
-from epics import get_pv, caget
+from epics import get_pv, caget, PV
 from pyshortcuts import debugtimer, fix_filename, new_filename, isotime
 
 from ..instruments import InstrumentDB
@@ -19,28 +19,23 @@ from ..utils import (get_pvtypes, get_pvdesc, normalize_pvname)
 from .configfile import PVLoggerConfig
 
 
-ARCHIVE_DELTA = 1.e-8
 FLUSHTIME = 30.0
 SLEEPTIME = 0.5
 RUN_FOLDER = 'pvlog'
-motor_fields = ('.VAL', '.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
-                '.DIR', '_able.VAL', '.SPMG', '.DESC')
+motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
+                '.DIR', '_able.VAL', '.SPMG')
 
 class LoggedPV():
     """wraps a PV for logging
     """
-    def __init__(self, pvname, desc=None, adel=ARCHIVE_DELTA):
+    def __init__(self, pvname, desc=None, mdel=None,
+                 descpv=None, mdelpv=None, connection_timeout=0.25):
         self.desc = desc
-        try:
-            adel = float(adel)
-        except:
-            adel = ARCHIVE_DELTA
-        self.adel = adel
+        self.mdel = mdel
 
         self.pvname = normalize_pvname(pvname)
         logname = self.pvname.replace('.', '_') + '.log'
-        logname = fix_filename(logname)
-        fpath = Path(new_filename(logname))
+        fpath = Path(new_filename(fix_filename(logname)))
         self.datafile = open(fpath, 'a')
         self.filename = fpath.as_posix()
         self.needs_flush = False
@@ -50,8 +45,28 @@ class LoggedPV():
         self.needs_header = False
         self.connected = None
         self.value = None
+        if self.pvname.endswith('.VAL'):
+            if isinstance(mdelpv, PV):
+                if (mdelpv.wait_for_connection(timeout=connection_timeout)
+                      and mdelpv.write_access and
+                      self.mdel not in (None, 'None', '<auto>')):
+                    mdelpv.put(self.mdel)
+                    time.sleep(0.001)
+                    self.mdel = mdelpv.get()
+
+        try:
+            self.mdel = float(self.mdel)
+            self.mdel_is_float = True
+        except:
+            self.mdel_is_float = False
+
+        if desc is None and isinstance(descpv, PV):
+            if descpv.wait_for_connection(timeout=connection_timeout):
+                self.desc = descpv.get()
+
         self.pv = get_pv(self.pvname, callback=self.onChanges,
                          connection_callback=self.onConnect)
+
 
     def onConnect(self, pvname, conn, pv):
         if conn:
@@ -66,16 +81,23 @@ class LoggedPV():
             self.datafile.write('\n'.join(buff))
         self.needs_flush = True
 
-    def onChanges(self, pvname, value, char_value='', timestamp=0.0, **kws):
-        try:
-            skip = (abs(value - self.value) < self.adel)
-        except:
-            skip = False
+    def onChanges(self, pvname, value, char_value='', timestamp=None, **kws):
+        skip = False
+        if self.value is not None and self.mdel_is_float:
+            try:
+                skip = (abs(value - self.value) < self.mdel)
+            except:
+                skip = False
+
         if not skip:
             self.value = value
+            self.char_value = char_value
             if timestamp is None:
                 timestamp = time.time()
+            self.timestamp = timestamp
             self.data.append((timestamp, value, char_value))
+
+
 
     def flush(self):
         self.lastflush = time.time()
@@ -85,15 +107,15 @@ class LoggedPV():
     def process(self):
         if self.needs_header:
             buff = ["# pvlog data file",
-                    f"# pvname     = {self.pvname}",
-                    f"# label      = {self.desc}",
-                    f"# delta      = {self.adel}",
-                    f"# start_time = {isotime()}"]
+                    f"# pvname        = {self.pvname}",
+                    f"# label         = {self.desc}",
+                    f"# monitor_delta = {self.mdel}",
+                    f"# start_time    = {isotime()}"]
 
             for attr in ('count', 'nelm', 'type', 'units',
                     'precision', 'host', 'access'):
                 val = getattr(self.pv, attr, 'unknown')
-                buff.append(f"# {attr:10s} = {val}")
+                buff.append(f"# {attr:12s}  = {val}")
             enum_strs = getattr(self.pv, 'enum_strs', None)
             if enum_strs is not None:
                 buff.append("# enum strings:")
@@ -142,23 +164,23 @@ class PVLogger():
         os.chdir(self.topfolder)
 
     def connect_pvs(self):
-        _pvnames, _pvdesc, _pvadel = [], [], []
+        _pvnames, _pvdesc, _pvmdel = [], [], []
         cnf = self.config
         for pvline in cnf.get('pvs', []):
             name = pvline.strip()
             desc = '<auto>'
-            adel = str(ARCHIVE_DELTA)
+            mdel = '<auto>'
             if '|' in pvline:
-                words = pvline.split('|')
-                name = words[0].strip()
+                words = [w.strip() for w in pvline.split('|')]
+                name = words[0]
                 if len(words) > 1:
                     desc = words[1]
                 if len(words) > 2:
-                    adel = words[2].strip()
+                    mdel = words[2]
 
-            _pvnames.append(name.strip())
-            _pvdesc.append(desc.strip())
-            _pvadel.append(adel.strip())
+            _pvnames.append(name)
+            _pvdesc.append(desc)
+            _pvmdel.append(mdel)
         inst_names = cnf.get('instruments', [])
         escan_cred = os.environ.get('ESCAN_CREDENTIALS', '')
         inst_map = {}
@@ -171,19 +193,23 @@ class PVLogger():
                         _pvnames.append(pvname)
                         inst_map[inst].append(pvname)
                         _pvdesc.append('<auto>')
-                        _pvadel.append(str(ARCHIVE_DELTA))
+                        _pvmdel.append('<auto>')
                 except AttributeError:
                     pass
 
+        mdelpvs = {}
         descpvs = {}
         rtyppvs = {}
         for ipv, pvname in enumerate(_pvnames):
-            pref = pvname[:-4] if pvname.endswith('.VAL') else pvname
-            rtyppvs[pvname] = get_pv(f"{pref}.RTYP")
-            if _pvdesc[ipv] == '<auto>':
-                descpvs[pvname] = get_pv(f"{pref}.DESC")
+            if pvname.endswith('.VAL'):
+                pref = pvname[:-4]
+                rtyppvs[pvname] = get_pv(f"{pref}.RTYP")
+                if _pvdesc[ipv] in (None, 'None', '<auto>'):
+                    descpvs[pvname] = get_pv(f"{pref}.DESC")
+                if _pvmdel[ipv] in (None, 'None', '<auto>'):
+                    mdelpvs[pvname] = get_pv(f"{pref}.MDEL")
 
-        time.sleep(0.01)
+        time.sleep(0.05)
         out = {'folder': self.folder,
                'workdir': self.workdir,
                'update_seconds': self.update_secs,
@@ -192,21 +218,24 @@ class PVLogger():
         self.pvs = {}
         for ipv, pvname in enumerate(_pvnames):
             desc = _pvdesc[ipv]
-            adel = _pvadel[ipv]
-            if desc == '<auto>' and pvname in descpvs:
-                desc = descpvs[pvname].get()
-            if adel == '<auto>':
-                adel = ARCHIVE_DELTA
-            out['pvs'].append(f" {pvname} | {desc} | {adel}")
-            self.add_pv(pvname, desc=desc, adel=adel)
-            if 'motor' == rtyppvs[pvname].get():
-                prefix = pvname
-                if pvname.endswith('.VAL'):
-                    prefix = prefix[:-4]
-                out['motors'].append(prefix + '.VAL')
+            mdel = _pvmdel[ipv]
+            descpv = mdelpv = None
+            if desc in (None, 'None', '<auto>') and pvname in descpvs:
+                descpv = descpvs[pvname]
+            if mdel in (None, 'None', '<auto>')  and pvname in mdelpvs:
+                mdelpv = mdelpvs[pvname]
+            lpv = self.add_pv(pvname, desc=desc, mdel=mdel,
+                              descpv=descpv, mdelpv=mdelpv)
+
+            out['pvs'].append(' | '.join([lpv.pvname, lpv.desc, str(lpv.mdel)]))
+            rtype_pv = rtyppvs.get(pvname, None)
+            if rtype_pv is not None and 'motor' == rtype_pv.get():
+                desc = lpv.desc
+                out['motors'].append(pvname)
+                prefix = pvname[:-4]
                 for mfield in motor_fields:
                     self.add_pv(f"{prefix}{mfield}",
-                                desc=f"{desc} {mfield}",  adel=adel)
+                                desc=f"{lpv.desc} {mfield}",  mdel=None)
 
         with open("_PVLOG.toml", "w+") as fh:
             fh.write(toml.dumps(out))
@@ -218,9 +247,11 @@ class PVLogger():
         with open("_PVLOG_filelist.txt", "w+") as fh:
             fh.write('\n'.join(pfiles))
 
-    def add_pv(self, pvname, desc=None, adel=ARCHIVE_DELTA):
+    def add_pv(self, pvname, desc=None, mdel=None, descpv=None, mdelpv=None):
         if pvname not in self.pvs:
-            self.pvs[pvname] = LoggedPV(pvname, desc=desc, adel=adel)
+            self.pvs[pvname] = LoggedPV(pvname, desc=desc, mdel=mdel,
+                                        descpv=descpv, mdelpv=mdelpv)
+        return self.pvs[pvname]
 
     def run(self):
         self.connect_pvs()
