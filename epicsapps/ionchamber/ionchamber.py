@@ -8,27 +8,17 @@ Uses xraydb routine for actual calculation
 import time
 import os
 from numpy import exp
-
+from pyshortcuts import gformat
 from epics import Device, caget, get_pv
-from xraydb import material_mu
+from xraydb import ionchamber_fluxes
 
 PIDFILE = '/tmp/ionchamber.pid'
 
-# effective ionization potentials, energy in eV per ion pair, from Knoll
-
-ion_potentials = {'argon': 26.4, 'helium': 41.3, 'hydrogen': 36.5,
-                  'nitrogren': 34.8, 'air': 33.8, 'oxygen': 30.8,
-                  'methane': 27.3, 'Ar': 26.4, 'He': 41.3,
-                  'H2': 36.5, 'N2': 34.8, 'O2': 30.8, 'CO4': 27.3}
-
-# current amp sensitivities:
-sensitivities = {'pA/V': 1.e-12, 'nA/V': 1.e-9, 'uA/V': 1.e-6, 'mA/V': 1.e-3}
-
-QCHARGE = 1.6021766208e-19
+# # current amp sensitivities:
+SUNITS = {'pA/V': 1.e-12, 'nA/V': 1.e-9, 'uA/V': 1.e-6, 'mA/V': 1.e-3}
 
 class IonChamber(Device):
     """Epics Device for Ion Chamber Flux Calculation"""
-
     attrs = ('Amp', 'Desc', 'Volts', 'Length', 'AbsPercent', 'Gas', 'Current',
              'FluxAbs', 'FluxOut', 'Volts2Flux', 'EnergyPV', 'Energy',
              'TimeStamp')
@@ -38,67 +28,42 @@ class IonChamber(Device):
 
     def calculate(self):
         'the actual calculation'
-        gas       = self.get('Gas', as_string=True)
-        length    = self.get('Length')
-
+        gas      = self.get('Gas', as_string=True)
+        length   = self.get('Length')
         energy_pv = self.get('EnergyPV')
-        volt_pv   = self.get('Volts')
-        amp_pv    = self.get('Amp')
-        ampn_pv   = '%ssens_num'  % amp_pv
-        ampu_pv   = '%ssens_unit' % amp_pv
+        volt_pv  = self.get('Volts')
+        amp_pv   = self.get('Amp')
+        ampn_pv  = '%ssens_num'  % amp_pv
+        ampu_pv  = '%ssens_unit' % amp_pv
 
-        energy    = caget(energy_pv)
+        energy   = caget(energy_pv)
         if energy is None or energy < 100.0:
             energy = 100.0
 
-        voltage   = caget(volt_pv)
-        amp_num   = float(caget(ampn_pv, as_string=True))
-        amp_unit  = caget(ampu_pv, as_string=True)
-        sensitivity = amp_num * sensitivities.get(amp_unit, 1.e-6)
-        current     = abs(voltage) * sensitivity
+        voltage  = caget(volt_pv)
+        amp_val  = float(caget(ampn_pv, as_string=True))
+        amp_unit = caget(ampu_pv, as_string=True)
+        current  = voltage * amp_val * SUNITS.get(amp_unit, 1.e-6)
 
-        # print("Current ", current, type(current))
-        # print(voltage, energy, amp_num, amp_unit, sensitivity)
+        flux = ionchamber_fluxes({gas: 1.0}, volts=voltage,
+                                 length=length, energy=energy,
+                                 sensitivity=amp_val,
+                                 sensitivity_units=amp_unit)
 
-        # Ion Chamber flux to current (energies in eV):
-        #     Current = flux_photo * (energy/ion_pot) * (2*q)
-        # where q = 1.6e-19 Coulombs.  With ion_pot = 32 eV
-        #   current = flux_photo * energy * 1.e-20
-        #   photo_flux = 1.e20 * current / energy
-
-        ion_pot = ion_potentials.get(gas, 32.0)/(2*QCHARGE*energy)
-        flux_photo = current * ion_pot
-        if gas == 'N2':
-            gas = 'nitrogen'
-
-        # note on Photo v Total attenuation:
-        # the current is from the photo-electric cross-section, so that
-        #   flux_photo = flux_in * [1 - exp(-t*mu_photo)]
-        # while total attenuation means
-        #   flux_out = flux_in * exp(-t*mu_total)
-        # so that
-        #   flux_out = flux_photo * exp(-t*mu_total) / [1 - exp(-t*mu_photo)]
-
-        etmu_photo = exp(-length*material_mu(gas, energy=energy, kind='photo'))
-        etmu_total = exp(-length*material_mu(gas, energy=energy, kind='total'))
-
-        photo2fluxout = etmu_total/(1-etmu_photo)
-        flux_out = flux_photo * photo2fluxout
-
-        v2flux = sensitivity * ion_pot * photo2fluxout
-        self.put('Energy',    energy)
-        self.put('AbsPercent', 100.0*((1-etmu_total)/etmu_total))
-        self.put('Current',    "%.6g" % (current*1.e6)) # report current in microAmp
-        self.put('FluxAbs',    "%.6g" % flux_photo)
-        self.put('FluxOut',    "%.6g" % flux_out)
-        self.put('Volts2Flux', "%.6g" % v2flux)
-        self.put('TimeStamp', time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+        now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()
+        frac_absorbed = 1.0-(flux.transmitted/(flux.incident+0.1))
+        self.put('Energy',     energy)
+        self.put('AbsPercent', f'{100*frac_absorbed:.2f}')
+        self.put('Current',    gformat(current*1.e6, length=6))
+        self.put('FluxAbs',    gformat(flux.photo+flux.incoherent, length=10))
+        self.put('FluxOut',    gformat(flux.transmitted, length=10))
+        self.put('TimeStamp',  now)
 
     def run(self):
         time.sleep(0.25)
         while True:
             self.calculate()
-            time.sleep(0.25)
+            time.sleep(0.5)
 
 def start_ionchamber(prefix='13XRM:ION:'):
     """ save pid for later killing """
