@@ -154,8 +154,8 @@ class ImagePanel_PySpin(ImagePanel_Base):
 
     def GrabNumpyImage(self):
         self.data = self.camera.GrabNumPyImage(format='rgb')
-        if self.vidcapture:
-            self.vbuffer.append(self.data)
+        # if self.vidcapture:
+        #     self.vbuffer.append(self.data)
         return self.data
 
 class ConfPanel_PySpin(ConfPanel_Base):
