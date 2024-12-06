@@ -421,9 +421,10 @@ class MicroscopeFrame(wx.Frame):
         add_menu(self, fmenu, label="&Save Config", text="Save Configuration",
                  action = self.onSaveConfig)
 
-        # add_menu(self, fmenu, label="Capture Video",
-        #         text="Capture Video",
-        #         action = self.onCaptureVideo)
+        if HAS_CV2:
+            add_menu(self, fmenu, label="Capture Video",
+                     text="Capture Video",
+                     action = self.onCaptureVideo)
 
         add_menu(self, fmenu, label="Build Composite",
                  text="Build Composite",
@@ -721,12 +722,11 @@ class MicroscopeFrame(wx.Frame):
                               tstamp=thispos['timestamp']))
         fout.close()
 
-
     def save_videocam(self):
         out = ''
+        print("SAVE VIDEOCAM ", HAS_CV2, self.videocam)
         if HAS_CV2 and self.videocam is not None:
             cam = cv2.VideoCapture(self.videocam.strip())
-
             imgfile = '%s_hutch.jpg' % time.strftime('%b%d_%H%M%S')
             fullpath = os.path.join(os.getcwd(), self.imgdir, imgfile)
             status, image = cam.read()

@@ -7,6 +7,13 @@ import time
 import os
 from functools import partial
 
+try:
+    import cv2
+    HAS_CV2 = True
+except ImportError:
+    HAS_CV2 = False
+
+
 from epics import get_pv, Device, caput, poll
 
 from epics.wx import DelayedEpicsCallback, EpicsFunction
@@ -14,6 +21,7 @@ from epics.wx import DelayedEpicsCallback, EpicsFunction
 from wxutils import FloatSpin, FloatCtrl, pack, Button
 
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
+
 
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
@@ -54,13 +62,12 @@ class ImagePanel_PySpin(ImagePanel_Base):
         "turn camera on"
         self.camera.Connect()
         self.cam_name = self.camera.device_name
-        if True: #try:
+        if True:
             self.camera.StartCapture()
             height, width = self.camera.GetSize()
             self.img_w = float(width+0.5)
             self.img_h = float(height+0.5)
-        # except:
-        #    pass
+
         if self.output_pv is not None:
             for attr  in ('ArraySize0_RBV', 'ArraySize1_RBV', 'ArraySize2_RBV',
                           'ColorMode_RBV', 'ArrayData'):
@@ -80,6 +87,13 @@ class ImagePanel_PySpin(ImagePanel_Base):
 
     def CaptureVideo(self, filename='Capture', format='MJPG', runtime=10.0):
         print(" in Capture Video!! ", runtime, filename)
+        t0 = time.time()
+        self.vbuffer = []
+        self.vidcapture = True
+        while self.vidcapture:
+            time.sleep(0.01)
+            self.vidcapture = time.time() < (t0+runtime)
+        print("CaptureVideo done ", runtime,len(self.vbuffer))
 
     def SetExposureTime(self, exptime):
         self.camera.SetExposureTime(exptime, auto=False)
@@ -140,6 +154,8 @@ class ImagePanel_PySpin(ImagePanel_Base):
 
     def GrabNumpyImage(self):
         self.data = self.camera.GrabNumPyImage(format='rgb')
+        if self.vidcapture:
+            self.vbuffer.append(self.data)
         return self.data
 
 class ConfPanel_PySpin(ConfPanel_Base):
@@ -163,7 +179,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
         i = next_row + 1
 
         sizer.Add(self.title,          (i,  0), (1, 3), LEFT)
-        
+
         i += 1
         for dat in (('exposure', 'ms',  50, 0.03, MAX_EXPOSURE_TIME),
                     ('gain', 'dB',      5,  0, 40)):
