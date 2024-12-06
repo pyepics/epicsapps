@@ -136,19 +136,21 @@ class ConfigFile(object):
         for form in formats:
             if form == 'toml':
                 try:
-                    self.config = tomllib.loads(text)
+                    ret = tomllib.loads(text)
+                    if isinstance(ret, dict):
+                        self.config = ret
                 except:
                     print("Warning could not read TOML Config")
             elif form == 'yaml':
-                # try:
-                self.config = yaml.load(text, Loader=yaml.Loader)
-                #    
-                #except:
-                #    pass
+                try:
+                    ret = yaml.load(text, Loader=yaml.Loader)
+                    if isinstance(ret, dict):
+                        self.config = ret
+                except:
+                    pass
 
             if self.config is not None:
                 break
-
 
 
     def write(self, fname=None, config=None):
