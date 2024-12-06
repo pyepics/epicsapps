@@ -107,7 +107,7 @@ def run_epicsapps():
   stripchart              Epics PV Stripchart
 
 notes:
-  applications with the optional filename will look for a yaml-formatted
+  applications with the optional filename will look for a toml- or yaml-formatted
   configuration file in the folder
       {:s}
   or will prompt for configuration if this file is not found.
