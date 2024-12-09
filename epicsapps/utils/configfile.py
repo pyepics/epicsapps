@@ -130,9 +130,9 @@ class ConfigFile(object):
         with open(self.filename, 'r') as fh:
             text = fh.read()
 
-        formats = ['toml', 'yaml']
-        if fpath.suffix.endswith('yaml'):
-            formats = ['yaml', 'toml']
+        formats = ['yaml', 'toml']
+        if fpath.suffix.endswith('toml'):
+            formats = ['toml', 'yaml']
         for form in formats:
             if form == 'toml':
                 try:
@@ -152,7 +152,6 @@ class ConfigFile(object):
             if self.config is not None:
                 break
 
-
     def write(self, fname=None, config=None):
         if fname is None:
             fname = self.filename
@@ -161,8 +160,8 @@ class ConfigFile(object):
             config = self.config
 
         fpath = Path(fname)
-
-        if fpath.stem == 'yaml':
+        print("SAVING CONFIG ", fpath)
+        if fpath.suffix == 'yaml':
             with open(fpath, 'w') as fh:
                 yaml.dump(config, fh, default_flow_style=None)
         else:
