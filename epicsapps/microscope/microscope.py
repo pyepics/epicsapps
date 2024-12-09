@@ -5,7 +5,7 @@ import sys
 import time
 import os
 import shutil
-
+from pathlib import Path
 from threading import Thread
 from collections import namedtuple, OrderedDict
 from functools import partial
@@ -156,11 +156,11 @@ class MicroscopeFrame(wx.Frame):
             configfile = get_default_configfile(CONFFILE)
         if configfile is None:
             default_file = configfile or CONFFILE
-            fpath, fname = os.path.split(default_file)
+            fpath = Path(default_file)
             wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
             configfile = FileOpen(self, "Read Microscope Configuration File",
-                                  default_file=fname,
-                                  default_dir=fpath,
+                                  default_file=fpath.name,
+                                  default_dir=fpath.parent.as_posix(),
                                   wildcard=wcard)
         if configfile is None:
             sys.exit()
@@ -649,10 +649,9 @@ class MicroscopeFrame(wx.Frame):
             pref = self.imgdir.split('_')[0]
         except:
             pref = 'Sample'
-        self.htmllog = '%sStage.html' % pref
-        if not os.path.exists(self.imgdir):
-            os.makedirs(self.imgdir)
-        if not os.path.exists(self.htmllog):
+        self.htmllog = f'{pref}Stage.html' 
+        Path(self.imgdir).mkdir(parents=True, exist_ok=True)
+        if not Path(self.htmllog).exists():
             self.begin_htmllog()
 
         self.stages = {}
@@ -693,8 +692,7 @@ class MicroscopeFrame(wx.Frame):
 
     def write_htmllog(self, name=None, thispos=None):
         img_folder = self.imgdir
-        junk, img_file = os.path.split(thispos['image'])
-        imgfile = os.path.join(img_folder, img_file)
+        imgfile = Path(img_folder, Path(thispos['image']).name)
 
         txt = ["<hr>", "<table><tr><td><a href='{imgfile:s}'> <img src='{imgfile:s}' width=350></a></td>"]
 
@@ -925,7 +923,7 @@ class MicroscopeFrame(wx.Frame):
         if wx.ID_YES == Popup(self, "Really Quit?", "Exit Sample Stage?",
                               style=wx.YES_NO|wx.NO_DEFAULT|wx.ICON_QUESTION):
 
-            self.config['workdir'] = os.path.abspath(os.getcwd())
+            self.config['workdir'] = Path.cwd().as_posix()
             self.configfile.write(config=self.config)
             self.imgpanel.Stop()
             publisher = getattr(self.imgpanel, 'publisher', None)
@@ -974,9 +972,8 @@ class MicroscopeFrame(wx.Frame):
             return
         os.chdir(ret)
         self.imgdir = self.config.get('image_folder', 'Sample_Images')
-        if not os.path.exists(self.imgdir):
-            os.makedirs(self.imgdir)
-        if not os.path.exists(self.htmllog):
+        Path(self.imgdir).mkdir(parents=True, exist_ok=True)
+        if not Path(self.htmllog).exists():
             self.begin_htmllog()
 
     def onCaptureVideo(self, event=None):
