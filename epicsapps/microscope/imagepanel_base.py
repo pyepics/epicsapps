@@ -9,6 +9,7 @@ import wx
 import time
 import json
 import numpy as np
+from pathlib import Path
 from threading import Thread
 from collections import deque
 import base64
@@ -22,10 +23,41 @@ try:
 except ImportError:
     HAS_ZMQ = False
 
+class JpegSaver(object):
+    "just save a jpeg"
+    def __init__(self, filename='image.jpg', delay=0.5):
+        self.delay = delay 
+        self.run = True
+        filename = filename.replace('.jpeg', '.jpg').replace('.JPG', '.jpg')
+        if not filename.endswith('.jpg'):
+            filename = filename + '.jpg'        
+        
+        self.filename = Path(filename).absolute().as_posix()
+        print("JPEG Saver ", self.filename)
+        self.data = None
+
+    def serve(self):
+        while self.run:
+            try:
+                ncols, nrows, nx = self.data.shape
+            except:
+                time.sleep(1)
+                continue
+            tmp = self.filename.replace('.jpg', '_tmp.jpg')
+            Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG', quality=70)
+            shutil.copy(tmp, self.filename)
+            print("Saved ", self.filename)   
+            time.sleep(self.delay)
+       
+    def stop(self):
+        self.run = False
+
+    
 class JpegServer(object):
     def __init__(self, port=17166, delay=0.5):
         self.delay = delay 
         self.run = True
+        print("JPEG Server ", port)
         ctx = zmq.Context()
         self.socket = ctx.socket(zmq.REP)
         self.socket.setsockopt(zmq.SNDTIMEO, 500)
@@ -56,7 +88,7 @@ class JpegServer(object):
 
             tmp.seek(0)
             bindat = base64.b64encode(tmp.read())
-            # print("Publish Image ",  len(bindat), self.delay, time.time())   
+            print("Publish Image ",  len(bindat), self.delay, time.time())   
             self.socket.send(b'jpeg:%s' % bindat) 
             time.sleep(self.delay)
        
@@ -78,17 +110,17 @@ class EpicsArrayServer(object):
                              attrs=self.img_attrs)
         time.sleep(0.1)
         self.last_request = self.ad_img.RequestTStamp
-
+        print("EpicsArray Server ", self.ad_img)
+        print(" -> ", self.last_request)
+        
     def serve(self):
         while True:
             time.sleep(self.delay)
             if self.data is None:
                 continue
-            # print("Epics Array Server ", time.ctime(), self.ad_img.RequestTStamp,
-            #       self.last_request, self.data.shape)
+            print("Epics Array Server ", time.ctime(), self.ad_img.RequestTStamp,
+                  self.last_request, self.data.shape)
 
-            # if (self.ad_img.RequestTStamp - self.last_request) < self.delay:
-            #    continue
 
             self.last_request = self.ad_img.RequestTStamp
             try:
@@ -96,18 +128,14 @@ class EpicsArrayServer(object):
             except:
                 time.sleep(1)
                 continue
-            d = self.data[:]
-            d = d.reshape( ncols//2, 2, nrows//2, 2, nc).sum(axis=3).sum(axis=1).flatten()
-            tmp = io.BytesIO()
-            Image.frombytes('RGB', (nrows, ncols), d).save(tmp, 'JPEG')
-            tmp.seek(0)
-            bindat = base64.b64encode(tmp.read()).decode('utf-8')
+            d = self.data[:].flatten()
             self.ad_img.ArraySize0_RBV = ncols
             self.ad_img.ArraySize1_RBV = nrows
             self.ad_img.ArraySize2_RBV = nc
-            # self.ad_img.ArrayData  = d
+            print(nc, nrows, ncols, d.shape)
+            self.ad_img.ArrayData  = d
             self.ad_img.PublishTStamp = time.time()
-            # self.ad_img.UniqueId_RBV += 1
+            self.ad_img.UniqueId_RBV += 1
 
     def stop(self):
         pass
@@ -195,7 +223,7 @@ class ImagePanel_Base(wx.Panel):
 
         self.publisher = None
         if publish_type is not None:
-            # print("Create Image Publisher ", publish_type, publish_addr)
+            print("Create Image Publisher ", publish_type, publish_addr)
             self.create_publisher(publish_type, publish_addr,
                                   publish_port, publish_delay)
 
@@ -349,12 +377,15 @@ class ImagePanel_Base(wx.Panel):
                     method(*args, **kws)
 
     def create_publisher(self, type='jpeg', addr='', port=0, delay=0.1):
+        print("Create Publisher ", type, addr, port)
         self.publish_type = type
         self.publish_port = port
         self.publish_delay = delay
         self.publisher = None
         if type.lower() == 'jpeg' and HAS_ZMQ:
             self.publisher = JpegServer(port=port, delay=delay)
+        elif type.lower() == 'file':
+            self.publisher = JpegSaver(filename=addr, delay=delay)
         elif type.lower() == 'epicsarray':
             self.publisher = EpicsArrayServer(prefix=addr, delay=delay)
             
