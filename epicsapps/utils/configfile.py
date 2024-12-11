@@ -161,7 +161,7 @@ class ConfigFile(object):
 
         fpath = Path(fname)
         print("SAVING CONFIG ", fpath)
-        if fpath.suffix == 'yaml':
+        if fpath.suffix == '.yaml':
             with open(fpath, 'w') as fh:
                 yaml.dump(config, fh, default_flow_style=None)
         else:
