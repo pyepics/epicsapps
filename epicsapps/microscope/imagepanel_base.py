@@ -46,8 +46,8 @@ class JpegSaver(object):
                 continue
             tmp = self.filename.replace('.jpg', '_tmp.jpg')
             tmp = Path(tmp).resolve().as_posix()
-            print("tmp file ", tmp)
-            Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG', quality=70)
+            Image.frombytes('RGB', (nrows, ncols), self.data
+                              ).save(tmp, 'JPEG', quality=70)
             shutil.copy(tmp, self.filename)
             time.sleep(self.delay)
        
@@ -59,7 +59,7 @@ class JpegServer(object):
     def __init__(self, port=17166, delay=0.5):
         self.delay = delay 
         self.run = True
-        print("JPEG Server ", port)
+        print("JPEG File Server ", port)
         ctx = zmq.Context()
         self.socket = ctx.socket(zmq.REP)
         self.socket.setsockopt(zmq.SNDTIMEO, 500)

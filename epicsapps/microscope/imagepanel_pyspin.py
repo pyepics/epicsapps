@@ -53,7 +53,7 @@ class ImagePanel_PySpin(ImagePanel_Base):
         self.img_w = 800.5
         self.img_h = 600.5
         self.writer = writer
-        print("IMAGE PANEL PYSPIN ", self.camera)
+        print("Using PySpin camera ", self.camera)
         self.confpanel = None
         self.capture_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onTimer, self.capture_timer)
