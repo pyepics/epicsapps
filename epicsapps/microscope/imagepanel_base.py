@@ -49,7 +49,6 @@ class JpegSaver(object):
             print("tmp file ", tmp)
             Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG', quality=70)
             shutil.copy(tmp, self.filename)
-            print("Saved ", self.filename)   
             time.sleep(self.delay)
        
     def stop(self):
