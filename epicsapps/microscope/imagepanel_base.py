@@ -5,6 +5,7 @@ Base Image Panel to be inherited by other ImagePanels
 import os, sys
 import hashlib
 import io
+import shutil
 import wx
 import time
 import json
@@ -44,6 +45,8 @@ class JpegSaver(object):
                 time.sleep(1)
                 continue
             tmp = self.filename.replace('.jpg', '_tmp.jpg')
+            tmp = Path(tmp).resolve().as_posix()
+            print("tmp file ", tmp)
             Image.frombytes('RGB', (nrows, ncols), self.data).save(tmp, 'JPEG', quality=70)
             shutil.copy(tmp, self.filename)
             print("Saved ", self.filename)   
