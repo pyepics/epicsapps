@@ -20,9 +20,10 @@ from epics.wx import EpicsFunction, DelayedEpicsCallback
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     HLine, SelectWorkdir, GUIColors, Button)
+                     HLine, SelectWorkdir, GUIColors, COLORS, Button,
+                     Choice, FileSave, FileCheckList, LEFT, RIGHT, pack)
 
-from pyshortcuts import debugtimer
+from pyshortcuts import debugtimer, uname
 from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 
 
@@ -39,7 +40,7 @@ from ..utils import (SelectWorkdir, get_icon,
 
 ICON_FILE = 'logging.ico'
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
-
+PlotWindowChoices = ['1', '2', '3', '4', '5', '6', '7', '8', '9']
 BGCOL  = (250, 250, 240)
 
 POLLTIME = 50
@@ -49,6 +50,16 @@ LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL
 CSTY = wx.ALIGN_CENTER
 FRAME_STYLE = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
 CONFIG_FILE = 'pvlog.toml'
+
+FONTSIZE = 10
+FONTSIZE_FW = 10
+if uname == 'win':
+    FONTSIZE = 10
+    FONTSIZE_FW = 11
+elif uname == 'darwin':
+    FONTSIZE = 11
+    FONTSIZE_FW = 12
+
 
 def get_bound(val):
     "return float value of input string or None"
@@ -170,93 +181,135 @@ Matt Newville <newville@cars.uchicago.edu>
 """
 
     def __init__(self, configfile=None):
+
+        self.parent = None
         wx.Frame.__init__(self, None, -1, 'Epics PV Logger Application',
                           style=FRAME_STYLE, size=(600, 500))
 
-        dlg = ConnectDialog(parent=self)
-        response = dlg.GetResponse()
-        dlg.Destroy()
-#
-        print("Got Connection Response ")
-        print(response)
-        if not response.ok:
-            sys.exit()
-        if response.mode == 'view':
-            print("View Mode ", response.view_folder)
-        else: # collect
-            print("Collect Mode ", response.config_file)
-            print("enable folders ")
+        # dlg = ConnectDialog(parent=self)
+        # response = dlg.GetResponse()
+        # dlg.Destroy()
+        #
+        # print("Got Connection Response ")
+        # print(response)
+        # if not response.ok:
+        #     sys.exit()
+        # if response.mode == 'view':
+        #     print("View Mode ", response.view_folder)
+        # else: # collect
+        #     print("Collect Mode ", response.config_file)
+        #     print("enable folders ")
+        self.plot_windows = []
 
         self.pvdata = {}
         self.pvs = []
-        self.pvlist = [' -- ']
-        self.pvwids = [None]
-        self.pvchoices = [None]
-        self.pvlabels  = [None]
-        self.pv_desc   = {}
-        self.colorsels = []
-        self.plots_drawn = [False]*10
-        self.needs_refresh = False
-        self.force_redraw  = False
-        self.paused = False
 
-        self.tmin = -60.0
-
-        self.create_frame(parent)
+        self.create_frame()
         # self.timer = wx.Timer(self)
         # self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
         # self.timer.Start(POLLTIME)
 
-    def create_frame(self, parent, size=(750, 450), **kwds):
-        self.parent = parent
-
+    def create_frame(self,size=(800, 550), **kwds):
         self.build_statusbar()
-
-        self.plotpanel = PlotPanel(self, trace_color_callback=self.onTraceColor)
-        self.plotpanel.messenger = self.write_message
-
-        self.build_pvpanel()
-        self.build_btnpanel()
         self.build_menus()
-        self.SetBackgroundColour(wx.Colour(*BGCOL))
 
-        mainsizer = wx.BoxSizer(wx.VERTICAL)
 
-        p1 = wx.Panel(self)
-        p1.SetBackgroundColour(wx.Colour(*BGCOL))
-        s1 = wx.BoxSizer(wx.HORIZONTAL)
-        label = SimpleText(p1, ' Add PV:')
-        self.pvname = TextCtrl(p1, '', size=(250, -1), action=self.onPVname)
-        self.pvmsg = SimpleText(p1, '   ',  minsize=(75, -1),
-                                style=LSTY|wx.EXPAND)
-        s1.Add(label,      0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
-        s1.Add(self.pvname, 0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
-        s1.Add(self.pvmsg, 1,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
-        p1.SetAutoLayout(True)
-        p1.SetSizer(s1)
-        s1.Fit(p1)
+        splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
+        splitter.SetMinimumPaneSize(220)
+        
+        lpanel = wx.Panel(splitter)
+        lpanel.SetMinSize((300, 350))
 
-        mainsizer.Add(p1,             0, wx.GROW|wx.EXPAND, 5)
-        mainsizer.Add(wx.StaticLine(self, size=(250, -1),
-                                    style=wx.LI_HORIZONTAL),
-                      0, wx.EXPAND|wx.GROW, 8)
-        mainsizer.Add(self.pvpanel,   0, wx.EXPAND, 5)
-        mainsizer.Add(wx.StaticLine(self, size=(250, -1),
-                                    style=wx.LI_HORIZONTAL),
-                      0, wx.EXPAND|wx.GROW, 8)
-        mainsizer.Add(self.btnpanel,  0, wx.EXPAND, 5)
-        mainsizer.Add(self.plotpanel, 1, wx.EXPAND, 5)
-        self.SetAutoLayout(True)
-        self.SetSizer(mainsizer)
-        self.Fit()
+        rpanel = wx.Panel(splitter)
+        rpanel.SetMinSize((350, 350))
+        rpanel.SetSize((550, 400))
+
+        # left panel
+        ltop = wx.Panel(lpanel)
+        sel_none = Button(ltop, 'Select None', size=(150, 30), action=self.onSelNone)
+        sel_all  = Button(ltop, 'Select All',  size=(150, 30), action=self.onSelAll)
+
+        ltsizer = wx.BoxSizer(wx.HORIZONTAL)
+        ltsizer.Add(sel_all,  1, LEFT|wx.GROW, 1)
+        ltsizer.Add(sel_none, 1, LEFT|wx.GROW, 1)
+        pack(ltop, ltsizer)
+
+        self.pvlist = FileCheckList(lpanel, main=self,
+                                      select_action=self.onShowPV,
+                                      remove_action=self.onRemovePV)
+        
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(ltop, 0, LEFT|wx.GROW, 1)
+        sizer.Add(self.pvlist, 1, LEFT|wx.GROW|wx.ALL, 1)
+        pack(lpanel, sizer)
+
+        # right panel
+        panel = GridPanel(rpanel, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
+        sizer = wx.GridBagSizer(3, 3)
+        sizer.SetVGap(3)
+        sizer.SetHGap(3)
+
+        self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)        
+
+        self.wids = wids = {}
+        title = SimpleText(panel, 'PV Logger Viewer', font=Font(FONTSIZE+2),
+                           colour=COLORS['title'], style=LEFT)
+        
+
+        self.last_plot_type = 'one'
+        wids['plotone'] = Button(panel, 'Plot Current ', size=(125, -1),
+                              action=self.onPlotOne)
+        wids['plotsel'] = Button(panel, 'Plot Selected ', size=(125, -1),
+                              action=self.onPlotSel)
+
+        wids['plot_win']  = Choice(panel, size=(100, -1), choices=PlotWindowChoices,
+                                   action=self.onPlotEither)
+        wids['plot_win'].SetStringSelection('1')
+        
+        def slabel(txt):
+            return wx.StaticText(panel, label=txt)
+        
+        panel.Add(title, style=LEFT, dcol=5)
+        panel.Add(wids['plotsel'], dcol=2, newrow=True)
+        panel.Add(slabel(' X scale: '), dcol=2, style=LEFT)
+
+        panel.Add(wids['plotone'], dcol=2)
+        panel.Add(slabel(' Plot Window: '), dcol=2)
+        panel.Add(wids['plot_win'], style=RIGHT)
+
+        panel.Add((5, 5))
+        panel.Add(HLine(panel, size=(550, 3)), dcol=6, newrow=True)
+        panel.Add((5, 5))
+
+        panel.Add((5, 5))
+
+        panel.pack()
+
 
         try:
             self.SetIcon(wx.Icon(get_icon('stripchart'), wx.BITMAP_TYPE_ICO))
         except:
             pass
 
-        self.Refresh()
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add((5, 5), 0, LEFT, 3)
+        sizer.Add(panel, 0, LEFT, 3)
+        sizer.Add((5, 5), 0, LEFT, 3)
+        pack(rpanel, sizer)
 
+        # rpanel.SetupScrolling()
+
+        splitter.SplitVertically(lpanel, rpanel, 1)
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
+        mainsizer.Add(splitter, 1, wx.GROW|wx.ALL, 5)
+        pack(self, mainsizer)
+        self.SetSize((875, 450))
+
+        self.Show()
+        self.Raise()
+        
+
+        
     def build_statusbar(self):
         sbar = self.CreateStatusBar(2, wx.CAPTION)
         sfont = sbar.GetFont()
@@ -266,6 +319,30 @@ Matt Newville <newville@cars.uchicago.edu>
         self.SetStatusWidths([-5, -2])
         self.SetStatusText('', 0)
 
+
+
+    def onSelNone(self, event=None):
+        self.pvlist.select_none()
+
+    def onSelAll(self, event=None):
+        self.pvlist.select_all()
+
+    def onShowPV(self, event=None, labe=None):
+        print("Show PV")
+        
+    def onRemovePV(self, dname=None, event=None):
+        print("Remove PV")
+        
+    def onPlotOne(self, event=None):
+        print("on PlotOne")
+
+    def onPlotSel(self, event=None):
+        print("on PlotSel")
+
+    def onPlotEither(self, event=None):
+        print("on PlotEithe")
+
+        
     def build_pvpanel(self):
         panel = self.pvpanel = wx.Panel(self)
         panel.SetBackgroundColour(wx.Colour(*BGCOL))
@@ -328,52 +405,34 @@ Matt Newville <newville@cars.uchicago.edu>
         btnsizer.Fit(panel)
 
     def build_menus(self):
-        mbar = wx.MenuBar()
-        mfile = wx.Menu()
-        pp = self.plotpanel
-        MenuItem(self, mfile, "&Save Data\tCtrl+S",
-                 "Save PNG Image of Plot", self.onSaveData)
+        mdata = wx.Menu()
+        mcollect = wx.Menu()                
+        MenuItem(self, mdata, "&Open PVLogger Folder\tCtrl+O",
+                 "Open PVLogger Folder", self.onLoadFolder)
 
-        MenuItem(self, mfile, "Save Plot Image\t",
-                 "Save PNG Image of Plot", pp.save_figure)
-
-        MenuItem(self, mfile, "&Copy Image to Clipboard\tCtrl+C",
-                 "Copy Plot Image to Clipboard", pp.canvas.Copy_to_Clipboard)
-        mfile.AppendSeparator()
-
-
-        MenuItem(self, mfile, 'Page Setup...', 'Printer Setup',
-                 pp.PrintSetup)
-
-        MenuItem(self, mfile, 'Print Preview...', 'Print Preview',
-                 pp.PrintPreview)
-
-        MenuItem(self, mfile, "&Print\tCtrl+P", "Print Plot",
-                 pp.Print)
-        mfile.AppendSeparator()
-
-        MenuItem(self, mfile, "E&xit\tCtrl+Q",
-                 "Exit StripChart", self.onExit)
+        mdata.AppendSeparator()
+        MenuItem(self, mdata, "E&xit\tCtrl+X", "Exit PVLogger", self.onExit)
         self.Bind(wx.EVT_CLOSE, self.onExit)
 
-        mopt = wx.Menu()
-        MenuItem(self, mopt, "Configure Plot\tCtrl+K",
-                 "Configure Plot", pp.configure)
+        MenuItem(self, mcollect, "&Configure Data Collection\tCtrl+C",
+                 "Configure Data Collection", self.onEditConfig)
+        mcollect.AppendSeparator()
+        MenuItem(self, mcollect, "&Run Data Collection\tCtrl+R",
+                 "Start Data Collection", self.onCollect)
 
-        mopt.AppendSeparator()
-        MenuItem(self, mopt, "Zoom Out\tCtrl+Z",
-                 "Zoom out to full data range", pp.unzoom_all)
-
-        mhelp = wx.Menu()
-        MenuItem(self, mhelp, "Quick Reference",
-                 "Quick Reference ", self.onHelp)
-        MenuItem(self, mhelp, "About", "About Stripchart", self.onAbout)
-
-        mbar.Append(mfile, "File")
-        mbar.Append(mopt, "Options")
-        mbar.Append(mhelp, "&Help")
-
+        mbar = wx.MenuBar()
+        mbar.Append(mdata, "File")
+        mbar.Append(mcollect, "Collection")
         self.SetMenuBar(mbar)
+
+    def onLoadFolder(self, event=None):
+        print("on LoadFolder")
+
+    def onCollect(self, event=None):
+        print("on Collect")
+        
+    def onEditConfig(self, event=None):
+        print("on EditConfig")
 
     def AddPV_row(self):
         i = self.npv_rows = self.npv_rows + 1
