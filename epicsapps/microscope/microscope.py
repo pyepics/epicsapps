@@ -692,7 +692,7 @@ class MicroscopeFrame(wx.Frame):
 
     def write_htmllog(self, name=None, thispos=None):
         img_folder = self.imgdir
-        imgfile = Path(img_folder, Path(thispos['image']).name)
+        imgfile = Path(img_folder, Path(thispos['image']).name).as_posix()
 
         txt = ["<hr>", "<table><tr><td><a href='{imgfile:s}'> <img src='{imgfile:s}' width=350></a></td>"]
 
