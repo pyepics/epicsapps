@@ -238,7 +238,7 @@ class ErasePositionsDialog(wx.Frame):
         if self.instname is not None and self.instdb is not None:
             for pname, cbox in self.checkboxes.items():
                 if cbox.IsChecked():
-                    self.instdb.remove_position(self.instname, pname)
+                    self.instdb.remove_position(pname, self.instname)
         self.Destroy()
 
     def onCancel(self, event=None):
@@ -410,7 +410,7 @@ class EraseManyPositionsFrame(wx.Frame) :
     def onErase(self, event=None):
         for posname, erase in reversed(self.model.data):
             if erase:
-                self.instdb.remove_position(self.instname, posname)
+                self.instdb.remove_position(posname, self.instname)
         self.update()
 
     def onSelAll(self, event=None):
