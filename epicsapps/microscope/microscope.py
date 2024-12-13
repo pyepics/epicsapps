@@ -721,7 +721,7 @@ class MicroscopeFrame(wx.Frame):
         fout.close()
 
     def save_videocam(self):
-        out = ''
+        fullpath = ''
         if HAS_CV2 and self.videocam is not None:
             cam = cv2.VideoCapture(self.videocam.strip())
             imgfile = '%s_hutch.jpg' % time.strftime('%b%d_%H%M%S')
