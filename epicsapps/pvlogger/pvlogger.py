@@ -6,7 +6,7 @@ import os
 import time
 from collections import deque
 from pathlib import Path
-
+import numpy as np
 import toml
 from epics import get_pv, caget, PV
 from pyshortcuts import debugtimer, fix_filename, new_filename, isotime, gformat
@@ -45,6 +45,7 @@ class LoggedPV():
         self.needs_header = False
         self.connected = None
         self.value = None
+        self.can_be_float = None  # decide later
         if self.pvname.endswith('.VAL'):
             if isinstance(mdelpv, PV):
                 if mdelpv.wait_for_connection(timeout=connection_timeout):
@@ -91,7 +92,8 @@ class LoggedPV():
                 skip = (abs(value - self.value) < self.mdel)
             except:
                 skip = False
-
+        if isinstance(skip, np.ndarray):
+            skip = any(skip)
         if not skip:
             self.value = value
             self.char_value = char_value
@@ -129,12 +131,23 @@ class LoggedPV():
                          "# timestamp       value               char_value", ""])
             self.datafile.write('\n'.join(buff))
             self.needs_header = False
+
+        if self.can_be_float is None:  # decide now
+            self.can_be_float = ((1 == self.pv.nelm) and
+                                 ('char' not in self.pv.type))
+
         n = len(self.data)
         if n > 0:
             buff = []
             for i in range(n):
                 ts, val, cval = self.data.popleft()
-                buff.append(f"{ts:.3f}  {gformat(val, length=18)}   {cval}")
+                xval = cval
+                if self.can_be_float:
+                    try:
+                        xval = gformat(val, length=18)
+                    except:
+                        pass
+                buff.append(f"{ts:.3f}  {xval}   {cval}")
             buff.append('')
             self.datafile.write('\n'.join(buff))
             self.needs_flush = True

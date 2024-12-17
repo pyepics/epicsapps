@@ -41,7 +41,7 @@ class IonChamber(Device):
         ampu_pv  = '%ssens_unit' % amp_pv
 
         amp_val  = float(caget(ampn_pv, as_string=True))
-        voltage =  caget(volt_pv)
+        voltage  = caget(volt_pv)
         energy   = caget(energy_pv)
         if energy is None or energy < 100.0:
             energy = 100.0
@@ -49,27 +49,42 @@ class IonChamber(Device):
         amp_unit = caget(ampu_pv, as_string=True)
         cur_units = 1.e6 * SUNITS.get(amp_unit, 1.e-6) # to give uAmp
         current  = voltage * amp_val * cur_units
-
-        flux = ionchamber_fluxes({gas: 1.0}, volts=voltage,
+        try:
+            flux = ionchamber_fluxes({gas: 1.0}, volts=voltage,
                                  length=length, energy=energy,
                                  sensitivity=amp_val,
                                  sensitivity_units=amp_unit)
+        except:
+            print("flx calc failed ", time.time())
+            print(f"calc0 {volt_pv} {voltage:.3f} {cur_units}")
+            flux = None
 
         now = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        frac_abs = 1.0-(flux.transmitted/(flux.incident+0.1))
-        flux_abs = flux.incident - flux.transmitted
-        flux_out = flux.transmitted
-        self.put('Energy',     energy)
-        self.put('AbsPercent', f'{100*frac_abs:.2f}')
-        self.put('Current',    gformat(current, length=6))
-        self.put('FluxAbs',    gformat(flux_abs, length=10))
-        self.put('FluxOut',    gformat(flux_out, length=10))
-        self.put('TimeStamp',  now)
+        try:
+            frac_abs = 1.0-(flux.transmitted/(flux.incident+0.1))
+            flux_abs = flux.incident - flux.transmitted
+            flux_out = flux.transmitted
+        except:
+            frac_abs = 0
+            flux_abs = 0
+            flux_out = 0
+            print("flux data invalid", flux)
+        try:
+            self.put('Energy',     energy)
+            self.put('AbsPercent', f'{100*frac_abs:.2f}')
+            self.put('Current',    gformat(current, length=6))
+            self.put('FluxAbs',    gformat(flux_abs, length=10))
+            self.put('FluxOut',    gformat(flux_out, length=10))
+            self.put('TimeStamp',  now)
+        except:
+            print("Epics Put failed", flush=True)
+
 
     def run(self, sleeptime=0.5):
         while True:
             self.calculate()
             time.sleep(sleeptime)
+        print("Ionchamber done ", time.ctime())
 
 
 def start_ionchamber(prefix='XX:ION:', sleeptime=0.5):
@@ -89,6 +104,6 @@ def start_ionchamber(prefix='XX:ION:', sleeptime=0.5):
         last_event = None
 
     if last_event is None or (now-last_event).seconds > 5:
-        ionc.run(sleeptime=0.5)
+        ionc.run(sleeptime=sleeptime)
     else:
         print(f'IonChamber {prefix} is running, last update at {last_event}')
