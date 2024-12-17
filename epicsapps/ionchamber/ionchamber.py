@@ -195,17 +195,22 @@ class IonChamber:
             print("Epics Put failed", flush=True)
         return flux_in, flux_out
 
-    def run(self, sleeptime=0.5):
+    def run(self, sleep_time=0.5, report_time=300):
+        last_message = time.time() - 5*report_time
         while True:
             try:
                 self.calculate()
             except:
                 pass
-            time.sleep(sleeptime)
-        print("Ionchamber done ", time.ctime())
+            now = time.time()
+            if now > last_message + report_time:
+                print(f"ionchamber running at {isotime()}", flush=True)
+                last_message = now
+            time.sleep(sleep_time)
+        print("Ionchamber done ", isotime())
 
 
-def start_ionchamber(prefix='XX:ION:', sleeptime=0.5):
+def start_ionchamber(prefix='XX:ION:', sleep_time=0.5, report_time=300):
     """start ionchamber if not already running
     Arguments
     ---------
@@ -222,6 +227,6 @@ def start_ionchamber(prefix='XX:ION:', sleeptime=0.5):
         last_event = None
 
     if last_event is None or (now-last_event).seconds > 5:
-        ionc.run(sleeptime=sleeptime)
+        ionc.run(sleep_time=sleep_time, report_time=report_time)
     else:
         print(f'IonChamber {prefix} is running, last update at {last_event}')
