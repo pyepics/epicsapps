@@ -73,16 +73,18 @@ class LoggedPV():
 
 
     def onConnect(self, pvname, conn, pv):
+        ts = time.time()
         if conn:
             if self.connected is None: # initial connection
                 self.connected = True
                 self.needs_header = True
+                msg = None
             else:
-                buff = [f"{time.time():.3f}   {self.value}   <reconnected>"]
-                self.datafile.write('\n'.join(buff))
+                msg = "<event> <CA_reconnected>"
         else:
-            buff = [f"{time.time():.3f}   {self.value}   <disconnected>"]
-            self.datafile.write('\n'.join(buff))
+            msg = "<event> <CA_disconnected>"
+        if msg is not None:
+            self.datafile.write(f"{ts:.3f}  {msg}\n")
         self.needs_flush = True
 
     def onChanges(self, pvname, value, char_value='', timestamp=None, **kws):
@@ -101,7 +103,6 @@ class LoggedPV():
                 timestamp = time.time()
             self.timestamp = timestamp
             self.data.append((timestamp, value, char_value))
-
 
 
     def flush(self):
@@ -141,7 +142,7 @@ class LoggedPV():
             buff = []
             for i in range(n):
                 ts, val, cval = self.data.popleft()
-                xval = cval
+                xval = '<index>'
                 if self.can_be_float:
                     try:
                         xval = gformat(val, length=18)
