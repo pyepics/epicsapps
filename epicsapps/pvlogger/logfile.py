@@ -30,6 +30,7 @@ class PVLogData:
     datetime: []
     value: []
     char_value: []
+    events: []
 
     def __repr__(self):
         return f"PVLogData(pv='{self.pvname}', file='{self.filename}', npts={len(self.timestamp)})"
@@ -121,34 +122,40 @@ def read_logfile(filename):
 
     ncol = None
 
-    lines.reverse()
-    section = 'DATA'
+    section = 'HEADER'
     times = []
     vals = []
     cvals = []
     headers = []
-
+    events = []
+    index = -1
     for line in lines:
         line = line.strip()
         if len(line) < 1:
             continue
-        # look for section transitions (going from bottom to top)
-        nfloats, words = getfloats(line)
-        if nfloats == 0:
-            section = 'HEADER'
-
-        if section == 'HEADER':
+        if line.startswith('#'):
             headers.append(line)
         else:
-            if len(words) > 3:
-                words[2] = ' '.join(words[2:])
-            times.append(words[0])
-            vals.append(words[1])
-            cvals.append(words[2])
+            words = line.split(maxsplit=2)
+            if len(words) == 1:
+                continue
+            if len(words) == 2:
+                words.append(f"{words[1]}")
 
-    # reverse header, footer, data, convert to arrays
-    for x in (headers, times, vals, cvals):
-        x.reverse()
+            index += 1
+            ts, val, cval = float(words[0]), words[1], words[2]
+            times.append(ts)
+            if val in ('<index>', '<event>'):
+                vals.append(index)
+                if val == '<event>':
+                    events.append((ts, cval))
+            else:
+                try:
+                    val = float(val)
+                except ValueError:
+                    pass
+                vals.append(val)
+            cvals.append(cval)
 
     datetimes = [datetime.fromtimestamp(ts) for ts in times]
 
@@ -166,7 +173,6 @@ def read_logfile(filename):
             words = hline.split('=', 1)
             attrs[words[0].strip()] = words[1].strip()
 
-
     pvname = attrs.pop('pvname')
 
     return PVLogData(pvname=pvname,
@@ -177,4 +183,5 @@ def read_logfile(filename):
                      timestamp=times,
                      datetime=datetimes,
                      value=vals,
-                     char_value=cvals)
+                     char_value=cvals,
+                     events=events)
