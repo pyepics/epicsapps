@@ -6,6 +6,8 @@ import os
 import io
 import sys
 import time
+import tomli
+import yaml
 from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
@@ -13,7 +15,6 @@ from datetime import datetime
 from charset_normalizer import from_bytes
 
 import numpy as np
-
 
 TINY = 1.e-7
 MAX_FILESIZE = 400*1024*1024  # 400 Mb limit
@@ -34,6 +35,20 @@ class PVLogData:
 
     def __repr__(self):
         return f"PVLogData(pv='{self.pvname}', file='{self.filename}', npts={len(self.timestamp)})"
+
+@dataclass
+class PVLogFolder:
+    fullpath: str
+    folder: str
+    workdir: str
+    update_seconds: float
+    pvs: []
+    motors: []
+    instruments: {}
+
+    def __repr__(self):
+        return f"PVLogFolder('{self.fullpath}')"
+
 
 def read_textfile(filename, size=None):
     """read text from a file as string
@@ -185,3 +200,60 @@ def read_logfile(filename):
                      value=vals,
                      char_value=cvals,
                      events=events)
+
+def read_logfolder(foldername):
+    """read information for PVLOG folder
+    this folder must have the following files
+        _PVLOG.yaml (or _PVLOG.toml):
+             main configuration, as used for collection
+        _PVLOG_filelist.txt
+             mapping PV names to logfile names
+
+    returns
+    --------
+    PVLogFolder
+    """
+
+    folder = Path(foldername).resolve()
+
+    # list of logfiles
+    filelist = Path(folder, '_PVLOG_filelis.txt')
+    if not filelist.exists():
+        raise ValueError(f"'{foldername}' is not a valid PVlog folder: no file list")
+    logfiles = {}
+    for line in read_textfile(filelist).split('\n'):
+        if line.startswith('#'):
+            continue
+        words = [a.strip() for a in line.split('|', maxsplit=1)]
+        if len(words) > 1:
+            logfiles[words[0]] = words[1]
+
+    # main config
+    form = 'yaml'
+    cfile = Path(folder, '_PVLOG.yaml')
+    if not cfile.exists():
+        form = 'toml'
+        cfile = Path(folder, '_PVLOG.toml')
+        if not cfile.exists():
+            raise ValueError(f"'{foldername}' is not a valid PVlog folder: no config file")
+    ctext = open(cfile, 'r').read()
+    if form == 'yaml':
+        conf = yaml.load(ctext, Loader=yaml.Loader)
+    else:
+        conf = tomli.loads(ctext)
+
+    pvs = {}
+    for pline in conf['pvs']:
+        words = [a.strip() for a in pline.split('|', maxsplit=2)]
+        if len(words) < 2:
+           words.extend(['<auto>', '<auto>'])
+        pvname = words[0]
+        pvs[pvname] = (logfiles[pvame], words[1], words[2])
+
+    return PVLogFolder(fullpath=folder.as_posix(),
+                         pvs=pvs,
+                        folder=conf['folder'],
+                        workdir=conf['workdir'],
+                        update_seconds=float(conf['update_seconds']),
+                        motors=conf['motors'],
+                        instruments=conf['instruments'])

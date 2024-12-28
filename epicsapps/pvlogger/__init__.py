@@ -1,5 +1,5 @@
 from .pvlogger import PVLogger
-from .logfile import read_logfile
+from .logfile import read_logfile, read_logfolder
 from ..utils import HAS_WXPYTHON
 PVLoggerApp = None
 if HAS_WXPYTHON:
