@@ -267,11 +267,24 @@ Matt Newville <newville@cars.uchicago.edu>
                               action=self.onPlotOne)
         wids['plotsel'] = Button(panel, 'Plot Selected ', size=(125, -1),
                               action=self.onPlotSel)
-
         wids['plot_win']  = Choice(panel, size=(100, -1), choices=PlotWindowChoices,
                                    action=self.onPlotEither)
         wids['plot_win'].SetStringSelection('1')
-
+        wids['instruments'] = Choice(panel, choices=[],
+                                     size=(300, -1),
+                                     action=self.onSelectInst)
+        wids['pv1'] = Choice(panel, choices=[],
+                                     size=(300, -1),
+                                     action=self.onUpdatePlot)
+        wids['pv2'] = Choice(panel, choices=[],
+                                     size=(300, -1),
+                                     action=self.onUpdatePlot)
+        wids['pv3'] = Choice(panel, choices=[],
+                                     size=(300, -1),
+                                     action=self.onUpdatePlot)
+        wids['pv4'] = Choice(panel, choices=[],
+                                     size=(300, -1),
+                                     action=self.onUpdatePlot)
         def slabel(txt):
             return wx.StaticText(panel, label=txt)
 
@@ -296,7 +309,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
 
         try:
-            self.SetIcon(wx.Icon(get_icon('stripchart'), wx.BITMAP_TYPE_ICO))
+            self.SetIcon(wx.Icon(get_icon('logging'), wx.BITMAP_TYPE_ICO))
         except:
             pass
 
@@ -337,7 +350,6 @@ Matt Newville <newville@cars.uchicago.edu>
     def onShowPV(self, event=None, label=None):
         print("Show PV ", event.GetString())
         name = event.GetString()
-        print("instrument ", name in self.log_folder.instruments)
         print("motor ", name.endswith(' (motor)'))
 
     def onRemovePV(self, dname=None, event=None):
