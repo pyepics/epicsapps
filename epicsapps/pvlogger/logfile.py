@@ -217,7 +217,7 @@ def read_logfolder(foldername):
     folder = Path(foldername).resolve()
 
     # list of logfiles
-    filelist = Path(folder, '_PVLOG_filelis.txt')
+    filelist = Path(folder, '_PVLOG_filelist.txt')
     if not filelist.exists():
         raise ValueError(f"'{foldername}' is not a valid PVlog folder: no file list")
     logfiles = {}
@@ -248,12 +248,12 @@ def read_logfolder(foldername):
         if len(words) < 2:
            words.extend(['<auto>', '<auto>'])
         pvname = words[0]
-        pvs[pvname] = (logfiles[pvame], words[1], words[2])
+        pvs[pvname] = (logfiles[pvname], words[1], words[2])
 
     return PVLogFolder(fullpath=folder.as_posix(),
-                         pvs=pvs,
-                        folder=conf['folder'],
-                        workdir=conf['workdir'],
-                        update_seconds=float(conf['update_seconds']),
-                        motors=conf['motors'],
-                        instruments=conf['instruments'])
+                       pvs=pvs,
+                       folder=conf['folder'],
+                       workdir=conf['workdir'],
+                       update_seconds=float(conf['update_seconds']),
+                       motors=conf['motors'],
+                       instruments=conf['instruments'])
