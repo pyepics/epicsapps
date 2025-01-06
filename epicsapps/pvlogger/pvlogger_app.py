@@ -28,6 +28,7 @@ from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 
 
 from .configfile import ConfigFile
+from .logfile import read_logfile, read_logfolder
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
@@ -84,7 +85,7 @@ class ConnectDialog(wx.Dialog):
                  recent_configs=None, recent_pvs=None,
                  title='Epics PV Logger Application'):
         self.mode = 'view'
-        self.view_folder = '.'
+        self.work_folder = '.'
         self.config_file = ''
         wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(650, 250),
                            title=title)
@@ -107,7 +108,7 @@ class ConnectDialog(wx.Dialog):
         self.collect_title = SimpleText(panel, size=(150, -1),
                                         label=' Collect Mode: ', style=wx.LEFT)
 
-        self.view_folder_label = SimpleText(panel, size=(400, -1),
+        self.work_folder_label = SimpleText(panel, size=(400, -1),
                                             label='', style=wx.LEFT)
 
         self.dir_dialog = Button(panel, ' Select PVLogger Data Folder',
@@ -126,7 +127,7 @@ class ConnectDialog(wx.Dialog):
         panel.Add(HLine(panel, size=(500, 2)), dcol=2, newrow=True)
         panel.Add(self.view_title, newrow=True)
         panel.Add(self.dir_dialog)
-        panel.Add(self.view_folder_label, dcol=2, newrow=True)
+        panel.Add(self.work_folder_label, dcol=2, newrow=True)
 
         panel.Add(HLine(panel, size=(500, 2)), dcol=2, newrow=True)
 
@@ -145,7 +146,8 @@ class ConnectDialog(wx.Dialog):
         dlg = wx.DirDialog(self, 'Select PV Logger Data Folder',
                        style=wx.DD_DEFAULT_STYLE|wx.DD_CHANGE_DIR)
 
-        path = Path(os.curdir).absolute().as_posix()
+        path = Path(os.curdir).absolut
+        e().as_posix()
         dlg.SetPath(path)
         if  dlg.ShowModal() == wx.ID_OK:
             path = Path(dlg.GetPath()).absolute()
@@ -155,9 +157,9 @@ class ConnectDialog(wx.Dialog):
             conffile = Path(path, '_PVLOG.toml')
             if conffile.exists():
                 self.mode = 'view'
-                self.view_folder = path.as_posix()
-                self.view_folder_label.SetLabel(
-                    f'Data Path: {self.view_folder}')
+                self.work_folder = path.as_posix()
+                self.work_folder_label.SetLabel(
+                    f'Data Path: {self.work_folder}')
                 os.chdir(path)
             else:
                 Popup(self,
@@ -167,9 +169,9 @@ class ConnectDialog(wx.Dialog):
 
     def GetResponse(self, newname=None):
         self.Raise()
-        response = namedtuple('pvlogger', ('ok', 'mode', 'config_file', 'view_folder'))
+        response = namedtuple('pvlogger', ('ok', 'mode', 'config_file', 'work_folder'))
         ok = (self.ShowModal() == wx.ID_OK)
-        return response(ok, self.mode, self.config_file, self.view_folder)
+        return response(ok, self.mode, self.config_file, self.work_folder)
 
 
 class PVLoggerFrame(wx.Frame):
@@ -191,11 +193,11 @@ Matt Newville <newville@cars.uchicago.edu>
         # dlg.Destroy()
         #
         # print("Got Connection Response ")
-        # print(response)
+        # .print(response)
         # if not response.ok:
         #     sys.exit()
         # if response.mode == 'view':
-        #     print("View Mode ", response.view_folder)
+        #     print("View Mode ", response.work_folder)
         # else: # collect
         #     print("Collect Mode ", response.config_file)
         #     print("enable folders ")
@@ -216,7 +218,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
         splitter.SetMinimumPaneSize(220)
-        
+
         lpanel = wx.Panel(splitter)
         lpanel.SetMinSize((300, 350))
 
@@ -237,7 +239,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvlist = FileCheckList(lpanel, main=self,
                                       select_action=self.onShowPV,
                                       remove_action=self.onRemovePV)
-        
+
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(ltop, 0, LEFT|wx.GROW, 1)
         sizer.Add(self.pvlist, 1, LEFT|wx.GROW|wx.ALL, 1)
@@ -249,12 +251,16 @@ Matt Newville <newville@cars.uchicago.edu>
         sizer.SetVGap(3)
         sizer.SetHGap(3)
 
-        self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)        
+        self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)
 
         self.wids = wids = {}
         title = SimpleText(panel, 'PV Logger Viewer', font=Font(FONTSIZE+2),
-                           colour=COLORS['title'], style=LEFT)
-        
+                           size=(550, -1),  colour=COLORS['title'], style=LEFT)
+
+        wids['work_folder'] = SimpleText(panel, ' <no working folder> ',
+                                         font=Font(FONTSIZE+1),
+                                         size=(550, -1), style=LEFT)
+
 
         self.last_plot_type = 'one'
         wids['plotone'] = Button(panel, 'Plot Current ', size=(125, -1),
@@ -265,11 +271,14 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['plot_win']  = Choice(panel, size=(100, -1), choices=PlotWindowChoices,
                                    action=self.onPlotEither)
         wids['plot_win'].SetStringSelection('1')
-        
+
         def slabel(txt):
             return wx.StaticText(panel, label=txt)
-        
-        panel.Add(title, style=LEFT, dcol=5)
+
+        panel.Add(title, style=LEFT, dcol=6)
+        panel.Add(slabel('Folder: '), dcol=1, newrow=True)
+        panel.Add(wids['work_folder'], dcol=6)
+
         panel.Add(wids['plotsel'], dcol=2, newrow=True)
         panel.Add(slabel(' X scale: '), dcol=2, style=LEFT)
 
@@ -307,9 +316,8 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.Show()
         self.Raise()
-        
 
-        
+
     def build_statusbar(self):
         sbar = self.CreateStatusBar(2, wx.CAPTION)
         sfont = sbar.GetFont()
@@ -320,19 +328,21 @@ Matt Newville <newville@cars.uchicago.edu>
         self.SetStatusText('', 0)
 
 
-
     def onSelNone(self, event=None):
         self.pvlist.select_none()
 
     def onSelAll(self, event=None):
         self.pvlist.select_all()
 
-    def onShowPV(self, event=None, labe=None):
-        print("Show PV")
-        
+    def onShowPV(self, event=None, label=None):
+        print("Show PV ", event.GetString())
+        name = event.GetString()
+        print("instrument ", name in self.log_folder.instruments)
+        print("motor ", name.endswith(' (motor)'))
+
     def onRemovePV(self, dname=None, event=None):
         print("Remove PV")
-        
+
     def onPlotOne(self, event=None):
         print("on PlotOne")
 
@@ -342,7 +352,7 @@ Matt Newville <newville@cars.uchicago.edu>
     def onPlotEither(self, event=None):
         print("on PlotEithe")
 
-        
+
     def build_pvpanel(self):
         panel = self.pvpanel = wx.Panel(self)
         panel.SetBackgroundColour(wx.Colour(*BGCOL))
@@ -406,7 +416,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def build_menus(self):
         mdata = wx.Menu()
-        mcollect = wx.Menu()                
+        mcollect = wx.Menu()
         MenuItem(self, mdata, "&Open PVLogger Folder\tCtrl+O",
                  "Open PVLogger Folder", self.onLoadFolder)
 
@@ -426,11 +436,42 @@ Matt Newville <newville@cars.uchicago.edu>
         self.SetMenuBar(mbar)
 
     def onLoadFolder(self, event=None):
-        print("on LoadFolder")
+        path = Path(os.curdir).absolute().as_posix()
+        dlg = wx.DirDialog(self, 'Select PV Logger Data Folder',
+                       style=wx.DD_DEFAULT_STYLE|wx.DD_CHANGE_DIR)
+        dlg.SetPath(path)
+        if  dlg.ShowModal() == wx.ID_OK:
+            path = Path(dlg.GetPath()).absolute()
+        else:
+            path = None
+        dlg.Destroy()
+        if path is None or not path.exists():
+            return
+        folder = None
+        try:
+            folder = read_logfolder(path)
+        except ValueError:
+            folder = None
+        if folder is None:
+            Popup(self, f"""The Folder:
+    {path.as_posix()}
+is not a valid PV Logger Data Folder""",
+          "Not a valid PV Logger Data Folder")
+        else:
+            self.log_folder = folder
+            self.wids['work_folder'].SetLabel(folder.fullpath)
+            os.chdir(folder.fullpath)
+
+        #for name in self.log_folder.instruments:
+        #    self.pvlist.Append(name)
+        for pvname in self.log_folder.pvs:
+            if pvname in self.log_folder.motors:
+                pvname = pvname # + ' (motor)'
+            self.pvlist.Append(pvname)
 
     def onCollect(self, event=None):
         print("on Collect")
-        
+
     def onEditConfig(self, event=None):
         print("on EditConfig")
 
