@@ -333,10 +333,16 @@ Matt Newville <newville@cars.uchicago.edu>
 
         col   = self.wids['col1'].GetColour()
         hcol = hexcolor(col)
-        self.subframes[wname].plot(data.datetime, data.value, use_dates=True,
-                       linewidth=2.5, marker='+', drawstyle='steps-post',
-                       colour=hcol, label=label, ylabel=f'{label} ({pvname})',
-                                   show_legend=True, new=True)
+
+        opts = {'use_dates': True, 'show_legend': True,
+                'yaxes':yaxes, 'label': label,
+                'title':  self.log_folder.fullpath,
+                'linewidth': 2.5, 'marker': '+',
+                'theme': 'white-background',
+                'drawstyle': 'steps-post', 'colour':hcol,
+                'ylabel': f'{label} ({pvname})' }
+        self.subframes[wname].plot(data.datetime, data.value, **opts)
+
         self.subframes[wname].Show()
         self.subframes[wname].Raise()
 
@@ -347,7 +353,6 @@ Matt Newville <newville@cars.uchicago.edu>
         pframe = self.subframes[wname]
         yaxes = 0
         for i in range(4):
-
             pvname = self.wids[f'pv{i+1}'].GetStringSelection()
             if pvname == 'None':
                 continue
@@ -362,7 +367,9 @@ Matt Newville <newville@cars.uchicago.edu>
 
             opts = {'use_dates': True, 'show_legend': True,
                     'yaxes':yaxes, 'label': label,
+                    'title':  self.log_folder.fullpath,
                     'linewidth': 2.5, 'marker': '+',
+                    'theme': 'white-background',
                     'drawstyle': 'steps-post', 'colour':hcol}
             plot = pframe.oplot
             if yaxes == 1:
