@@ -30,7 +30,7 @@ from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 from .configfile import ConfigFile
 from .logfile import read_logfile, read_logfolder
 
-from wxmplot.plotpanel import PlotPanel
+from wxmplot import PlotPanel, PlotFrame
 from wxmplot.colors import hexcolor
 
 from ..utils import (SelectWorkdir, get_icon,
@@ -93,6 +93,8 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvdata = {}
         self.pvs = []
         self.wids = {}
+        self.subframes = {}
+
         self.log_folder = None
         self.create_frame()
 
@@ -136,8 +138,9 @@ Matt Newville <newville@cars.uchicago.edu>
         sizer.SetVGap(3)
         sizer.SetHGap(3)
 
-        self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)
-
+        # self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)
+        self.font = wx.Font(FONTSIZE, wx.MODERN, wx.NORMAL, wx.BOLD)
+        self.SetFont(self.font)
         wids = self.wids
         title = SimpleText(panel, ' PV Logger Viewer', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
@@ -218,7 +221,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel.pack()
 
-
         try:
             self.SetIcon(wx.Icon(get_icon('logging'), wx.BITMAP_TYPE_ICO))
         except:
@@ -237,7 +239,7 @@ Matt Newville <newville@cars.uchicago.edu>
         mainsizer.Add(splitter, 1, wx.GROW|wx.ALL, 5)
         pack(self, mainsizer)
         self.SetSize((1000, 550))
-
+        print(" FONT ", self.GetFont().GetPointSize())
         self.Show()
         self.Raise()
 
@@ -250,6 +252,18 @@ Matt Newville <newville@cars.uchicago.edu>
         sbar.SetFont(sfont)
         self.SetStatusWidths([-5, -2])
         self.SetStatusText('', 0)
+
+    def show_subframe(self, name, frameclass, **opts):
+        shown = False
+        if name in self.subframes:
+            try:
+                self.subframes[name].Raise()
+                shown = True
+            except:
+                del self.subframes[name]
+        if not shown:
+            self.subframes[name] = frameclass(self, **opts)
+            self.subframes[name].SetFont(self.font)
 
     def onUseSelected(self, event=None):
         sel_pvs = self.pvlist.GetCheckedStrings()[:4]
@@ -287,16 +301,49 @@ Matt Newville <newville@cars.uchicago.edu>
     def onRemovePV(self, dname=None, event=None):
         print("Remove PV")
 
+    def get_pvdata(self, pvname):
+        """get PVdata, caching until it changes"""
+        if pvname not in self.pvdata:
+            self.pvdata[pvname] = {'timestamp': 0, 'data': None}
+        last_tstamp = self.pvdata[pvname]['timestamp']
+
+        logfile = self.log_folder.pvs[pvname][0]
+        this_tstamp = os.stat(logfile).st_mtime
+        if this_tstamp > last_tstamp:
+            try:
+                print("Read Data ", logfile)
+                data = read_logfile(logfile)
+            except OSError:
+                data = None
+            self.pvdata[pvname]['timestamp'] = this_tstamp
+            self.pvdata[pvname]['data'] = data
+        else:
+            data = self.pvdata[pvname]['data']
+        return data
+
     def onPlotOne(self, event=None):
         print("on PlotOne")
+        wname = self.wids['plot_win'].GetStringSelection()
+        self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
+
         pvname = self.wids['pv1'].GetStringSelection()
         info = self.log_folder.pvs[pvname]
+        label = info[1]
+        # print(pvname, info, ' Is Motor= ', pvname in self.log_folder.motors)
+        data = self.get_pvdata(pvname)
+        # print(data)
+        # print(dir(data))
 
-        print(pvname, info, ' Is Motor= ', pvname in self.log_folder.motors)
-        logfile = info[0]
-        data = read_logfile(logfile)
-        print(data)
-        print(dir(data))
+
+        col   = self.wids['col1'].GetColour()
+        hcol = hexcolor(col)
+        self.subframes[wname].plot(data.datetime, data.value, use_dates=True,
+                       linewidth=2.5, marker='+', drawstyle='steps-post',
+                       colour=hcol, label=label, ylabel=f'{label} ({pvname})',
+                                   show_legend=True, new=True)
+        self.subframes[wname].Show()
+        self.subframes[wname].Raise()
+
 
     def onPlotSel(self, event=None):
         print("on PlotSel")
@@ -309,6 +356,9 @@ Matt Newville <newville@cars.uchicago.edu>
                  "Open PVLogger Folder", self.onLoadFolder)
 
         mdata.AppendSeparator()
+        MenuItem(self, mdata, "Inspect", "WX Inspect", self.onWxInspect)
+
+
         MenuItem(self, mdata, "E&xit\tCtrl+X", "Exit PVLogger", self.onExit)
         self.Bind(wx.EVT_CLOSE, self.onExit)
 
@@ -322,6 +372,9 @@ Matt Newville <newville@cars.uchicago.edu>
         mbar.Append(mdata, "File")
         mbar.Append(mcollect, "Collection")
         self.SetMenuBar(mbar)
+
+    def onWxInspect(self, event=None):
+        wx.GetApp().ShowInspectionTool()
 
     def onLoadFolder(self, event=None):
         path = Path(os.curdir).absolute().as_posix()
@@ -438,20 +491,21 @@ is not a valid PV Logger Data Folder""",
             time.sleep(0.001)
         self.Destroy()
 
-class PVLoggerApp(wx.App):
+class PVLoggerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
     def __init__(self, configfile=None, prompt=True, debug=False, **kws):
         self.configfile = configfile
         self.prompt = prompt
-        self.debug = debug
+        self.with_inspect = True
         wx.App.__init__(self, **kws)
 
     def createApp(self):
         self.frame = PVLoggerFrame()
         self.frame.Show()
         self.SetTopWindow(self.frame)
+        return True
 
     def OnInit(self):
         self.createApp()
-        if self.debug:
+        if self.with_inspect:
             self.ShowInspectionTool()
         return True
