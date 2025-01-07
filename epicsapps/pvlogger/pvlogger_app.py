@@ -10,6 +10,8 @@ from numpy import array, where
 from functools import partial
 from collections import namedtuple
 
+from matplotlib.dates import date2num
+
 import wx
 import wx.lib.colourselect  as csel
 import wx.lib.mixins.inspection
@@ -242,9 +244,10 @@ Matt Newville <newville@cars.uchicago.edu>
         self.SetSize((1000, 550))
         self.read_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onReadTimer, self.read_timer)
-        self.read_timer.Start(2500)
         self.Show()
         self.Raise()
+        self.read_timer.Start(1000)
+        wx.CallAfter(self.ShowPlotWin1)
 
     def onReadTimer(self, event=None):
         if len(self.read_threads) > 0:
@@ -254,7 +257,6 @@ Matt Newville <newville@cars.uchicago.edu>
                     dead.append(name)
             for name in dead:
                 self.read_threads.pop(name)
-
         if len(self.read_threads) == 0 and self.log_folder is not None:
             n = 0
             for pvname in self.log_folder.pvs:
@@ -286,7 +288,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 del self.subframes[name]
         if not shown:
             self.subframes[name] = frameclass(self, **opts)
-            self.subframes[name].SetFont(self.font)
+            self.subframes[name].Raise()
 
     def onUseSelected(self, event=None):
         sel_pvs = self.pvlist.GetCheckedStrings()[:4]
@@ -355,6 +357,10 @@ Matt Newville <newville@cars.uchicago.edu>
             self.pvdata[pvname]['data'] = data
         return self.pvdata[pvname]['data']
 
+    def ShowPlotWin1(self, event=None):
+        wname = 'Window 1'
+        self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
+
     def onPlotOne(self, event=None):
         wname = self.wids['plot_win'].GetStringSelection()
         self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
@@ -383,7 +389,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 'drawstyle': 'steps-post', 'colour':hcol,
                 'ylabel': f'{label} ({pvname})' }
         print("Plot 1  start ", len(data.value), time.ctime())
-        self.subframes[wname].plot(data.datetime, data.value, **opts)
+        self.subframes[wname].plot(data.mpldates, data.value, **opts)
         print("Plot 1  done ", time.ctime())
 
         self.subframes[wname].Show()
@@ -427,7 +433,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 opts['ylabel'] = f'{label} ({pvname})'
             else:
                 opts[f'y{yaxes}label'] = f'{label} ({pvname})'
-            plot(data.datetime, data.value, **opts)
+            plot(data.mpldates, data.value, **opts)
         self.subframes[wname].Show()
         self.subframes[wname].Raise()
 
