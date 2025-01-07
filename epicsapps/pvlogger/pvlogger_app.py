@@ -239,7 +239,7 @@ Matt Newville <newville@cars.uchicago.edu>
         mainsizer.Add(splitter, 1, wx.GROW|wx.ALL, 5)
         pack(self, mainsizer)
         self.SetSize((1000, 550))
-        print(" FONT ", self.GetFont().GetPointSize())
+        # print(" FONT ", self.GetFont().GetPointSize())
         self.Show()
         self.Raise()
 
@@ -322,17 +322,13 @@ Matt Newville <newville@cars.uchicago.edu>
         return data
 
     def onPlotOne(self, event=None):
-        print("on PlotOne")
         wname = self.wids['plot_win'].GetStringSelection()
         self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
 
         pvname = self.wids['pv1'].GetStringSelection()
         info = self.log_folder.pvs[pvname]
         label = info[1]
-        # print(pvname, info, ' Is Motor= ', pvname in self.log_folder.motors)
         data = self.get_pvdata(pvname)
-        # print(data)
-        # print(dir(data))
 
 
         col   = self.wids['col1'].GetColour()
@@ -346,7 +342,38 @@ Matt Newville <newville@cars.uchicago.edu>
 
 
     def onPlotSel(self, event=None):
-        print("on PlotSel")
+        wname = self.wids['plot_win'].GetStringSelection()
+        self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
+        pframe = self.subframes[wname]
+        yaxes = 0
+        for i in range(4):
+
+            pvname = self.wids[f'pv{i+1}'].GetStringSelection()
+            if pvname == 'None':
+                continue
+            yaxes += 1
+            info = self.log_folder.pvs[pvname]
+            label = info[1]
+            data = self.get_pvdata(pvname)
+
+
+            col   = self.wids[f'col{i+1}'].GetColour()
+            hcol = hexcolor(col)
+
+            opts = {'use_dates': True, 'show_legend': True,
+                    'yaxes':yaxes, 'label': label,
+                    'linewidth': 2.5, 'marker': '+',
+                    'drawstyle': 'steps-post', 'colour':hcol}
+            plot = pframe.oplot
+            if yaxes == 1:
+                plot = pframe.plot
+                opts['ylabel'] = f'{label} ({pvname})'
+            else:
+                opts[f'y{yaxes}label'] = f'{label} ({pvname})'
+            plot(data.datetime, data.value, **opts)
+        self.subframes[wname].Show()
+        self.subframes[wname].Raise()
+
 
 
     def build_menus(self):
@@ -492,10 +519,10 @@ is not a valid PV Logger Data Folder""",
         self.Destroy()
 
 class PVLoggerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
-    def __init__(self, configfile=None, prompt=True, debug=False, **kws):
+    def __init__(self, configfile=None, prompt=True, with_inspect=False, **kws):
         self.configfile = configfile
         self.prompt = prompt
-        self.with_inspect = True
+        self.with_inspect = with_inspect
         wx.App.__init__(self, **kws)
 
     def createApp(self):
