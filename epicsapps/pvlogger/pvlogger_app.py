@@ -4,6 +4,7 @@ Epics PV Logger Application, wx
 """
 import os
 import time
+from threading import Thread
 from pathlib import Path
 from numpy import array, where
 from functools import partial
@@ -94,7 +95,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvs = []
         self.wids = {}
         self.subframes = {}
-
+        self.read_threads = {}
         self.log_folder = None
         self.create_frame()
 
@@ -160,7 +161,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         wids['use_sel'] = Button(panel, ' Use Selected PVs ',
                                  action=self.onUseSelected, **opts)
-        wids['clear_sel'] = Button(panel, ' Clear Selected PVs ',
+        wids['clear_sel'] = Button(panel, ' Clear PVs 2, 3, 4 ',
                                    action=self.onClearSelected, **opts)
 
         wids['use_inst'] = Button(panel, 'Select These PVs ',
@@ -178,7 +179,7 @@ Matt Newville <newville@cars.uchicago.edu>
                                    partial(self.onPVcolor, row=i+1))
 
         def slabel(txt):
-            return wx.StaticText(panel, label=txt)
+            return wx.StaticText(panel, label=txt, size=(125, -1))
 
         panel.Add(title, style=LEFT, dcol=6)
         panel.Add(slabel(' Folder: '), dcol=1, newrow=True)
@@ -239,10 +240,32 @@ Matt Newville <newville@cars.uchicago.edu>
         mainsizer.Add(splitter, 1, wx.GROW|wx.ALL, 5)
         pack(self, mainsizer)
         self.SetSize((1000, 550))
-        # print(" FONT ", self.GetFont().GetPointSize())
+        self.read_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onReadTimer, self.read_timer)
+        self.read_timer.Start(2500)
         self.Show()
         self.Raise()
 
+    def onReadTimer(self, event=None):
+        if len(self.read_threads) > 0:
+            dead = []
+            for name, rthread in self.read_threads.items():
+                if not rthread.is_alive():
+                    dead.append(name)
+            for name in dead:
+                self.read_threads.pop(name)
+
+        if len(self.read_threads) == 0 and self.log_folder is not None:
+            n = 0
+            for pvname in self.log_folder.pvs:
+                if pvname not in self.pvdata:
+                    n += 1
+                    rthread = Thread(target=self.get_pvdata,
+                                     args=(pvname,), name=pvname)
+                    rthread.start()
+                    self.read_threads[pvname] = rthread
+                    if n >= 2:
+                        break
 
     def build_statusbar(self):
         sbar = self.CreateStatusBar(2, wx.CAPTION)
@@ -272,8 +295,8 @@ Matt Newville <newville@cars.uchicago.edu>
             self.wids[w].SetStringSelection(pvn)
 
     def onClearSelected(self, event=None):
-        for i in range(4):
-            w = f'pv{i+1}'
+        for i in range(3):
+            w = f'pv{2+i}'
             self.wids[w].SetStringSelection('None')
 
     def onSelectInst(self, event=None):
@@ -294,14 +317,24 @@ Matt Newville <newville@cars.uchicago.edu>
     def onSelAll(self, event=None):
         self.pvlist.select_all()
 
-    def onShowPV(self, event=None, label=None):
-        name = event.GetString()
-        self.wids['pv1'].SetStringSelection(name)
 
     def onRemovePV(self, dname=None, event=None):
         print("Remove PV")
 
-    def get_pvdata(self, pvname):
+    def onShowPV(self, event=None, label=None):
+        name = event.GetString()
+        self.wids['pv1'].SetStringSelection(name)
+
+        if name in self.read_threads:
+            rt = self.read_threads.pop(name)
+            if rt.is_alive():
+                rt.join()
+
+        rthread = Thread(target=self.get_pvdata, args=(name,), name=name)
+        rthread.start()
+        self.read_threads[name] = rthread
+
+    def get_pvdata(self, pvname, force=False):
         """get PVdata, caching until it changes"""
         if pvname not in self.pvdata:
             self.pvdata[pvname] = {'timestamp': 0, 'data': None}
@@ -309,17 +342,18 @@ Matt Newville <newville@cars.uchicago.edu>
 
         logfile = self.log_folder.pvs[pvname][0]
         this_tstamp = os.stat(logfile).st_mtime
-        if this_tstamp > last_tstamp:
+        if force:
+            last_tstamp = -1
+        if this_tstamp > last_tstamp or self.pvdata[pvname]['data'] is None:
             try:
-                print("Read Data ", logfile)
+                print("  ... real read ... ", logfile)
                 data = read_logfile(logfile)
             except OSError:
+                print("OS ERROR ON READ?")
                 data = None
             self.pvdata[pvname]['timestamp'] = this_tstamp
             self.pvdata[pvname]['data'] = data
-        else:
-            data = self.pvdata[pvname]['data']
-        return data
+        return self.pvdata[pvname]['data']
 
     def onPlotOne(self, event=None):
         wname = self.wids['plot_win'].GetStringSelection()
@@ -328,20 +362,29 @@ Matt Newville <newville@cars.uchicago.edu>
         pvname = self.wids['pv1'].GetStringSelection()
         info = self.log_folder.pvs[pvname]
         label = info[1]
-        data = self.get_pvdata(pvname)
 
+        if pvname in self.read_threads:
+            rt = self.read_threads.pop(pvname)
+            if rt.is_alive():
+                rt.join()
+
+        data = self.get_pvdata(pvname)
+        if data is None:
+            data = self.get_pvdata(pvname, force=True)
 
         col   = self.wids['col1'].GetColour()
         hcol = hexcolor(col)
 
         opts = {'use_dates': True, 'show_legend': True,
-                'yaxes':1, 'label': label,
+                'yaxes':1, 'label': label, 'xlabel': 'time',
                 'title':  self.log_folder.fullpath,
-                'linewidth': 2.5, 'marker': '+',
+                'linewidth': 2.5, # 'marker': '+',
                 'theme': 'white-background',
                 'drawstyle': 'steps-post', 'colour':hcol,
                 'ylabel': f'{label} ({pvname})' }
+        print("Plot 1  start ", len(data.value), time.ctime())
         self.subframes[wname].plot(data.datetime, data.value, **opts)
+        print("Plot 1  done ", time.ctime())
 
         self.subframes[wname].Show()
         self.subframes[wname].Raise()
@@ -356,19 +399,26 @@ Matt Newville <newville@cars.uchicago.edu>
             pvname = self.wids[f'pv{i+1}'].GetStringSelection()
             if pvname == 'None':
                 continue
+            if pvname in self.read_threads:
+                rt = self.read_threads.pop(pvname)
+                if rt.is_alive():
+                    rt.join()
+
             yaxes += 1
             info = self.log_folder.pvs[pvname]
             label = info[1]
             data = self.get_pvdata(pvname)
+            if data is None:
+                data = self.get_pvdata(pvname, force=True)
 
 
             col   = self.wids[f'col{i+1}'].GetColour()
             hcol = hexcolor(col)
 
             opts = {'use_dates': True, 'show_legend': True,
-                    'yaxes':yaxes, 'label': label,
+                    'yaxes':yaxes, 'label': label, 'xlabel': 'time',
                     'title':  self.log_folder.fullpath,
-                    'linewidth': 2.5, 'marker': '+',
+                    'linewidth': 2.5, # 'marker': '+',
                     'theme': 'white-background',
                     'drawstyle': 'steps-post', 'colour':hcol}
             plot = pframe.oplot
@@ -519,6 +569,7 @@ is not a valid PV Logger Data Folder""",
         dlg.Destroy()
 
     def onExit(self, event=None):
+        self.read_timer.Stop()
         for pv in self.pvs:
             pv.clear_callbacks()
             pv.disconnect()
