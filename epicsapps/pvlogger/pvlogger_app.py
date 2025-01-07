@@ -335,7 +335,7 @@ Matt Newville <newville@cars.uchicago.edu>
         hcol = hexcolor(col)
 
         opts = {'use_dates': True, 'show_legend': True,
-                'yaxes':yaxes, 'label': label,
+                'yaxes':1, 'label': label,
                 'title':  self.log_folder.fullpath,
                 'linewidth': 2.5, 'marker': '+',
                 'theme': 'white-background',
