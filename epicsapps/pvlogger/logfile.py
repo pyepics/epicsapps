@@ -136,20 +136,18 @@ def read_logfile(filename):
 
     Returns:
       PVLogData dataclass instance
-
     """
-    dt = debugtimer()
     if not Path(filename).is_file():
         raise OSError("File not found: '%s'" % filename)
     if os.stat(filename).st_size > MAX_FILESIZE:
         raise OSError("File '%s' too big for read_ascii()" % filename)
-    dt.add('start')
     text = read_textfile(filename)
-    dt.add('read')
     lines = text.split('\n')
-    dt.add('split')
     ncol = None
+    return parse_logfile(text, filename)
 
+def parse_logfile(textlines, filename):
+    dt = debugtimer()
     section = 'HEADER'
     times = []
     vals = []
@@ -157,7 +155,8 @@ def read_logfile(filename):
     headers = []
     events = []
     index = -1
-    for line in lines:
+    dt.add('x start')
+    for line in textlines:
         line = line.strip()
         if len(line) < 1:
             continue
@@ -168,7 +167,7 @@ def read_logfile(filename):
             if len(words) == 1:
                 continue
             if len(words) == 2:
-                words.append(f"{words[1]}")
+                words.append(words[1])
             index += 1
             ts, val, cval = float(words[0]), words[1], words[2]
             times.append(ts)
@@ -183,15 +182,12 @@ def read_logfile(filename):
                     pass
                 vals.append(val)
             cvals.append(cval)
-    dt.add('parse')
+    dt.add('read 0')
     datetimes = [datetime.fromtimestamp(ts) for ts in times]
-    dt.add('datetimes')
     mpldates =  unixts_to_mpldates(np.array(times))
-    dt.add('mpldates')
     # try to parse attributes from header text
     fpath = Path(filename).absolute()
     attrs = {'filename': fpath.name, 'pvname': 'unknown'}
-    dt.add('header')
     for hline in headers:
         hline = hline.strip().replace('\t', ' ')
         if len(hline) < 1:
@@ -201,9 +197,8 @@ def read_logfile(filename):
         if '=' in hline:
             words = hline.split('=', 1)
             attrs[words[0].strip()] = words[1].strip()
-
-    pvname = attrs.pop('pvname')
     dt.add('headers')
+    pvname = attrs.pop('pvname')
     # dt.show()
     return PVLogData(pvname=pvname,
                      filename=fpath.name,
@@ -216,6 +211,7 @@ def read_logfile(filename):
                      value=vals,
                      char_value=cvals,
                      events=events)
+
 
 def read_logfolder(foldername):
     """read information for PVLOG folder

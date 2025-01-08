@@ -9,6 +9,7 @@ from pathlib import Path
 from numpy import array, where
 from functools import partial
 from collections import namedtuple
+from multiprocessing import Queue, Process
 
 from matplotlib.dates import date2num
 
@@ -31,7 +32,8 @@ from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 
 
 from .configfile import ConfigFile
-from .logfile import read_logfile, read_logfolder
+from .logfile import (read_logfile, read_logfolder,
+                      read_textfile, parse_logfile)
 
 from wxmplot import PlotPanel, PlotFrame
 from wxmplot.colors import hexcolor
@@ -90,18 +92,19 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.parent = None
         wx.Frame.__init__(self, None, -1, 'Epics PV Logger Application',
-                          style=FRAME_STYLE, size=(1000, 550))
+                          style=FRAME_STYLE, size=(1050, 550))
 
         self.plot_windows = []
         self.pvdata = {}
+        self.iodata = {}
         self.pvs = []
         self.wids = {}
         self.subframes = {}
-        self.read_threads = {}
+        self.read_procs = {}
         self.log_folder = None
         self.create_frame()
 
-    def create_frame(self,size=(1000, 550), **kwds):
+    def create_frame(self,size=(1050, 550), **kwds):
         self.build_statusbar()
         self.build_menus()
 
@@ -114,7 +117,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         rpanel = wx.Panel(splitter)
         rpanel.SetMinSize((550, 000))
-        rpanel.SetSize((675, 450))
+        rpanel.SetSize((700, 450))
 
         # left panel
         ltop = wx.Panel(lpanel)
@@ -154,7 +157,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
 
         self.last_plot_type = 'one'
-        opts = {'size': (150, -1)}
+        opts = {'size': (175, -1)}
         wids['plotone'] = Button(panel, 'Plot PV 1 ', action=self.onPlotOne, **opts)
         wids['plotsel'] = Button(panel, 'Plot Selected ', action=self.onPlotSel, **opts)
 
@@ -168,7 +171,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         wids['use_inst'] = Button(panel, 'Select These PVs ',
                                   action=self.onSelectInstPVs, **opts)
-        opts['size'] = (300, -1)
+        opts['size'] = (350, -1)
         opts['choices'] = []
         wids['instruments'] = Choice(panel, action=self.onSelectInst, **opts)
 
@@ -187,7 +190,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(slabel(' Folder: '), dcol=1, newrow=True)
         panel.Add(wids['work_folder'], dcol=6)
         panel.Add((5, 5))
-        panel.Add(HLine(panel, size=(650, 3)), dcol=6, newrow=True)
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
 
         panel.Add(slabel(' Instruments: '), dcol=1, newrow=True)
@@ -195,7 +198,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['use_inst'], dcol=1)
 
         panel.Add((5, 5))
-        panel.Add(HLine(panel, size=(650, 3)), dcol=6, newrow=True)
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
         panel.Add(slabel(' PVs: '), dcol=1, newrow=True)
         panel.Add(wids['use_sel'], dcol=1)
@@ -215,7 +218,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['col4'])
 
         panel.Add((5, 5))
-        panel.Add(HLine(panel, size=(650, 3)), dcol=6, newrow=True)
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
         panel.Add(slabel(' Plot: '), dcol=1, newrow=True)
         panel.Add(wids['plotone'], dcol=1)
@@ -241,9 +244,7 @@ Matt Newville <newville@cars.uchicago.edu>
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(splitter, 1, wx.GROW|wx.ALL, 5)
         pack(self, mainsizer)
-        self.SetSize((1000, 550))
-        self.read_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.onReadTimer, self.read_timer)
+        self.SetSize((1050, 550))
 
         display0 = wx.Display(0)
         client_area = display0.ClientArea
@@ -253,28 +254,20 @@ Matt Newville <newville@cars.uchicago.edu>
         self.SetPosition((xpos, ypos))
         self.Show()
         self.Raise()
-        self.read_timer.Start(1000)
         wx.CallAfter(self.ShowPlotWin1)
 
-    def onReadTimer(self, event=None):
-        if len(self.read_threads) > 0:
-            dead = []
-            for name, rthread in self.read_threads.items():
-                if not rthread.is_alive():
-                    dead.append(name)
-            for name in dead:
-                self.read_threads.pop(name)
-        if len(self.read_threads) == 0 and self.log_folder is not None:
-            n = 0
+
+    def read_logdata(self, event=None):
+        print("start read logdata ", len(self.read_procs), self.log_folder)
+        if self.log_folder is not None:
             for pvname in self.log_folder.pvs:
+                n  += 1
                 if pvname not in self.pvdata:
-                    n += 1
-                    rthread = Thread(target=self.get_pvdata,
-                                     args=(pvname,), name=pvname)
-                    rthread.start()
-                    self.read_threads[pvname] = rthread
-                    if n >= 2:
-                        break
+                    rq = Queue()
+                    rproc = Process(target=read_logfile, args=(pvname, rq))
+                    rproc.start()
+                    self.read_procs[pvname] = (rthread, rq)
+
 
     def build_statusbar(self):
         sbar = self.CreateStatusBar(2, wx.CAPTION)
@@ -282,7 +275,7 @@ Matt Newville <newville@cars.uchicago.edu>
         sfont.SetWeight(wx.BOLD)
         sfont.SetPointSize(10)
         sbar.SetFont(sfont)
-        self.SetStatusWidths([-5, -2])
+        self.SetStatusWidths([-3, -2])
         self.SetStatusText('', 0)
 
     def show_subframe(self, name, frameclass, **opts):
@@ -334,14 +327,14 @@ Matt Newville <newville@cars.uchicago.edu>
         name = event.GetString()
         self.wids['pv1'].SetStringSelection(name)
 
-        if name in self.read_threads:
-            rt = self.read_threads.pop(name)
+        if name in self.read_procs:
+            rt = self.read_procs.pop(name)
             if rt.is_alive():
                 rt.join()
 
         rthread = Thread(target=self.get_pvdata, args=(name,), name=name)
         rthread.start()
-        self.read_threads[name] = rthread
+        self.read_procs[name] = rthread
 
     def get_pvdata(self, pvname, force=False):
         """get PVdata, caching until it changes"""
@@ -388,8 +381,8 @@ Matt Newville <newville@cars.uchicago.edu>
         info = self.log_folder.pvs[pvname]
         label = info[1]
 
-        if pvname in self.read_threads:
-            rt = self.read_threads.pop(pvname)
+        if pvname in self.read_procs:
+            rt = self.read_procs.pop(pvname)
             if rt.is_alive():
                 rt.join()
 
@@ -407,9 +400,9 @@ Matt Newville <newville@cars.uchicago.edu>
                 'theme': 'white-background',
                 'drawstyle': 'steps-post', 'colour':hcol,
                 'ylabel': f'{label} ({pvname})' }
-        print("Plot 1  start ", len(data.value), time.ctime())
+        # print("Plot 1  start ", len(data.value), time.ctime())
         self.subframes[wname].plot(data.mpldates, data.value, **opts)
-        print("Plot 1  done ", time.ctime())
+        # print("Plot 1  done ", time.ctime())
 
         self.subframes[wname].Show()
         self.subframes[wname].Raise()
@@ -424,8 +417,8 @@ Matt Newville <newville@cars.uchicago.edu>
             pvname = self.wids[f'pv{i+1}'].GetStringSelection()
             if pvname == 'None':
                 continue
-            if pvname in self.read_threads:
-                rt = self.read_threads.pop(pvname)
+            if pvname in self.read_procs:
+                rt = self.read_procs.pop(pvname)
                 if rt.is_alive():
                     rt.join()
 
@@ -531,10 +524,72 @@ is not a valid PV Logger Data Folder""",
         pvnames = ['None',]
         pvnames.extend(self.log_folder.pvs)
         update_choice(self.wids['instruments'], list(self.log_folder.instruments))
+
         update_choice(self.wids['pv1'], pvnames, default=1)
         update_choice(self.wids['pv2'], pvnames)
         update_choice(self.wids['pv3'], pvnames)
         update_choice(self.wids['pv4'], pvnames)
+
+        self.write_message(f'reading data for {len(self.log_folder.pvs)} PVs', panel=1)
+        wx.CallAfter(self.read_folder)
+
+    def read_folder(self):
+        for p in ('plotsel', 'plotone', 'pv1', 'pv2'):
+            self.wids[p].Disable()
+
+        def my_parse_logfile(text, filename, queue):
+            queue.put(parse_logfile(text, filename))
+        self.write_message(f'reading folder data....')
+        for pvname, pvinfo in self.log_folder.pvs.items():
+            logfile = pvinfo[0]
+            text = read_textfile(logfile).split('\n')
+            readq = Queue()
+            self.pvdata[pvname] = {'data': None, 'started': False,
+                                   'queue': readq,
+                                   'text': text,
+                                   'logfile': logfile,
+                                   'timestamp': os.stat(logfile).st_mtime}
+            proc = Process(target=my_parse_logfile,
+                           args=(text, logfile, readq),
+                           name=pvname)
+            self.pvdata[pvname]['proc'] = proc
+        self.write_message(f'parsing data for {len(self.log_folder.pvs)} PVs', panel=1)
+
+        pvs = list(self.pvdata)
+        while len(pvs) > 0:
+            nrunning = 0
+            time.sleep(0.1)
+            for pvname in pvs:
+                d = self.pvdata[pvname]
+                if not d['started'] and nrunning < 5:
+                    d['proc'].start()
+                    d['started'] = True
+                    nrunning += 1
+
+            for pvname in pvs:
+                d = self.pvdata[pvname]
+                # print(pvname, d['data'] is None, d['started'], nrunning)
+
+            for pvname in pvs:
+                d = self.pvdata[pvname]
+                if d['data'] is None and d['started']:
+                    # print('wait for ', pvname)
+                    d['data'] = d['queue'].get()
+                    d['proc'].join()
+                    pvs.remove(pvname)
+                    self.write_message(f'read {pvname} ({len(pvs)} remaining)')
+                    nrunning -= 1
+                    for pvname in pvs:
+                        d = self.pvdata[pvname]
+                        if not d['started'] and nrunning < 5:
+                            d['proc'].start()
+                            d['started'] = True
+                            nrunning += 1
+
+        for p in ('plotsel', 'plotone', 'pv1', 'pv2'):
+            self.wids[p].Enable()
+        self.write_message('ready')
+        self.write_message(' ', panel=1)
 
     def onCollect(self, event=None):
         print("on Collect")
@@ -595,7 +650,6 @@ is not a valid PV Logger Data Folder""",
         dlg.Destroy()
 
     def onExit(self, event=None):
-        self.read_timer.Stop()
         for pv in self.pvs:
             pv.clear_callbacks()
             pv.disconnect()
