@@ -244,6 +244,13 @@ Matt Newville <newville@cars.uchicago.edu>
         self.SetSize((1000, 550))
         self.read_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onReadTimer, self.read_timer)
+
+        display0 = wx.Display(0)
+        client_area = display0.ClientArea
+        xmin, ymin, xmax, ymax = client_area
+        xpos = int((xmax-xmin)*0.02) + xmin
+        ypos = int((ymax-ymin)*0.04) + ymin
+        self.SetPosition((xpos, ypos))
         self.Show()
         self.Raise()
         self.read_timer.Start(1000)
@@ -360,6 +367,18 @@ Matt Newville <newville@cars.uchicago.edu>
     def ShowPlotWin1(self, event=None):
         wname = 'Window 1'
         self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
+
+        xpos, ypos = self.GetPosition()
+        xsiz, ysiz = self.GetSize()
+        x = xpos + xsiz*1.025
+        y = ypos + ysiz*0.025
+        dlims = [0, 5000, 0, 5000]
+        if y+0.75*ysiz > dlims[3]:
+            y = 40+max(40, 40+ysiz*(off-0.5))
+        if x+0.75*xsiz > dlims[1]:
+            x = 20+max(10, 10+xpos+xsiz*(off-0.5))
+        self.subframes[wname].SetPosition((int(x), int(y)))
+
 
     def onPlotOne(self, event=None):
         wname = self.wids['plot_win'].GetStringSelection()
