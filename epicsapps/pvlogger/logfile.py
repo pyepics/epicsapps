@@ -305,19 +305,27 @@ class PVLogFolder:
             order = order[::-1]
         return [pvlist[i] for i in order]
 
-    def read_all_logfiles(self, reverse=True, nproc=4, verbose=False):
-        print("Read log files with multiprocessing")
+    def read_all_logfiles(self, nproc=4,
+                          verbose=False, writer=None):
+
+        if verbose:
+            print(f"Read log files with {nproc} processes")
         t0 = time.time()
+
+        fsizes = {}
+        for pvname, pvinfo in self.pvs.items():
+            fsizes[pvname] = os.stat(Path(self.folder, pvinfo[0])).st_size
+
+        # this mixes small and large files
         alist = self._logfiles_sizeorder(reverse=True)
         blist = self._logfiles_sizeorder(reverse=False)
-        # this mixes small and large files
         pvlist = []
         for a, b in  zip(alist, blist):
             if a not in pvlist:  pvlist.append(a)
             if b not in pvlist:  pvlist.append(b)
 
         procs = {}
-        states = {}
+        pdata = {}
         # first, read text from disk with 1 process
         # (avoid multiprocessed reading in parallel)
         # and set up processes to parse the text, which takes longes
@@ -327,62 +335,61 @@ class PVLogFolder:
             text = read_textfile(logfile).split('\n')
             tstamp = os.stat(logfile).st_mtime
             readq = Queue()
-            state = {'data': None,
+            pdat = {'data': None,
                      'text': text,
                      'status': 'pending',
                      'queue': readq,
                      'tstamp': tstamp}
-            states[pvname] = state
+            pdata[pvname] = pdat
             procs[pvname] = Process(target=q_parse_logfile,
                                     args=(text, logfile, readq),
                                     name=pvname)
-            if i < nproc - 2:
-                states[pvname]['status'] = 'started'
+            if i < nproc:
+                pdata[pvname]['status'] = 'started'
                 procs[pvname].start()
 
         if verbose:
-            print(f"Read text of logfiles for {len(pvlist)} PVs, {(time.time()-t0):.2f} seconds" )
+            npvs = len(pvlist)
+            dt = time.time()-t0
+            print(f"Read files for {npvs} PVs, {dt:.2f} secs, parsing...")
         # now run up to nproc processes to parse the text files
-        nrunning = nproc - 2
-        while len(pvlist) > 0:
+        def start_more(pvlist):
             for pvname in pvlist:
                 proc = procs[pvname]
-                state = states[pvname]
-                if state['status'] == 'started':
-                    # print("Wait on ", pvname)
-                    self.data[pvname] = state['queue'].get()
-                    self.timestamps[pvname] = state['tstamp']
-                    proc.join()
-                    pvlist.remove(pvname)
-                    state['status'] = 'complete'
-                    # print(" complete ", pvname, len(pvlist))
-                    nrunning -= 1
-                    for pvname in pvlist:
-                        proc = procs[pvname]
-                        state = states[pvname]
-                        if state['status'] == 'pending' and nrunning < nproc:
-                            proc.start()
-                            # print("Start ", pvname)
-                            state['status'] = 'started'
-                            nrunning += 1
-            time.sleep(0.1)
-            for pvname in pvlist:
-                proc = procs[pvname]
-                state = states[pvname]
-                if state['status'] == 'pending' and nrunning < nproc:
+                pdat = pdata[pvname]
+                if pdat['status'] == 'pending':
                     proc.start()
-                    # print("Start ", pvname)
-                    state['status'] = 'started'
-                    nrunning += 1
-            time.sleep(0.2)
-            npend, nstart, ndone = 0, 0, 0
+                    pdat['status'] = 'started'
+                    break
+
+        while len(pvlist) > 0:
+            running = []
             for pvname in pvlist:
-                state = states[pvname]
-                if state['status'].startswith('pend'):
-                    npend +=1
-                elif state['status'].startswith('start'):
-                    nstart +=1
+                pdat = pdata[pvname]
+                if pdat['status'] == 'started':
+                    running.append(pvname)
+            _sizes = [fsizes[pvname] for pvname in running]
+            running = [running[i] for i in np.array(_sizes).argsort()]
+            pvname = running[0]  # PV with the smallest log file in progress
+
+            proc = procs[pvname]
+            pdat = pdata[pvname]
+            if pdat['status'] == 'started':
+                self.data[pvname] = pdat['queue'].get()
+                self.timestamps[pvname] = pdat['tstamp']
+                proc.join()
+                pvlist.remove(pvname)
+                pdat['status'] = 'complete'
+                start_more(pvlist)
+
             if verbose and len(pvlist) > 0:
+                npend, nstart = 0, 0
+                for pvname in pvlist:
+                    stat = pdata[pvname]['status']
+                    if stat.startswith('pend'):
+                        npend +=1
+                    elif stat.startswith('start'):
+                        nstart +=1
                 print(f"{len(pvlist)} PVs remaining, {nstart} in progress")
 
 
