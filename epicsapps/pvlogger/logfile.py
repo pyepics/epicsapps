@@ -11,6 +11,7 @@ import yaml
 from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
+from multiprocessing import Process, Queue, Pool
 
 from charset_normalizer import from_bytes
 import numpy as np
@@ -38,18 +39,8 @@ class PVLogData:
     def __repr__(self):
         return f"PVLogData(pv='{self.pvname}', file='{self.filename}', npts={len(self.timestamp)})"
 
-@dataclass
-class PVLogFolder:
-    fullpath: str
-    folder: str
-    workdir: str
-    update_seconds: float
-    pvs: []
-    motors: []
-    instruments: {}
 
-    def __repr__(self):
-        return f"PVLogFolder('{self.fullpath}')"
+
 
 def unixts_to_mpldates(ts):
     "convert array of unix timestamps to MPL dates"
@@ -182,9 +173,11 @@ def parse_logfile(textlines, filename):
                     pass
                 vals.append(val)
             cvals.append(cval)
-    dt.add('read 0')
+    dt.add(f'read 0 {filename}')
     datetimes = [datetime.fromtimestamp(ts) for ts in times]
+    dt.add('datetime')
     mpldates =  unixts_to_mpldates(np.array(times))
+    dt.add('mpl')
     # try to parse attributes from header text
     fpath = Path(filename).absolute()
     attrs = {'filename': fpath.name, 'pvname': 'unknown'}
@@ -212,8 +205,11 @@ def parse_logfile(textlines, filename):
                      char_value=cvals,
                      events=events)
 
+def q_parse_logfile(text, filename, queue):
+    queue.put(parse_logfile(text, filename))
 
-def read_logfolder(foldername):
+
+def read_logfolder(folder):
     """read information for PVLOG folder
     this folder must have the following files
         _PVLOG.yaml (or _PVLOG.toml):
@@ -225,47 +221,188 @@ def read_logfolder(foldername):
     --------
     PVLogFolder
     """
+    return PVLogFolder(folder)
 
-    folder = Path(foldername).resolve()
 
-    # list of logfiles
-    filelist = Path(folder, '_PVLOG_filelist.txt')
-    if not filelist.exists():
-        raise ValueError(f"'{foldername}' is not a valid PVlog folder: no file list")
-    logfiles = {}
-    for line in read_textfile(filelist).split('\n'):
-        if line.startswith('#'):
-            continue
-        words = [a.strip() for a in line.split('|', maxsplit=1)]
-        if len(words) > 1:
-            logfiles[words[0]] = words[1]
+class PVLogFolder:
+    """
+    data and methods for a PVlogger Folder
+    """
+    def __init__(self, folder, workdir='', update_seconds=5):
+        self.folder = Path(folder).resolve()
+        self.fullpath = self.folder.as_posix()
+        self.workdir = workdir
+        self.update_seconds = update_seconds
+        self.pvs = []
+        self.motors = []
+        self.instruments = []
+        self.timestamps = {}
+        self.data = {}
+        if self.folder.exists():
+            self.read_folder()
 
-    # main config
-    form = 'yaml'
-    cfile = Path(folder, '_PVLOG.yaml')
-    if not cfile.exists():
-        form = 'toml'
-        cfile = Path(folder, '_PVLOG.toml')
+    def __repr__(self):
+        return f"PVLogFolder('{self.fullpath}')"
+
+    def read_folder(self):
+        """read PVlogger information for PVLOG folder
+        this folder must have the following files
+            _PVLOG.yaml:  main configuration, as used for collection
+            _PVLOG_filelist.txt:  mapping PV names to logfile names
+        """
+        if not self.folder.exists():
+            raise ValueError(f"'{self.folder}' - does not exist")
+        # list of logfiles
+        filelist = Path(self.folder, '_PVLOG_filelist.txt')
+        if not filelist.exists():
+            raise ValueError(f"'{self.folder}' is not a valid PVlog folder: no file list")
+
+        logfiles = {}
+        for line in read_textfile(filelist).split('\n'):
+            if line.startswith('#'):
+                continue
+            words = [a.strip() for a in line.split('|', maxsplit=1)]
+            if len(words) > 1:
+                logfiles[words[0]] = words[1]
+
+        # main config
+        form = 'yaml'
+        cfile = Path(self.folder, '_PVLOG.yaml')
         if not cfile.exists():
-            raise ValueError(f"'{foldername}' is not a valid PVlog folder: no config file")
-    ctext = open(cfile, 'r').read()
-    if form == 'yaml':
-        conf = yaml.load(ctext, Loader=yaml.Loader)
-    else:
-        conf = tomli.loads(ctext)
+            form = 'toml'
+            cfile = Path(self.folder, '_PVLOG.toml')
+            if not cfile.exists():
+                raise ValueError(f"'{self.folder}' is not a valid PVlog folder: no config file")
+        ctext = open(cfile, 'r').read()
+        if form == 'yaml':
+            conf = yaml.load(ctext, Loader=yaml.Loader)
+        else:
+            conf = tomli.loads(ctext)
 
-    pvs = {}
-    for pline in conf['pvs']:
-        words = [a.strip() for a in pline.split('|', maxsplit=2)]
-        if len(words) < 2:
-           words.extend(['<auto>', '<auto>'])
-        pvname = words[0]
-        pvs[pvname] = (logfiles[pvname], words[1], words[2])
+        self.pvs = {}
+        for pline in conf['pvs']:
+            words = [a.strip() for a in pline.split('|', maxsplit=2)]
+            if len(words) < 2:
+               words.extend(['<auto>', '<auto>'])
+            pvname = words[0]
+            self.pvs[pvname] = (logfiles[pvname], words[1], words[2])
 
-    return PVLogFolder(fullpath=folder.as_posix(),
-                       pvs=pvs,
-                       folder=conf['folder'],
-                       workdir=conf['workdir'],
-                       update_seconds=float(conf['update_seconds']),
-                       motors=conf['motors'],
-                       instruments=conf['instruments'])
+        self.folder = conf['folder']
+        self.workdir = conf['workdir']
+        self.update_seconds = float(conf['update_seconds'])
+        self.motors = conf['motors']
+        self.instruments = conf['instruments']
+
+    def _logfiles_sizeorder(self, reverse=False):
+        """return list of PVs ordered by increasing size of logfiles
+        use 'reverse=False' to PVs ordered by decreasing size of logfiles.
+        """
+        pvlist = list(self.pvs)
+        lfiles = [Path(self.folder, pvinfo[0]) for pvinfo in self.pvs.values()]
+        sizes = [os.stat(name).st_size for name in lfiles]
+        order = np.array(sizes).argsort()
+        if reverse:
+            order = order[::-1]
+        return [pvlist[i] for i in order]
+
+    def read_all_logfiles(self, reverse=True, nproc=4, verbose=False):
+        print("Read log files with multiprocessing")
+        t0 = time.time()
+        alist = self._logfiles_sizeorder(reverse=True)
+        blist = self._logfiles_sizeorder(reverse=False)
+        # this mixes small and large files
+        pvlist = []
+        for a, b in  zip(alist, blist):
+            if a not in pvlist:  pvlist.append(a)
+            if b not in pvlist:  pvlist.append(b)
+
+        procs = {}
+        states = {}
+        # first, read text from disk with 1 process
+        # (avoid multiprocessed reading in parallel)
+        # and set up processes to parse the text, which takes longes
+        for i, pvname in enumerate(blist):
+            pvinfo = self.pvs[pvname]
+            logfile = Path('pvlog', pvinfo[0])
+            text = read_textfile(logfile).split('\n')
+            tstamp = os.stat(logfile).st_mtime
+            readq = Queue()
+            state = {'data': None,
+                     'text': text,
+                     'status': 'pending',
+                     'queue': readq,
+                     'tstamp': tstamp}
+            states[pvname] = state
+            procs[pvname] = Process(target=q_parse_logfile,
+                                    args=(text, logfile, readq),
+                                    name=pvname)
+            if i < nproc - 2:
+                states[pvname]['status'] = 'started'
+                procs[pvname].start()
+
+        if verbose:
+            print(f"Read text of logfiles for {len(pvlist)} PVs, {(time.time()-t0):.2f} seconds" )
+        # now run up to nproc processes to parse the text files
+        nrunning = nproc - 2
+        while len(pvlist) > 0:
+            for pvname in pvlist:
+                proc = procs[pvname]
+                state = states[pvname]
+                if state['status'] == 'started':
+                    # print("Wait on ", pvname)
+                    self.data[pvname] = state['queue'].get()
+                    self.timestamps[pvname] = state['tstamp']
+                    proc.join()
+                    pvlist.remove(pvname)
+                    state['status'] = 'complete'
+                    # print(" complete ", pvname, len(pvlist))
+                    nrunning -= 1
+                    for pvname in pvlist:
+                        proc = procs[pvname]
+                        state = states[pvname]
+                        if state['status'] == 'pending' and nrunning < nproc:
+                            proc.start()
+                            # print("Start ", pvname)
+                            state['status'] = 'started'
+                            nrunning += 1
+            time.sleep(0.1)
+            for pvname in pvlist:
+                proc = procs[pvname]
+                state = states[pvname]
+                if state['status'] == 'pending' and nrunning < nproc:
+                    proc.start()
+                    # print("Start ", pvname)
+                    state['status'] = 'started'
+                    nrunning += 1
+            time.sleep(0.2)
+            npend, nstart, ndone = 0, 0, 0
+            for pvname in pvlist:
+                state = states[pvname]
+                if state['status'].startswith('pend'):
+                    npend +=1
+                elif state['status'].startswith('start'):
+                    nstart +=1
+            if verbose and len(pvlist) > 0:
+                print(f"{len(pvlist)} PVs remaining, {nstart} in progress")
+
+
+    def find_newer_logfiles(self):
+        """return a list of PVs with newer or uread logfiles"""
+        new = []
+        for pvname, pvinfo in self.pvs[pvname].items():
+            logfile = Path('pvlog', pvinfo[0])
+            tstamp = os.stat(logfile).st_mtime
+            if tstamp > self.timestamps.get(pvname, -1):
+                new.append(pvname)
+        return new
+
+
+    def read_logfile(self, pvname):
+        """read logfile, save file timestamp"""
+        if pvname not in self.pvs:
+            raise ValueError(f"Unknown PV name: '{pvname}'")
+
+        pvinfo = self.pvs[pvname]
+        logfile = Path('pvlog', pvinfo[0])
+        self.data[pvname] = read_logfile(logfile)
+        self.timestamps[pvname] = os.stat(logfile).st_mtime
