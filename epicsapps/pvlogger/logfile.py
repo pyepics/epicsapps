@@ -312,17 +312,17 @@ class PVLogFolder:
             print(f"Read log files with {nproc} processes")
         t0 = time.time()
 
-
         # this mixes small and large files
         alist = self._logfiles_sizeorder(reverse=True)
-        print(len(alist))
         blist = self._logfiles_sizeorder(reverse=False)
         pvlist = []
         for a, b in  zip(alist, blist):
             if a not in pvlist:  pvlist.append(a)
             if b not in pvlist:  pvlist.append(b)
 
-        print('# PVS: ', len(pvlist), pvlist[:5])
+        npvs = len(pvlist)
+        if verbose:
+            print(f'# See {npvs} pvs to read')
         procs = {}
         pdata = {}
         fsizes = {}
@@ -346,9 +346,8 @@ class PVLogFolder:
                               'tstamp': os.stat(logfile).st_mtime}
 
         if verbose:
-            npvs = len(pvlist)
             dt = time.time()-t0
-            print(f"Read files for {npvs} PVs, {dt:.2f} secs, parsing...")
+            print(f"# read text for {npvs} PVs, {dt:.2f} secs, parsing...")
 
         # now run up to nproc processes to parse the text files
         def start_next_process(pvlist):
@@ -403,8 +402,9 @@ class PVLogFolder:
                     elif stat.startswith('start'):
                         nstart +=1
                 print(f"{len(pvlist)} PVs remaining, {nstart} in progress")
-        dt = time.time()-t0
-        print(f"Parsed files for {npvs} PVs, {dt:.2f} secs")
+        if verbose:
+            dt = time.time()-t0
+            print(f"# parsed files for {npvs} PVs, {dt:.2f} secs")
 
     def find_newer_logfiles(self):
         """return a list of PVs with newer or uread logfiles"""
