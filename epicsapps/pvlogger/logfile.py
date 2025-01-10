@@ -5,6 +5,7 @@
 import os
 import io
 import sys
+import random
 import time
 import tomli
 import yaml
@@ -305,82 +306,93 @@ class PVLogFolder:
             order = order[::-1]
         return [pvlist[i] for i in order]
 
-    def read_all_logfiles(self, nproc=4,
-                          verbose=False, writer=None):
-
+    def read_all_logfiles(self, nproc=4, verbose=False, writer=None):
+        """read all PV logfiles, using multiprocessingx"""
         if verbose:
             print(f"Read log files with {nproc} processes")
         t0 = time.time()
 
-        fsizes = {}
-        for pvname, pvinfo in self.pvs.items():
-            fsizes[pvname] = os.stat(Path(self.folder, pvinfo[0])).st_size
 
         # this mixes small and large files
         alist = self._logfiles_sizeorder(reverse=True)
+        print(len(alist))
         blist = self._logfiles_sizeorder(reverse=False)
         pvlist = []
         for a, b in  zip(alist, blist):
             if a not in pvlist:  pvlist.append(a)
             if b not in pvlist:  pvlist.append(b)
 
+        print('# PVS: ', len(pvlist), pvlist[:5])
         procs = {}
         pdata = {}
+        fsizes = {}
+        maxsize = 0
         # first, read text from disk with 1 process
         # (avoid multiprocessed reading in parallel)
         # and set up processes to parse the text, which takes longes
-        for i, pvname in enumerate(blist):
+        for i, pvname in enumerate(pvlist):
             pvinfo = self.pvs[pvname]
             logfile = Path('pvlog', pvinfo[0])
             text = read_textfile(logfile).split('\n')
-            tstamp = os.stat(logfile).st_mtime
-            readq = Queue()
-            pdat = {'data': None,
-                     'text': text,
-                     'status': 'pending',
-                     'queue': readq,
-                     'tstamp': tstamp}
-            pdata[pvname] = pdat
-            procs[pvname] = Process(target=q_parse_logfile,
-                                    args=(text, logfile, readq),
-                                    name=pvname)
-            if i < nproc:
-                pdata[pvname]['status'] = 'started'
-                procs[pvname].start()
+            fsizes[pvname] = len(text)
+            if len(text) > maxsize:
+                maxsize = len(text)
+            pdata[pvname] = {'data': None,
+                              'text': text,
+                              'logfile': logfile,
+                              'status': 'pending',
+                              'queue': None,
+                              'proc': None,
+                              'tstamp': os.stat(logfile).st_mtime}
 
         if verbose:
             npvs = len(pvlist)
             dt = time.time()-t0
             print(f"Read files for {npvs} PVs, {dt:.2f} secs, parsing...")
+
         # now run up to nproc processes to parse the text files
-        def start_more(pvlist):
+        def start_next_process(pvlist):
             for pvname in pvlist:
-                proc = procs[pvname]
                 pdat = pdata[pvname]
                 if pdat['status'] == 'pending':
+                    q = pdat['queue'] = Queue()
+                    proc = Process(target=q_parse_logfile,
+                                   args=(pdat['text'], pdat['logfile'], q))
+                    pdat['proc'] = proc
                     proc.start()
                     pdat['status'] = 'started'
                     break
 
+        for i in range(nproc):
+            start_next_process(pvlist)
+
+        iloop = 0
         while len(pvlist) > 0:
-            running = []
+            iloop += 1
+            nextpv = None
+            _size = maxsize + 1
+            work = []
             for pvname in pvlist:
                 pdat = pdata[pvname]
-                if pdat['status'] == 'started':
-                    running.append(pvname)
-            _sizes = [fsizes[pvname] for pvname in running]
-            running = [running[i] for i in np.array(_sizes).argsort()]
-            pvname = running[0]  # PV with the smallest log file in progress
+                if pdat['status'] == 'started' and pdat['queue'] is not None:
+                    xsize = fsizes[pvname]
+                    work.append(pvname)
+                    if xsize < _size:
+                        _size = xsize
+                        nextpv = pvname
+            if nextpv is None or iloop % 2 == 0:
+                nextpv = random.choice(work)
 
-            proc = procs[pvname]
+            pvname = nextpv
             pdat = pdata[pvname]
-            if pdat['status'] == 'started':
-                self.data[pvname] = pdat['queue'].get()
-                self.timestamps[pvname] = pdat['tstamp']
-                proc.join()
-                pvlist.remove(pvname)
-                pdat['status'] = 'complete'
-                start_more(pvlist)
+            self.data[pvname] = pdat['queue'].get()
+            self.timestamps[pvname] = pdat['tstamp']
+            pdat['proc'].join()
+            pdat['queue'].close()
+            del pdat['queue'], pdat['proc']
+            pvlist.remove(pvname)
+            pdat['status'] = 'complete'
+            start_next_process(pvlist)
 
             if verbose and len(pvlist) > 0:
                 npend, nstart = 0, 0
@@ -391,7 +403,8 @@ class PVLogFolder:
                     elif stat.startswith('start'):
                         nstart +=1
                 print(f"{len(pvlist)} PVs remaining, {nstart} in progress")
-
+        dt = time.time()-t0
+        print(f"Parsed files for {npvs} PVs, {dt:.2f} secs")
 
     def find_newer_logfiles(self):
         """return a list of PVs with newer or uread logfiles"""
