@@ -23,6 +23,7 @@ TINY = 1.e-7
 MAX_FILESIZE = 400*1024*1024  # 400 Mb limit
 COMMENTCHARS = '#;%*!$'
 
+
 @dataclass
 class PVLogData:
     pvname: str
@@ -39,6 +40,20 @@ class PVLogData:
 
     def __repr__(self):
         return f"PVLogData(pv='{self.pvname}', file='{self.filename}', npts={len(self.timestamp)})"
+
+
+
+class PVLogFile:
+    """PV LogFile"""
+    def __init__(self, pvname, logfile=None, description=None, monitor_delta=None,
+                 mod_time=None, data=None):
+        self.pvname = pvname
+        self.logfile = logfile
+        self.description = description
+        self.monitor_delta = monitor_delta
+        self.mod_time = mod_time
+        self.data = data
+
 
 
 
@@ -175,9 +190,9 @@ def parse_logfile(textlines, filename):
                 vals.append(val)
             cvals.append(cval)
     dt.add(f'read 0 {filename}')
-    datetimes = [datetime.fromtimestamp(ts) for ts in times]
+    datetimes = None # [datetime.fromtimestamp(ts) for ts in times]
     dt.add('datetime')
-    mpldates =  unixts_to_mpldates(np.array(times))
+    mpldates =  None # unixts_to_mpldates(np.array(times))
     dt.add('mpl')
     # try to parse attributes from header text
     fpath = Path(filename).absolute()
@@ -306,20 +321,15 @@ class PVLogFolder:
             order = order[::-1]
         return [pvlist[i] for i in order]
 
-    def read_all_logfiles(self, nproc=4, verbose=False, writer=None):
+    def read_all_logfiles(self, nproc=4, verbose=False):
         """read all PV logfiles, using multiprocessingx"""
+
         if verbose:
             print(f"Read log files with {nproc} processes")
         t0 = time.time()
 
-        # this mixes small and large files
-        alist = self._logfiles_sizeorder(reverse=True)
-        blist = self._logfiles_sizeorder(reverse=False)
-        pvlist = []
-        for a, b in  zip(alist, blist):
-            if a not in pvlist:  pvlist.append(a)
-            if b not in pvlist:  pvlist.append(b)
-
+        # files largest to smallest
+        pvlist = self._logfiles_sizeorder(reverse=True)
         npvs = len(pvlist)
         if verbose:
             print(f'# See {npvs} pvs to read')
@@ -371,37 +381,45 @@ class PVLogFolder:
             nextpv = None
             _size = maxsize + 1
             work = []
-            for pvname in pvlist:
-                pdat = pdata[pvname]
-                if pdat['status'] == 'started' and pdat['queue'] is not None:
-                    xsize = fsizes[pvname]
-                    work.append(pvname)
+            for pvn in pvlist:
+                pdat = pdata[pvn]
+                if (pdat['status'] == 'started' and
+                    pdat['queue'] is not None):
+                    xsize = fsizes[pvn]
+                    work.append(pvn)
                     if xsize < _size:
                         _size = xsize
-                        nextpv = pvname
-            if nextpv is None or iloop % 2 == 0:
+                        nextpv = pvn
+            if nextpv is None or iloop % 2 == 1:
                 nextpv = random.choice(work)
-
             pvname = nextpv
             pdat = pdata[pvname]
-            self.data[pvname] = pdat['queue'].get()
-            self.timestamps[pvname] = pdat['tstamp']
-            pdat['proc'].join()
-            pdat['queue'].close()
-            del pdat['queue'], pdat['proc']
-            pvlist.remove(pvname)
-            pdat['status'] = 'complete'
-            start_next_process(pvlist)
+            ret = None
+            print(f"# {len(pvlist)} PVs/{(time.time()-t0):.1f} sec, check on {pvname}" )
+            try:
+                ret = pdat['queue'].get(timeout=0.5)
+            except:
+                ret = None
+            if ret is not None:
+                self.data[pvname] = ret
+                self.timestamps[pvname] = pdat['tstamp']
+                pdat['proc'].join()
+                pdat['queue'].close()
+                del pdat['queue'], pdat['proc']
 
-            if verbose and len(pvlist) > 0:
-                npend, nstart = 0, 0
-                for pvname in pvlist:
-                    stat = pdata[pvname]['status']
-                    if stat.startswith('pend'):
-                        npend +=1
-                    elif stat.startswith('start'):
-                        nstart +=1
-                print(f"{len(pvlist)} PVs remaining, {nstart} in progress")
+                pvlist.remove(pvname)
+                pdat['status'] = 'complete'
+                start_next_process(pvlist)
+
+                if verbose and len(pvlist) > 0:
+                    npend, nstart = 0, 0
+                    for pvname in pvlist:
+                        stat = pdata[pvname]['status']
+                        if stat.startswith('pend'):
+                            npend +=1
+                        elif stat.startswith('start'):
+                            nstart +=1
+                    print(f"{len(pvlist)} PVs remaining, {nstart} in progress")
         if verbose:
             dt = time.time()-t0
             print(f"# parsed files for {npvs} PVs, {dt:.2f} secs")
