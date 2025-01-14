@@ -68,11 +68,11 @@ class PVLogFile:
 
     def get_datetimes(self):
         """set datetimes to list of datetimes"""
-        self.data.datetimes = [datetime.fromtimestamp(ts) for ts in self.timestamp]
+        self.data.datetimes = [datetime.fromtimestamp(ts) for ts in self.data.timestamp]
 
     def get_mpldates(self):
         """set matplotlib/numpy dates"""
-        self.data.mpldates = unixts_to_mpldates(np.array(self.timestamp))
+        self.data.mpldates = unixts_to_mpldates(np.array(self.data.timestamp))
 
 
 def unixts_to_mpldates(ts):
