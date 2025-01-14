@@ -41,21 +41,38 @@ class PVLogData:
     def __repr__(self):
         return f"PVLogData(pv='{self.pvname}', file='{self.filename}', npts={len(self.timestamp)})"
 
-
-
 class PVLogFile:
     """PV LogFile"""
     def __init__(self, pvname, logfile=None, description=None, monitor_delta=None,
-                 mod_time=None, data=None):
+                 mod_time=None, text=None, data=None):
         self.pvname = pvname
         self.logfile = logfile
         self.description = description
         self.monitor_delta = monitor_delta
         self.mod_time = mod_time
+        self.text = text
         self.data = data
 
+    def read_log_text(self, parse=False):
+        """read text of logfile"""
+        self.text = read_textfile(self.logfile).split('\n')
+        self.mod_time = os.stat(self.logfile).st_mtime
+        self.data = None
+        if parse:
+            self.data = parse_logfile(self.text, self.logfile)
 
+    def parse(self):
+        """parse text to data"""
+        if len(self.text) > 5:
+            self.data = parse_logfile(self.text, self.logfile)
 
+    def get_datetimes(self):
+        """set datetimes to list of datetimes"""
+        self.data.datetimes = [datetime.fromtimestamp(ts) for ts in self.timestamp]
+
+    def get_mpldates(self):
+        """set matplotlib/numpy dates"""
+        self.data.mpldates = unixts_to_mpldates(np.array(self.timestamp))
 
 
 def unixts_to_mpldates(ts):
@@ -191,9 +208,7 @@ def parse_logfile(textlines, filename):
             cvals.append(cval)
     dt.add(f'read 0 {filename}')
     datetimes = None # [datetime.fromtimestamp(ts) for ts in times]
-    dt.add('datetime')
     mpldates =  None # unixts_to_mpldates(np.array(times))
-    dt.add('mpl')
     # try to parse attributes from header text
     fpath = Path(filename).absolute()
     attrs = {'filename': fpath.name, 'pvname': 'unknown'}
@@ -206,9 +221,7 @@ def parse_logfile(textlines, filename):
         if '=' in hline:
             words = hline.split('=', 1)
             attrs[words[0].strip()] = words[1].strip()
-    dt.add('headers')
     pvname = attrs.pop('pvname')
-    # dt.show()
     return PVLogData(pvname=pvname,
                      filename=fpath.name,
                      path=fpath.as_posix(),
@@ -249,10 +262,9 @@ class PVLogFolder:
         self.fullpath = self.folder.as_posix()
         self.workdir = workdir
         self.update_seconds = update_seconds
-        self.pvs = []
+        self.pvs = {}
         self.motors = []
         self.instruments = []
-        self.timestamps = {}
         self.data = {}
         if self.folder.exists():
             self.read_folder()
@@ -279,7 +291,7 @@ class PVLogFolder:
                 continue
             words = [a.strip() for a in line.split('|', maxsplit=1)]
             if len(words) > 1:
-                logfiles[words[0]] = words[1]
+                logfiles[words[0]] = Path(self.folder, words[1])
 
         # main config
         form = 'yaml'
@@ -301,7 +313,13 @@ class PVLogFolder:
             if len(words) < 2:
                words.extend(['<auto>', '<auto>'])
             pvname = words[0]
-            self.pvs[pvname] = (logfiles[pvname], words[1], words[2])
+            logfile = logfiles[pvname]
+            mod_time = os.stat(logfile).st_mtime
+            self.pvs[pvname] = PVLogFile(pvname, logfile=logfile,
+                                         mod_time=mod_time,
+                                         description=words[1],
+                                         monitor_delta=words[2])
+
 
         self.folder = conf['folder']
         self.workdir = conf['workdir']
@@ -314,50 +332,45 @@ class PVLogFolder:
         use 'reverse=False' to PVs ordered by decreasing size of logfiles.
         """
         pvlist = list(self.pvs)
-        lfiles = [Path(self.folder, pvinfo[0]) for pvinfo in self.pvs.values()]
+        lfiles = [pv.logfile for pv in self.pvs.values()]
         sizes = [os.stat(name).st_size for name in lfiles]
         order = np.array(sizes).argsort()
         if reverse:
             order = order[::-1]
         return [pvlist[i] for i in order]
 
-    def read_all_logfiles(self, nproc=4, verbose=False):
-        """read all PV logfiles, using multiprocessingx"""
-
+    def read_all_logs_text(self, verbose=False):
+        """read text of all PV logfiles"""
+        t0 = time.time()
+        for pvname, pv in self.pvs.items():
+            pv.text = read_textfile(pv.logfile).split('\n')
+            pv.mod_time = os.stat(pv.logfile).st_mtime
+            if verbose:
+                print(f'{pvname} : {len(pv.text)}')
         if verbose:
-            print(f"Read log files with {nproc} processes")
+            dt = time.time()-t0
+            print(f"# read text for {len(self.pvs)} PVs, {dt:.2f} secs")
+
+
+    def parse_logfiles(self, nproc=4, nmax=None, verbose=False):
+        """parse all unparsed PV logfiles, using multiprocessing"""
+        if verbose:
+            print(f"parse log files with {nproc} processes")
         t0 = time.time()
 
         # files largest to smallest
-        pvlist = self._logfiles_sizeorder(reverse=True)
-        npvs = len(pvlist)
-        if verbose:
-            print(f'# See {npvs} pvs to read')
-        procs = {}
         pdata = {}
-        fsizes = {}
+        pvlist = []
         maxsize = 0
-        # first, read text from disk with 1 process
-        # (avoid multiprocessed reading in parallel)
-        # and set up processes to parse the text, which takes longes
-        for i, pvname in enumerate(pvlist):
-            pvinfo = self.pvs[pvname]
-            logfile = Path('pvlog', pvinfo[0])
-            text = read_textfile(logfile).split('\n')
-            fsizes[pvname] = len(text)
-            if len(text) > maxsize:
-                maxsize = len(text)
-            pdata[pvname] = {'data': None,
-                              'text': text,
-                              'logfile': logfile,
-                              'status': 'pending',
-                              'queue': None,
-                              'proc': None,
-                              'tstamp': os.stat(logfile).st_mtime}
+        for pvname in self.pvs:
+            if self.pvs[pvname].data is None:
+                pdata[pvname] = {'status': 'pending',
+                                 'queue': None, 'proc': None}
+                pvlist.append(pvname)
 
-        if verbose:
-            dt = time.time()-t0
-            print(f"# read text for {npvs} PVs, {dt:.2f} secs, parsing...")
+        random.shuffle(pvlist)
+        if nmax is not None:
+            pvlist = pvlist[:nmax]
 
         # now run up to nproc processes to parse the text files
         def start_next_process(pvlist):
@@ -365,8 +378,8 @@ class PVLogFolder:
                 pdat = pdata[pvname]
                 if pdat['status'] == 'pending':
                     q = pdat['queue'] = Queue()
-                    proc = Process(target=q_parse_logfile,
-                                   args=(pdat['text'], pdat['logfile'], q))
+                    args = (self.pvs[pvname].text, self.pvs[pvname].logfile, q)
+                    proc = Process(target=q_parse_logfile, args=args)
                     pdat['proc'] = proc
                     proc.start()
                     pdat['status'] = 'started'
@@ -385,7 +398,7 @@ class PVLogFolder:
                 pdat = pdata[pvn]
                 if (pdat['status'] == 'started' and
                     pdat['queue'] is not None):
-                    xsize = fsizes[pvn]
+                    xsize = len(self.pvs[pvn].text)
                     work.append(pvn)
                     if xsize < _size:
                         _size = xsize
@@ -395,14 +408,14 @@ class PVLogFolder:
             pvname = nextpv
             pdat = pdata[pvname]
             ret = None
-            print(f"# {len(pvlist)} PVs/{(time.time()-t0):.1f} sec, check on {pvname}" )
+            # print(f"# {len(pvlist)} PVs/{(time.time()-t0):.1f} sec, check on {pvname}" )
             try:
                 ret = pdat['queue'].get(timeout=0.5)
             except:
                 ret = None
             if ret is not None:
-                self.data[pvname] = ret
-                self.timestamps[pvname] = pdat['tstamp']
+                self.pvs[pvname].data = ret
+
                 pdat['proc'].join()
                 pdat['queue'].close()
                 del pdat['queue'], pdat['proc']
@@ -422,25 +435,30 @@ class PVLogFolder:
                     print(f"{len(pvlist)} PVs remaining, {nstart} in progress")
         if verbose:
             dt = time.time()-t0
-            print(f"# parsed files for {npvs} PVs, {dt:.2f} secs")
+            print(f"# parsed files for {len(pvlist)} PVs, {dt:.2f} secs")
 
-    def find_newer_logfiles(self):
-        """return a list of PVs with newer or uread logfiles"""
-        new = []
-        for pvname, pvinfo in self.pvs[pvname].items():
-            logfile = Path('pvlog', pvinfo[0])
-            tstamp = os.stat(logfile).st_mtime
-            if tstamp > self.timestamps.get(pvname, -1):
-                new.append(pvname)
+    def reset_new_logfiles(self, parse_data=False):
+        """find 'new' logfiles,  read the text, and set the
+        data to None.
+
+        if parse_data is True, the data will be parsed
+        """
+        for pvname, pv in self.pvs[pvname].items():
+            mtime = os.stat(pv.logfile).st_mtime
+            if mtime > pv.mod_time:
+                pv.text = read_textfile(pv.logfile).split('\n')
+                pv.mod_time = mtime
+                pv.data = None
+                if parse_data:
+                    pv.data = parse_logfile(pv.text, pv.logfile)
         return new
 
 
     def read_logfile(self, pvname):
         """read logfile, save file timestamp"""
-        if pvname not in self.pvs:
+        pv = self.pvs.get(pvname, None)
+        if pv is None:
             raise ValueError(f"Unknown PV name: '{pvname}'")
-
-        pvinfo = self.pvs[pvname]
-        logfile = Path('pvlog', pvinfo[0])
-        self.data[pvname] = read_logfile(logfile)
-        self.timestamps[pvname] = os.stat(logfile).st_mtime
+        pv.read_logfile()
+        pv.data = read_logfile(pv.logfile)
+        pv.mod_time = os.stat(pv.logfile).st_mtime
