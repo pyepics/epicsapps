@@ -9,7 +9,6 @@ from pathlib import Path
 from numpy import array, where
 from functools import partial
 from collections import namedtuple
-from multiprocessing import Queue, Process
 
 from matplotlib.dates import date2num
 
@@ -32,8 +31,7 @@ from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 
 
 from .configfile import ConfigFile
-from .logfile import (read_logfile, read_logfolder,
-                      read_textfile, parse_logfile)
+from .logfile import read_logfile, read_logfolder, read_textfile
 
 from wxmplot import PlotPanel, PlotFrame
 from wxmplot.colors import hexcolor
@@ -95,19 +93,16 @@ Matt Newville <newville@cars.uchicago.edu>
                           style=FRAME_STYLE, size=(1050, 550))
 
         self.plot_windows = []
-        self.pvdata = {}
-        self.iodata = {}
         self.pvs = []
         self.wids = {}
         self.subframes = {}
-        self.read_procs = {}
         self.log_folder = None
+        self.parse_thread = None
         self.create_frame()
 
     def create_frame(self,size=(1050, 550), **kwds):
         self.build_statusbar()
         self.build_menus()
-
 
         splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
         splitter.SetMinimumPaneSize(220)
@@ -256,19 +251,6 @@ Matt Newville <newville@cars.uchicago.edu>
         self.Raise()
         wx.CallAfter(self.ShowPlotWin1)
 
-
-    def read_logdata(self, event=None):
-        print("start read logdata ", len(self.read_procs), self.log_folder)
-        if self.log_folder is not None:
-            for pvname in self.log_folder.pvs:
-                n  += 1
-                if pvname not in self.pvdata:
-                    rq = Queue()
-                    rproc = Process(target=read_logfile, args=(pvname, rq))
-                    rproc.start()
-                    self.read_procs[pvname] = (rthread, rq)
-
-
     def build_statusbar(self):
         sbar = self.CreateStatusBar(2, wx.CAPTION)
         sfont = sbar.GetFont()
@@ -324,38 +306,34 @@ Matt Newville <newville@cars.uchicago.edu>
         print("Remove PV")
 
     def onShowPV(self, event=None, label=None):
-        name = event.GetString()
-        self.wids['pv1'].SetStringSelection(name)
+        pvname = event.GetString()
+        self.wids['pv1'].SetStringSelection(pvname)
 
-        if name in self.read_procs:
-            rt = self.read_procs.pop(name)
-            if rt.is_alive():
-                rt.join()
+        pvlog = self.log_folder.pvs.get(pvname, None)
+        print(pvname, pvlog)
+        if pvlog is None:
+            print("cannot show PV ", pvname)
+        else:
+            data = self.get_pvdata(pvname)
 
-        rthread = Thread(target=self.get_pvdata, args=(name,), name=name)
-        rthread.start()
-        self.read_procs[name] = rthread
-
-    def get_pvdata(self, pvname, force=False):
+    def get_pvdata(self, pvname):
         """get PVdata, caching until it changes"""
-        if pvname not in self.pvdata:
-            self.pvdata[pvname] = {'timestamp': 0, 'data': None}
-        last_tstamp = self.pvdata[pvname]['timestamp']
 
-        logfile = self.log_folder.pvs[pvname][0]
-        this_tstamp = os.stat(logfile).st_mtime
-        if force:
-            last_tstamp = -1
-        if this_tstamp > last_tstamp or self.pvdata[pvname]['data'] is None:
-            try:
-                print("  ... real read ... ", logfile)
-                data = read_logfile(logfile)
-            except OSError:
-                print("OS ERROR ON READ?")
-                data = None
-            self.pvdata[pvname]['timestamp'] = this_tstamp
-            self.pvdata[pvname]['data'] = data
-        return self.pvdata[pvname]['data']
+        pvlog = self.log_folder.pvs.get(pvname, None)
+        if pvlog is None:
+            print("unknown PV  ", pvname)
+            return None
+        if pvlog.data is None:
+            self.write_message(f'parsing data for {pvname} ... ', panel=1)
+            pvlog.parse()
+        if pvlog.data.mpldates is None:
+            pvlog.get_mpldates()
+        self.write_message(f'done', panel=1)
+        if self.parse_thread is not None:
+            if not self.parse_thread.is_alive():
+                self.parse_thread.join()
+                self.parse_thread = None
+        return pvlog.data
 
     def ShowPlotWin1(self, event=None):
         wname = 'Window 1'
@@ -378,17 +356,13 @@ Matt Newville <newville@cars.uchicago.edu>
         self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
 
         pvname = self.wids['pv1'].GetStringSelection()
-        info = self.log_folder.pvs[pvname]
-        label = info[1]
-
-        if pvname in self.read_procs:
-            rt = self.read_procs.pop(pvname)
-            if rt.is_alive():
-                rt.join()
+        label = self.log_folder.pvs[pvname].description
 
         data = self.get_pvdata(pvname)
         if data is None:
             data = self.get_pvdata(pvname, force=True)
+        if data.mpldates is None:
+            print("MPL Dates None")
 
         col   = self.wids['col1'].GetColour()
         hcol = hexcolor(col)
@@ -402,8 +376,6 @@ Matt Newville <newville@cars.uchicago.edu>
                 'ylabel': f'{label} ({pvname})' }
         # print("Plot 1  start ", len(data.value), time.ctime())
         self.subframes[wname].plot(data.mpldates, data.value, **opts)
-        # print("Plot 1  done ", time.ctime())
-
         self.subframes[wname].Show()
         self.subframes[wname].Raise()
 
@@ -417,14 +389,9 @@ Matt Newville <newville@cars.uchicago.edu>
             pvname = self.wids[f'pv{i+1}'].GetStringSelection()
             if pvname == 'None':
                 continue
-            if pvname in self.read_procs:
-                rt = self.read_procs.pop(pvname)
-                if rt.is_alive():
-                    rt.join()
 
             yaxes += 1
-            info = self.log_folder.pvs[pvname]
-            label = info[1]
+            label = self.log_folder.pvs[pvname].description
             data = self.get_pvdata(pvname)
             if data is None:
                 data = self.get_pvdata(pvname, force=True)
@@ -508,7 +475,6 @@ is not a valid PV Logger Data Folder""",
         self.log_folder = folder
         self.wids['work_folder'].SetLabel(folder.fullpath)
         os.chdir(folder.fullpath)
-
         for pvname in self.log_folder.pvs:
             self.pvlist.Append(pvname)
 
@@ -534,62 +500,13 @@ is not a valid PV Logger Data Folder""",
         wx.CallAfter(self.read_folder)
 
     def read_folder(self):
-        for p in ('plotsel', 'plotone', 'pv1', 'pv2'):
-            self.wids[p].Disable()
-
-        def my_parse_logfile(text, filename, queue):
-            queue.put(parse_logfile(text, filename))
         self.write_message(f'reading folder data....')
-        for pvname, pvinfo in self.log_folder.pvs.items():
-            logfile = pvinfo[0]
-            text = read_textfile(logfile).split('\n')
-            readq = Queue()
-            self.pvdata[pvname] = {'data': None, 'started': False,
-                                   'queue': readq,
-                                   'text': text,
-                                   'logfile': logfile,
-                                   'timestamp': os.stat(logfile).st_mtime}
-            proc = Process(target=my_parse_logfile,
-                           args=(text, logfile, readq),
-                           name=pvname)
-            self.pvdata[pvname]['proc'] = proc
-        self.write_message(f'parsing data for {len(self.log_folder.pvs)} PVs', panel=1)
-
-        pvs = list(self.pvdata)
-        while len(pvs) > 0:
-            nrunning = 0
-            time.sleep(0.1)
-            for pvname in pvs:
-                d = self.pvdata[pvname]
-                if not d['started'] and nrunning < 5:
-                    d['proc'].start()
-                    d['started'] = True
-                    nrunning += 1
-
-            for pvname in pvs:
-                d = self.pvdata[pvname]
-                # print(pvname, d['data'] is None, d['started'], nrunning)
-
-            for pvname in pvs:
-                d = self.pvdata[pvname]
-                if d['data'] is None and d['started']:
-                    # print('wait for ', pvname)
-                    d['data'] = d['queue'].get()
-                    d['proc'].join()
-                    pvs.remove(pvname)
-                    self.write_message(f'read {pvname} ({len(pvs)} remaining)')
-                    nrunning -= 1
-                    for pvname in pvs:
-                        d = self.pvdata[pvname]
-                        if not d['started'] and nrunning < 5:
-                            d['proc'].start()
-                            d['started'] = True
-                            nrunning += 1
-
-        for p in ('plotsel', 'plotone', 'pv1', 'pv2'):
-            self.wids[p].Enable()
+        self.log_folder.read_all_logs_text()
         self.write_message('ready')
         self.write_message(' ', panel=1)
+        self.parse_thread = Thread(target=self.log_folder.parse_logfiles)
+        self.parse_thread.start()
+
 
     def onCollect(self, event=None):
         print("on Collect")
