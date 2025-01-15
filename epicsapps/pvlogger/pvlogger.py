@@ -18,19 +18,19 @@ from ..utils import (get_pvtypes, get_pvdesc, normalize_pvname)
 
 from .configfile import PVLoggerConfig
 
-
+STOP_FILE = '_PVLOG_stop.txt'
+TIMESTAMP_FILE = '_PVLOG_timestamp.txt'
 UPDATETIME = 30.0
 SLEEPTIME = 0.5
 RUN_FOLDER = 'pvlog'
 motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
                 '.DIR', '_able.VAL', '.SPMG')
 
-
-def look_for_exit_signal(self):
+def look_for_exit_signal():
     """look for a file named _PVLOG_stop.txt to stop collection
     """
-    stopfile = Path("_PVLOG_stop.txt")
     exit_request = False
+    stopfile = Path(STOP_FILE)
     if stopfile.exists():
         exit_request = True
         try:
@@ -39,11 +39,11 @@ def look_for_exit_signal(self):
             pass
     return exit_request
 
-def save_pvlog_timestamp(self):
+def save_pvlog_timestamp():
     """
     save timestamp to _PVLOG_timestamp.txt to show when logger last ran
     """
-    with open("_PVLOG_timestamp.txt", "w") as fh:
+    with open(TIMESTAMP_FILE, "w") as fh:
         fh.write(f'{time.time()}\n')
 
 class LoggedPV():
@@ -51,10 +51,8 @@ class LoggedPV():
     """
     def __init__(self, pvname, desc=None, mdel=None,
                  descpv=None, mdelpv=None, connection_timeout=0.25):
-        self.desc = desc
-        self.mdel = mdel
-
         self.pvname = normalize_pvname(pvname)
+        self.connection_timeout = connection_timeout
         logname = self.pvname.replace('.', '_') + '.log'
         fpath = Path(new_filename(fix_filename(logname)))
         self.datafile = open(fpath, 'a')
@@ -67,9 +65,16 @@ class LoggedPV():
         self.connected = None
         self.value = None
         self.can_be_float = None  # decide later
+        self.set_desc(desc, descpv)
+        self.set_mdel(mdel, mdelpv)
+        self.pv = get_pv(self.pvname, callback=self.onChanges,
+                         connection_callback=self.onConnect)
+
+    def set_mdel(self, mdel, mdelpv):
+        self.mdel = mdel
         if self.pvname.endswith('.VAL'):
             if isinstance(mdelpv, PV):
-                if mdelpv.wait_for_connection(timeout=connection_timeout):
+                if mdelpv.wait_for_connection(timeout=self.connection_timeout):
                     if (mdelpv.write_access and
                         self.mdel not in (None, 'None', '<auto>')):
                         mdelpv.put(self.mdel)
@@ -84,13 +89,14 @@ class LoggedPV():
         except:
             self.mdel_is_float = False
 
+    def set_desc(self, desc, descpv):
+        "set description"
+        self.desc = desc
         if self.desc in (None, 'None', '<auto>') and isinstance(descpv, PV):
             if not descpv.connected:
-                descpv.wait_for_connection(timeout=connection_timeout)
+                descpv.wait_for_connection(timeout=self.connection_timeout)
             if descpv.connected:
                 self.desc = descpv.get()
-        self.pv = get_pv(self.pvname, callback=self.onChanges,
-                         connection_callback=self.onConnect)
 
 
     def onConnect(self, pvname, conn, pv):
@@ -130,7 +136,7 @@ class LoggedPV():
         self.needs_flush = False
         self.datafile.flush()
 
-    def write_data(self):
+    def write_data(self, with_flush=False):
         if self.needs_header:
             buff = ["# pvlog data file",
                     f"# pvname        = {self.pvname}",
@@ -172,7 +178,8 @@ class LoggedPV():
             buff.append('')
             self.datafile.write('\n'.join(buff))
             self.needs_flush = True
-        if self.needs_flush and (time.time() > (self.lastflush + 15)):
+        if (with_flush or
+            (self.needs_flush and (time.time() > (self.lastflush + 15)))):
             self.flush()
 
 
@@ -188,12 +195,11 @@ class PVLogger():
     def read_configfile(self, configfile):
         print('read config file ', configfile)
         self.cfile = PVLoggerConfig(configfile)
-        self.config = cnf = self.cfile.config
+        self.config = self.cfile.config
 
-        self.update_secs = cnf.get('update_seconds', 5)
-        self.folder = cnf.get('folder', 'pvlog')
-        self.workdir = cnf.get('workdir', '')
-        if len(self.workdir) < 1:
+        self.folder = self.config.get('folder', 'pvlog')
+        self.workdir = self.config.get('workdir', '')
+        if len(self.workdir) < 1 or self.workdir == '.':
             self.workdir = os.getcwd()
 
         self.topfolder = Path(self.workdir, self.folder).absolute()
@@ -201,9 +207,12 @@ class PVLogger():
         os.chdir(self.topfolder)
 
     def connect_pvs(self):
+        """
+        initial connection, or re-connection of PVs
+        from configuration to PV objects, and saved metadata files
+        """
         _pvnames, _pvdesc, _pvmdel = [], [], []
-        cnf = self.config
-        for pvline in cnf.get('pvs', []):
+        for pvline in self.config.get('pvs', []):
             name = pvline.strip()
             desc = '<auto>'
             mdel = '<auto>'
@@ -214,11 +223,15 @@ class PVLogger():
                     desc = words[1]
                 if len(words) > 2:
                     mdel = words[2]
-
-            _pvnames.append(name)
-            _pvdesc.append(desc)
-            _pvmdel.append(mdel)
-        inst_names = cnf.get('instruments', [])
+            if name in _pvnames:
+                idx = _pvnames.index(name)
+                _pvdesc[idx] = desc
+                _pvmdel[idx] = mdel
+            else:
+                _pvnames.append(name)
+                _pvdesc.append(desc)
+                _pvmdel.append(mdel)
+        inst_names = self.config.get('instruments', [])
         escan_cred = os.environ.get('ESCAN_CREDENTIALS', '')
         inst_map = {}
         if len(inst_names) > 0 and len(escan_cred) > 0:
@@ -249,10 +262,8 @@ class PVLogger():
         time.sleep(0.05)
         out = {'folder': self.folder,
                'workdir': self.workdir,
-               'update_seconds': self.update_secs,
                'pvs': [], 'motors': [], 'instruments': inst_map}
-
-        self.pvs = {}
+        print("Connect A", len(_pvnames))
         for ipv, pvname in enumerate(_pvnames):
             desc = _pvdesc[ipv]
             mdel = _pvmdel[ipv]
@@ -265,7 +276,7 @@ class PVLogger():
                               descpv=descpv, mdelpv=mdelpv)
 
             out['pvs'].append(' | '.join([lpv.pvname, lpv.desc, str(lpv.mdel)]))
-            # print("ADD PV ", lpv.pvname, lpv.desc, str(lpv.mdel), descpv, mdelpv)
+            print("ADD PV ", lpv.pvname, lpv.desc, str(lpv.mdel), descpv, mdelpv)
             rtype_pv = rtyppvs.get(pvname, None)
             if rtype_pv is not None and 'motor' == rtype_pv.get():
                 desc = lpv.desc
@@ -289,6 +300,15 @@ class PVLogger():
         if pvname not in self.pvs:
             self.pvs[pvname] = LoggedPV(pvname, desc=desc, mdel=mdel,
                                         descpv=descpv, mdelpv=mdelpv)
+        else:
+            this_pv = self.pvs[pvname]
+            if desc in (None, 'None', '<auto'):
+                desc = this_pv.desc
+            this_pv.set_desc(desc, descpv)
+            if mdel in (None, 'None', '<auto'):
+                mdel = this_pv.mdel
+            this_pv.set_mdel(mdel, mdelpv)
+
         return self.pvs[pvname]
 
     def look_for_new_pvs(self):
@@ -298,21 +318,36 @@ class PVLogger():
         """
         reqfile = Path("_PVLOG_requests.yaml")
         if reqfile.exists():
-            print("Should read Request file")
-
+            print("read request file")
+            rconfig = PVLoggerConfig(reqfile.as_posix())
+            for section in ('pvs', 'instruments'):
+                newdat = rconfig.get(section, [])
+                if len(newdat) > 0:
+                    self.config[section].extend(newdat)
+            self.connect_pvs()
+            print("Connected PVs from request file")
+            try:
+                reqfile.unlink(missing_ok=True)
+            except:
+                pass
 
     def run(self):
         self.connect_pvs()
-        last_update = -0
+        print("Connected ", len(self.pvs))
+        last_update = 0
         while True:
             time.sleep(SLEEPTIME)
             now = time.time()
-            if now > t0 + UPDATETIME:
+            if now > last_update + UPDATETIME:
+                save_pvlog_timestamp()
                 if look_for_exit_signal():
-                    save_pvlog_timestamp()
+                    for pv in self.pvs.values():
+                        pv.pv.clear_callbacks()
+                    time.sleep(SLEEPTIME)
+                    for pv in self.pvs.values():
+                        pv.write_data(with_flush=True)
                     break
                 self.look_for_new_pvs()
                 last_update = now
             for pv in self.pvs.values():
                 pv.write_data()
-        print("exit")
