@@ -3,7 +3,6 @@
   read log file column file
 """
 import os
-import io
 import sys
 import random
 import time
@@ -14,15 +13,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from multiprocessing import Process, Queue, Pool
 
-from charset_normalizer import from_bytes
 import numpy as np
 from pyshortcuts import debugtimer
 
-
+from ..utils.textfile import read_textfile
 TINY = 1.e-7
 MAX_FILESIZE = 400*1024*1024  # 400 Mb limit
 COMMENTCHARS = '#;%*!$'
-
 
 @dataclass
 class PVLogData:
@@ -40,6 +37,17 @@ class PVLogData:
 
     def __repr__(self):
         return f"PVLogData(pv='{self.pvname}', file='{self.filename}', npts={len(self.timestamp)})"
+
+
+def unixts_to_mpldates(ts):
+    "convert array of unix timestamps to MPL dates"
+    ts = ts.astype('datetime64')
+    isecs = ts.astype('datetime64[s]')
+    frac = (ts - isecs).astype('timedelta64[ns]')
+    out = isecs.astype(np.float64)
+    out += 1.e-9*frac.astype(np.float64)
+    return out / 86400.0
+
 
 class PVLogFile:
     """PV LogFile"""
@@ -72,91 +80,17 @@ class PVLogFile:
 
     def get_mpldates(self):
         """set matplotlib/numpy dates"""
-        self.data.mpldates = unixts_to_mpldates(np.array(self.data.timestamp))
+        tsdt = np.array(self.data.timestamp).astype('datetime64')
+        isec = tsdt.astype('datetime64[s]')
+        nsec = (tsdt - isec).astype('timedelta64[ns]').astype(np.float64)
+        self.data.mpldates = (isec.astype(np.float64) + 1.e-9*nsec)/86400.0
 
-
-def unixts_to_mpldates(ts):
-    "convert array of unix timestamps to MPL dates"
-    ts = ts.astype('datetime64')
-    dsecs = ts.astype('datetime64[s]')
-    frac = (ts - dsecs).astype('timedelta64[ns]')
-    out = (dsecs - np.datetime64(0, 's')).astype(np.float64)
-    out += 1.e-9*frac.astype(np.float64)
-    return out / 86400.0
-
-
-def read_textfile(filename, size=None):
-    """read text from a file as string
-
-    Argument
-    --------
-    filename  (str or file): name of file to read or file-like object
-    size  (int or None): number of bytes to read
-
-    Returns
-    -------
-    text of file as string.
-
-    Notes
-    ------
-    1. the encoding is detected with charset_normalizer.from_bytes
-       which is then used to decode bytes read from file.
-    2. line endings are normalized to be '\n', so that
-       splitting on '\n' will give a list of lines.
-    3. if filename is given, it can be a gzip-compressed file
-    """
-    text = ''
-    if isinstance(filename, bytes):
-        filename = str(from_bytes(filename).best())
-    if isinstance(filename, str):
-        filename = Path(filename).absolute()
-    if isinstance(filename, Path):
-        filename = filename.as_posix()
-
-
-    def decode(bytedata):
-        return str(from_bytes(bytedata).best())
-
-    if isinstance(filename, io.IOBase):
-        text = filename.read(size)
-        if filename.mode == 'rb':
-            text = decode(text)
-    else:
-        with open(filename, 'rb') as fh:
-            text = decode(fh.read(size))
-    return text.replace('\r\n', '\n').replace('\r', '\n')
-
-
-def getfloats(txt):
-    """convert a line of numbers into a list of floats,
-    as for reading a file with columnar numerical data.
-
-    Arguments
-    ---------
-      txt   (str) : line of text to parse
-
-    Returns
-    -------
-      number of floats found, list with each entry as a float if possible
-
-    """
-    words = []
-    nfloats = 0
-    for word in txt.split():
-        word = word.strip()
-        try:
-            word = float(word)
-            nfloats += 1
-        except ValueError:
-            pass
-        words.append(word)
-    return nfloats, words
 
 def read_logfile(filename):
     """read a PVlogger log file
 
     Arguments:
-      filename (str):        name of file to read
+      filename (str):  name of file to read
 
     Returns:
       PVLogData dataclass instance
