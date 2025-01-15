@@ -19,11 +19,32 @@ from ..utils import (get_pvtypes, get_pvdesc, normalize_pvname)
 from .configfile import PVLoggerConfig
 
 
-FLUSHTIME = 30.0
+UPDATETIME = 30.0
 SLEEPTIME = 0.5
 RUN_FOLDER = 'pvlog'
 motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
                 '.DIR', '_able.VAL', '.SPMG')
+
+
+def look_for_exit_signal(self):
+    """look for a file named _PVLOG_stop.txt to stop collection
+    """
+    stopfile = Path("_PVLOG_stop.txt")
+    exit_request = False
+    if stopfile.exists():
+        exit_request = True
+        try:
+            stopfile.unlink(missing_ok=True)
+        except:
+            pass
+    return exit_request
+
+def save_pvlog_timestamp(self):
+    """
+    save timestamp to _PVLOG_timestamp.txt to show when logger last ran
+    """
+    with open("_PVLOG_timestamp.txt", "w") as fh:
+        fh.write(f'{time.time()}\n')
 
 class LoggedPV():
     """wraps a PV for logging
@@ -104,13 +125,12 @@ class LoggedPV():
             self.timestamp = timestamp
             self.data.append((timestamp, value, char_value))
 
-
     def flush(self):
         self.lastflush = time.time()
         self.needs_flush = False
         self.datafile.flush()
 
-    def process(self):
+    def write_data(self):
         if self.needs_header:
             buff = ["# pvlog data file",
                     f"# pvname        = {self.pvname}",
@@ -271,9 +291,28 @@ class PVLogger():
                                         descpv=descpv, mdelpv=mdelpv)
         return self.pvs[pvname]
 
+    def look_for_new_pvs(self):
+        """
+        look for a file named _PVLOG_requests.yaml and add PVs
+        listed there to monitoring process
+        """
+        reqfile = Path("_PVLOG_requests.yaml")
+        if reqfile.exists():
+            print("Should read Request file")
+
+
     def run(self):
         self.connect_pvs()
+        last_update = -0
         while True:
             time.sleep(SLEEPTIME)
+            now = time.time()
+            if now > t0 + UPDATETIME:
+                if look_for_exit_signal():
+                    save_pvlog_timestamp()
+                    break
+                self.look_for_new_pvs()
+                last_update = now
             for pv in self.pvs.values():
-                pv.process()
+                pv.write_data()
+        print("exit")
