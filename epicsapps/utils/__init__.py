@@ -7,6 +7,7 @@ from .configfile import (ConfigFile, get_configfolder,
                          read_recents_file, write_recents_file)
 
 from .utils import (get_pvtypes, get_pvdesc, normalize_pvname)
+from .textfile import read_textfile
 
 HAS_WXPYTHON = False
 get_icon = SelectWorkdir = GUIColors = MoveToDialog = None
