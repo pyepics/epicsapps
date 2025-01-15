@@ -5,13 +5,10 @@ from ..utils import ConfigFile, load_yaml, get_default_configfile
 # default pvlogger configuration
 _configtext = """
 folder: "pvlog"
-update_seconds: 5
 workdir: ""
 instruments: []
-
 pvs:
   - S:SRcurrentAI.VAL        | Storage Ring Current | 0.002
-
 """
 
 CONFIGFILE = 'pvlog.yaml'
