@@ -64,7 +64,6 @@ class LoggedPV():
         self.connected = None
         self.needs_flush = False
         self.lastflush = 0.0
-        self.is_numeric = None  # decide later
         self.set_desc(desc, descpv)
         self.set_mdel(mdel, mdelpv)
         self.pv = get_pv(self.pvname, callback=self.onChanges,
@@ -164,12 +163,9 @@ class LoggedPV():
                     buff.append(f"#      {index} = {nam}")
 
             buff.extend(["#---------------------------------",
-                         "# timestamp       value               char_value", ""])
+                         "# timestamp       value             char_value", ""])
             self.datafile.write('\n'.join(buff))
 
-        if self.is_numeric is None:  # decide now
-            self.is_numeric = ((1 == self.pv.nelm) and
-                               ('char' not in self.pv.type))
 
         n = len(self.data)
         if n > 0:
@@ -179,13 +175,18 @@ class LoggedPV():
                 if i == 0 and self.needs_header: # first point, re-get char value
                     cur_val = self.pv.value
                     cval = self.pv._set_charval(val)
-                    self.pv._set_charval(cur_val)
-                xval = '<index>'
-                if self.is_numeric:
+                    self.char_val = self.pv._set_charval(cur_val)
+                if self.pv.nelm == 1 and 'double' in self.pv.type:
                     try:
                         xval = gformat(val, length=16)
                     except:
                         pass
+                elif ('enum' in self.pv.type or
+                      'int' in self.pv.type or
+                      'long' in self.pv.type):
+                    xval = f'{val:<16d}'
+                elif 'char' in self.pv.type:
+                    xval = '<index>'
                 buff.append(f"{ts:.3f}  {xval}   {cval}")
             buff.append('')
             self.datafile.write('\n'.join(buff))
@@ -207,7 +208,6 @@ class PVLogger():
             self.read_configfile(configfile)
 
     def read_configfile(self, configfile):
-        print('read config file ', configfile)
         self.cfile = PVLoggerConfig(configfile)
         self.config = self.cfile.config
 
@@ -277,7 +277,7 @@ class PVLogger():
         out = {'folder': self.folder.as_posix(),
                'workdir': self.workdir.as_posix(),
                'pvs': [], 'motors': [], 'instruments': inst_map}
-        print("Connect A", len(_pvnames))
+
         for ipv, pvname in enumerate(_pvnames):
             desc = _pvdesc[ipv]
             mdel = _pvmdel[ipv]
@@ -290,7 +290,7 @@ class PVLogger():
                               descpv=descpv, mdelpv=mdelpv)
 
             out['pvs'].append(' | '.join([lpv.pvname, lpv.desc, str(lpv.mdel)]))
-            print("ADD PV ", lpv.pvname, lpv.desc, str(lpv.mdel), descpv, mdelpv)
+            # print("ADD PV ", lpv.pvname, lpv.desc, str(lpv.mdel), descpv, mdelpv)
             rtype_pv = rtyppvs.get(pvname, None)
             if rtype_pv is not None and 'motor' == rtype_pv.get():
                 desc = lpv.desc
