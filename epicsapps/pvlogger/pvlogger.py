@@ -44,7 +44,7 @@ def save_pvlog_timestamp():
     save timestamp to _PVLOG_timestamp.txt to show when logger last ran
     """
     with open(TIMESTAMP_FILE, "w") as fh:
-        fh.write(f'{time.time()}\n')
+        fh.write(f'{time.time()}   \n \n')
 
 class LoggedPV():
     """wraps a PV for logging
@@ -197,11 +197,11 @@ class PVLogger():
         self.cfile = PVLoggerConfig(configfile)
         self.config = self.cfile.config
 
-        self.folder = self.config.get('folder', 'pvlog')
+        self.folder = Path(self.config.get('folder', 'pvlog'))
         self.workdir = self.config.get('workdir', '')
         if len(self.workdir) < 1 or self.workdir == '.':
             self.workdir = os.getcwd()
-
+        self.workdir = Path(self.workdir)
         self.topfolder = Path(self.workdir, self.folder).absolute()
         self.topfolder.mkdir(mode=0o755, parents=False, exist_ok=True)
         os.chdir(self.topfolder)
@@ -260,8 +260,8 @@ class PVLogger():
                     mdelpvs[pvname] = get_pv(f"{pref}.MDEL")
 
         time.sleep(0.05)
-        out = {'folder': self.folder,
-               'workdir': self.workdir,
+        out = {'folder': self.folder.as_posix(),
+               'workdir': self.workdir.as_posix(),
                'pvs': [], 'motors': [], 'instruments': inst_map}
         print("Connect A", len(_pvnames))
         for ipv, pvname in enumerate(_pvnames):
