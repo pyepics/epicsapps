@@ -17,6 +17,8 @@ import numpy as np
 from pyshortcuts import debugtimer
 
 from ..utils.textfile import read_textfile
+from .pvlogger import TIMESTAMP_FILE
+
 TINY = 1.e-7
 MAX_FILESIZE = 400*1024*1024  # 400 Mb limit
 COMMENTCHARS = '#;%*!$'
@@ -191,11 +193,13 @@ class PVLogFolder:
     """
     data and methods for a PVlogger Folder
     """
-    def __init__(self, folder, workdir='', update_seconds=5):
+    def __init__(self, folder, workdir='', **kws):
         self.folder = Path(folder).resolve()
         self.fullpath = self.folder.as_posix()
-        self.workdir = workdir
-        self.update_seconds = update_seconds
+        self.workdir = Path(workdir)
+        self.time_start = 0
+        self.time_stop = None
+        self.kws = kws
         self.pvs = {}
         self.motors = []
         self.instruments = []
@@ -254,12 +258,21 @@ class PVLogFolder:
                                          description=words[1],
                                          monitor_delta=words[2])
 
-
-        self.folder = conf['folder']
-        self.workdir = conf['workdir']
-        self.update_seconds = float(conf['update_seconds'])
+        self.folder = Path(conf['folder'])
+        self.workdir = Path(conf['workdir'])
         self.motors = conf['motors']
         self.instruments = conf['instruments']
+
+        #
+        start_time, stop_time = None, None
+        tstamp_file = Path(self.folder, TIMESTAMP_FILE)
+        if tstamp_file.exists():
+            with open(tstamp_file, 'r') as fh:
+                line = fh.readline()
+                stop_time = float(line[:-1])
+
+
+
 
     def _logfiles_sizeorder(self, reverse=False):
         """return list of PVs ordered by increasing size of logfiles
