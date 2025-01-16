@@ -8,6 +8,7 @@ from .configfile import (ConfigFile, get_configfolder,
 
 from .utils import (get_pvtypes, get_pvdesc, normalize_pvname)
 from .textfile import read_textfile
+from .griddata import DataTableGrid, DictFrame
 
 HAS_WXPYTHON = False
 get_icon = SelectWorkdir = GUIColors = MoveToDialog = None
