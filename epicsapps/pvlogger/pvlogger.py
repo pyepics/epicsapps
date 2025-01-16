@@ -14,8 +14,6 @@ from pyshortcuts import debugtimer, fix_filename, new_filename, isotime, gformat
 from ..instruments import InstrumentDB
 
 from ..utils import (get_pvtypes, get_pvdesc, normalize_pvname)
-
-
 from .configfile import PVLoggerConfig
 
 STOP_FILE = '_PVLOG_stop.txt'
@@ -25,6 +23,21 @@ SLEEPTIME = 0.5
 RUN_FOLDER = 'pvlog'
 motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
                 '.DIR', '_able.VAL', '.SPMG')
+
+def get_instruments(instrument_names=None):
+    """look up Epics Instruments, return dict of name:pvlist"""
+    escan_cred = os.environ.get('ESCAN_CREDENTIALS', '')
+    insts = {}
+    if len(escan_cred) > 0:
+        inst_db = InstrumentDB()
+        for row in inst_db.get_all_instruments():
+            iname = row.name
+            if (instrument_names is None or
+                iname in instrument_names):
+                insts[iname] = []
+                for pvname in  inst_db.get_instrument_pvs(iname):
+                    insts[iname].append(pvname)
+    return insts
 
 def look_for_exit_signal():
     """look for a file named _PVLOG_stop.txt to stop collection
@@ -176,6 +189,7 @@ class LoggedPV():
                     cur_val = self.pv.value
                     cval = self.pv._set_charval(val)
                     self.char_val = self.pv._set_charval(cur_val)
+                xval = '<index>'
                 if self.pv.nelm == 1 and 'double' in self.pv.type:
                     try:
                         xval = gformat(val, length=16)
@@ -185,8 +199,7 @@ class LoggedPV():
                       'int' in self.pv.type or
                       'long' in self.pv.type):
                     xval = f'{val:<16d}'
-                elif 'char' in self.pv.type:
-                    xval = '<index>'
+
                 buff.append(f"{ts:.3f}  {xval}   {cval}")
             buff.append('')
             self.datafile.write('\n'.join(buff))
