@@ -57,14 +57,14 @@ class LoggedPV():
         fpath = Path(new_filename(fix_filename(logname)))
         self.datafile = open(fpath, 'a')
         self.filename = fpath.as_posix()
-        self.needs_flush = False
-        self.lastflush = 0.0
-
+        self.timestamp = 0.0
+        self.value = None
         self.data = deque()
         self.needs_header = False
         self.connected = None
-        self.value = None
-        self.can_be_float = None  # decide later
+        self.needs_flush = False
+        self.lastflush = 0.0
+        self.is_numeric = None  # decide later
         self.set_desc(desc, descpv)
         self.set_mdel(mdel, mdelpv)
         self.pv = get_pv(self.pvname, callback=self.onChanges,
@@ -85,9 +85,8 @@ class LoggedPV():
 
         try:
             self.mdel = float(self.mdel)
-            self.mdel_is_float = True
         except:
-            self.mdel_is_float = False
+            self.mdel = None
 
     def set_desc(self, desc, descpv):
         "set description"
@@ -116,7 +115,7 @@ class LoggedPV():
 
     def onChanges(self, pvname, value, char_value='', timestamp=None, **kws):
         skip = False
-        if self.value is not None and self.mdel_is_float:
+        if self.value is not None and self.mdel is not None:
             try:
                 skip = (abs(value - self.value) < self.mdel)
             except:
@@ -135,6 +134,16 @@ class LoggedPV():
         self.lastflush = time.time()
         self.needs_flush = False
         self.datafile.flush()
+
+    def save_current_value(self):
+        """
+        put the current value and current time into the data queue,
+        to record 'what is the value now'?
+
+        This may be useful to do periodically, or at
+        the end of data collection.
+        """
+        self.data.append((time.time(), self.value, self.char_value))
 
     def write_data(self, with_flush=False):
         if self.needs_header:
@@ -157,27 +166,32 @@ class LoggedPV():
             buff.extend(["#---------------------------------",
                          "# timestamp       value               char_value", ""])
             self.datafile.write('\n'.join(buff))
-            self.needs_header = False
 
-        if self.can_be_float is None:  # decide now
-            self.can_be_float = ((1 == self.pv.nelm) and
-                                 ('char' not in self.pv.type))
+        if self.is_numeric is None:  # decide now
+            self.is_numeric = ((1 == self.pv.nelm) and
+                               ('char' not in self.pv.type))
 
         n = len(self.data)
         if n > 0:
             buff = []
             for i in range(n):
                 ts, val, cval = self.data.popleft()
+                if i == 0 and self.needs_header: # first point, re-get char value
+                    cur_val = self.pv.value
+                    cval = self.pv._set_charval(val)
+                    self.pv._set_charval(cur_val)
                 xval = '<index>'
-                if self.can_be_float:
+                if self.is_numeric:
                     try:
-                        xval = gformat(val, length=18)
+                        xval = gformat(val, length=16)
                     except:
                         pass
                 buff.append(f"{ts:.3f}  {xval}   {cval}")
             buff.append('')
             self.datafile.write('\n'.join(buff))
             self.needs_flush = True
+
+        self.needs_header = False
         if (with_flush or
             (self.needs_flush and (time.time() > (self.lastflush + 15)))):
             self.flush()
@@ -331,23 +345,30 @@ class PVLogger():
             except:
                 pass
 
+    def finish(self):
+        """finish data collection"""
+        for pv in self.pvs.values():
+            pv.pv.clear_callbacks()
+            pv.save_current_value()
+        time.sleep(SLEEPTIME)
+        for pv in self.pvs.values():
+            pv.write_data(with_flush=True)
+
     def run(self):
+        """run, collecting data until the exit signal is given"""
         self.connect_pvs()
-        print("Connected ", len(self.pvs))
         last_update = 0
         while True:
             time.sleep(SLEEPTIME)
+            for pv in self.pvs.values():
+                pv.write_data()
+
             now = time.time()
             if now > last_update + UPDATETIME:
                 save_pvlog_timestamp()
                 if look_for_exit_signal():
-                    for pv in self.pvs.values():
-                        pv.pv.clear_callbacks()
-                    time.sleep(SLEEPTIME)
-                    for pv in self.pvs.values():
-                        pv.write_data(with_flush=True)
+                    self.finish()
                     break
-                self.look_for_new_pvs()
-                last_update = now
-            for pv in self.pvs.values():
-                pv.write_data()
+                else:
+                    self.look_for_new_pvs()
+                    last_update = now
