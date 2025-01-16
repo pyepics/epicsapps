@@ -13,9 +13,13 @@ from collections import namedtuple
 from matplotlib.dates import date2num
 
 import wx
+import wx.dataview as dv
 import wx.lib.colourselect  as csel
+import wx.lib.scrolledpanel as scrolled
+import wx.lib.agw.flatnotebook as flat_nb
 import wx.lib.mixins.inspection
 import wx.lib.filebrowsebutton as filebrowse
+
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
 from epics import get_pv
@@ -23,25 +27,27 @@ from epics.wx import EpicsFunction, DelayedEpicsCallback
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     HLine, SelectWorkdir, GUIColors, COLORS, Button,
+                     HLine, GUIColors, COLORS, Button, flatnotebook,
                      Choice, FileSave, FileCheckList, LEFT, RIGHT, pack)
 
 from pyshortcuts import debugtimer, uname
 from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 
 
-from .configfile import ConfigFile
+from .configfile import PVLoggerConfig
 from .logfile import read_logfile, read_logfolder, read_textfile
 
 from wxmplot import PlotPanel, PlotFrame
 from wxmplot.colors import hexcolor
 
-from ..utils import (SelectWorkdir, get_icon,
-                     get_configfolder,
-                     get_default_configfile, load_yaml,
-                     read_recents_file, write_recents_file)
+from ..utils import (SelectWorkdir, DataTableGrid, get_icon, get_configfolder,
+                     get_default_configfile, load_yaml, read_recents_file,
+                     write_recents_file)
 
-CONFIG_FILE = 'pvlog.toml'
+from .pvlogger import get_instruments
+
+PVLOG_FOLDER = 'pvlog'
+CONFIG_FILE = 'pvlog.yaml'
 ICON_FILE = 'logging.ico'
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 PlotWindowChoices = [f'Window {i+1}' for i in range(10)]
@@ -63,17 +69,8 @@ elif uname == 'darwin':
     FONTSIZE = 11
     FONTSIZE_FW = 12
 
-
-def get_bound(val):
-    "return float value of input string or None"
-    val = val.strip()
-    if len(val) == 0 or val is None:
-        return None
-    try:
-        val = float(val)
-    except:
-        val = None
-    return val
+FNB_STYLE = flat_nb.FNB_NO_X_BUTTON
+FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 
 YAML_WILDCARD = 'PVLogger Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
 
@@ -96,23 +93,31 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvs = []
         self.wids = {}
         self.subframes = {}
+        self.config_file = CONFIG_FILE
+        self.run_config = None
         self.log_folder = None
+        self.collect_folder = None
         self.parse_thread = None
         self.create_frame()
 
-    def create_frame(self,size=(1050, 550), **kwds):
+    def create_frame(self,size=(1200, 550), **kwds):
         self.build_statusbar()
         self.build_menus()
+
+        self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)
+        self.font = wx.Font(FONTSIZE, wx.MODERN, wx.NORMAL, wx.BOLD)
+        self.SetFont(self.font)
 
         splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
         splitter.SetMinimumPaneSize(220)
 
         lpanel = wx.Panel(splitter)
-        lpanel.SetMinSize((325, 400))
+        lpanel.SetMinSize((325, 500))
 
-        rpanel = wx.Panel(splitter)
-        rpanel.SetMinSize((550, 000))
-        rpanel.SetSize((700, 450))
+        rpanel = scrolled.ScrolledPanel(splitter, size=(700, 550),
+                                       style=wx.GROW|wx.TAB_TRAVERSAL)
+
+        rpanel.SetMinSize((775, 500))
 
         # left panel
         ltop = wx.Panel(lpanel)
@@ -134,7 +139,124 @@ Matt Newville <newville@cars.uchicago.edu>
         pack(lpanel, sizer)
 
         # right panel
-        panel = GridPanel(rpanel, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
+        self.wids = {}
+
+        self.nb = flatnotebook(rpanel, {}, style=FNB_STYLE)
+        self.nb.AddPage(self.make_view_panel(), 'View Log', True)
+        self.nb.AddPage(self.make_run_panel(),  'Collect Data', True)
+
+        self.nb.SetSelection(0)
+
+        try:
+            self.SetIcon(wx.Icon(get_icon('logging'), wx.BITMAP_TYPE_ICO))
+        except:
+            pass
+
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add((5, 5), 0, LEFT, 3)
+        sizer.Add(self.nb, 0, LEFT, 3)
+        sizer.Add((5, 5), 0, LEFT, 3)
+        pack(rpanel, sizer)
+        rpanel.SetupScrolling()
+
+        splitter.SplitVertically(lpanel, rpanel, 1)
+        mainsizer = wx.BoxSizer(wx.VERTICAL)
+        mainsizer.Add(splitter, 1, wx.GROW|wx.ALL, 5)
+        pack(self, mainsizer)
+        self.Show()
+        self.Raise()
+        wx.CallAfter(self.ShowPlotWin1)
+
+    def make_run_panel(self):
+        wids = self.wids
+        panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
+        panel.SetMinSize((800, 600))
+        sizer = wx.GridBagSizer(3, 3)
+        sizer.SetVGap(3)
+        sizer.SetHGap(3)
+
+        wids = self.wids
+        title = SimpleText(panel, ' PV Logger Collection', font=Font(FONTSIZE+2),
+                           size=(550, -1),  colour=COLORS['title'], style=LEFT)
+
+        btn_data = Button(panel, ' Data Folder ', size=(250, 30), style=wx.ALIGN_LEFT,
+                          action=self.onSelectDataFolder)
+        btn_conf = Button(panel, ' Configuration File ', size=(250, 30), style=wx.LEFT,
+                              action=self.onSelectConfigFile)
+        btn_save = Button(panel, 'Save Configuration', size=(250, 30),
+                          action=self.onSaveConfiguration)
+        btn_start = Button(panel, 'Start Collection', size=(250, 30),
+                           action=self.onStartCollection)
+        btn_more  = Button(panel, 'Add More PV Rows', size=(250, 30),
+                           action=self.onMorePVs)
+
+        wids['config_file'] = wx.StaticText(panel, label='', size=(450, -1))
+        wids['data_folder'] = wx.TextCtrl(panel, value='', size=(450, -1))
+        wids['pvlog_folder'] = wx.TextCtrl(panel, value=PVLOG_FOLDER, size=(450, -1))
+
+
+        collabels = [' Instrument Name ', ' Use?', ' # PVS ']
+        colsizes = [350, 125, 125]
+        coltypes = ['str', 'bool', 'float:4,0']
+        coldefs  = ['', 0, 1]
+
+        wids['inst_table'] = DataTableGrid(panel, nrows=4,
+                                           collabels=collabels,
+                                           datatypes=coltypes,
+                                           defaults=coldefs,
+                                           colsizes=colsizes, rowlabelsize=50)
+        wids['inst_table'].SetMinSize((800, 150))
+        wids['inst_table'].EnableEditing(True)
+
+        collabels = [' PV Name  ', ' Description ', ' Delta', 'Use?']
+        colsizes = [350, 200, 100, 100]
+        coltypes = ['str', 'str', 'str', 'bool']
+        coldefs  = ['', '<auto>', '<auto>', 1]
+
+        wids['pv_table'] = DataTableGrid(panel, nrows=7,
+                                           collabels=collabels,
+                                           datatypes=coltypes,
+                                           defaults=coldefs,
+                                           colsizes=colsizes, rowlabelsize=50)
+        wids['pv_table'].SetMinSize((800, 200))
+        wids['pv_table'].EnableEditing(True)
+
+        self.set_instrument_table(get_instruments())
+
+        def slabel(txt, size=(175, -1)):
+            return wx.StaticText(panel, label=txt, size=size)
+
+        panel.Add((5, 5))
+        panel.Add(title, style=LEFT, dcol=6, newrow=True)
+        panel.Add(btn_conf, dcol=1, newrow=True)
+        panel.Add(wids['config_file'], dcol=5)
+        panel.Add((5, 5))
+        panel.Add(btn_data, dcol=1, newrow=True)
+        panel.Add(wids['data_folder'], dcol=4)
+        panel.Add((5, 5))
+        panel.Add(slabel(' Log Folder: ', size=(200, -1)), dcol=1, newrow=True)
+        panel.Add(wids['pvlog_folder'], dcol=4)
+        panel.Add((5, 5))
+        panel.Add(btn_save, dcol=1, newrow=True)
+        panel.Add(btn_start, dcol=2)
+        panel.Add((5, 5))
+        panel.Add(slabel(' PVs to Log: ', size=(200, -1)), dcol=1, newrow=True)
+        panel.Add(wids['pv_table'], dcol=6, newrow=True)
+        panel.Add((5, 5))
+        panel.Add(btn_more, dcol=1, newrow=True)
+
+        panel.Add(slabel(' Instruments to Log: ', size=(200, -1)), dcol=1, newrow=True)
+        panel.Add(wids['inst_table'], dcol=6, newrow=True)
+
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
+        panel.pack()
+        return panel
+
+
+    def make_view_panel(self):
+        wids = self.wids
+        panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
+        panel.SetMinSize((800, 600))
         sizer = wx.GridBagSizer(3, 3)
         sizer.SetVGap(3)
         sizer.SetHGap(3)
@@ -146,7 +268,7 @@ Matt Newville <newville@cars.uchicago.edu>
         title = SimpleText(panel, ' PV Logger Viewer', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
 
-        wids['work_folder'] = SimpleText(panel, ' <no working folder> ',
+        wids['work_folder'] = SimpleText(panel, ' <no working folder selected> ',
                                          font=Font(FONTSIZE+1),
                                          size=(550, -1), style=LEFT)
 
@@ -179,9 +301,10 @@ Matt Newville <newville@cars.uchicago.edu>
                                    partial(self.onPVcolor, row=i+1))
 
         def slabel(txt):
-            return wx.StaticText(panel, label=txt, size=(125, -1))
+            return wx.StaticText(panel, label=txt, size=(175, -1))
 
-        panel.Add(title, style=LEFT, dcol=6)
+        panel.Add((5, 5))
+        panel.Add(title, style=LEFT, dcol=6, newrow=True)
         panel.Add(slabel(' Folder: '), dcol=1, newrow=True)
         panel.Add(wids['work_folder'], dcol=6)
         panel.Add((5, 5))
@@ -221,35 +344,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['plot_win'])
 
         panel.pack()
-
-        try:
-            self.SetIcon(wx.Icon(get_icon('logging'), wx.BITMAP_TYPE_ICO))
-        except:
-            pass
-
-        sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add((5, 5), 0, LEFT, 3)
-        sizer.Add(panel, 0, LEFT, 3)
-        sizer.Add((5, 5), 0, LEFT, 3)
-        pack(rpanel, sizer)
-
-        # rpanel.SetupScrolling()
-
-        splitter.SplitVertically(lpanel, rpanel, 1)
-        mainsizer = wx.BoxSizer(wx.VERTICAL)
-        mainsizer.Add(splitter, 1, wx.GROW|wx.ALL, 5)
-        pack(self, mainsizer)
-        self.SetSize((1050, 550))
-
-        # display0 = wx.Display(0)
-        # client_area = display0.ClientArea
-        # xmin, ymin, xmax, ymax = client_area
-        # xpos = int((xmax-xmin)*0.02) + xmin
-        # ypos = int((ymax-ymin)*0.04) + ymin
-        # self.SetPosition((xpos, ypos))
-        self.Show()
-        self.Raise()
-        wx.CallAfter(self.ShowPlotWin1)
+        return panel
 
     def build_statusbar(self):
         sbar = self.CreateStatusBar(2, wx.CAPTION)
@@ -272,6 +367,55 @@ Matt Newville <newville@cars.uchicago.edu>
             self.subframes[name] = frameclass(self, **opts)
             self.subframes[name].Raise()
 
+    def onSaveConfiguration(self, event=None):
+        print("save config")
+
+
+    def onStartCollection(self, event=None):
+        print("start collection")
+
+    def set_instrument_table(self, instruments, using=None, event=None):
+        wids = self.wids
+        if using is None:
+            using = []
+        added = []
+        if len(instruments) > 0:
+            inst_data= []
+            if len(using) > 0:
+                for inst in using:
+                    pvlist = instruments.get(inst, None)
+                    if pvlist is not None:
+                        inst_data.append([inst, 1, len(pvlist)])
+                        added.append(inst)
+            for inst, pvlist in instruments.items():
+                if inst not in added:
+                    inst_data.append([inst, 0, len(pvlist)])
+
+            for inst, pvlist in instruments.items():
+                inst_data.append([inst, len(pvlist), inst in using])
+
+            n = len(inst_data)
+            if n >  wids['inst_table'].table.nrows:
+                nadd = n - wids['inst_table'].table.nrows
+                wids['inst_table'].AppendRows(nadd)
+            wids['inst_table'].table.Clear()
+            wids['inst_table'].table.data = inst_data
+            wids['inst_table'].table.View.Refresh()
+
+    def set_pv_table(self, pvlist, event=None):
+        wids = self.wids
+        n = len(pvlist)
+        if n >  wids['pv_table'].table.nrows:
+            nadd = n - wids['pv_table'].table.nrows
+            wids['pv_table'].AppendRows(nadd)
+        wids['pv_table'].AppendRows(2)
+        wids['pv_table'].table.Clear()
+        wids['pv_table'].table.data = pvlist
+        wids['pv_table'].table.View.Refresh()
+
+    def onMorePVs(self, event=None):
+        wids['pv_table'].AppendRows(3)
+
     def onUseSelected(self, event=None):
         sel_pvs = self.pvlist.GetCheckedStrings()[:4]
         for i, pvn in enumerate(sel_pvs):
@@ -285,6 +429,63 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def onSelectInst(self, event=None):
         pass
+
+    def onSelectDataFolder(self, event=None):
+        if self.collect_folder is None:
+            self.collect_folder = Path('.').absolute().as_posix()
+
+        dlg = wx.DirDialog(self, 'Select Data Folder',
+                           style=wx.DD_DEFAULT_STYLE)
+
+        path = Path(os.curdir).absolute().as_posix()
+        dlg.SetPath(path)
+        if  dlg.ShowModal() == wx.ID_OK:
+            path = Path(dlg.GetPath()).absolute().as_posix()
+        dlg.Destroy()
+        self.wids['data_folder'].SetValue(path)
+
+
+    def onSelectConfigFile(self, event=None):
+        if self.config_file is None:
+            self.config_file = CONFIG_FILE
+
+        WILDCARDS = "Config Files|*.yaml|All files (*.*)|*.*"
+        dlg = wx.FileDialog(self, wildcard=WILDCARDS,
+                            message='Select PVLogger Configuration File',
+                            defaultFile=self.config_file,
+                            style=wx.FD_OPEN)
+
+        if dlg.ShowModal() == wx.ID_OK:
+            path = Path(dlg.GetPath()).absolute().as_posix()
+        dlg.Destroy()
+        self.wids['config_file'].SetLabel(path)
+        self.config_file = path
+        cfile = PVLoggerConfig(path)
+        self.run_config = cfile.config
+        wdir = Path(self.run_config.get('workdir', '.'))
+        folder = Path(self.run_config.get('folder', 'pvlog'))
+
+        self.wids['data_folder'].SetValue(wdir.absolute().as_posix())
+        self.wids['pvlog_folder'].SetValue(folder.absolute().stem)
+
+        insts = self.run_config.get('instruments', [])
+        self.set_instrument_table(get_instruments(), using=insts)
+
+        pvlist = []
+        for pvline in self.run_config.get('pvs', []):
+            name = pvline.strip()
+            desc = '<auto>'
+            mdel = '<auto>'
+            if '|' in pvline:
+                words = [w.strip() for w in pvline.split('|')]
+                name = words[0]
+                if len(words) > 1:
+                    desc = words[1]
+                if len(words) > 2:
+                    mdel = words[2]
+                pvlist.append([name, desc, mdel, True])
+        self.set_pv_table(pvlist)
+
 
     def onSelectInstPVs(self, event=None):
         iname = self.wids['instruments'].GetStringSelection()
@@ -417,8 +618,6 @@ Matt Newville <newville@cars.uchicago.edu>
         self.subframes[wname].Show()
         self.subframes[wname].Raise()
 
-
-
     def build_menus(self):
         mdata = wx.Menu()
         mcollect = wx.Menu()
@@ -427,7 +626,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
         mdata.AppendSeparator()
         MenuItem(self, mdata, "Inspect", "WX Inspect", self.onWxInspect)
-
 
         MenuItem(self, mdata, "E&xit\tCtrl+X", "Exit PVLogger", self.onExit)
         self.Bind(wx.EVT_CLOSE, self.onExit)
@@ -470,6 +668,7 @@ is not a valid PV Logger Data Folder""",
           "Not a valid PV Logger Data Folder")
         else:
             self.use_logfolder(folder)
+        self.nb.SetSelection(0)
 
     def use_logfolder(self, folder):
         self.log_folder = folder
