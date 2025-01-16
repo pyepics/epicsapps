@@ -241,12 +241,12 @@ Matt Newville <newville@cars.uchicago.edu>
         pack(self, mainsizer)
         self.SetSize((1050, 550))
 
-        display0 = wx.Display(0)
-        client_area = display0.ClientArea
-        xmin, ymin, xmax, ymax = client_area
-        xpos = int((xmax-xmin)*0.02) + xmin
-        ypos = int((ymax-ymin)*0.04) + ymin
-        self.SetPosition((xpos, ypos))
+        # display0 = wx.Display(0)
+        # client_area = display0.ClientArea
+        # xmin, ymin, xmax, ymax = client_area
+        # xpos = int((xmax-xmin)*0.02) + xmin
+        # ypos = int((ymax-ymin)*0.04) + ymin
+        # self.SetPosition((xpos, ypos))
         self.Show()
         self.Raise()
         wx.CallAfter(self.ShowPlotWin1)
@@ -310,7 +310,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.wids['pv1'].SetStringSelection(pvname)
 
         pvlog = self.log_folder.pvs.get(pvname, None)
-        print(pvname, pvlog)
+        # print('ShowPV ', pvname, pvlog)
         if pvlog is None:
             print("cannot show PV ", pvname)
         else:
