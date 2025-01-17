@@ -11,6 +11,7 @@ from functools import partial
 from collections import namedtuple
 from datetime import datetime
 from matplotlib.dates import date2num
+import yaml
 
 import wx
 import wx.adv
@@ -477,37 +478,49 @@ Matt Newville <newville@cars.uchicago.edu>
         if len(pvs) > 0:
             PVsConnectedDialog(self, pvs).Show()
 
-
     def onSaveConfiguration(self, event=None):
-        print("save config")
-        wids = self.wids
+        "save config file"
+        wids = self.wids        
+        workdir =  wids['data_folder'].GetValue()
+        
+        fname = Path(wids['config_file'].GetLabel()).name
+        dlg = wx.FileDialog(self,
+                            message='Save PVLogger Configuration',
+                            wildcard=YAML_WILDCARD,
+                            defaultFile=fname,
+                            defaultDir=workdir, 
+                        style=wx.FD_SAVE|wx.FD_CHANGE_DIR)
+        fout = None
+        if dlg.ShowModal() == wx.ID_OK:
+            output  = Path(dlg.GetPath()).absolute().as_posix()
+        dlg.Destroy()
+        if output is None:
+            return
 
-        config = {'workdir': wids['data_folder'].GetValue(),
-                  'folder': wids['pvlog_folder'].GetValue()}
-                
         ddate = wids['end_date'].GetValue()
         dtime = wids['end_time'].GetValue()
-
-        config['end_datetime'] = datetime.isoformat(datetime(ddate.GetYear(), 1+ddate.GetMonth(),
-                                                            ddate.GetDay(), dtime.GetHour(),
-                                                            dtime.GetMinute(), 0), sep=' ')
+        dt = datetime(ddate.GetYear(), 1+ddate.GetMonth(), ddate.GetDay(),
+                      dtime.GetHour(), dtime.GetMinute(), 0)
+    
         pvs = []
         for row in self.wids['pv_table'].table.data:
             name, desc, mdel, use = row
             if use:
                 pvs.append(f'{name} | {desc} | {mdel}')
-        config['pvs'] = pvs
 
         insts = []
         for row in self.wids['inst_table'].table.data:
             iname, use, npvs = row
             if use:
                 insts.append(iname)
-        config['instruments'] = insts
-
-        fname = wids['config_file'].GetLabel()
-        print("Would now save config: ", fname)
-        print(config)
+                
+        config = {'workdir': workdir, 
+                  'folder': wids['pvlog_folder'].GetValue(),
+                  'end_datetime': datetime.isoformat(dt, sep=' '),
+                  'pvs': pvs, 'instruments': insts}
+        
+        with open(output, 'w') as fh:
+            yaml.dump(config, fh, default_flow_style=False)
         
     def onStartCollection(self, event=None):
         print("start collection")
