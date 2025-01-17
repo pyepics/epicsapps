@@ -60,14 +60,14 @@ LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL
 CSTY = wx.ALIGN_CENTER
 FRAME_STYLE = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
 
-FONTSIZE = 10
+FONTSIZE = 9
 FONTSIZE_FW = 10
 if uname == 'win':
     FONTSIZE = 10
     FONTSIZE_FW = 11
 elif uname == 'darwin':
     FONTSIZE = 11
-    FONTSIZE_FW = 12
+    FONTSIZE_FW = 11
 
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON
 FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
@@ -100,24 +100,26 @@ Matt Newville <newville@cars.uchicago.edu>
         self.parse_thread = None
         self.create_frame()
 
-    def create_frame(self,size=(1200, 550), **kwds):
+    def create_frame(self):
         self.build_statusbar()
         self.build_menus()
 
-        self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)
-        self.font = wx.Font(FONTSIZE, wx.MODERN, wx.NORMAL, wx.BOLD)
-        self.SetFont(self.font)
+        # sfont = self.GetFont()
+        #  print(dir(sfont))
+        # self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)
+        # self.font = wx.Font(FONTSIZE, wx.MODERN, wx.NORMAL, wx.BOLD)
+        # self.SetFont(self.font)
 
         splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
-        splitter.SetMinimumPaneSize(220)
+        splitter.SetMinimumPaneSize(225)
 
         lpanel = wx.Panel(splitter)
-        lpanel.SetMinSize((325, 500))
+        lpanel.SetMinSize((325, 550))
 
-        rpanel = scrolled.ScrolledPanel(splitter, size=(700, 550),
+        rpanel = scrolled.ScrolledPanel(splitter, size=(750, 550),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
 
-        rpanel.SetMinSize((775, 500))
+        rpanel.SetMinSize((700, 550))
 
         # left panel
         ltop = wx.Panel(lpanel)
@@ -132,7 +134,6 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvlist = FileCheckList(lpanel, main=self,
                                       select_action=self.onShowPV,
                                       remove_action=self.onRemovePV)
-
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(ltop, 0, LEFT|wx.GROW, 1)
         sizer.Add(self.pvlist, 1, LEFT|wx.GROW|wx.ALL, 1)
@@ -163,6 +164,7 @@ Matt Newville <newville@cars.uchicago.edu>
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(splitter, 1, wx.GROW|wx.ALL, 5)
         pack(self, mainsizer)
+        self.SetSize((1125, 650))
         self.Show()
         self.Raise()
         wx.CallAfter(self.ShowPlotWin1)
@@ -170,7 +172,7 @@ Matt Newville <newville@cars.uchicago.edu>
     def make_run_panel(self):
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
-        panel.SetMinSize((800, 600))
+        panel.SetMinSize((750, 550))
         sizer = wx.GridBagSizer(3, 3)
         sizer.SetVGap(3)
         sizer.SetHGap(3)
@@ -179,15 +181,15 @@ Matt Newville <newville@cars.uchicago.edu>
         title = SimpleText(panel, ' PV Logger Collection', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
 
-        btn_data = Button(panel, ' Data Folder ', size=(250, 30), style=wx.ALIGN_LEFT,
+        btn_data = Button(panel, 'Browse', size=(125, -1), style=wx.ALIGN_LEFT,
                           action=self.onSelectDataFolder)
-        btn_conf = Button(panel, ' Configuration File ', size=(250, 30), style=wx.LEFT,
+        btn_conf = Button(panel, 'Browse', size=(125, -1), style=wx.LEFT,
                               action=self.onSelectConfigFile)
-        btn_save = Button(panel, 'Save Configuration', size=(250, 30),
+        btn_save = Button(panel, 'Save Configuration', size=(175, -1),
                           action=self.onSaveConfiguration)
-        btn_start = Button(panel, 'Start Collection', size=(250, 30),
+        btn_start = Button(panel, 'Start Collection', size=(175, -1),
                            action=self.onStartCollection)
-        btn_more  = Button(panel, 'Add More PV Rows', size=(250, 30),
+        btn_more  = Button(panel, 'Add More PV Rows', size=(175, -1),
                            action=self.onMorePVs)
 
         wids['config_file'] = wx.StaticText(panel, label='', size=(450, -1))
@@ -196,29 +198,29 @@ Matt Newville <newville@cars.uchicago.edu>
 
 
         collabels = [' Instrument Name ', ' Use?', ' # PVS ']
-        colsizes = [350, 125, 125]
+        colsizes = [350, 75, 125]
         coltypes = ['str', 'bool', 'float:4,0']
         coldefs  = ['', 0, 1]
 
-        wids['inst_table'] = DataTableGrid(panel, nrows=4,
+        wids['inst_table'] = DataTableGrid(panel, nrows=5,
                                            collabels=collabels,
                                            datatypes=coltypes,
                                            defaults=coldefs,
-                                           colsizes=colsizes, rowlabelsize=50)
-        wids['inst_table'].SetMinSize((800, 150))
+                                           colsizes=colsizes, rowlabelsize=25)
+        wids['inst_table'].SetMinSize((725, 150))
         wids['inst_table'].EnableEditing(True)
 
-        collabels = [' PV Name  ', ' Description ', ' Delta', 'Use?']
-        colsizes = [350, 200, 100, 100]
+        collabels = [' PV Name  ', ' Description ', 'Delta', 'Use?']
+        colsizes = [350, 200, 75, 75]
         coltypes = ['str', 'str', 'str', 'bool']
         coldefs  = ['', '<auto>', '<auto>', 1]
 
-        wids['pv_table'] = DataTableGrid(panel, nrows=7,
+        wids['pv_table'] = DataTableGrid(panel, nrows=10,
                                            collabels=collabels,
                                            datatypes=coltypes,
                                            defaults=coldefs,
-                                           colsizes=colsizes, rowlabelsize=50)
-        wids['pv_table'].SetMinSize((800, 200))
+                                           colsizes=colsizes, rowlabelsize=25)
+        wids['pv_table'].SetMinSize((750, 200))
         wids['pv_table'].EnableEditing(True)
 
         self.set_instrument_table(get_instruments())
@@ -227,43 +229,44 @@ Matt Newville <newville@cars.uchicago.edu>
             return wx.StaticText(panel, label=txt, size=size)
 
         panel.Add((5, 5))
-        panel.Add(title, style=LEFT, dcol=6, newrow=True)
-        panel.Add(btn_conf, dcol=1, newrow=True)
-        panel.Add(wids['config_file'], dcol=5)
+        panel.Add(title, style=LEFT, dcol=5, newrow=True)
+        panel.Add(slabel(' Config File: ', size=(100, -1)), dcol=1, newrow=True)
+        panel.Add(wids['config_file'], dcol=2)
+        panel.Add(btn_conf, dcol=1, newrow=False)
         panel.Add((5, 5))
-        panel.Add(btn_data, dcol=1, newrow=True)
-        panel.Add(wids['data_folder'], dcol=4)
+        panel.Add(slabel(' Data Folder: ', size=(100, -1)), dcol=1, newrow=True)
+        panel.Add(wids['data_folder'], dcol=2)
+        panel.Add(btn_data, dcol=1, newrow=False)
         panel.Add((5, 5))
-        panel.Add(slabel(' Log Folder: ', size=(200, -1)), dcol=1, newrow=True)
-        panel.Add(wids['pvlog_folder'], dcol=4)
+        panel.Add(slabel(' Log Folder: ', size=(100, -1)), dcol=1, newrow=True)
+        panel.Add(wids['pvlog_folder'], dcol=2)
         panel.Add((5, 5))
-        panel.Add(btn_save, dcol=1, newrow=True)
+        panel.Add(btn_save, dcol=2, newrow=True)
         panel.Add(btn_start, dcol=2)
         panel.Add((5, 5))
-        panel.Add(slabel(' PVs to Log: ', size=(200, -1)), dcol=1, newrow=True)
-        panel.Add(wids['pv_table'], dcol=6, newrow=True)
+        panel.Add(slabel(' PVs to Log: ', size=(200, -1)), dcol=3, newrow=True)
+        panel.Add(wids['pv_table'], dcol=5, newrow=True)
         panel.Add((5, 5))
-        panel.Add(btn_more, dcol=1, newrow=True)
+        panel.Add(btn_more, dcol=3, newrow=True)
 
-        panel.Add(slabel(' Instruments to Log: ', size=(200, -1)), dcol=1, newrow=True)
+        panel.Add(slabel(' Instruments to Log: ', size=(200, -1)), dcol=3, newrow=True)
         panel.Add(wids['inst_table'], dcol=6, newrow=True)
 
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.pack()
         return panel
 
-
     def make_view_panel(self):
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
-        panel.SetMinSize((800, 600))
+        panel.SetMinSize((750, 550))
         sizer = wx.GridBagSizer(3, 3)
         sizer.SetVGap(3)
         sizer.SetHGap(3)
 
         # self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)
-        self.font = wx.Font(FONTSIZE, wx.MODERN, wx.NORMAL, wx.BOLD)
-        self.SetFont(self.font)
+        # self.font = wx.Font(FONTSIZE, wx.MODERN, wx.NORMAL, wx.BOLD)
+        # self.SetFont(self.font)
         wids = self.wids
         title = SimpleText(panel, ' PV Logger Viewer', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
