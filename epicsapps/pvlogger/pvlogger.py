@@ -6,6 +6,7 @@ import os
 import time
 from collections import deque
 from pathlib import Path
+from datetime import datetime
 import numpy as np
 import toml
 from epics import get_pv, caget, PV
@@ -18,7 +19,7 @@ from .configfile import PVLoggerConfig
 
 STOP_FILE = '_PVLOG_stop.txt'
 TIMESTAMP_FILE = '_PVLOG_timestamp.txt'
-UPDATETIME = 30.0
+UPDATETIME = 15.0
 SLEEPTIME = 0.5
 RUN_FOLDER = 'pvlog'
 motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
@@ -39,18 +40,6 @@ def get_instruments(instrument_names=None):
                     insts[iname].append(pvname)
     return insts
 
-def look_for_exit_signal():
-    """look for a file named _PVLOG_stop.txt to stop collection
-    """
-    exit_request = False
-    stopfile = Path(STOP_FILE)
-    if stopfile.exists():
-        exit_request = True
-        try:
-            stopfile.unlink(missing_ok=True)
-        except:
-            pass
-    return exit_request
 
 def save_pvlog_timestamp():
     """
@@ -71,12 +60,14 @@ class LoggedPV():
         self.datafile = open(fpath, 'a')
         self.filename = fpath.as_posix()
         self.timestamp = 0.0
+        self.end_timestamp = -1
         self.value = None
         self.data = deque()
         self.needs_header = False
         self.connected = None
         self.needs_flush = False
         self.lastflush = 0.0
+
         self.set_desc(desc, descpv)
         self.set_mdel(mdel, mdelpv)
         self.pv = get_pv(self.pvname, callback=self.onChanges,
@@ -232,7 +223,17 @@ class PVLogger():
         self.topfolder = Path(self.workdir, self.folder).absolute()
         self.topfolder.mkdir(mode=0o755, parents=False, exist_ok=True)
         os.chdir(self.topfolder)
-
+        
+        self.end_datetime = self.config.get('end_datetime', '')
+        end_ts = -1
+        if len(self.end_datetime) > 1:
+            try:
+                dtx = datetime.fromisoformat(self.end_datetime)
+                end_ts = dtx.timestamp()
+            except:
+                pass
+        self.end_timestamp = end_ts
+        
     def connect_pvs(self):
         """
         initial connection, or re-connection of PVs
@@ -358,6 +359,26 @@ class PVLogger():
             except:
                 pass
 
+    def look_for_exit_signal(self):
+        """
+        look for whether data collection should stop.  
+        There are two ways to specify stopping:
+
+           a) a file named _PVLOG_stop.txt written to the folder will stop collection
+           b) if the end_datetime specified in the configuration is exceeded
+        """
+        exit_request = ((self.end_timestamp > 65536) and
+                        (time.time() > self.end_timestamp))
+        stopfile = Path(STOP_FILE)
+        if stopfile.exists():
+            exit_request = True
+            try:
+                stopfile.unlink(missing_ok=True)
+            except:
+                pass
+        return exit_request
+            
+
     def finish(self):
         """finish data collection"""
         for pv in self.pvs.values():
@@ -379,7 +400,7 @@ class PVLogger():
             now = time.time()
             if now > last_update + UPDATETIME:
                 save_pvlog_timestamp()
-                if look_for_exit_signal():
+                if self.look_for_exit_signal():
                     self.finish()
                     break
                 else:

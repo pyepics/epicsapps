@@ -6,6 +6,7 @@ from ..utils import ConfigFile, load_yaml, get_default_configfile
 _configtext = """
 folder: "pvlog"
 workdir: ""
+end_datetime: ''
 instruments: []
 pvs:
   - S:SRcurrentAI.VAL        | Storage Ring Current | 0.002
