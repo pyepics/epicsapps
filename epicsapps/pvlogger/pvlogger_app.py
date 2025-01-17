@@ -32,7 +32,6 @@ from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
 from pyshortcuts import debugtimer, uname
 from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 
-
 from .configfile import PVLoggerConfig
 from .logfile import read_logfile, read_logfolder, read_textfile
 
@@ -162,12 +161,12 @@ Matt Newville <newville@cars.uchicago.edu>
         splitter.SetMinimumPaneSize(225)
 
         lpanel = wx.Panel(splitter)
-        lpanel.SetMinSize((325, 650))
+        lpanel.SetMinSize((325, 500))
 
-        rpanel = scrolled.ScrolledPanel(splitter, size=(775, 650),
+        rpanel = scrolled.ScrolledPanel(splitter, size=(775, 500),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
 
-        rpanel.SetMinSize((775, 650))
+        rpanel.SetMinSize((775, 500))
 
         # left panel
         ltop = wx.Panel(lpanel)
@@ -215,12 +214,11 @@ Matt Newville <newville@cars.uchicago.edu>
         self.SetSize((1150, 700))
         self.Show()
         self.Raise()
-        wx.CallAfter(self.ShowPlotWin1)
+        self.ShowPlotWin1()
 
     def make_run_panel(self):
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
-        panel.SetMinSize((750, 550))
         sizer = wx.GridBagSizer(3, 3)
         sizer.SetVGap(3)
         sizer.SetHGap(3)
@@ -242,9 +240,9 @@ Matt Newville <newville@cars.uchicago.edu>
         btn_more  = Button(panel, 'Add More PV Rows', size=(200, -1),
                            action=self.onMorePVs)
 
-        wids['config_file'] = wx.StaticText(panel, label='', size=(450, -1))
-        wids['data_folder'] = wx.TextCtrl(panel, value='', size=(450, -1))
-        wids['pvlog_folder'] = wx.TextCtrl(panel, value=PVLOG_FOLDER, size=(450, -1))
+        wids['config_file'] = wx.StaticText(panel, label='', size=(400, -1))
+        wids['data_folder'] = wx.TextCtrl(panel, value='', size=(400, -1))
+        wids['pvlog_folder'] = wx.TextCtrl(panel, value=PVLOG_FOLDER, size=(400, -1))
 
         collabels = [' Instrument Name ', ' Use?', ' # PVS ']
         colsizes = [325, 60, 100]
@@ -256,7 +254,7 @@ Matt Newville <newville@cars.uchicago.edu>
                                            datatypes=coltypes,
                                            defaults=coldefs,
                                            colsizes=colsizes, rowlabelsize=40)
-        wids['inst_table'].SetMinSize((775, 175))
+        wids['inst_table'].SetMinSize((750, 175))
         wids['inst_table'].EnableEditing(True)
 
         collabels = [' PV Name  ', ' Description ', 'Delta', 'Use?']
@@ -269,7 +267,7 @@ Matt Newville <newville@cars.uchicago.edu>
                                            datatypes=coltypes,
                                            defaults=coldefs,
                                            colsizes=colsizes, rowlabelsize=40)
-        wids['pv_table'].SetMinSize((775, 200))
+        wids['pv_table'].SetMinSize((750, 200))
         wids['pv_table'].EnableEditing(True)
 
         self.set_instrument_table(get_instruments())
@@ -311,7 +309,6 @@ Matt Newville <newville@cars.uchicago.edu>
     def make_view_panel(self):
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
-        panel.SetMinSize((775, 600))
         sizer = wx.GridBagSizer(3, 3)
         sizer.SetVGap(3)
         sizer.SetHGap(3)
@@ -617,11 +614,13 @@ Matt Newville <newville@cars.uchicago.edu>
         y = ypos + ysiz*0.025
         dlims = [0, 5000, 0, 5000]
         if y+0.75*ysiz > dlims[3]:
-            y = 40+max(40, 40+ysiz*(off-0.5))
+            y = 80+max(40, 40+ysiz*(off-0.5))
         if x+0.75*xsiz > dlims[1]:
             x = 20+max(10, 10+xpos+xsiz*(off-0.5))
-        self.subframes[wname].SetPosition((int(x), int(y)))
-
+        xx, yy  = self.subframes[wname].GetPosition()
+        x = int((2*x + xx)/3.0)
+        y = int((2*y + yy)/3.0)
+        self.subframes[wname].SetPosition((x, y))
 
     def onPlotOne(self, event=None):
         wname = self.wids['plot_win'].GetStringSelection()
