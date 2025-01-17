@@ -35,7 +35,7 @@ def get_instruments(instrument_names=None):
             if (instrument_names is None or
                 iname in instrument_names):
                 insts[iname] = []
-                for pvname in  inst_db.get_instrument_pvs(iname):
+                for pvname in inst_db.get_instrument_pvs(iname):
                     insts[iname].append(pvname)
     return insts
 

@@ -23,7 +23,6 @@ import wx.lib.filebrowsebutton as filebrowse
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
 from epics import get_pv
-from epics.wx import EpicsFunction, DelayedEpicsCallback
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
@@ -74,6 +73,61 @@ FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 
 YAML_WILDCARD = 'PVLogger Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
 
+class PVsConnectedDialog(wx.Dialog):
+    def __init__(self, parent, pvdict, **kws):
+        self.parent = parent
+        npvs = len(pvdict)
+        unconn = []
+        time.sleep(0.01)
+        for name, pv in pvdict.items():
+            if not pv.connected:
+                pv.wait_for_connection(timeout=0.001)
+                if not pv.connected:
+                    unconn.append(name)
+        if len(unconn) > 0 and len(unconn) < 0.9*npvs: # some connected
+            unconn = []
+            time.sleep(0.05)
+            for name, pv in pvdict.items():
+                if not pv.connected:
+                    pv.wait_for_connection(timeout=0.01)
+                    if not pv.connected:
+                        unconn.append(name)
+
+        nunconn = len(unconn)
+        nconn = npvs - nunconn
+
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(450, 450),
+                           title="Check Connected PVs")
+
+        panel = GridPanel(self, ncols=3, nrows=4, pad=4, itemstyle=LEFT)
+
+        def add_text(text, dcol=1, newrow=True):
+            panel.Add(SimpleText(panel, text), dcol=dcol, newrow=newrow)
+
+        panel.Add((5, 5))
+        add_text(f' {npvs} Epics PVS selected, {nconn} connected.', newrow=True)
+        panel.Add((5, 5))
+        panel.Add(HLine(panel, size=(300, 3)), dcol=2, newrow=True)
+        panel.Add((5, 5))
+        if nunconn > 0:
+            add_text(' These PVs are not currently connected: ')
+            for name in unconn:
+                add_text(f'   {name}')
+            panel.Add(HLine(panel, size=(300, 3)), dcol=2, newrow=True)
+            panel.Add((5, 5))
+        panel.Add(OkCancel(panel), dcol=2, newrow=True)
+        panel.pack()
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(panel, 1, LEFT, 5)
+        pack(self, sizer)
+        self.Fit()
+        w0, h0 = self.GetSize()
+        w1, h1 = self.GetBestSize()
+        self.SetSize((max(w0, w1)+25, max(h0, h1)+25))
+
+    def onDone(self, event=None):
+        self.Destroy()
+
 
 class PVLoggerFrame(wx.Frame):
     default_colors = ((0, 0, 0), (0, 0, 255), (255, 0, 0),
@@ -103,12 +157,6 @@ Matt Newville <newville@cars.uchicago.edu>
     def create_frame(self):
         self.build_statusbar()
         self.build_menus()
-
-        # sfont = self.GetFont()
-        #  print(dir(sfont))
-        # self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)
-        # self.font = wx.Font(FONTSIZE, wx.MODERN, wx.NORMAL, wx.BOLD)
-        # self.SetFont(self.font)
 
         splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
         splitter.SetMinimumPaneSize(225)
@@ -184,18 +232,19 @@ Matt Newville <newville@cars.uchicago.edu>
         btn_data = Button(panel, 'Browse', size=(125, -1), style=wx.ALIGN_LEFT,
                           action=self.onSelectDataFolder)
         btn_conf = Button(panel, 'Browse', size=(125, -1), style=wx.LEFT,
-                              action=self.onSelectConfigFile)
-        btn_save = Button(panel, 'Save Configuration', size=(175, -1),
+                          action=self.onSelectConfigFile)
+        btn_check = Button(panel, 'Check PVs', size=(150, -1),
+                          action=self.onCheckPVs)
+        btn_save = Button(panel, 'Save Configuration', size=(200, -1),
                           action=self.onSaveConfiguration)
-        btn_start = Button(panel, 'Start Collection', size=(175, -1),
+        btn_start = Button(panel, 'Start Collection', size=(200, -1),
                            action=self.onStartCollection)
-        btn_more  = Button(panel, 'Add More PV Rows', size=(175, -1),
+        btn_more  = Button(panel, 'Add More PV Rows', size=(200, -1),
                            action=self.onMorePVs)
 
         wids['config_file'] = wx.StaticText(panel, label='', size=(450, -1))
         wids['data_folder'] = wx.TextCtrl(panel, value='', size=(450, -1))
         wids['pvlog_folder'] = wx.TextCtrl(panel, value=PVLOG_FOLDER, size=(450, -1))
-
 
         collabels = [' Instrument Name ', ' Use?', ' # PVS ']
         colsizes = [350, 75, 125]
@@ -230,19 +279,22 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel.Add((5, 5))
         panel.Add(title, style=LEFT, dcol=5, newrow=True)
-        panel.Add(slabel(' Config File: ', size=(100, -1)), dcol=1, newrow=True)
+        panel.Add(slabel(' Config File: ', size=(150, -1)), dcol=1, newrow=True)
         panel.Add(wids['config_file'], dcol=2)
         panel.Add(btn_conf, dcol=1, newrow=False)
         panel.Add((5, 5))
-        panel.Add(slabel(' Data Folder: ', size=(100, -1)), dcol=1, newrow=True)
+        panel.Add(slabel(' Data Folder: ', size=(150, -1)), dcol=1, newrow=True)
         panel.Add(wids['data_folder'], dcol=2)
         panel.Add(btn_data, dcol=1, newrow=False)
         panel.Add((5, 5))
-        panel.Add(slabel(' Log Folder: ', size=(100, -1)), dcol=1, newrow=True)
+        panel.Add(slabel(' Log Folder: ', size=(150, -1)), dcol=1, newrow=True)
         panel.Add(wids['pvlog_folder'], dcol=2)
         panel.Add((5, 5))
-        panel.Add(btn_save, dcol=2, newrow=True)
-        panel.Add(btn_start, dcol=2)
+        panel.Add(btn_check, dcol=1, newrow=True)
+        panel.Add(btn_save, dcol=1)
+        panel.Add(btn_start, dcol=1)
+        panel.Add((5, 5))
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
         panel.Add(slabel(' PVs to Log: ', size=(200, -1)), dcol=3, newrow=True)
         panel.Add(wids['pv_table'], dcol=5, newrow=True)
@@ -370,6 +422,25 @@ Matt Newville <newville@cars.uchicago.edu>
             self.subframes[name] = frameclass(self, **opts)
             self.subframes[name].Raise()
 
+    def onCheckPVs(self, event=None):
+        instruments = get_instruments()
+        pvs = {}
+        for row in self.wids['pv_table'].table.data:
+            name, desc, mdel, use = row
+            if use and name not in pvs:
+                pvs[name] = get_pv(name)
+        for row in self.wids['inst_table'].table.data:
+            iname, use, npvs = row
+            if use and iname in instruments:
+                for name in instruments[iname]:
+                    if name not in pvs:
+                        pvs[name] = get_pv(name)
+        time.sleep(0.25)
+        if len(pvs) > 0:
+            PVsConnectedDialog(self, pvs).Show()
+
+
+
     def onSaveConfiguration(self, event=None):
         print("save config")
 
@@ -386,16 +457,13 @@ Matt Newville <newville@cars.uchicago.edu>
             inst_data= []
             if len(using) > 0:
                 for inst in using:
-                    pvlist = instruments.get(inst, None)
-                    if pvlist is not None:
+                    pvlist = instruments.get(inst, [])
+                    if len(pvlist) > 0:
                         inst_data.append([inst, 1, len(pvlist)])
                         added.append(inst)
             for inst, pvlist in instruments.items():
                 if inst not in added:
                     inst_data.append([inst, 0, len(pvlist)])
-
-            for inst, pvlist in instruments.items():
-                inst_data.append([inst, len(pvlist), inst in using])
 
             n = len(inst_data)
             if n >  wids['inst_table'].table.nrows:
