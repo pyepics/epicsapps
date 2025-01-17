@@ -263,15 +263,16 @@ class PVLogFolder:
         self.motors = conf['motors']
         self.instruments = conf['instruments']
 
-        #
-        start_time, stop_time = None, None
+        # determine start and stop time
+        start_time, stop_time = 0, 0
         tstamp_file = Path(self.folder, TIMESTAMP_FILE)
         if tstamp_file.exists():
             with open(tstamp_file, 'r') as fh:
                 line = fh.readline()
                 stop_time = float(line[:-1])
-
-
+        self.time_stop = stop_time
+        lfile = Path('_PVLOG_filelist.txt')
+        self.time_start = os.stat(lfile).st_mtime
 
 
     def _logfiles_sizeorder(self, reverse=False):
@@ -290,10 +291,14 @@ class PVLogFolder:
         """read text of all PV logfiles"""
         t0 = time.time()
         for pvname, pv in self.pvs.items():
+            ts = os.stat(pv.logfile).st_mtime
+            if ts > self.time_stop:
+                self.time_stop = ts
             pv.text = read_textfile(pv.logfile).split('\n')
             pv.mod_time = os.stat(pv.logfile).st_mtime
             if verbose:
                 print(f'{pvname} : {len(pv.text)}')
+        print("START / STOP TIME ", self.time_start, self.time_stop)
         if verbose:
             dt = time.time()-t0
             print(f"# read text for {len(self.pvs)} PVs, {dt:.2f} secs")
