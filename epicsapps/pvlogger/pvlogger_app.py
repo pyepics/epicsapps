@@ -162,12 +162,12 @@ Matt Newville <newville@cars.uchicago.edu>
         splitter.SetMinimumPaneSize(225)
 
         lpanel = wx.Panel(splitter)
-        lpanel.SetMinSize((325, 550))
+        lpanel.SetMinSize((325, 650))
 
-        rpanel = scrolled.ScrolledPanel(splitter, size=(750, 550),
+        rpanel = scrolled.ScrolledPanel(splitter, size=(775, 650),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
 
-        rpanel.SetMinSize((700, 550))
+        rpanel.SetMinSize((775, 650))
 
         # left panel
         ltop = wx.Panel(lpanel)
@@ -212,7 +212,7 @@ Matt Newville <newville@cars.uchicago.edu>
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(splitter, 1, wx.GROW|wx.ALL, 5)
         pack(self, mainsizer)
-        self.SetSize((1125, 650))
+        self.SetSize((1150, 700))
         self.Show()
         self.Raise()
         wx.CallAfter(self.ShowPlotWin1)
@@ -247,7 +247,7 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['pvlog_folder'] = wx.TextCtrl(panel, value=PVLOG_FOLDER, size=(450, -1))
 
         collabels = [' Instrument Name ', ' Use?', ' # PVS ']
-        colsizes = [350, 75, 125]
+        colsizes = [325, 60, 100]
         coltypes = ['str', 'bool', 'float:4,0']
         coldefs  = ['', 0, 1]
 
@@ -255,12 +255,12 @@ Matt Newville <newville@cars.uchicago.edu>
                                            collabels=collabels,
                                            datatypes=coltypes,
                                            defaults=coldefs,
-                                           colsizes=colsizes, rowlabelsize=25)
-        wids['inst_table'].SetMinSize((725, 150))
+                                           colsizes=colsizes, rowlabelsize=40)
+        wids['inst_table'].SetMinSize((775, 175))
         wids['inst_table'].EnableEditing(True)
 
         collabels = [' PV Name  ', ' Description ', 'Delta', 'Use?']
-        colsizes = [350, 200, 75, 75]
+        colsizes = [325, 200, 75, 60]
         coltypes = ['str', 'str', 'str', 'bool']
         coldefs  = ['', '<auto>', '<auto>', 1]
 
@@ -268,8 +268,8 @@ Matt Newville <newville@cars.uchicago.edu>
                                            collabels=collabels,
                                            datatypes=coltypes,
                                            defaults=coldefs,
-                                           colsizes=colsizes, rowlabelsize=25)
-        wids['pv_table'].SetMinSize((750, 200))
+                                           colsizes=colsizes, rowlabelsize=40)
+        wids['pv_table'].SetMinSize((775, 200))
         wids['pv_table'].EnableEditing(True)
 
         self.set_instrument_table(get_instruments())
@@ -311,7 +311,7 @@ Matt Newville <newville@cars.uchicago.edu>
     def make_view_panel(self):
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
-        panel.SetMinSize((750, 550))
+        panel.SetMinSize((775, 600))
         sizer = wx.GridBagSizer(3, 3)
         sizer.SetVGap(3)
         sizer.SetHGap(3)
