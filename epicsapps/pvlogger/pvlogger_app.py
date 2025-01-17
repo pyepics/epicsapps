@@ -417,7 +417,7 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['pv_table'].table.View.Refresh()
 
     def onMorePVs(self, event=None):
-        wids['pv_table'].AppendRows(3)
+        self.wids['pv_table'].AppendRows(3)
 
     def onUseSelected(self, event=None):
         sel_pvs = self.pvlist.GetCheckedStrings()[:4]
