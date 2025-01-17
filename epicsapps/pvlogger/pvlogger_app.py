@@ -9,16 +9,18 @@ from pathlib import Path
 from numpy import array, where
 from functools import partial
 from collections import namedtuple
-
+from datetime import datetime
 from matplotlib.dates import date2num
 
 import wx
+import wx.adv
 import wx.dataview as dv
 import wx.lib.colourselect  as csel
 import wx.lib.scrolledpanel as scrolled
 import wx.lib.agw.flatnotebook as flat_nb
 import wx.lib.mixins.inspection
 import wx.lib.filebrowsebutton as filebrowse
+import wx.lib.masked as masked
 
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
@@ -71,6 +73,41 @@ FNB_STYLE = flat_nb.FNB_NO_X_BUTTON
 FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 
 YAML_WILDCARD = 'PVLogger Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
+
+
+
+class DateTimeCtrl(wx.Panel):
+    """
+    Simple Combined date/time control
+    """
+    def __init__(self, parent, name='datetimectrl',
+                 wxdate=None, hms=None):
+        self.name = name
+        wx.Panel.__init__(self)
+        bgcol = wx.Colour(250, 250, 250)
+
+        datestyle = wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY
+
+        self.datectrl = wx.adv.DatePickerCtrl(self, size=(120, -1),
+                                          style=datestyle)
+        self.timectrl = masked.TimeCtrl(self, -1, name=name,
+                                        limited=False,
+                                        fmt24hr=True, oob_color=bgcol)
+        timerheight = self.timectrl.GetSize().height
+        spinner = wx.SpinButton(self, -1, wx.DefaultPosition,
+                                (-1, timerheight), wx.SP_VERTICAL )
+        self.timectrl.BindSpinButton(spinner)
+        sizer = wx.BoxSizer(wx.HORIZONTAL)
+        sizer.Add(self.datectrl, 0, wx.ALIGN_CENTER)
+        sizer.Add(self.timectrl, 0, wx.ALIGN_CENTER)
+        sizer.Add(spinner, 0,  wx.ALIGN_LEFT)
+        self.SetSizer(sizer)
+        sizer.Fit(self)
+        #if wxdate is not None:
+        #    self.datectrl.SetValue(wxdate)
+        #if hms is not None:
+        #    self.timectrl.SetValue(hms)
+
 
 class PVsConnectedDialog(wx.Dialog):
     def __init__(self, parent, pvdict, **kws):
@@ -220,8 +257,6 @@ Matt Newville <newville@cars.uchicago.edu>
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
         sizer = wx.GridBagSizer(3, 3)
-        sizer.SetVGap(3)
-        sizer.SetHGap(3)
 
         wids = self.wids
         title = SimpleText(panel, ' PV Logger Collection', font=Font(FONTSIZE+2),
@@ -240,6 +275,12 @@ Matt Newville <newville@cars.uchicago.edu>
         btn_more  = Button(panel, 'Add More PV Rows', size=(200, -1),
                            action=self.onMorePVs)
 
+        wids['end_date'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
+                                                  style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
+        wids['end_time'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
+        wids['end_date'].SetValue(wx.DateTime.Now() + wx.DateSpan.Week())
+        wids['end_time'].SetTime(9, 0, 0)
+               
         wids['config_file'] = wx.StaticText(panel, label='', size=(400, -1))
         wids['data_folder'] = wx.TextCtrl(panel, value='', size=(400, -1))
         wids['pvlog_folder'] = wx.TextCtrl(panel, value=PVLOG_FOLDER, size=(400, -1))
@@ -288,6 +329,11 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(slabel(' Log Folder: ', size=(150, -1)), dcol=1, newrow=True)
         panel.Add(wids['pvlog_folder'], dcol=2)
         panel.Add((5, 5))
+        panel.Add(slabel(' End Date&Time: ', size=(150, -1)), dcol=1, newrow=True)
+        panel.Add(wids['end_date'])
+        panel.Add(wids['end_time'])
+        
+        panel.Add((5, 5))
         panel.Add(btn_check, dcol=1, newrow=True)
         panel.Add(btn_save, dcol=1)
         panel.Add(btn_start, dcol=1)
@@ -310,12 +356,7 @@ Matt Newville <newville@cars.uchicago.edu>
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
         sizer = wx.GridBagSizer(3, 3)
-        sizer.SetVGap(3)
-        sizer.SetHGap(3)
 
-        # self.font_fixedwidth = wx.Font(FONTSIZE_FW, wx.MODERN, wx.NORMAL, wx.BOLD)
-        # self.font = wx.Font(FONTSIZE, wx.MODERN, wx.NORMAL, wx.BOLD)
-        # self.SetFont(self.font)
         wids = self.wids
         title = SimpleText(panel, ' PV Logger Viewer', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
@@ -437,11 +478,37 @@ Matt Newville <newville@cars.uchicago.edu>
             PVsConnectedDialog(self, pvs).Show()
 
 
-
     def onSaveConfiguration(self, event=None):
         print("save config")
+        wids = self.wids
 
+        config = {'workdir': wids['data_folder'].GetValue(),
+                  'folder': wids['pvlog_folder'].GetValue()}
+                
+        ddate = wids['end_date'].GetValue()
+        dtime = wids['end_time'].GetValue()
 
+        config['end_datetime'] = datetime.isoformat(datetime(ddate.GetYear(), 1+ddate.GetMonth(),
+                                                            ddate.GetDay(), dtime.GetHour(),
+                                                            dtime.GetMinute(), 0), sep=' ')
+        pvs = []
+        for row in self.wids['pv_table'].table.data:
+            name, desc, mdel, use = row
+            if use:
+                pvs.append(f'{name} | {desc} | {mdel}')
+        config['pvs'] = pvs
+
+        insts = []
+        for row in self.wids['inst_table'].table.data:
+            iname, use, npvs = row
+            if use:
+                insts.append(iname)
+        config['instruments'] = insts
+
+        fname = wids['config_file'].GetLabel()
+        print("Would now save config: ", fname)
+        print(config)
+        
     def onStartCollection(self, event=None):
         print("start collection")
 
@@ -632,8 +699,6 @@ Matt Newville <newville@cars.uchicago.edu>
         data = self.get_pvdata(pvname)
         if data is None:
             data = self.get_pvdata(pvname, force=True)
-        if data.mpldates is None:
-            print("MPL Dates None")
 
         col   = self.wids['col1'].GetColour()
         hcol = hexcolor(col)
