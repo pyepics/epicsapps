@@ -36,7 +36,8 @@ from pyshortcuts import debugtimer, uname
 from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 
 from .configfile import PVLoggerConfig
-from .logfile import read_logfile, read_logfolder, read_textfile
+from .logfile import (read_logfile, read_logfolder, read_textfile,
+                      unixts_to_mpldates)
 
 from wxmplot import PlotPanel, PlotFrame
 from wxmplot.colors import hexcolor
@@ -228,8 +229,9 @@ Matt Newville <newville@cars.uchicago.edu>
         self.wids = {}
 
         self.nb = flatnotebook(rpanel, {}, style=FNB_STYLE)
-        self.nb.AddPage(self.make_view_panel(), 'View Log', True)
-        self.nb.AddPage(self.make_run_panel(),  'Collect Data', True)
+        self.nb.AddPage(self.make_view_panel(), ' View Log Folder', True)
+        self.nb.AddPage(self.make_run_panel(),  ' Collect Data ', True)
+        self.nb.AddPage(self.make_live_panel(), ' View Live PV Plots ', True)
 
         self.nb.SetSelection(0)
 
@@ -254,19 +256,27 @@ Matt Newville <newville@cars.uchicago.edu>
         self.Raise()
         self.ShowPlotWin1()
 
+    def make_live_panel(self):
+        wids = self.wids
+        panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
+
+        title = SimpleText(panel, ' View Live PVs ', font=Font(FONTSIZE+2),
+                           size=(550, -1),  colour=COLORS['title'], style=LEFT)
+        
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
+        panel.pack()
+        return panel
+
+        
     def make_run_panel(self):
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
-        sizer = wx.GridBagSizer(3, 3)
 
-        wids = self.wids
         title = SimpleText(panel, ' PV Logger Collection', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
 
         btn_data = Button(panel, 'Browse', size=(125, -1), style=wx.ALIGN_LEFT,
                           action=self.onSelectDataFolder)
-        btn_conf = Button(panel, 'Browse', size=(125, -1), style=wx.LEFT,
-                          action=self.onSelectConfigFile)
         btn_check = Button(panel, 'Check PVs', size=(150, -1),
                           action=self.onCheckPVs)
         btn_save = Button(panel, 'Save Configuration', size=(200, -1),
@@ -282,7 +292,7 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['end_date'].SetValue(wx.DateTime.Now() + wx.DateSpan.Week())
         wids['end_time'].SetTime(9, 0, 0)
                
-        wids['config_file'] = wx.StaticText(panel, label='', size=(400, -1))
+        wids['config_file'] = wx.StaticText(panel, label='', size=(550, -1))
         wids['data_folder'] = wx.TextCtrl(panel, value='', size=(400, -1))
         wids['pvlog_folder'] = wx.TextCtrl(panel, value=PVLOG_FOLDER, size=(400, -1))
 
@@ -320,8 +330,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add((5, 5))
         panel.Add(title, style=LEFT, dcol=5, newrow=True)
         panel.Add(slabel(' Config File: ', size=(150, -1)), dcol=1, newrow=True)
-        panel.Add(wids['config_file'], dcol=2)
-        panel.Add(btn_conf, dcol=1, newrow=False)
+        panel.Add(wids['config_file'], dcol=3)
         panel.Add((5, 5))
         panel.Add(slabel(' Data Folder: ', size=(150, -1)), dcol=1, newrow=True)
         panel.Add(wids['data_folder'], dcol=2)
@@ -356,7 +365,6 @@ Matt Newville <newville@cars.uchicago.edu>
     def make_view_panel(self):
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
-        sizer = wx.GridBagSizer(3, 3)
 
         wids = self.wids
         title = SimpleText(panel, ' PV Logger Viewer', font=Font(FONTSIZE+2),
@@ -602,12 +610,15 @@ Matt Newville <newville@cars.uchicago.edu>
                             message='Select PVLogger Configuration File',
                             defaultFile=self.config_file,
                             style=wx.FD_OPEN)
-
+        path = None
         if dlg.ShowModal() == wx.ID_OK:
-            path = Path(dlg.GetPath()).absolute().as_posix()
+            path = Path(dlg.GetPath()).absolute()
         dlg.Destroy()
-        self.wids['config_file'].SetLabel(path)
-        self.config_file = path
+        if path is None:
+            return
+        os.chdir(path.parent)        
+        self.wids['config_file'].SetLabel(path.as_posix())
+        self.config_file = path.as_posix()
         cfile = PVLoggerConfig(path)
         self.run_config = cfile.config
         wdir = Path(self.run_config.get('workdir', '.'))
@@ -633,8 +644,8 @@ Matt Newville <newville@cars.uchicago.edu>
                     mdel = words[2]
                 pvlist.append([name, desc, mdel, True])
         self.set_pv_table(pvlist)
-
-
+        self.nb.SetSelection(1)
+        
     def onSelectInstPVs(self, event=None):
         iname = self.wids['instruments'].GetStringSelection()
         self.pvlist.select_none()
@@ -713,6 +724,12 @@ Matt Newville <newville@cars.uchicago.edu>
         if data is None:
             data = self.get_pvdata(pvname, force=True)
 
+        if len(data.value) == 1 and self.log_folder.time_stop is not None:
+            data.value.append(data.value[0])
+            mpl_ts = unixts_to_mpldates(self.log_folder.time_stop)
+            print("ADD DATA ", mpl_ts)
+            data.mpldates.append(mpl_ts[0])
+        
         col   = self.wids['col1'].GetColour()
         hcol = hexcolor(col)
 
@@ -778,10 +795,12 @@ Matt Newville <newville@cars.uchicago.edu>
         MenuItem(self, mdata, "E&xit\tCtrl+X", "Exit PVLogger", self.onExit)
         self.Bind(wx.EVT_CLOSE, self.onExit)
 
-        MenuItem(self, mcollect, "&Configure Data Collection\tCtrl+C",
-                 "Configure Data Collection", self.onEditConfig)
+        MenuItem(self, mcollect, "&Read Data Collection Configure File\tCtrl+R",
+                 "Read PVLogger Configuration File for Data Collection",
+                 self.onSelectConfigFile)
+
         mcollect.AppendSeparator()
-        MenuItem(self, mcollect, "&Run Data Collection\tCtrl+R",
+        MenuItem(self, mcollect, "&Start Data Collection\tCtrl+S",
                  "Start Data Collection", self.onCollect)
 
         mbar = wx.MenuBar()
@@ -804,6 +823,7 @@ Matt Newville <newville@cars.uchicago.edu>
         dlg.Destroy()
         if path is None or not path.exists():
             return
+        self.nb.SetSelection(0)        
         folder = None
         try:
             folder = read_logfolder(path)
@@ -816,7 +836,6 @@ is not a valid PV Logger Data Folder""",
           "Not a valid PV Logger Data Folder")
         else:
             self.use_logfolder(folder)
-        self.nb.SetSelection(0)
 
     def use_logfolder(self, folder):
         self.log_folder = folder
