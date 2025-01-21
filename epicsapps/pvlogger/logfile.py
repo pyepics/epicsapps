@@ -87,6 +87,13 @@ class PVLogFile:
         nsec = (tsdt - isec).astype('timedelta64[ns]').astype(np.float64)
         self.data.mpldates = (isec.astype(np.float64) + 1.e-9*nsec)/86400.0
 
+    def set_end_time(self, tstamp):
+        last_time = self.data.timestamp[-1]
+        if tstamp > (last_time + 0.001):
+            self.data.value.append(self.data.value[-1])
+            self.data.char_value.append(self.data.char_value[-1])
+            self.data.timestamp.append(tstamp)
+            self.get_mpldates()
 
 def read_logfile(filename):
     """read a PVlogger log file
@@ -147,16 +154,28 @@ def parse_logfile(textlines, filename):
     mpldates =  None # unixts_to_mpldates(np.array(times))
     # try to parse attributes from header text
     fpath = Path(filename).absolute()
-    attrs = {'filename': fpath.name, 'pvname': 'unknown'}
+    attrs = {'filename': fpath.name, 'pvname': 'unknown', 'dtype': 'time_double'}
+    enum_strs = {}
+    enum_mode = False
     for hline in headers:
         hline = hline.strip().replace('\t', ' ')
         if len(hline) < 1:
             continue
         if hline[0] in COMMENTCHARS:
             hline = hline[1:].strip()
+        if '-----' in hline:
+            break
         if '=' in hline:
             words = hline.split('=', 1)
-            attrs[words[0].strip()] = words[1].strip()
+            if enum_mode:
+                enum_strs[int(words[0].strip())] = words[1].strip()
+            else:
+                attrs[words[0].strip()] = words[1].strip()
+        if 'enum strings' in hline:
+            enum_mode = True
+    if 'enum' in attrs['type'] and len(enum_strs) > 0:
+        attrs['enum_strs'] = enum_strs
+
     pvname = attrs.pop('pvname')
     return PVLogData(pvname=pvname,
                      filename=fpath.name,
@@ -203,6 +222,7 @@ class PVLogFolder:
         self.pvs = {}
         self.motors = []
         self.instruments = []
+        self.writer = self._writer
         self.data = {}
         if self.folder.exists():
             self.read_folder()
@@ -271,7 +291,7 @@ class PVLogFolder:
                 line = fh.readline()
                 stop_time = float(line[:-1])
         self.time_stop = stop_time
-        lfile = Path('_PVLOG_filelist.txt')
+        lfile = Path(self.folder, '_PVLOG_filelist.txt')
         self.time_start = os.stat(lfile).st_mtime
 
 
@@ -301,15 +321,16 @@ class PVLogFolder:
         print("START / STOP TIME ", self.time_start, self.time_stop)
         if verbose:
             dt = time.time()-t0
-            print(f"# read text for {len(self.pvs)} PVs, {dt:.2f} secs")
+            print(f"#read {len(self.pvs)} log files, {dt:.2f} secs")
 
+    def _writer(self, msg):
+        sys.stdout.writer(f"{msg}\n")
 
-    def parse_logfiles(self, nproc=4, nmax=None, verbose=False):
+    def parse_logfiles(self, nproc=4, nmax=None, verbose=False, writer=None):
         """parse all unparsed PV logfiles, using multiprocessing"""
-        if verbose:
-            print(f"parse log files with {nproc} processes")
+        if writer is None:
+            writer = self._writer
         t0 = time.time()
-
         # files largest to smallest
         pdata = {}
         pvlist = []
@@ -324,6 +345,10 @@ class PVLogFolder:
         if nmax is not None:
             pvlist = pvlist[:nmax]
 
+        npvs = len(pvlist)
+        if verbose:
+            writer(f"parsing {npvs} log files with {nproc} processes")
+
         # now run up to nproc processes to parse the text files
         def start_next_process(pvlist):
             for pvname in pvlist:
@@ -334,6 +359,7 @@ class PVLogFolder:
                     proc = Process(target=q_parse_logfile, args=args)
                     pdat['proc'] = proc
                     proc.start()
+                    # writer(f"# parsing {self.pvs[pvname].logfile}")
                     pdat['status'] = 'started'
                     break
 
@@ -343,6 +369,8 @@ class PVLogFolder:
         iloop = 0
         while len(pvlist) > 0:
             iloop += 1
+            writer(f"# {len(pvlist)} PVs left, {(time.time()-t0):.1f} sec" )
+
             nextpv = None
             _size = maxsize + 1
             work = []
@@ -360,7 +388,6 @@ class PVLogFolder:
             pvname = nextpv
             pdat = pdata[pvname]
             ret = None
-            # print(f"# {len(pvlist)} PVs/{(time.time()-t0):.1f} sec, check on {pvname}" )
             try:
                 ret = pdat['queue'].get(timeout=0.5)
             except:
@@ -384,10 +411,10 @@ class PVLogFolder:
                             npend +=1
                         elif stat.startswith('start'):
                             nstart +=1
-                    print(f"{len(pvlist)} PVs remaining, {nstart} in progress")
+                    writer(f"{len(pvlist)} PVs remaining, {nstart} in progress")
         if verbose:
             dt = time.time()-t0
-            print(f"# parsed files for {len(pvlist)} PVs, {dt:.2f} secs")
+            writer(f"# parsed {npvs} Log files: {dt:.2f} secs")
 
     def reset_new_logfiles(self, parse_data=False):
         """find 'new' logfiles,  read the text, and set the
