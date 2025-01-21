@@ -169,16 +169,13 @@ Matt Newville <newville@cars.uchicago.edu>
 
         rpanel = scrolled.ScrolledPanel(splitter, size=(775, 500),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
-
         rpanel.SetMinSize((775, 500))
 
         # left panel
         ltop = wx.Panel(lpanel)
-        sel_none = Button(ltop, 'Select None', size=(250, 30), action=self.onSelNone)
-        # sel_all  = Button(ltop, 'Select All',  size=(150, 30), action=self.onSelAll)
+        sel_none = Button(ltop, 'Clear Selections', size=(250, 30), action=self.onSelNone)
 
         ltsizer = wx.BoxSizer(wx.HORIZONTAL)
-        # ltsizer.Add(sel_all,  1, LEFT|wx.GROW, 1)
         ltsizer.Add(sel_none, 1, LEFT|wx.GROW, 1)
         pack(ltop, ltsizer)
 
@@ -655,7 +652,7 @@ Matt Newville <newville@cars.uchicago.edu>
         pvlog.set_end_time(self.log_folder.time_stop)
         if pvlog.data.mpldates is None:
             pvlog.get_mpldates()
-        self.write_message(f'done', panel=1)
+        self.write_message(f'got data for {pvname}', panel=1)
         if self.parse_thread is not None:
             if not self.parse_thread.is_alive():
                 self.parse_thread.join()
@@ -681,15 +678,18 @@ Matt Newville <newville@cars.uchicago.edu>
         self.subframes[wname].SetPosition((x, y))
 
     def onPlotOne(self, event=None):
-        wname = self.wids['plot_win'].GetStringSelection()
-        self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
-
         pvname = self.wids['pv1'].GetStringSelection()
         label = self.log_folder.pvs[pvname].description
 
         data = self.get_pvdata(pvname)
         if data is None:
             data = self.get_pvdata(pvname, force=True)
+        if not data.is_numeric:
+            print("not numeric data")
+            return
+
+        wname = self.wids['plot_win'].GetStringSelection()
+        self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
 
 
         col   = self.wids['col1'].GetColour()
