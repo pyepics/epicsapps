@@ -39,6 +39,7 @@ from .configfile import PVLoggerConfig
 from .logfile import read_logfile, read_logfolder, read_textfile
 
 from .plotter import PlotFrame
+from .pvtableview import PVTableFrame
 from wxmplot.colors import hexcolor
 
 from ..utils import (SelectWorkdir, DataTableGrid, get_icon, get_configfolder,
@@ -683,33 +684,35 @@ Matt Newville <newville@cars.uchicago.edu>
         data = self.get_pvdata(pvname)
         if data is None:
             data = self.get_pvdata(pvname, force=True)
+
         if not data.is_numeric:
             print("not numeric data")
-            return
+            self.show_subframe('pvtable', PVTableFrame, title=f'PVLogger PV Table')
+            self.subframes['pvtable'].add_pvpage(self.log_folder.pvs[pvname])
+        else:
+            
+            wname = self.wids['plot_win'].GetStringSelection()
+            self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
 
-        wname = self.wids['plot_win'].GetStringSelection()
-        self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
+            col   = self.wids['col1'].GetColour()
+            hcol = hexcolor(col)
 
+            opts = {'use_dates': True, 'show_legend': True,
+                    'yaxes':1, 'label': label, 'xlabel': 'time',
+                    'title':  self.log_folder.fullpath,
+                    'linewidth': 2.5, # 'marker': '+',
+                    'theme': 'white-background',
+                    'fullbox': False,
+                    'drawstyle': 'steps-post', 'colour':hcol,
+                    'ylabel': f'{label} ({pvname})' }
 
-        col   = self.wids['col1'].GetColour()
-        hcol = hexcolor(col)
-
-        opts = {'use_dates': True, 'show_legend': True,
-                'yaxes':1, 'label': label, 'xlabel': 'time',
-                'title':  self.log_folder.fullpath,
-                'linewidth': 2.5, # 'marker': '+',
-                'theme': 'white-background',
-                'fullbox': False,
-                'drawstyle': 'steps-post', 'colour':hcol,
-                'ylabel': f'{label} ({pvname})' }
-
-        self.subframes[wname].plot(data.mpldates, data.value, **opts)
-        enum_strs = data.attrs.get('enum_strs', None)
-        if enum_strs is not None:
-            self.subframes[wname].panel.set_ytick_labels(enum_strs, yaxes=1)
-            self.subframes[wname].panel.draw()
-        self.subframes[wname].Show()
-        self.subframes[wname].Raise()
+            self.subframes[wname].plot(data.mpldates, data.value, **opts)
+            enum_strs = data.attrs.get('enum_strs', None)
+            if enum_strs is not None:
+                self.subframes[wname].panel.set_ytick_labels(enum_strs, yaxes=1)
+                self.subframes[wname].panel.draw()
+            self.subframes[wname].Show()
+            self.subframes[wname].Raise()
 
     def onPlotSel(self, event=None):
         wname = self.wids['plot_win'].GetStringSelection()
