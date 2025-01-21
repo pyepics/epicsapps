@@ -28,6 +28,7 @@ class PVLogData:
     pvname: str
     filename: str
     path: str
+    is_numeric: bool
     header: []
     attrs: []
     timestamp: []
@@ -68,13 +69,12 @@ class PVLogFile:
         self.text = read_textfile(self.logfile).split('\n')
         self.mod_time = os.stat(self.logfile).st_mtime
         self.data = None
-        if parse:
-            self.data = parse_logfile(self.text, self.logfile)
+        if parse and len(self.text) > 3:
+            self.parse()
 
     def parse(self):
         """parse text to data"""
-        if len(self.text) > 5:
-            self.data = parse_logfile(self.text, self.logfile)
+        self.data = parse_logfile(self.text, self.logfile)
 
     def get_datetimes(self):
         """set datetimes to list of datetimes"""
@@ -154,7 +154,7 @@ def parse_logfile(textlines, filename):
     mpldates =  None # unixts_to_mpldates(np.array(times))
     # try to parse attributes from header text
     fpath = Path(filename).absolute()
-    attrs = {'filename': fpath.name, 'pvname': 'unknown', 'dtype': 'time_double'}
+    attrs = {'filename': fpath.name, 'pvname': 'unknown', 'type': 'time_double'}
     enum_strs = {}
     enum_mode = False
     for hline in headers:
@@ -177,8 +177,21 @@ def parse_logfile(textlines, filename):
         attrs['enum_strs'] = enum_strs
 
     pvname = attrs.pop('pvname')
+
+    ntest = 10
+    npts = max(ntest, len(vals))
+    non_float = []
+    for d in vals[:npts]:
+        try:
+            x = float(d)
+        except ValueError:
+            non_float.append(False)
+    allowed = 1 if (npts > 3*ntest/4.0) else 0
+    is_numeric = len(non_float) <= allowed
+
     return PVLogData(pvname=pvname,
                      filename=fpath.name,
+                     is_numeric=is_numeric,
                      path=fpath.as_posix(),
                      header=headers,
                      attrs=attrs,
