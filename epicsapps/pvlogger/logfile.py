@@ -29,17 +29,17 @@ class PVLogData:
     filename: str
     path: str
     is_numeric: bool
-    header: []
+    headers: []
     attrs: []
-    timestamp: []
-    datetime: []
+    timestamps: []
+    datetimes: []
     mpldates: []
-    value: []
-    char_value: []
+    values: []
+    char_values: []
     events: []
 
     def __repr__(self):
-        return f"PVLogData(pv='{self.pvname}', file='{self.filename}', npts={len(self.timestamp)})"
+        return f"PVLogData(pv='{self.pvname}', file='{self.filename}', npts={len(self.timestamps)})"
 
 
 def unixts_to_mpldates(ts):
@@ -78,21 +78,21 @@ class PVLogFile:
 
     def get_datetimes(self):
         """set datetimes to list of datetimes"""
-        self.data.datetimes = [datetime.fromtimestamp(ts) for ts in self.data.timestamp]
+        self.data.datetimes = [datetime.fromtimestamp(ts) for ts in self.data.timestamps]
 
     def get_mpldates(self):
         """set matplotlib/numpy dates"""
-        tsdt = np.array(self.data.timestamp).astype('datetime64')
+        tsdt = np.array(self.data.timestamps).astype('datetime64')
         isec = tsdt.astype('datetime64[s]')
         nsec = (tsdt - isec).astype('timedelta64[ns]').astype(np.float64)
         self.data.mpldates = (isec.astype(np.float64) + 1.e-9*nsec)/86400.0
 
     def set_end_time(self, tstamp):
-        last_time = self.data.timestamp[-1]
+        last_time = self.data.timestamps[-1]
         if tstamp > (last_time + 0.001):
-            self.data.value.append(self.data.value[-1])
-            self.data.char_value.append(self.data.char_value[-1])
-            self.data.timestamp.append(tstamp)
+            self.data.values.append(self.data.values[-1])
+            self.data.char_values.append(self.data.char_values[-1])
+            self.data.timestamps.append(tstamp)
             self.get_mpldates()
 
 def read_logfile(filename):
@@ -193,13 +193,13 @@ def parse_logfile(textlines, filename):
                      filename=fpath.name,
                      is_numeric=is_numeric,
                      path=fpath.as_posix(),
-                     header=headers,
+                     headers=headers,
                      attrs=attrs,
-                     timestamp=times,
+                     timestamps=times,
                      mpldates=mpldates,
-                     datetime=datetimes,
-                     value=vals,
-                     char_value=cvals,
+                     datetimes=datetimes,
+                     values=vals,
+                     char_values=cvals,
                      events=events)
 
 def q_parse_logfile(text, filename, queue):
@@ -229,7 +229,7 @@ class PVLogFolder:
         self.folder = Path(folder).resolve()
         self.fullpath = self.folder.as_posix()
         self.workdir = Path(workdir)
-        
+
         self.time_start = 0
         self.time_stop = None
         self.kws = kws
