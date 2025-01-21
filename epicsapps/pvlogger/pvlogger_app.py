@@ -36,10 +36,9 @@ from pyshortcuts import debugtimer, uname
 from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 
 from .configfile import PVLoggerConfig
-from .logfile import (read_logfile, read_logfolder, read_textfile,
-                      unixts_to_mpldates)
+from .logfile import read_logfile, read_logfolder, read_textfile
 
-from wxmplot import PlotPanel, PlotFrame
+from .plotter import PlotFrame
 from wxmplot.colors import hexcolor
 
 from ..utils import (SelectWorkdir, DataTableGrid, get_icon, get_configfolder,
@@ -75,40 +74,6 @@ FNB_STYLE = flat_nb.FNB_NO_X_BUTTON
 FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 
 YAML_WILDCARD = 'PVLogger Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
-
-
-
-class DateTimeCtrl(wx.Panel):
-    """
-    Simple Combined date/time control
-    """
-    def __init__(self, parent, name='datetimectrl',
-                 wxdate=None, hms=None):
-        self.name = name
-        wx.Panel.__init__(self)
-        bgcol = wx.Colour(250, 250, 250)
-
-        datestyle = wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY
-
-        self.datectrl = wx.adv.DatePickerCtrl(self, size=(120, -1),
-                                          style=datestyle)
-        self.timectrl = masked.TimeCtrl(self, -1, name=name,
-                                        limited=False,
-                                        fmt24hr=True, oob_color=bgcol)
-        timerheight = self.timectrl.GetSize().height
-        spinner = wx.SpinButton(self, -1, wx.DefaultPosition,
-                                (-1, timerheight), wx.SP_VERTICAL )
-        self.timectrl.BindSpinButton(spinner)
-        sizer = wx.BoxSizer(wx.HORIZONTAL)
-        sizer.Add(self.datectrl, 0, wx.ALIGN_CENTER)
-        sizer.Add(self.timectrl, 0, wx.ALIGN_CENTER)
-        sizer.Add(spinner, 0,  wx.ALIGN_LEFT)
-        self.SetSizer(sizer)
-        sizer.Fit(self)
-        #if wxdate is not None:
-        #    self.datectrl.SetValue(wxdate)
-        #if hms is not None:
-        #    self.timectrl.SetValue(hms)
 
 
 class PVsConnectedDialog(wx.Dialog):
@@ -209,11 +174,11 @@ Matt Newville <newville@cars.uchicago.edu>
 
         # left panel
         ltop = wx.Panel(lpanel)
-        sel_none = Button(ltop, 'Select None', size=(150, 30), action=self.onSelNone)
-        sel_all  = Button(ltop, 'Select All',  size=(150, 30), action=self.onSelAll)
+        sel_none = Button(ltop, 'Select None', size=(250, 30), action=self.onSelNone)
+        # sel_all  = Button(ltop, 'Select All',  size=(150, 30), action=self.onSelAll)
 
         ltsizer = wx.BoxSizer(wx.HORIZONTAL)
-        ltsizer.Add(sel_all,  1, LEFT|wx.GROW, 1)
+        # ltsizer.Add(sel_all,  1, LEFT|wx.GROW, 1)
         ltsizer.Add(sel_none, 1, LEFT|wx.GROW, 1)
         pack(ltop, ltsizer)
 
@@ -262,12 +227,12 @@ Matt Newville <newville@cars.uchicago.edu>
 
         title = SimpleText(panel, ' View Live PVs ', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
-        
+
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.pack()
         return panel
 
-        
+
     def make_run_panel(self):
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
@@ -291,7 +256,7 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['end_time'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
         wids['end_date'].SetValue(wx.DateTime.Now() + wx.DateSpan.Week())
         wids['end_time'].SetTime(9, 0, 0)
-               
+
         wids['config_file'] = wx.StaticText(panel, label='', size=(550, -1))
         wids['data_folder'] = wx.TextCtrl(panel, value='', size=(400, -1))
         wids['pvlog_folder'] = wx.TextCtrl(panel, value=PVLOG_FOLDER, size=(400, -1))
@@ -315,10 +280,10 @@ Matt Newville <newville@cars.uchicago.edu>
         coldefs  = ['', '<auto>', '<auto>', 1]
 
         wids['pv_table'] = DataTableGrid(panel, nrows=10,
-                                           collabels=collabels,
-                                           datatypes=coltypes,
-                                           defaults=coldefs,
-                                           colsizes=colsizes, rowlabelsize=40)
+                                         collabels=collabels,
+                                         datatypes=coltypes,
+                                         defaults=coldefs,
+                                         colsizes=colsizes, rowlabelsize=40)
         wids['pv_table'].SetMinSize((750, 200))
         wids['pv_table'].EnableEditing(True)
 
@@ -342,7 +307,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(slabel(' End Date&Time: ', size=(150, -1)), dcol=1, newrow=True)
         panel.Add(wids['end_date'])
         panel.Add(wids['end_time'])
-        
+
         panel.Add((5, 5))
         panel.Add(btn_check, dcol=1, newrow=True)
         panel.Add(btn_save, dcol=1)
@@ -488,15 +453,15 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def onSaveConfiguration(self, event=None):
         "save config file"
-        wids = self.wids        
+        wids = self.wids
         workdir =  wids['data_folder'].GetValue()
-        
+
         fname = Path(wids['config_file'].GetLabel()).name
         dlg = wx.FileDialog(self,
                             message='Save PVLogger Configuration',
                             wildcard=YAML_WILDCARD,
                             defaultFile=fname,
-                            defaultDir=workdir, 
+                            defaultDir=workdir,
                         style=wx.FD_SAVE|wx.FD_CHANGE_DIR)
         fout = None
         if dlg.ShowModal() == wx.ID_OK:
@@ -509,7 +474,7 @@ Matt Newville <newville@cars.uchicago.edu>
         dtime = wids['end_time'].GetValue()
         dt = datetime(ddate.GetYear(), 1+ddate.GetMonth(), ddate.GetDay(),
                       dtime.GetHour(), dtime.GetMinute(), 0)
-    
+
         pvs = []
         for row in self.wids['pv_table'].table.data:
             name, desc, mdel, use = row
@@ -521,15 +486,15 @@ Matt Newville <newville@cars.uchicago.edu>
             iname, use, npvs = row
             if use:
                 insts.append(iname)
-                
-        config = {'workdir': workdir, 
+
+        config = {'workdir': workdir,
                   'folder': wids['pvlog_folder'].GetValue(),
                   'end_datetime': datetime.isoformat(dt, sep=' '),
                   'pvs': pvs, 'instruments': insts}
-        
+
         with open(output, 'w') as fh:
             yaml.dump(config, fh, default_flow_style=False)
-        
+
     def onStartCollection(self, event=None):
         print("start collection")
 
@@ -616,7 +581,7 @@ Matt Newville <newville@cars.uchicago.edu>
         dlg.Destroy()
         if path is None:
             return
-        os.chdir(path.parent)        
+        os.chdir(path.parent)
         self.wids['config_file'].SetLabel(path.as_posix())
         self.config_file = path.as_posix()
         cfile = PVLoggerConfig(path)
@@ -645,7 +610,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 pvlist.append([name, desc, mdel, True])
         self.set_pv_table(pvlist)
         self.nb.SetSelection(1)
-        
+
     def onSelectInstPVs(self, event=None):
         iname = self.wids['instruments'].GetStringSelection()
         self.pvlist.select_none()
@@ -653,7 +618,8 @@ Matt Newville <newville@cars.uchicago.edu>
 
 
     def onUpdatePlot(self, event=None):
-        print("update plot ")
+        print("update plot ? ")
+
 
     def onSelNone(self, event=None):
         self.pvlist.select_none()
@@ -686,6 +652,7 @@ Matt Newville <newville@cars.uchicago.edu>
         if pvlog.data is None:
             self.write_message(f'parsing data for {pvname} ... ', panel=1)
             pvlog.parse()
+        pvlog.set_end_time(self.log_folder.time_stop)
         if pvlog.data.mpldates is None:
             pvlog.get_mpldates()
         self.write_message(f'done', panel=1)
@@ -724,12 +691,7 @@ Matt Newville <newville@cars.uchicago.edu>
         if data is None:
             data = self.get_pvdata(pvname, force=True)
 
-        if len(data.value) == 1 and self.log_folder.time_stop is not None:
-            data.value.append(data.value[0])
-            mpl_ts = unixts_to_mpldates(self.log_folder.time_stop)
-            print("ADD DATA ", mpl_ts)
-            data.mpldates.append(mpl_ts[0])
-        
+
         col   = self.wids['col1'].GetColour()
         hcol = hexcolor(col)
 
@@ -738,19 +700,25 @@ Matt Newville <newville@cars.uchicago.edu>
                 'title':  self.log_folder.fullpath,
                 'linewidth': 2.5, # 'marker': '+',
                 'theme': 'white-background',
+                'fullbox': False,
                 'drawstyle': 'steps-post', 'colour':hcol,
                 'ylabel': f'{label} ({pvname})' }
         # print("Plot 1  start ", len(data.value), time.ctime())
         self.subframes[wname].plot(data.mpldates, data.value, **opts)
+        enum_strs = data.attrs.get('enum_strs', None)
+        if enum_strs is not None:
+            self.subframes[wname].panel.set_ytick_labels(enum_strs, yaxes=1)
+
         self.subframes[wname].Show()
         self.subframes[wname].Raise()
-
 
     def onPlotSel(self, event=None):
         wname = self.wids['plot_win'].GetStringSelection()
         self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
         pframe = self.subframes[wname]
         yaxes = 0
+        tmin = None
+        tmax = None
         for i in range(4):
             pvname = self.wids[f'pv{i+1}'].GetStringSelection()
             if pvname == 'None':
@@ -758,28 +726,46 @@ Matt Newville <newville@cars.uchicago.edu>
 
             yaxes += 1
             label = self.log_folder.pvs[pvname].description
+            if len(label) < 1:
+                label = pvname
+                ylabel = pvname
+            else:
+                ylabel = f'{label} ({pvname})'
+
             data = self.get_pvdata(pvname)
             if data is None:
                 data = self.get_pvdata(pvname, force=True)
 
-
+            # print("YAXES ", yaxes, pvname, label, len(label))
             col   = self.wids[f'col{i+1}'].GetColour()
             hcol = hexcolor(col)
 
             opts = {'use_dates': True, 'show_legend': True,
-                    'yaxes_tracecolor': True,
-                    'yaxes':yaxes, 'label': label, 'xlabel': 'time',
+                    'yaxes_tracecolor': True,  'yaxes':yaxes,
+                    'label': label, 'xlabel': 'time',
                     'title':  self.log_folder.fullpath,
                     'linewidth': 2.5, # 'marker': '+',
                     'theme': 'white-background',
+                    'fullbox': False,
                     'drawstyle': 'steps-post', 'colour':hcol}
             plot = pframe.oplot
+
             if yaxes == 1:
                 plot = pframe.plot
-                opts['ylabel'] = f'{label} ({pvname})'
+                opts['ylabel'] = ylabel
+                tmin = min(data.mpldates)
+                tmax = max(data.mpldates)
             else:
-                opts[f'y{yaxes}label'] = f'{label} ({pvname})'
+                opts[f'y{yaxes}label'] = ylabel
+                tmin = min(tmin, min(data.mpldates))
+                tmax = max(tmax, max(data.mpldates))
+
             plot(data.mpldates, data.value, **opts)
+            enum_strs = data.attrs.get('enum_strs', None)
+            if enum_strs is not None:
+                pframe.panel.set_ytick_labels(enum_strs, yaxes=yaxes)
+
+        pframe.panel.draw()
         self.subframes[wname].Show()
         self.subframes[wname].Raise()
 
@@ -823,7 +809,7 @@ Matt Newville <newville@cars.uchicago.edu>
         dlg.Destroy()
         if path is None or not path.exists():
             return
-        self.nb.SetSelection(0)        
+        self.nb.SetSelection(0)
         folder = None
         try:
             folder = read_logfolder(path)
@@ -870,7 +856,9 @@ is not a valid PV Logger Data Folder""",
         self.log_folder.read_all_logs_text()
         self.write_message('ready')
         self.write_message(' ', panel=1)
-        self.parse_thread = Thread(target=self.log_folder.parse_logfiles)
+        self.parse_thread = Thread(target=self.log_folder.parse_logfiles,
+                                   kwargs={'verbose': True, 'nproc': 8,
+                                           'writer': partial(self.write_message, panel=1)})
         self.parse_thread.start()
 
 
