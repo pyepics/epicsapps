@@ -229,6 +229,7 @@ class PVLogFolder:
         self.folder = Path(folder).resolve()
         self.fullpath = self.folder.as_posix()
         self.workdir = Path(workdir)
+        
         self.time_start = 0
         self.time_stop = None
         self.kws = kws
@@ -252,7 +253,7 @@ class PVLogFolder:
         if not self.folder.exists():
             raise ValueError(f"'{self.folder}' - does not exist")
         # list of logfiles
-        filelist = Path(self.folder, '_PVLOG_filelist.txt')
+        filelist = Path(self.folder, '_PVLOG_filelist.txt').absolute()
         if not filelist.exists():
             raise ValueError(f"'{self.folder}' is not a valid PVlog folder: no file list")
 
@@ -291,8 +292,6 @@ class PVLogFolder:
                                          description=words[1],
                                          monitor_delta=words[2])
 
-        self.folder = Path(conf['folder'])
-        self.workdir = Path(conf['workdir'])
         self.motors = conf['motors']
         self.instruments = conf['instruments']
 
@@ -331,7 +330,7 @@ class PVLogFolder:
             pv.mod_time = os.stat(pv.logfile).st_mtime
             if verbose:
                 print(f'{pvname} : {len(pv.text)}')
-        print("START / STOP TIME ", self.time_start, self.time_stop)
+        # print("START / STOP TIME ", self.time_start, self.time_stop)
         if verbose:
             dt = time.time()-t0
             print(f"#read {len(self.pvs)} log files, {dt:.2f} secs")
