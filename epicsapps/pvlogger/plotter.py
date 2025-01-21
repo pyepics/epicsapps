@@ -68,6 +68,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.user_menus = user_menus
         self.with_data_process = with_data_process
         self.size = size
+        self.events = []
         self.panelkws = {'dpi': dpi}
         if panelkws is not None:
             self.panelkw.update(panelkws)
@@ -145,7 +146,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
                          'with_data_process': self.with_data_process,
                          'theme': self.theme})
 
-        splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
+        splitter = wx.SplitterWindow(self, style=wx.SP_3DSASH|wx.SP_LIVE_UPDATE)
         splitter.SetMinimumPaneSize(25)
 
         top = wx.Panel(splitter)
@@ -153,9 +154,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         top.SetMinSize((500, 500))
         bot.SetMinSize((500, 50))
 
-
         self.panel = PlotPanel(top, **panelkws)
-        # self.toolbar = NavigationToolbar(self.panel.canvas)
         self.panel.messenger = self.write_message
         self.panel.nstatusbar = sbar.GetFieldsCount()
 
@@ -163,7 +162,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
         sizer.Add(self.panel, 1, LEFT|wx.GROW|wx.ALL|wx.EXPAND)
         pack(top, sizer)
 
-        self.events = []
         etab =self.events_table = dv.DataViewListCtrl(bot,
                                    style=dv.DV_SINGLE|dv.DV_VERT_RULES|dv.DV_ROW_LINES)
 
