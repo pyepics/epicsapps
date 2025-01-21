@@ -75,7 +75,6 @@ FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 
 YAML_WILDCARD = 'PVLogger Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
 
-
 class PVsConnectedDialog(wx.Dialog):
     def __init__(self, parent, pvdict, **kws):
         self.parent = parent
@@ -703,12 +702,12 @@ Matt Newville <newville@cars.uchicago.edu>
                 'fullbox': False,
                 'drawstyle': 'steps-post', 'colour':hcol,
                 'ylabel': f'{label} ({pvname})' }
-        # print("Plot 1  start ", len(data.value), time.ctime())
+
         self.subframes[wname].plot(data.mpldates, data.value, **opts)
         enum_strs = data.attrs.get('enum_strs', None)
         if enum_strs is not None:
             self.subframes[wname].panel.set_ytick_labels(enum_strs, yaxes=1)
-
+            self.subframes[wname].panel.draw()
         self.subframes[wname].Show()
         self.subframes[wname].Raise()
 
