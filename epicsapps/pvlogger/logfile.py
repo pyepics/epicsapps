@@ -41,6 +41,18 @@ class PVLogData:
     def __repr__(self):
         return f"PVLogData(pv='{self.pvname}', file='{self.filename}', npts={len(self.timestamps)})"
 
+    def get_datetimes(self):
+        """set datetimes to list of datetimes"""
+        self.datetimes = [datetime.fromtimestamp(ts) for ts in self.timestamps]
+        return self.datetimes
+
+    def get_mpldates(self):
+        """set matplotlib/numpy dates"""
+        tsdt = np.array(self.timestamps).astype('datetime64')
+        isec = tsdt.astype('datetime64[s]')
+        nsec = (tsdt - isec).astype('timedelta64[ns]').astype(np.float64)
+        self.mpldates = (isec.astype(np.float64) + 1.e-9*nsec)/86400.0
+        return self.mpldates
 
 def unixts_to_mpldates(ts):
     "convert array of unix timestamps to MPL dates"
@@ -78,14 +90,11 @@ class PVLogFile:
 
     def get_datetimes(self):
         """set datetimes to list of datetimes"""
-        self.data.datetimes = [datetime.fromtimestamp(ts) for ts in self.data.timestamps]
+        return self.data.get_datetimes()
 
     def get_mpldates(self):
         """set matplotlib/numpy dates"""
-        tsdt = np.array(self.data.timestamps).astype('datetime64')
-        isec = tsdt.astype('datetime64[s]')
-        nsec = (tsdt - isec).astype('timedelta64[ns]').astype(np.float64)
-        self.data.mpldates = (isec.astype(np.float64) + 1.e-9*nsec)/86400.0
+        return self.data.get_mpldates()
 
     def set_end_time(self, tstamp):
         last_time = self.data.timestamps[-1]
