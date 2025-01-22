@@ -11,6 +11,7 @@ from functools import partial
 from collections import namedtuple
 from datetime import datetime
 from matplotlib.dates import date2num
+import pytz
 import yaml
 
 import wx
@@ -36,7 +37,7 @@ from pyshortcuts import debugtimer, uname
 from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 
 from .configfile import PVLoggerConfig
-from .logfile import read_logfile, read_logfolder, read_textfile
+from .logfile import read_logfile, read_logfolder, read_textfile, TZONE
 
 from .plotter import PlotFrame
 from .pvtableview import PVTableFrame
@@ -83,7 +84,8 @@ PLOTOPTS = {'use_dates': True, 'show_legend': True,
             'theme': 'white-background',
             'fullbox': False,
             'drawstyle': 'steps-post',
-             'yaxes_tracecolor': True}
+             'yaxes_tracecolor': True,
+             'timezone': TZONE }
 
 
 class PVsConnectedDialog(wx.Dialog):
@@ -706,7 +708,8 @@ Matt Newville <newville@cars.uchicago.edu>
             title = Path(ppath.parent.stem, ppath.stem).as_posix()
 
             opts = {'yaxes':1,  'label': label, 'title': title,
-                    'colour':hcol, 'ylabel': f'{label} ({pvname})' }
+                    'colour':hcol, 'ylabel': f'{label} ({pvname})'}
+
             opts.update(PLOTOPTS)
 
             pwin.plot(data.mpldates, data.values, **opts)
