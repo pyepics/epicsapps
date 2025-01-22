@@ -26,7 +26,7 @@ PlotWindowChoices = [f'Window {i+1}' for i in range(10)]
 
 def dtformat(dt):
     msec = round(0.001*dt.microsecond)
-    return datetime.strftime(dt, "%Y-%m-%d %H:%M:%S") + f'.{msec}')
+    return datetime.strftime(dt, "%Y-%m-%d %H:%M:%S") + f'.{msec}'
 
 class PVLogDataModel(dv.DataViewIndexListModel):
     def __init__(self, pvlogdata):
