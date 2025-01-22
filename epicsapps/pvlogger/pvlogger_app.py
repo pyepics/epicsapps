@@ -76,6 +76,16 @@ FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 
 YAML_WILDCARD = 'PVLogger Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
 
+
+PLOTOPTS = {'use_dates': True, 'show_legend': True,
+            'xlabel': 'time', 'linewidth': 2.5,
+            'marker': '+', 'markersize': 2.5,
+            'theme': 'white-background',
+            'fullbox': False,
+            'drawstyle': 'steps-post',
+             'yaxes_tracecolor': True}
+
+
 class PVsConnectedDialog(wx.Dialog):
     def __init__(self, parent, pvdict, **kws):
         self.parent = parent
@@ -143,8 +153,8 @@ Matt Newville <newville@cars.uchicago.edu>
     def __init__(self, configfile=None):
 
         self.parent = None
-        wx.Frame.__init__(self, None, -1, 'Epics PV Logger Application',
-                          style=FRAME_STYLE, size=(1050, 550))
+        wx.Frame.__init__(self, None, -1, 'Epics PV Logger',
+                          style=FRAME_STYLE, size=(1100, 650))
 
         self.plot_windows = []
         self.pvs = []
@@ -162,14 +172,14 @@ Matt Newville <newville@cars.uchicago.edu>
         self.build_menus()
 
         splitter = wx.SplitterWindow(self, style=wx.SP_LIVE_UPDATE)
-        splitter.SetMinimumPaneSize(225)
+        splitter.SetMinimumPaneSize(200)
 
         lpanel = wx.Panel(splitter)
-        lpanel.SetMinSize((325, 500))
+        lpanel.SetMinSize((275, 500))
 
-        rpanel = scrolled.ScrolledPanel(splitter, size=(775, 500),
-                                       style=wx.GROW|wx.TAB_TRAVERSAL)
-        rpanel.SetMinSize((775, 500))
+        rpanel = scrolled.ScrolledPanel(splitter)
+        rpanel.SetSize((775, 500))
+        rpanel.SetMinSize((500, 500))
 
         # left panel
         ltop = wx.Panel(lpanel)
@@ -180,8 +190,7 @@ Matt Newville <newville@cars.uchicago.edu>
         pack(ltop, ltsizer)
 
         self.pvlist = FileCheckList(lpanel, main=self,
-                                      select_action=self.onShowPV,
-                                      remove_action=self.onRemovePV)
+                                      select_action=self.onShowPV)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(ltop, 0, LEFT|wx.GROW, 1)
         sizer.Add(self.pvlist, 1, LEFT|wx.GROW|wx.ALL, 1)
@@ -210,11 +219,6 @@ Matt Newville <newville@cars.uchicago.edu>
         rpanel.SetupScrolling()
 
         splitter.SplitVertically(lpanel, rpanel, 1)
-        mainsizer = wx.BoxSizer(wx.VERTICAL)
-        mainsizer.Add(splitter, 1, wx.GROW|wx.ALL, 5)
-        pack(self, mainsizer)
-        self.SetSize((1150, 700))
-        self.Show()
         self.Raise()
         self.ShowPlotWin1()
 
@@ -339,8 +343,8 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.last_plot_type = 'one'
         opts = {'size': (175, -1)}
-        wids['plotone'] = Button(panel, 'Plot PV 1 ', action=self.onPlotOne, **opts)
-        wids['plotsel'] = Button(panel, 'Plot Selected ', action=self.onPlotSel, **opts)
+        wids['plotone'] = Button(panel, 'Show PV 1 ', action=self.onPlotOne, **opts)
+        wids['plotsel'] = Button(panel, 'Show Selected ', action=self.onPlotSel, **opts)
 
         wids['plot_win']  = Choice(panel, choices=PlotWindowChoices, **opts)
         wids['plot_win'].SetStringSelection('1')
@@ -427,9 +431,15 @@ Matt Newville <newville@cars.uchicago.edu>
                 shown = True
             except:
                 del self.subframes[name]
+                return None
         if not shown:
             self.subframes[name] = frameclass(self, **opts)
             self.subframes[name].Raise()
+        return self.subframes[name]
+
+    def show_plotwin(self, name, **opts):
+        opts['title'] = f'Epics PV Logger Plot {name}'
+        return self.show_subframe(name, PlotFrame, **opts)
 
     def onCheckPVs(self, event=None):
         instruments = get_instruments()
@@ -625,9 +635,6 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvlist.select_all()
 
 
-    def onRemovePV(self, dname=None, event=None):
-        print("Remove PV")
-
     def onShowPV(self, event=None, label=None):
         pvname = event.GetString()
         self.wids['pv1'].SetStringSelection(pvname)
@@ -661,7 +668,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def ShowPlotWin1(self, event=None):
         wname = 'Window 1'
-        self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
+        pwin = self.show_plotwin(wname)
 
         xpos, ypos = self.GetPosition()
         xsiz, ysiz = self.GetSize()
@@ -675,7 +682,7 @@ Matt Newville <newville@cars.uchicago.edu>
         xx, yy  = self.subframes[wname].GetPosition()
         x = int((2*x + xx)/3.0)
         y = int((2*y + yy)/3.0)
-        self.subframes[wname].SetPosition((x, y))
+        pwin.SetPosition((x, y))
 
     def onPlotOne(self, event=None):
         pvname = self.wids['pv1'].GetStringSelection()
@@ -686,90 +693,88 @@ Matt Newville <newville@cars.uchicago.edu>
             data = self.get_pvdata(pvname, force=True)
 
         if not data.is_numeric:
-            print("not numeric data")
-            self.show_subframe('pvtable', PVTableFrame, title=f'PVLogger PV Table')
-            self.subframes['pvtable'].add_pvpage(self.log_folder.pvs[pvname])
+            self.show_subframe('pvtable', PVTableFrame,
+                               title=f'Epics PV Logger Table')
+            self.subframes['pvtable'].add_pvpage(data)
         else:
-            
             wname = self.wids['plot_win'].GetStringSelection()
-            self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
+            pwin = self.show_plotwin(wname)
 
             col   = self.wids['col1'].GetColour()
             hcol = hexcolor(col)
+            ppath = Path(self.log_folder.fullpath)
+            title = Path(ppath.parent.stem, ppath.stem).as_posix()
 
-            opts = {'use_dates': True, 'show_legend': True,
-                    'yaxes':1, 'label': label, 'xlabel': 'time',
-                    'title':  self.log_folder.fullpath,
-                    'linewidth': 2.5, # 'marker': '+',
-                    'theme': 'white-background',
-                    'fullbox': False,
-                    'drawstyle': 'steps-post', 'colour':hcol,
-                    'ylabel': f'{label} ({pvname})' }
+            opts = {'yaxes':1,  'label': label, 'title': title,
+                    'colour':hcol, 'ylabel': f'{label} ({pvname})' }
+            opts.update(PLOTOPTS)
 
-            self.subframes[wname].plot(data.mpldates, data.value, **opts)
+            pwin.plot(data.mpldates, data.values, **opts)
             enum_strs = data.attrs.get('enum_strs', None)
             if enum_strs is not None:
-                self.subframes[wname].panel.set_ytick_labels(enum_strs, yaxes=1)
-                self.subframes[wname].panel.draw()
-            self.subframes[wname].Show()
-            self.subframes[wname].Raise()
+                pwin.panel.set_ytick_labels(enum_strs, yaxes=1)
+                pwin.panel.draw()
+            pwin.Show()
+            pwin.Raise()
 
     def onPlotSel(self, event=None):
         wname = self.wids['plot_win'].GetStringSelection()
-        self.show_subframe(wname, PlotFrame, title=f'PVLogger Plot {wname}')
-        pframe = self.subframes[wname]
+        pframe = self.show_plotwin(wname)
         yaxes = 0
         tmin = None
         tmax = None
+        plotted = False
         for i in range(4):
             pvname = self.wids[f'pv{i+1}'].GetStringSelection()
             if pvname == 'None':
                 continue
 
-            yaxes += 1
-            label = self.log_folder.pvs[pvname].description
-            if len(label) < 1:
-                label = pvname
-                ylabel = pvname
-            else:
-                ylabel = f'{label} ({pvname})'
-
             data = self.get_pvdata(pvname)
             if data is None:
                 data = self.get_pvdata(pvname, force=True)
 
-            # print("YAXES ", yaxes, pvname, label, len(label))
-            col   = self.wids[f'col{i+1}'].GetColour()
-            hcol = hexcolor(col)
-
-            opts = {'use_dates': True, 'show_legend': True,
-                    'yaxes_tracecolor': True,  'yaxes':yaxes,
-                    'label': label, 'xlabel': 'time',
-                    'title':  self.log_folder.fullpath,
-                    'linewidth': 2.5, # 'marker': '+',
-                    'theme': 'white-background',
-                    'fullbox': False,
-                    'drawstyle': 'steps-post', 'colour':hcol}
-            plot = pframe.oplot
-
-            if yaxes == 1:
-                plot = pframe.plot
-                opts['ylabel'] = ylabel
-                tmin = min(data.mpldates)
-                tmax = max(data.mpldates)
+            if not data.is_numeric:
+                self.show_subframe('pvtable', PVTableFrame,
+                            title=f'Epics PV Logger Table')
+                self.subframes['pvtable'].add_pvpage(data)
             else:
-                opts[f'y{yaxes}label'] = ylabel
-                tmin = min(tmin, min(data.mpldates))
-                tmax = max(tmax, max(data.mpldates))
+                yaxes += 1
+                label = self.log_folder.pvs[pvname].description
+                if len(label) < 1:
+                    label = pvname
+                    ylabel = pvname
+                else:
+                    ylabel = f'{label} ({pvname})'
 
-            plot(data.mpldates, data.value, **opts)
-            enum_strs = data.attrs.get('enum_strs', None)
-            if enum_strs is not None:
-                pframe.panel.set_ytick_labels(enum_strs, yaxes=yaxes)
+                col   = self.wids[f'col{i+1}'].GetColour()
+                hcol = hexcolor(col)
+                ppath = Path(self.log_folder.fullpath)
+                title = Path(ppath.parent.stem, ppath.stem).as_posix()
 
-        pframe.panel.draw()
-        self.subframes[wname].Show()
-        self.subframes[wname].Raise()
+                opts = {'colour':hcol, 'yaxes':yaxes,
+                        'label': label, 'title':  title}
+                opts.update(PLOTOPTS)
+                plot = pframe.oplot
+
+                if yaxes == 1:
+                    plot = pframe.plot
+                    opts['ylabel'] = ylabel
+                    tmin = min(data.mpldates)
+                    tmax = max(data.mpldates)
+                else:
+                    opts[f'y{yaxes}label'] = ylabel
+                    tmin = min(tmin, min(data.mpldates))
+                    tmax = max(tmax, max(data.mpldates))
+
+                plot(data.mpldates, data.values, **opts)
+                enum_strs = data.attrs.get('enum_strs', None)
+                if enum_strs is not None:
+                    pframe.panel.set_ytick_labels(enum_strs, yaxes=yaxes)
+                plotted = True
+        if plotted:
+            pframe.panel.draw()
+            pframe.Show()
+            pframe.Raise()
 
     def build_menus(self):
         mdata = wx.Menu()
