@@ -219,7 +219,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
             xline = self.panel.add_vline(evdat['mpldate'],
                                          color=evdat['color'],
                                          report_data=evdat)
-            print("Added ELine ", xline)
             self.event_lines.append(xline)
 
     def clear_events(self, event=None):
@@ -233,6 +232,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
                 pass
         self.event_lines = []
         self.events = []
+        self.panel.conf.marker_report_data = []
         self.panel.canvas.draw()
 
     def reshow_events(self, event=None):
