@@ -14,6 +14,8 @@ from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      Choice, FileSave, FileCheckList, LEFT, RIGHT, pack,
                      FRAMESTYLE, LEFT)
 
+from wxmplot.colors import hexcolor
+
 DVSTYLE = dv.DV_SINGLE|dv.DV_VERT_RULES|dv.DV_ROW_LINES
 
 
@@ -137,7 +139,8 @@ class PVTablePanel(wx.Panel) :
 
     def onShowSelected(self, event=None):
         plotwin = self.choose_pwin.GetStringSelection()
-        color = self.btn_color.GetColour()
+        color = hexcolor(self.btn_color.GetColour())
+
         if plotwin not in self.parent.subframes:
             plotwin = 'Window 1'
         pwin = self.parent.show_plotwin(plotwin)
