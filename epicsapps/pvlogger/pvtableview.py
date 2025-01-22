@@ -173,7 +173,6 @@ class PVTableFrame(wx.Frame) :
         self.Raise()
 
     def add_pvpage(self, pvlogdata):
-        print("Add PV Page ", pvlogdata)
         pages = self.get_panels()
         pvname = pvlogdata.pvname
         if pvname in pages:
