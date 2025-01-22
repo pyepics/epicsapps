@@ -206,7 +206,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.Show()
 
     def add_event(self, eventdata):
-        print("Add event to event table ", eventdata)
         self.panel.add_vline(eventdata['mpldate'],
                              report_data=eventdata,
                              color=eventdata['color'])
@@ -223,11 +222,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
                 wids['pv_0'].SetLabel(edata['name'])
                 wids['dt_0'].SetLabel(edata['datetime'])
                 wids['val_0'].SetLabel(edata['value'])
-
-
-
-        # self.write_message(rmsg, panel=0)
-
 
     def onClearSelections(self, event=None):
         print("clear selections")
