@@ -143,6 +143,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             w, h = self.size
             h = int(0.8*h)
             panelkws.update({'size': (w, h)})
+
         panelkws.update({'output_title': self.output_title,
                          'with_data_process': self.with_data_process,
                          'theme': self.theme})
@@ -205,10 +206,14 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.SetSize((w0+5, h0+10))
         self.Show()
 
-    def add_event(self, eventdata):
-        self.panel.add_vline(eventdata['mpldate'],
-                             report_data=eventdata,
-                             color=eventdata['color'])
+
+    def add_event(self, evdat):
+        h = (evdat['mpldate'], evdat['name'],  evdat['value'])
+        if h not in self.events:
+            self.events.append(h)
+            self.panel.add_vline(evdat['mpldate'], color=evdat['color'],
+                                report_data=evdat)
+
 
     def onCursor(self, x=None, y=None, message='', marker_data=None, **kws):
         if marker_data is not None:
