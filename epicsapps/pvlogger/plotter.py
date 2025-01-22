@@ -70,6 +70,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.with_data_process = with_data_process
         self.size = size
         self.events = []
+        self.event_lines = []
         self.panelkws = {'dpi': dpi}
         if panelkws is not None:
             self.panelkw.update(panelkws)
@@ -171,7 +172,11 @@ Matt Newville <newville@cars.uchicago.edu>"""
         def txt(label, wid):
             return SimpleText(bpanel, label, size=(wid, -1), style=LEFT)
 
-        bpanel.Add(txt(' Events: ', 400), dcol=3, newrow=True)
+        clear_btn = Button(bpanel, 'Clear Events', size=(175, -1),
+                           action=self.clear_events)
+
+        bpanel.Add(txt(' Events: ', 400), dcol=2, newrow=True)
+        bpanel.Add(clear_btn, dcol=1)
         bpanel.Add((5, 5))
         bpanel.Add(txt(' PV Name ', 250), newrow=True)
         bpanel.Add(txt(' Date/Time ', 200))
@@ -179,7 +184,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         bpanel.Add((5, 5))
         bpanel.Add(HLine(bpanel, size=(800, 3)), dcol=3, newrow=True)
         bpanel.Add((5, 5))
-        for i in range(3):
+        for i in range(5):
             wids[f'pv_{i}']  = txt(' - ', 250)
             wids[f'dt_{i}']  = txt(' - ', 200)
             wids[f'val_{i}'] = txt(' - ', 450)
@@ -211,9 +216,30 @@ Matt Newville <newville@cars.uchicago.edu>"""
         h = (evdat['mpldate'], evdat['name'],  evdat['value'])
         if h not in self.events:
             self.events.append(h)
-            self.panel.add_vline(evdat['mpldate'], color=evdat['color'],
-                                report_data=evdat)
+            xline = self.panel.add_vline(evdat['mpldate'],
+                                         color=evdat['color'],
+                                         report_data=evdat)
+            print("Added ELine ", xline)
+            self.event_lines.append(xline)
 
+    def clear_events(self, event=None):
+        for i in (4, 3, 2, 1, 0):
+            for a in ('pv', 'dt', 'val'):
+                self.wids[f'{a}_{i}'].SetLabel('-')
+        for lx in self.event_lines:
+            try:
+                lx.remove()
+            except:
+                pass
+        self.event_lines = []
+        self.events = []
+        self.panel.canvas.draw()
+
+    def reshow_events(self, event=None):
+        events = self.events[:]
+        self.events = []
+        for evdat in events:
+            self.add_event(evdat)
 
     def onCursor(self, x=None, y=None, message='', marker_data=None, **kws):
         if marker_data is not None:
@@ -221,15 +247,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
             for mdata in marker_data:
                 x, y, label, edata = mdata
                 # push old events
-                for i in (2, 1):
+                for i in (4, 3, 2, 1):
                     for a in ('pv', 'dt', 'val'):
                         wids[f'{a}_{i}'].SetLabel(wids[f'{a}_{i-1}'].GetLabel())
                 wids['pv_0'].SetLabel(edata['name'])
                 wids['dt_0'].SetLabel(edata['datetime'])
                 wids['val_0'].SetLabel(edata['value'])
-
-    def onClearSelections(self, event=None):
-        print("clear selections")
 
 
     def Build_FileMenu(self, extras=None):
