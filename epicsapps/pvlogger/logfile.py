@@ -56,7 +56,7 @@ class PVLogData:
         """set matplotlib/numpy dates"""
         if (self.mpldates is None or
                 len(self.mpldates) < len(self.timestamps)):
-            self.mpldates = nparray(self.timestamps)/86400.0
+            self.mpldates = np.array(self.timestamps)/86400.0
         return self.mpldates
 
 class PVLogFile:
