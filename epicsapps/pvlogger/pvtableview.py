@@ -26,7 +26,7 @@ PlotWindowChoices = [f'Window {i+1}' for i in range(10)]
 
 def dtformat(dt):
     msec = round(0.001*dt.microsecond)
-    return datetime.strftime(dt, "%Y-%m-%d %H:%M:%S") + f'.{msec}'
+    return datetime.strftime(dt, "%Y-%m-%d %H:%M:%S") + f'.{msec:03d}'
 
 class PVLogDataModel(dv.DataViewIndexListModel):
     def __init__(self, pvlogdata):
@@ -99,8 +99,8 @@ class PVTablePanel(wx.Panel) :
         self.choose_pwin  = Choice(panel, choices=PlotWindowChoices, size=(175, -1))
 
         for icol, dat in enumerate((('Select', 75),
-                                    ('Date/Time', 200),
-                                    ('Value',     300))):
+                                    ('Date/Time', 250),
+                                    ('Value',     350))):
             title, width = dat
             kws = {'width': width}
             add_col = self.dvc.AppendTextColumn
@@ -155,7 +155,6 @@ class PVTablePanel(wx.Panel) :
     def onClearAll(self, event=None):
         self.model.ClearAll()
 
-
 class PVTableFrame(wx.Frame) :
     """View Table of PV Values"""
     def __init__(self, parent=None, pvlogdata=None,
@@ -176,7 +175,7 @@ class PVTableFrame(wx.Frame) :
         pages = self.get_panels()
         pvname = pvlogdata.pvname
         if pvname in pages:
-            self.nb.SetSelect(pages[pvname])
+            self.nb.SetSelection(pages[pvname])
         else:
             npanel = self.nb.GetPageCount()
             panel = PVTablePanel(parent=self.parent, npanel=npanel,
