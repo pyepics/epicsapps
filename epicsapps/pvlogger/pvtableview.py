@@ -130,7 +130,7 @@ class PVTablePanel(wx.Panel) :
         plotwin = self.choose_pwin.GetStringSelection()
         if plotwin not in self.parent.subframes:
             plotwin = 'Window 1'
-        pwin = self.show_plotwin(plotwin)
+        pwin = self.parent.show_plotwin(plotwin)
 
         pdat = self.pvlogdata
         for i, row in enumerate(self.model.data):
@@ -164,7 +164,7 @@ class PVTableFrame(wx.Frame) :
         if pvname in pages:
             self.nb.SetSelect(pages[pvname])
         else:
-            panel = PVTablePanel(self, pvlogdata=pvlogdata)
+            panel = PVTablePanel(parent=self.parent, pvlogdata=pvlogdata)
             self.nb.AddPage(panel, pvname, True)
             self.nb.SetSelection(self.nb.GetPageCount()-1)
 
