@@ -307,9 +307,6 @@ class PVLogFolder:
                 line = fh.readline()
                 stop_time = float(line[:-1])
         self.time_stop = stop_time
-        lfile = Path(self.folder, '_PVLOG_filelist.txt')
-        self.time_start = os.stat(lfile).st_mtime
-
 
     def _logfiles_sizeorder(self, reverse=False):
         """return list of PVs ordered by increasing size of logfiles
@@ -327,14 +324,21 @@ class PVLogFolder:
         """read text of all PV logfiles"""
         t0 = time.time()
         for pvname, pv in self.pvs.items():
-            ts = os.stat(pv.logfile).st_mtime
-            if ts > self.time_stop:
-                self.time_stop = ts
             pv.text = read_textfile(pv.logfile).split('\n')
             pv.mod_time = os.stat(pv.logfile).st_mtime
+            ts = None
+            try:
+                last_line = pv.text[-1]
+                if not last_line.startswith('#'):
+                    words = last_line[-1].split()
+                    if len(words) > 0:
+                        ts = float(words[0])
+            except:
+                pass
+            if ts is not None:
+                self.time_stop = ts
             if verbose:
                 print(f'{pvname} : {len(pv.text)}')
-        # print("START / STOP TIME ", self.time_start, self.time_stop)
         if verbose:
             dt = time.time()-t0
             print(f"#read {len(self.pvs)} log files, {dt:.2f} secs")
