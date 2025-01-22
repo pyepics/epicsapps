@@ -11,8 +11,9 @@ import yaml
 from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
+import pytz
 from multiprocessing import Process, Queue, Pool
-
+from matplotlib.dates import date2num
 import numpy as np
 from pyshortcuts import debugtimer
 
@@ -22,6 +23,9 @@ from .pvlogger import TIMESTAMP_FILE
 TINY = 1.e-7
 MAX_FILESIZE = 400*1024*1024  # 400 Mb limit
 COMMENTCHARS = '#;%*!$'
+
+tzname = os.environ.get('TZ', 'US/Central')
+TZONE = pytz.timezone(tzname)
 
 @dataclass
 class PVLogData:
@@ -43,26 +47,17 @@ class PVLogData:
 
     def get_datetimes(self):
         """set datetimes to list of datetimes"""
-        self.datetimes = [datetime.fromtimestamp(ts) for ts in self.timestamps]
+        if (self.datetimes is None or
+            len(self.dateimes) < len(self.timestamps)):
+            self.datetimes = [datetime.fromtimestamp(ts, tz=TZONE) for ts in self.timestamps]
         return self.datetimes
 
     def get_mpldates(self):
         """set matplotlib/numpy dates"""
-        tsdt = np.array(self.timestamps).astype('datetime64')
-        isec = tsdt.astype('datetime64[s]')
-        nsec = (tsdt - isec).astype('timedelta64[ns]').astype(np.float64)
-        self.mpldates = (isec.astype(np.float64) + 1.e-9*nsec)/86400.0
+        if (self.mpldates is None or
+                len(self.mpldates) < len(self.timestamps)):
+            self.mpldates = nparray(self.timestamps)/86400.0
         return self.mpldates
-
-def unixts_to_mpldates(ts):
-    "convert array of unix timestamps to MPL dates"
-    ts = ts.astype('datetime64')
-    isecs = ts.astype('datetime64[s]')
-    frac = (ts - isecs).astype('timedelta64[ns]')
-    out = isecs.astype(np.float64)
-    out += 1.e-9*frac.astype(np.float64)
-    return out / 86400.0
-
 
 class PVLogFile:
     """PV LogFile"""
@@ -159,8 +154,8 @@ def parse_logfile(textlines, filename):
                 vals.append(val)
             cvals.append(cval)
     dt.add(f'read 0 {filename}')
-    datetimes = None # [datetime.fromtimestamp(ts) for ts in times]
-    mpldates =  None # unixts_to_mpldates(np.array(times))
+    datetimes = None #
+    mpldates =  None #
     # try to parse attributes from header text
     fpath = Path(filename).absolute()
     attrs = {'filename': fpath.name, 'pvname': 'unknown', 'type': 'time_double'}
