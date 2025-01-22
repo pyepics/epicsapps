@@ -222,7 +222,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
         splitter.SplitVertically(lpanel, rpanel, 1)
         self.Raise()
-        self.ShowPlotWin1()
 
     def make_live_panel(self):
         wids = self.wids
@@ -667,24 +666,6 @@ Matt Newville <newville@cars.uchicago.edu>
                 self.parse_thread.join()
                 self.parse_thread = None
         return pvlog.data
-
-    def ShowPlotWin1(self, event=None):
-        wname = 'Window 1'
-        pwin = self.show_plotwin(wname)
-
-        xpos, ypos = self.GetPosition()
-        xsiz, ysiz = self.GetSize()
-        x = xpos + xsiz*1.025
-        y = ypos + ysiz*0.025
-        dlims = [0, 5000, 0, 5000]
-        if y+0.75*ysiz > dlims[3]:
-            y = 80+max(40, 40+ysiz*(off-0.5))
-        if x+0.75*xsiz > dlims[1]:
-            x = 20+max(10, 10+xpos+xsiz*(off-0.5))
-        xx, yy  = self.subframes[wname].GetPosition()
-        x = int((2*x + xx)/3.0)
-        y = int((2*y + yy)/3.0)
-        pwin.SetPosition((x, y))
 
     def onPlotOne(self, event=None):
         pvname = self.wids['pv1'].GetStringSelection()
