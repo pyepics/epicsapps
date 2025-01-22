@@ -1,13 +1,12 @@
 import sys
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
+
 import wx
 import wx.lib.scrolledpanel as scrolled
 import wx.lib.agw.flatnotebook as flat_nb
 import wx.lib.colourselect as csel
 import wx.dataview as dv
-
-from collections import OrderedDict, namedtuple
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
@@ -21,11 +20,13 @@ DVSTYLE = dv.DV_SINGLE|dv.DV_VERT_RULES|dv.DV_ROW_LINES
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON
 FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 
-PLOT_COLORS = ('#9467bd', '#8c564b', '#e377c2',
-               '#7f7f7f', '#bcbd22', '#17becf')
-
+PLOT_COLORS = ( '#bcbd22', '#8c564b', '#9467bd', '#7f7f7f', '#e377c2', '#17becf')
 
 PlotWindowChoices = [f'Window {i+1}' for i in range(10)]
+
+def dtformat(dt):
+    msec = round(0.001*dt.microsecond)
+    return datetime.strftime(dt, "%Y-%m-%d %H:%M:%S") + f'.{msec}')
 
 class PVLogDataModel(dv.DataViewIndexListModel):
     def __init__(self, pvlogdata):
@@ -43,9 +44,7 @@ class PVLogDataModel(dv.DataViewIndexListModel):
         dat = self.pvlog
 
         for dt, cval in zip(dat.datetimes, dat.char_values):
-            st = dt.isoformat(timespec='milliseconds', sep=' ')
-            row = [False, st, cval]
-            self.data.append(row)
+            self.data.append([False, dtformat(dt), cval])
         self.Reset(len(self.data))
 
     def SetValueByRow(self, value, row, col):
