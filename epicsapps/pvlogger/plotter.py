@@ -10,7 +10,8 @@ from functools import partial
 import wx
 import wx.dataview as dv
 
-from wxutils import get_cwd, MenuItem, LEFT, pack
+from wxutils import (get_cwd, MenuItem, LEFT, pack, HLine,
+                     GridPanel, SimpleText, Button)
 from wxmplot import PlotPanel
 from pyshortcuts import fix_filename, gformat
 
@@ -54,12 +55,12 @@ Matt Newville <newville@cars.uchicago.edu>"""
                  axisbg=None, output_title='Plot', dpi=150,
                  with_data_process=True, theme=None, **kws):
         if size is None:
-            size = (750, 550)
+            size = (850, 650)
         kws['style'] = wx.DEFAULT_FRAME_STYLE
         kws['size']  = size
         wx.Frame.__init__(self, parent, -1, title, **kws)
 
-        self.SetMinSize((600, 400))
+        self.SetMinSize((600, 500))
         self.output_title = output_title
         self.exit_callback = exit_callback
         self.parent = parent
@@ -152,41 +153,47 @@ Matt Newville <newville@cars.uchicago.edu>"""
         top = wx.Panel(splitter)
         bot = wx.Panel(splitter)
         top.SetMinSize((500, 500))
-        bot.SetMinSize((500, 50))
+        bot.SetMinSize((500, 100))
 
         self.panel = PlotPanel(top, **panelkws)
         self.panel.messenger = self.write_message
         self.panel.nstatusbar = sbar.GetFieldsCount()
+        self.panel.cursor_callback = self.onCursor
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.panel, 1, LEFT|wx.GROW|wx.ALL|wx.EXPAND)
         pack(top, sizer)
 
-        etab =self.events_table = dv.DataViewListCtrl(bot,
-                                   style=dv.DV_SINGLE|dv.DV_VERT_RULES|dv.DV_ROW_LINES)
+        bpanel = GridPanel(bot, ncols=4, nrows=10, pad=1, itemstyle=LEFT)
 
-        etab.AppendTextColumn('PV',        width=250)
-        etab.AppendTextColumn('Date/Time', width=250)
-        etab.AppendTextColumn('Value',     width=400)
-        for col in (0, 1, 2):
-            this = etab.Columns[col]
-            this.Sortable = False
-            this.Alignment = this.Renderer.Alignment = wx.ALIGN_LEFT
+        wids = self.wids = {}
+        def txt(label, wid):
+            return SimpleText(bpanel, label, size=(wid, -1), style=LEFT)
 
-        etab.SetMinSize((500, 50))
-        etab.Bind(dv.EVT_DATAVIEW_SELECTION_CHANGED,
-                      self.onSelectEvent)
+        bpanel.Add(txt(' Events: ', 400), dcol=3, newrow=True)
+        bpanel.Add((5, 5))
+        bpanel.Add(txt(' PV Name ', 250), newrow=True)
+        bpanel.Add(txt(' Date/Time ', 200))
+        bpanel.Add(txt( ' Value ', 450))
+        bpanel.Add((5, 5))
+        bpanel.Add(HLine(bpanel, size=(800, 3)), dcol=3, newrow=True)
+        bpanel.Add((5, 5))
+        for i in range(3):
+            wids[f'pv_{i}']  = txt(' - ', 250)
+            wids[f'dt_{i}']  = txt(' - ', 200)
+            wids[f'val_{i}'] = txt(' - ', 450)
+            bpanel.Add(wids[f'pv_{i}'], newrow=True)
+            bpanel.Add(wids[f'dt_{i}'])
+            bpanel.Add(wids[f'val_{i}'])
+        bpanel.Add((5, 5))
+        bpanel.Add(HLine(bpanel, size=(800, 3)), dcol=3, newrow=True)
+        bpanel.pack()
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(etab, 1, LEFT|wx.GROW|wx.ALL|wx.EXPAND)
+        sizer.Add(bpanel, 1, LEFT|wx.GROW|wx.ALL|wx.EXPAND)
         pack(bot, sizer)
 
-        # sizer.Add(self.panel, 1, wx.GROW|wx.ALL|wx.EXPAND)
-        # sizer.Add(self.events_table, 0, wx.EXPAND)
-
         self.BuildMenu()
-        print("BUILD PANEL  ", etab )
-
 
         splitter.SplitHorizontally(top, bot, 1)
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -197,6 +204,33 @@ Matt Newville <newville@cars.uchicago.edu>"""
         w0, h0 = self.GetSize()
         self.SetSize((w0+5, h0+10))
         self.Show()
+
+    def add_event(self, eventdata):
+        print("Add event to event table ", eventdata)
+        self.panel.add_vline(eventdata['mpldate'],
+                             report_data=eventdata,
+                             color=eventdata['color'])
+
+    def onCursor(self, x=None, y=None, message='', marker_data=None, **kws):
+        if marker_data is not None:
+            wids = self.wids
+            for mdata in marker_data:
+                x, y, label, edata = mdata
+                # push old events
+                for i in (2, 1):
+                    for a in ('pv', 'dt', 'val'):
+                        wids[f'{a}_{i}'].SetLabel(wids[f'{a}_{i-1}'].GetLabel())
+                wids['pv_0'].SetLabel(edata['name'])
+                wids['dt_0'].SetLabel(edata['datetime'])
+                wids['val_0'].SetLabel(edata['value'])
+
+
+
+        # self.write_message(rmsg, panel=0)
+
+
+    def onClearSelections(self, event=None):
+        print("clear selections")
 
 
     def Build_FileMenu(self, extras=None):
