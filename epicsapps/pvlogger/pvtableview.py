@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 import wx
 import wx.lib.scrolledpanel as scrolled
 import wx.lib.agw.flatnotebook as flat_nb
+import wx.lib.colourselect as csel
 import wx.dataview as dv
 
 from collections import OrderedDict, namedtuple
@@ -19,6 +20,10 @@ DVSTYLE = dv.DV_SINGLE|dv.DV_VERT_RULES|dv.DV_ROW_LINES
 
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON
 FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
+
+PLOT_COLORS = ('#9467bd', '#8c564b', '#e377c2',
+               '#7f7f7f', '#bcbd22', '#17becf')
+
 
 PlotWindowChoices = [f'Window {i+1}' for i in range(10)]
 
@@ -68,7 +73,7 @@ class PVLogDataModel(dv.DataViewIndexListModel):
 
 class PVTablePanel(wx.Panel) :
     """View Table of PV Values"""
-    def __init__(self, parent, pvlogdata, size=(700, 400)):
+    def __init__(self, parent, pvlogdata, npanel=0, size=(700, 400)):
         self.parent = parent
         self.pvlogdata = pvlogdata
 
@@ -84,11 +89,15 @@ class PVTablePanel(wx.Panel) :
 
 
         self.btn_show  = Button(panel, label='Show Selected',
-                                action=self.onShowSelected, size=(200, -1))
+                                action=self.onShowSelected, size=(175, -1))
         self.btn_clear = Button(panel, label='Clear Selections',
-                                action=self.onClearAll, size=(200, -1))
+                                action=self.onClearAll, size=(175, -1))
 
-        self.choose_pwin  = Choice(panel, choices=PlotWindowChoices, size=(200, -1))
+        npanel = npanel % len(PLOT_COLORS)
+        self.btn_color = csel.ColourSelect(panel, -1, '', PLOT_COLORS[npanel],
+                                               size=(25, 25))
+
+        self.choose_pwin  = Choice(panel, choices=PlotWindowChoices, size=(175, -1))
 
         for icol, dat in enumerate((('Select', 75),
                                     ('Date/Time', 200),
@@ -107,13 +116,14 @@ class PVTablePanel(wx.Panel) :
                 col.SetSortOrder(1)
         self.dvc.EnsureVisible(self.model.GetItem(0))
 
-        panel.Add(SimpleText(panel, label=ptitle), dcol=4)
+        panel.Add(SimpleText(panel, label=ptitle), dcol=5)
         panel.Add(self.btn_show, newrow=True)
         panel.Add(self.btn_clear)
         panel.Add(SimpleText(panel, label='Show on Plot: '))
         panel.Add(self.choose_pwin)
+        panel.Add(self.btn_color)
         panel.Add((5, 5))
-        panel.Add(HLine(panel, size=(675, 3)), dcol=4, newrow=True)
+        panel.Add(HLine(panel, size=(700, 3)), dcol=5, newrow=True)
         panel.Add((5, 5))
         panel.pack()
 
@@ -128,6 +138,7 @@ class PVTablePanel(wx.Panel) :
 
     def onShowSelected(self, event=None):
         plotwin = self.choose_pwin.GetStringSelection()
+        color = self.btn_color.GetColour()
         if plotwin not in self.parent.subframes:
             plotwin = 'Window 1'
         pwin = self.parent.show_plotwin(plotwin)
@@ -135,7 +146,12 @@ class PVTablePanel(wx.Panel) :
         pdat = self.pvlogdata
         for i, row in enumerate(self.model.data):
             if row[0]:
-                pwin.add_event([pdat.pvname, pdat.mpldates[i], row[1], row[2]])
+                edat = {'name': pdat.pvname,
+                        'datetime': row[1],
+                        'value': row[2],
+                        'mpldate': pdat.mpldates[i],
+                        'color': color}
+                pwin.add_event(edat)
 
     def onClearAll(self, event=None):
         self.model.ClearAll()
@@ -164,7 +180,9 @@ class PVTableFrame(wx.Frame) :
         if pvname in pages:
             self.nb.SetSelect(pages[pvname])
         else:
-            panel = PVTablePanel(parent=self.parent, pvlogdata=pvlogdata)
+            npanel = self.nb.GetPageCount()
+            panel = PVTablePanel(parent=self.parent, npanel=npanel,
+                                 pvlogdata=pvlogdata)
             self.nb.AddPage(panel, pvname, True)
             self.nb.SetSelection(self.nb.GetPageCount()-1)
 
