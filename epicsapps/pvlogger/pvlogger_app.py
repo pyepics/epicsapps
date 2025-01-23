@@ -33,15 +33,18 @@ from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      HLine, GUIColors, COLORS, Button, flatnotebook,
                      Choice, FileSave, FileCheckList, LEFT, RIGHT, pack)
 
+from wxmplot.colors import hexcolor
 from pyshortcuts import debugtimer, uname
+
 from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
+from epicsapps.stripchart import StripChartFrame
 
 from .configfile import PVLoggerConfig
 from .logfile import read_logfile, read_logfolder, read_textfile, TZONE
 
 from .plotter import PlotFrame
 from .pvtableview import PVTableFrame
-from wxmplot.colors import hexcolor
+
 
 from ..utils import (SelectWorkdir, DataTableGrid, get_icon, get_configfolder,
                      get_default_configfile, load_yaml, read_recents_file,
@@ -167,6 +170,9 @@ Matt Newville <newville@cars.uchicago.edu>
         self.log_folder = None
         self.collect_folder = None
         self.parse_thread = None
+        self.live_pvs = {}
+        self.pvs_connected = 'unknown'
+
         self.create_frame()
 
     def create_frame(self):
@@ -204,8 +210,6 @@ Matt Newville <newville@cars.uchicago.edu>
         self.nb = flatnotebook(rpanel, {}, style=FNB_STYLE)
         self.nb.AddPage(self.make_view_panel(), ' View Log Folder', True)
         self.nb.AddPage(self.make_run_panel(),  ' Collect Data ', True)
-        self.nb.AddPage(self.make_live_panel(), ' View Live PV Plots ', True)
-
         self.nb.SetSelection(0)
 
         try:
@@ -349,6 +353,10 @@ Matt Newville <newville@cars.uchicago.edu>
 
         wids['plot_win']  = Choice(panel, choices=PlotWindowChoices, **opts)
         wids['plot_win'].SetStringSelection('1')
+        wids['plotlive'] = Button(panel, 'Live Plot for PV 1 ',
+                                  action=self.onPlotLive,
+                                  size=(250, -1))
+        wids['plotlive'].Disable()
 
         wids['use_sel'] = Button(panel, ' Use Selected PVs ',
                                  action=self.onUseSelected, **opts)
@@ -361,7 +369,6 @@ Matt Newville <newville@cars.uchicago.edu>
         opts['choices'] = []
         wids['instruments'] = Choice(panel, action=self.onSelectInst, **opts)
 
-        opts['action'] = self.onUpdatePlot
         for i in range(4):
             wids[f'pv{i+1}'] = Choice(panel, **opts)
             wids[f'col{i+1}'] = csel.ColourSelect(panel, -1, '',PLOT_COLORS[i],
@@ -405,12 +412,15 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['col4'])
 
         panel.Add((5, 5))
-        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
-        panel.Add((5, 5))
         panel.Add(slabel(' Plot: '), dcol=1, newrow=True)
         panel.Add(wids['plotone'], dcol=1)
         panel.Add(wids['plotsel'], dcol=1)
         panel.Add(wids['plot_win'])
+        panel.Add((5, 5))
+
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
+        panel.Add((5, 5))
+        panel.Add(wids['plotlive'], dcol=3, newrow=True)
 
         panel.pack()
         return panel
@@ -449,15 +459,41 @@ Matt Newville <newville@cars.uchicago.edu>
             name, desc, mdel, use = row
             if use and name not in pvs:
                 pvs[name] = get_pv(name)
+                if name not in self.live_pvs:
+                    self.live_pvs[name] = pvs[name]
+
         for row in self.wids['inst_table'].table.data:
             iname, use, npvs = row
             if use and iname in instruments:
                 for name in instruments[iname]:
                     if name not in pvs:
                         pvs[name] = get_pv(name)
+                    if name not in self.live_pvs:
+                        self.live_pvs[name] = pvs[name]
+
         time.sleep(0.25)
         if len(pvs) > 0:
+            self.check_pv_connections(pvs)
             PVsConnectedDialog(self, pvs).Show()
+
+    def check_pv_connections(self, pvs=None, waittime=0.01):
+        """check that PVs connect.  If the first 5 PVs tried
+           do not connect, set 'self.pvs_connected' to False
+           to stop looking for connected PVs
+        """
+        if pvs is None:
+            pvs = self.live_pvs
+        if self.pvs_connected == 'unknown':
+            unconn = []
+            for name, pv in pvs.items():
+                if not pv.connected:
+                    pv.wait_for_connection(timeout=waittime)
+                    if pv.connected:
+                        self.pvs_connected = True
+                    else:
+                        unconn.append(name)
+            if len(unconn) == len(pvs) and len(pvs) > 5:
+                self.pvs_connected = False
 
     def onSaveConfiguration(self, event=None):
         "save config file"
@@ -625,27 +661,34 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvlist.SetCheckedStrings(self.log_folder.instruments[iname])
 
 
-    def onUpdatePlot(self, event=None):
-        print("update plot ? ")
-
-
     def onSelNone(self, event=None):
         self.pvlist.select_none()
 
     def onSelAll(self, event=None):
         self.pvlist.select_all()
 
-
     def onShowPV(self, event=None, label=None):
         pvname = event.GetString()
         self.wids['pv1'].SetStringSelection(pvname)
-
         pvlog = self.log_folder.pvs.get(pvname, None)
-        # print('ShowPV ', pvname, pvlog)
         if pvlog is None:
             print("cannot show PV ", pvname)
         else:
             data = self.get_pvdata(pvname)
+
+        if self.pvs_connected == 'unknown':
+            if pvname not in self.live_pvs:
+                self.live_pvs[pvname] = get_pv(pvname)
+                time.sleep(0.02)
+                self.check_pv_connections(waittime=0.05)
+
+        enable_live = False
+        if (self.pvs_connected in ('unknown', True) and
+            pvname in self.live_pvs and
+            self.live_pvs[pvname].connected):
+            enable_live = True
+        self.wids['plotlive'].Enable(enable_live)
+
 
     def get_pvdata(self, pvname):
         """get PVdata, caching until it changes"""
@@ -667,8 +710,17 @@ Matt Newville <newville@cars.uchicago.edu>
                 self.parse_thread = None
         return pvlog.data
 
+    def onPlotLive(self, event):
+        pvname = self.wids['pv1'].GetStringSelection()
+        desc = self.log_folder.pvs[pvname].description
+
+        liveplot = self.show_subframe('pvlive', StripChartFrame)
+        liveplot.addPV(pvname, desc=desc)
+
+
     def onPlotOne(self, event=None):
         pvname = self.wids['pv1'].GetStringSelection()
+
         label = self.log_folder.pvs[pvname].description
 
         data = self.get_pvdata(pvname)
@@ -916,6 +968,14 @@ is not a valid PV Logger Data Folder""",
             pv.clear_callbacks()
             pv.disconnect()
             time.sleep(0.001)
+        for pvname, pv in self.live_pvs.items():
+            pv.clear_callbacks()
+            pv.disconnect()
+            time.sleep(0.001)
+
+        for name, frame in self.subframes.items():
+            frame.Destroy()
+
         self.Destroy()
 
 class PVLoggerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
