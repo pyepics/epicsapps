@@ -1,1 +1,1 @@
-from .stripchart import StripChartApp
+from .stripchart import StripChartApp, StripChartFrame

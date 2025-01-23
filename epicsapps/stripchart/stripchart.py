@@ -38,6 +38,10 @@ STY  = wx.GROW|wx.ALL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL
 CSTY = wx.ALIGN_CENTER
 
+PLOT_COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
+               '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')
+
+
 def get_bound(val):
     "return float value of input string or None"
     val = val.strip()
@@ -51,9 +55,6 @@ def get_bound(val):
 
 
 class StripChartFrame(wx.Frame):
-    default_colors = ((0, 0, 0), (0, 0, 255), (255, 0, 0),
-                      (0, 0, 0), (255, 0, 255), (0, 125, 0))
-
     help_msg =  """Quick help:
 
  Left-Click:   to display X,Y coordinates
@@ -292,10 +293,7 @@ Matt Newville <newville@cars.uchicago.edu>
             ymax.Disable()
             desc.Disable()
 
-        colval = (0, 0, 0)
-        if i < len(self.default_colors):
-            colval = self.default_colors[i]
-        colr = csel.ColourSelect(panel, -1, '', colval)
+        colr = csel.ColourSelect(panel, -1, '', PLOT_COLORS[i-1])
         self.colorsels.append(colr)
 
         sizer.Add(SimpleText(panel, f' {side}:  ',  minsize=(65, -1), style=LSTY),
@@ -332,7 +330,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.addPV(self.pvname.GetValue())
 
     @EpicsFunction
-    def addPV(self, name):
+    def addPV(self, name, desc=None):
         if name is not None and name not in self.pvlist:
             basename = str(name)
             if len(basename) < 2:
@@ -356,9 +354,10 @@ Matt Newville <newville@cars.uchicago.edu>
             self.pvdata[name] = [(time.time(), pv.get())]
             if basename.endswith('.VAL'):
                 basename = basename[:-4]
-            descname = basename + '.DESC'
-            descpv = get_pv(descname)
-            desc =  descpv.get(timeout=1.0)
+            if desc is None:
+                descname = basename + '.DESC'
+                descpv = get_pv(descname)
+                desc =  descpv.get(timeout=1.0)
             if desc is None or len(desc) < 1:
                 desc = basename
 
@@ -545,6 +544,9 @@ Matt Newville <newville@cars.uchicago.edu>
 
         did_update = False
         itrace = -1
+        xmin = -2
+        xmax = 0
+
         for tracedata in self.get_current_traces():
             pvname, uselog, color, ymin, ymax, desc, yaxes = tracedata
             if pvname is None or pvname not in self.pvdata:
@@ -577,33 +579,42 @@ Matt Newville <newville@cars.uchicago.edu>
             if ymax is None:
                 ymax = max(ydat) + yrange*0.02
 
+
+            ylabel = 'ylabel'
+            if itrace > 0:
+                ylabel = f'y{1+itrace}label'
+
+            tspan = tnow - tmin
+            tmin = (tmin - tspan*0.02)
+            tmax = (tnow + tspan*0.02)
+
+            xmin = tmin/86400.0
+            xmax = tmax/86400.0
             if len(ydat) > 3:
                 ppan.update_line(itrace, tdat, ydat, draw=False, yaxes=yaxes)
+                yaxes, axes = ppan.get_yaxes(yaxes)
+                axes.set_ylim((ymin, ymax), emit=True)
+                axes.set_xlim((xmin, xmax), emit=True)
+                setattr(ppan.conf, ylabel, desc)
+                # print(itrace, yaxes, axes, len(tdat),
+                #       min(ydat), max(ydat), ymin, ymax)
+
             else:
                 ylog_scale = uselog and min(ydat) > 0
                 opts = {'show_legend': False, 'xlabel': 'Date / Time',
                         'drawstyle': 'steps-post',
                         'delay_draw': True, 'yaxes_tracecolor': True,
                         'use_dates': True, 'timezone': TZONE}
-                plot = ppan.oplot
-                if itrace==0:
-                    plot = ppan.plot
-                    opts['ylabel'] = desc
-                else:
-                    opts[f'y{1+itrace}label'] = desc
-
+                opts[ylabel] = desc
+                plot = ppan.plot if itrace==0 else ppan.oplot
                 plot(tdat, ydat, yaxes=yaxes, color=color,
+                     ymin=ymin, ymax=ymax,
                      ylog_scale=ylog_scale, label=desc, **opts)
 
-        if itrace >= 0:
-            snow = time.strftime("%Y-%b-%d %H:%M:%S", time.localtime())
-            self.plotpanel.set_title(snow, delay_draw=True)
-
-            tspan = tnow - tmin
-            tmin = (tmin - tspan*0.02)/86400.
-            tmax = (tnow + tspan*0.02)/86400.
-            self.plotpanel.axes.set_xlim((tmin, tmax), emit=True)
-            self.plotpanel.canvas.draw()
+        #if itrace > 0:
+        snow = time.strftime("%Y-%b-%d %H:%M:%S", time.localtime())
+        self.plotpanel.set_title(snow, delay_draw=True)
+        self.plotpanel.canvas.draw()
         self.needs_refresh = False
 
         return
