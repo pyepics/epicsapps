@@ -16,7 +16,7 @@ from epics.wx import EpicsFunction, DelayedEpicsCallback
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     FloatCtrl, Choice, YesNo, TextCtrl)
+                     FloatCtrl, Choice, YesNo, TextCtrl, LEFT)
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
@@ -82,17 +82,16 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def __init__(self, parent=None):
         self.pvdata = {}
-        self.pvs = []
+        self.pvs = {}
+        self.user_data = {}
+        self.pv_labels = {}
+        self.wids = {}
         self.pvlist = [' -- ']
-        self.pvwids = [None]
         self.pvchoices = [None]
-        self.pvlabels  = [None]
-        self.pv_desc   = {}
         self.colorsels = []
         self.needs_refresh = False
         self.force_redraw  = False
         self.paused = False
-
         self.tmin = 60.0
         self.timelabel = 'seconds'
 
@@ -114,7 +113,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.plotpanel = PlotPanel(self, trace_color_callback=self.onTraceColor)
         self.plotpanel.messenger = self.write_message
 
-        self.build_pvpanel()
+        pvpanel = self.build_pvpanel()
         self.build_btnpanel()
         self.build_menus()
         self.SetBackgroundColour(wx.Colour(*BGCOL))
@@ -123,11 +122,12 @@ Matt Newville <newville@cars.uchicago.edu>
 
         p1 = wx.Panel(self)
         p1.SetBackgroundColour(wx.Colour(*BGCOL))
-        s1 = wx.BoxSizer(wx.HORIZONTAL)
         label = SimpleText(p1, ' Add PV:')
         self.pvname = TextCtrl(p1, '', size=(250, -1), action=self.onPVname)
-        self.pvmsg = SimpleText(p1, '   ',  minsize=(75, -1),
-                                style=LSTY|wx.EXPAND)
+        self.pvmsg = SimpleText(p1, '  ',  minsize=(75, -1), style=LSTY|wx.EXPAND)
+
+        s1 = wx.BoxSizer(wx.HORIZONTAL)
+
         s1.Add(label,      0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         s1.Add(self.pvname, 0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         s1.Add(self.pvmsg, 1,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
@@ -139,7 +139,7 @@ Matt Newville <newville@cars.uchicago.edu>
         mainsizer.Add(wx.StaticLine(self, size=(250, -1),
                                     style=wx.LI_HORIZONTAL),
                       0, wx.EXPAND|wx.GROW, 8)
-        mainsizer.Add(self.pvpanel,   0, wx.EXPAND, 5)
+        mainsizer.Add(pvpanel,   0, wx.EXPAND, 5)
         mainsizer.Add(wx.StaticLine(self, size=(250, -1),
                                     style=wx.LI_HORIZONTAL),
                       0, wx.EXPAND|wx.GROW, 8)
@@ -166,35 +166,51 @@ Matt Newville <newville@cars.uchicago.edu>
         self.SetStatusText('', 0)
 
     def build_pvpanel(self):
-        panel = self.pvpanel = wx.Panel(self)
-        panel.SetBackgroundColour(wx.Colour(*BGCOL))
-        sizer = self.pvsizer = wx.GridBagSizer(4, 5)
+        panel = GridPanel(self, ncols=3, nrows=4, pad=2, itemstyle=LEFT)
+        def txt(label, wid=80):
+            return SimpleText(panel, label, size=(wid, -1), style=LSTY)
 
-        name = SimpleText(panel, ' PV:  ',    minsize=(65, -1), style=LSTY)
-        colr = SimpleText(panel, ' Color ',   minsize=(50, -1), style=LSTY)
-        logs = SimpleText(panel, ' Log? ',    minsize=(50, -1), style=LSTY)
-        ymin = SimpleText(panel, ' Y Min ',   minsize=(85, -1), style=LSTY)
-        ymax = SimpleText(panel, ' Y Max ',   minsize=(85, -1), style=LSTY)
-        desc = SimpleText(panel, ' Label ',   minsize=(85, -1), style=LSTY)
-        yaxe = SimpleText(panel, ' YAxes ',   minsize=(85, -1), style=LSTY)
+        panel.Add(txt(' Side  '))
+        panel.Add(txt(' PV    '))
+        panel.Add(txt(' Color '))
+        panel.Add(txt(' Log?  '))
+        panel.Add(txt(' Y Min  '))
+        panel.Add(txt(' Y Max  '))
+        panel.Add(txt(' Label  '))
 
-        sizer.Add(yaxe, (0, 0), (1, 1), LSTY, 1)
-        sizer.Add(name, (0, 1), (1, 1), LSTY|wx.EXPAND, 2)
-        sizer.Add(colr, (0, 2), (1, 1), LSTY, 1)
-        sizer.Add(logs, (0, 3), (1, 1), LSTY, 1)
-        sizer.Add(ymin, (0, 4), (1, 1), LSTY, 1)
-        sizer.Add(ymax, (0, 5), (1, 1), LSTY, 1)
-        sizer.Add(desc, (0, 6), (1, 1), LSTY, 1)
+        wids =self.wids = {}
+        sides = (' Left: ' , ' Right: ')
+        for i in range(2):
+            wids[f'pv{i}'] = Choice(panel, choices=self.pvlist, size=(250, -1),
+                                    action = partial(self.onPVchoice, row=i))
+            wids[f'pv{i}'].SetSelection(0)
 
+            wids[f'log{i}'] = Choice(panel, choices=('No', 'Yes'), size=(65, -1),
+                                     action=self.onPVwid)
+            wids[f'log{i}'].SetSelection(0)
+            wids[f'ymin{i}'] = wx.TextCtrl(panel, -1, '', size=(75, -1),
+                                           style=wx.TE_PROCESS_ENTER)
+            wids[f'ymin{i}'].Bind(wx.EVT_TEXT_ENTER,  self.onPVwid)
+            wids[f'ymax{i}'] = wx.TextCtrl(panel, -1, '', size=(75, -1),
+                                           style=wx.TE_PROCESS_ENTER)
 
-        self.npv_rows = 0
-        for i in range(4):
-            self.AddPV_row()
+            wids[f'ymin{i}'].Bind(wx.EVT_CHOICE,   self.onPVwid)
+            wids[f'ymax{i}'].Bind(wx.EVT_TEXT_ENTER,  self.onPVwid)
 
-        panel.SetAutoLayout(True)
-        panel.SetSizer(sizer)
-        sizer.Fit(panel)
+            wids[f'col{i}'] =  csel.ColourSelect(panel, -1, '', PLOT_COLORS[i])
+            wids[f'col{i}'].Bind(csel.EVT_COLOURSELECT, partial(self.onPVcolor, row=i))
+            wids[f'desc{i}'] = wx.TextCtrl(panel, -1, '', size=(250, -1))
 
+            panel.Add(txt(sides[i]), newrow=True)
+            panel.Add(wids[f'pv{i}'])
+            panel.Add(wids[f'col{i}'])
+            panel.Add(wids[f'log{i}'])
+            panel.Add(wids[f'ymin{i}'])
+            panel.Add(wids[f'ymax{i}'])
+            panel.Add(wids[f'desc{i}'])
+
+        panel.pack()
+        return panel
     def build_btnpanel(self):
         panel = self.btnpanel = wx.Panel(self, )
         panel.SetBackgroundColour(wx.Colour(*BGCOL))
@@ -274,46 +290,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.SetMenuBar(mbar)
 
-    def AddPV_row(self):
-        i = self.npv_rows = self.npv_rows + 1
-
-        panel = self.pvpanel
-        sizer = self.pvsizer
-        pvchoice = Choice(panel, choices=self.pvlist, size=(250, -1))
-        pvchoice.SetSelection(0)
-        logs = Choice(panel, choices=('No', 'Yes'), size=(65, -1))
-        logs.SetSelection(0)
-        ymin = wx.TextCtrl(panel, -1, '', size=(75, -1), style=wx.TE_PROCESS_ENTER)
-        ymax = wx.TextCtrl(panel, -1, '', size=(75, -1), style=wx.TE_PROCESS_ENTER)
-        desc = wx.TextCtrl(panel, -1, '', size=(250, -1))
-        side = ['left', 'right', 'right2', 'right3'][i-1]
-        if i > 2:
-            logs.Disable()
-            ymin.Disable()
-            ymax.Disable()
-            desc.Disable()
-
-        colr = csel.ColourSelect(panel, -1, '', PLOT_COLORS[i-1])
-        self.colorsels.append(colr)
-
-        sizer.Add(SimpleText(panel, f' {side}:  ',  minsize=(65, -1), style=LSTY),
-                  (i, 0), (1, 1), LSTY, 3)
-        sizer.Add(pvchoice, (i, 1), (1, 1), LSTY, 3)
-        sizer.Add(colr,     (i, 2), (1, 1), CSTY, 3)
-        sizer.Add(logs,     (i, 3), (1, 1), CSTY, 3)
-        sizer.Add(ymin,     (i, 4), (1, 1), CSTY, 3)
-        sizer.Add(ymax,     (i, 5), (1, 1), CSTY, 3)
-        sizer.Add(desc,     (i, 6), (1, 1), CSTY, 3)
-
-        pvchoice.Bind(wx.EVT_CHOICE,     partial(self.onPVchoice, row=i))
-        colr.Bind(csel.EVT_COLOURSELECT, partial(self.onPVcolor, row=i))
-        logs.Bind(wx.EVT_CHOICE,         self.onPVwid)
-        ymin.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
-        ymax.Bind(wx.EVT_TEXT_ENTER,     self.onPVwid)
-
-        self.pvchoices.append(pvchoice)
-        self.pvlabels.append(desc)
-        self.pvwids.append((i, logs, colr, ymin, ymax, desc))
+    # def AddPV_row(self):
 
     def onTraceColor(self, trace, color, **kws):
         irow = self.get_current_traces()[trace][0] - 1
@@ -337,7 +314,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 return
             pv = get_pv(basename, callback=self.onPVChange)
             pv.get()
-            self.pvs.append(pv)
+            self.pvs[basename] = pv
             conn = False
             if pv is not None:
                 if not pv.connected:
@@ -361,8 +338,7 @@ Matt Newville <newville@cars.uchicago.edu>
             if desc is None or len(desc) < 1:
                 desc = basename
 
-            self.pv_desc[basename] = desc
-
+            self.pv_desc[name] = desc
             i_new = len(self.pvdata)
             new_shown = False
             for ix, choice in enumerate(self.pvchoices):
@@ -374,7 +350,6 @@ Matt Newville <newville@cars.uchicago.edu>
                 choice.SetSelection(cur)
                 if cur == 0 and not new_shown:
                     choice.SetSelection(i_new)
-                    self.pvlabels[ix].SetValue(desc)
                     new_shown = True
             self.needs_refresh = True
 
@@ -385,11 +360,22 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvdata[pvname].append((timestamp, value))
         self.needs_refresh = True
 
-    def onPVchoice(self, event=None, row=None, **kws):
+    def onPVchoice(self, event=None, row=0, **kws):
         self.needs_refresh = True
         pvname = self.pvchoices[row].GetStringSelection()
-        if pvname in self.pv_desc:
-            self.pvlabels[row].SetValue(self.pv_desc[pvname])
+
+        if pvname in self.user_data:
+            logs, color, ymin, ymax = self.user_data[pvname]
+            desc = self.pv_label[pvname]
+            print("User Data ", pvname, logs, color, ymin, ymax)
+
+            self.wids[f'desc{row}'].SetValue(desc)
+            self.wids[f'col{row}'].SetColor(color)
+            self.wids[f'logs{row}'].SetValue(logs)
+            self.wids[f'ymin{row}'].SetValue(f"{ymin}")
+            self.wids[f'ymax{row}'].SetValue(f"{ymax}")
+
+
         for i in range(len(self.pvlist)+1):
             try:
                 trace = self.plotpanel.conf.get_mpl_line(row-1)
@@ -498,7 +484,7 @@ Matt Newville <newville@cars.uchicago.edu>
         dlg.Destroy()
 
     def onExit(self, event=None):
-        for pv in self.pvs:
+        for pv in self.pvs.values():
             pv.clear_callbacks()
             pv.disconnect()
             time.sleep(0.001)
@@ -522,6 +508,8 @@ Matt Newville <newville@cars.uchicago.edu>
                 ix = s.GetSelection()
                 if ix > 0:
                     name = self.pvlist[ix]
+                self.user_data[name] = (logs, color, ymin, ymax)
+                self.pv_label[name] = desc(logs, color, ymin, ymax)
                 traces.append((name, logs, color, ymin, ymax, desc, yaxes))
         return traces
 
@@ -592,12 +580,14 @@ Matt Newville <newville@cars.uchicago.edu>
             xmax = tmax/86400.0
             if len(ydat) > 3:
                 ppan.update_line(itrace, tdat, ydat, draw=False, yaxes=yaxes)
-                yaxes, axes = ppan.get_yaxes(yaxes)
-                axes.set_ylim((ymin, ymax), emit=True)
-                axes.set_xlim((xmin, xmax), emit=True)
+                ppan.set_xylims((xmin, xmax, ymin, ymax), yaxes=yaxes)
+
+                #_yaxes, _axes = ppan.get_yaxes(yaxes)
+                #_axes.set_ylim((ymin, ymax), emit=True)
+                #_axes.set_xlim((xmin, xmax), emit=True)
                 setattr(ppan.conf, ylabel, desc)
-                # print(itrace, yaxes, axes, len(tdat),
-                #       min(ydat), max(ydat), ymin, ymax)
+                print(itrace, yaxes, len(tdat),
+                      min(ydat), max(ydat), ymin, ymax)
 
             else:
                 ylog_scale = uselog and min(ydat) > 0
