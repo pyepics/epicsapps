@@ -41,6 +41,7 @@ CSTY = wx.ALIGN_CENTER
 PLOT_COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')
 
+NMAX_DEFAULT = 2**22  # 4M
 
 def get_bound(val):
     "return float value of input string or None"
@@ -79,19 +80,18 @@ Also, these key bindings can be used
     about_msg =  """Epics PV Strip Chart  version 0.1
 Matt Newville <newville@cars.uchicago.edu>
 """
-
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, nmax=None):
         self.pvdata = {}
         self.pvs = {}
         self.user_data = {}
         self.pv_labels = {}
         self.wids = {}
         self.pvlist = ['-']
-        self.colorsels = []
         self.needs_refresh = False
-        self.force_redraw  = False
         self.paused = False
-        self.tmin = 60.0
+        self.nmax = nmax
+        if self.nmax is None:
+            self.nmax = NMAX_DEFAULT
         self.timelabel = 'seconds'
 
         self.create_frame(parent)
@@ -349,6 +349,9 @@ Matt Newville <newville@cars.uchicago.edu>
             timestamp = time.time()
         self.pvdata[pvname].append((timestamp, value))
         self.needs_refresh = True
+        # may need to trim pvdata
+        if len(self.pvdata[pvname]) > self.nmax:
+            self.pvdata[pvname] = self.pvdata[pvname][256:]
 
     def onPVchoice(self, event=None, row=0, **kws):
         self.needs_refresh = True
