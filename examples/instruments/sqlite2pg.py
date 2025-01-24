@@ -25,6 +25,10 @@ def sqlite2pg(fname, dbname, username, password, host):
     s_idb = InstrumentDB(sdb)
     p_idb = InstrumentDB(pdb)
 
+    for row in sdb.get_rows('pv'):
+        pdb.add_row('pv', name=row.name, notes=row.notes,
+                    pvtype_id=row.pvtype_id)
+
     for row in s_idb.get_all_instruments():
         instname = row.name
         print("Get Sqlite Instrument ", instname)
