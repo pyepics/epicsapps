@@ -77,6 +77,8 @@ def  make_newdb(dbname, server= 'sqlite'):
                       StrCol('notes'),
                       StrCol('attributes'),
                       Column('date', DateTime),
+                      StrCol('image'),
+                      Column('modify_time', DateTime),
                       Column("instrument_id",  ForeignKey('instrument.id')),
                       UniqueConstraint('name', 'instrument_id'))
 
