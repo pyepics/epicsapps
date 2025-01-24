@@ -3,4 +3,4 @@ from .apps import (run_epicsapps, run_adviewer, run_instruments,
                    run_stripchart, run_pvlogger)
 from .version import __version__, __version_tuple__
 
-import areadetector, utils, instruments, pvlogger, stripcahrt, microscope, microscope
+from . import areadetector, utils, instruments, pvlogger, stripcahrt, microscope, microscope
