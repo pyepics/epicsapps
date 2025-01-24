@@ -32,7 +32,7 @@ FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
 BGCOL  = (250, 250, 240)
 
-POLLTIME = 50
+POLLTIME = 100
 
 STY  = wx.GROW|wx.ALL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL
@@ -86,8 +86,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.user_data = {}
         self.pv_labels = {}
         self.wids = {}
-        self.pvlist = [' -- ']
-        self.pvchoices = [None]
+        self.pvlist = ['-']
         self.colorsels = []
         self.needs_refresh = False
         self.force_redraw  = False
@@ -110,7 +109,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.build_statusbar()
 
-        self.plotpanel = PlotPanel(self, trace_color_callback=self.onTraceColor)
+        self.plotpanel = PlotPanel(self)
         self.plotpanel.messenger = self.write_message
 
         pvpanel = self.build_pvpanel()
@@ -185,9 +184,9 @@ Matt Newville <newville@cars.uchicago.edu>
                                     action = partial(self.onPVchoice, row=i))
             wids[f'pv{i}'].SetSelection(0)
 
-            wids[f'log{i}'] = Choice(panel, choices=('No', 'Yes'), size=(65, -1),
+            wids[f'uselog{i}'] = Choice(panel, choices=('No', 'Yes'), size=(65, -1),
                                      action=self.onPVwid)
-            wids[f'log{i}'].SetSelection(0)
+            wids[f'uselog{i}'].SetSelection(0)
             wids[f'ymin{i}'] = wx.TextCtrl(panel, -1, '', size=(75, -1),
                                            style=wx.TE_PROCESS_ENTER)
             wids[f'ymin{i}'].Bind(wx.EVT_TEXT_ENTER,  self.onPVwid)
@@ -204,7 +203,7 @@ Matt Newville <newville@cars.uchicago.edu>
             panel.Add(txt(sides[i]), newrow=True)
             panel.Add(wids[f'pv{i}'])
             panel.Add(wids[f'col{i}'])
-            panel.Add(wids[f'log{i}'])
+            panel.Add(wids[f'uselog{i}'])
             panel.Add(wids[f'ymin{i}'])
             panel.Add(wids[f'ymax{i}'])
             panel.Add(wids[f'desc{i}'])
@@ -287,14 +286,7 @@ Matt Newville <newville@cars.uchicago.edu>
         mbar.Append(mfile, "File")
         mbar.Append(mopt, "Options")
         mbar.Append(mhelp, "&Help")
-
         self.SetMenuBar(mbar)
-
-    # def AddPV_row(self):
-
-    def onTraceColor(self, trace, color, **kws):
-        irow = self.get_current_traces()[trace][0] - 1
-        self.colorsels[irow].SetColour(color)
 
     def onPVshow(self, event=None, row=0):
         if not event.IsChecked():
@@ -338,18 +330,16 @@ Matt Newville <newville@cars.uchicago.edu>
             if desc is None or len(desc) < 1:
                 desc = basename
 
-            self.pv_desc[name] = desc
-            i_new = len(self.pvdata)
+            self.pv_labels[name] = desc
+            inew = len(self.pvdata)
             new_shown = False
-            for ix, choice in enumerate(self.pvchoices):
-                if choice is None:
-                    continue
+            for choice in (self.wids['pv0'], self.wids['pv1']):
                 cur = choice.GetSelection()
                 choice.Clear()
                 choice.SetItems(self.pvlist)
                 choice.SetSelection(cur)
                 if cur == 0 and not new_shown:
-                    choice.SetSelection(i_new)
+                    choice.SetSelection(inew)
                     new_shown = True
             self.needs_refresh = True
 
@@ -362,28 +352,16 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def onPVchoice(self, event=None, row=0, **kws):
         self.needs_refresh = True
-        pvname = self.pvchoices[row].GetStringSelection()
+        pvname = self.wids[f'pv{row}'].GetStringSelection()
 
         if pvname in self.user_data:
-            logs, color, ymin, ymax = self.user_data[pvname]
-            desc = self.pv_label[pvname]
-            print("User Data ", pvname, logs, color, ymin, ymax)
-
+            desc, uselog, ymin, ymax = self.user_data[pvname]
+            if desc in (None, '', 'None'):
+                desc = self.pv_labels.get(pvname, pvname)
             self.wids[f'desc{row}'].SetValue(desc)
-            self.wids[f'col{row}'].SetColor(color)
-            self.wids[f'logs{row}'].SetValue(logs)
+            self.wids[f'uselog{row}'].SetSelection(uselog)
             self.wids[f'ymin{row}'].SetValue(f"{ymin}")
             self.wids[f'ymax{row}'].SetValue(f"{ymax}")
-
-
-        for i in range(len(self.pvlist)+1):
-            try:
-                trace = self.plotpanel.conf.get_mpl_line(row-1)
-                trace.set_data([], [])
-            except:
-                pass
-        self.plotpanel.conf.set_viewlimits()
-
 
     def onPVcolor(self, event=None, row=None, **kws):
         self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
@@ -490,29 +468,6 @@ Matt Newville <newville@cars.uchicago.edu>
             time.sleep(0.001)
         self.Destroy()
 
-    def get_current_traces(self):
-        "return list of current traces"
-        traces = []   # to be shown
-        for irow, s in enumerate(self.pvchoices):
-            pvw_dat = self.pvwids[irow]
-            if pvw_dat is None:
-                traces.append([None, None, None, None,None,None,None ])
-            else:
-                yaxes, logs, colr, ymin, ymax, desc = self.pvwids[irow]
-                logs  = (1 == logs.GetSelection())
-                color = hexcolor(colr.GetColour())
-                ymin  = get_bound(ymin.GetValue())
-                ymax  = get_bound(ymax.GetValue())
-                desc  = desc.GetValue()
-                name = None
-                ix = s.GetSelection()
-                if ix > 0:
-                    name = self.pvlist[ix]
-                self.user_data[name] = (logs, color, ymin, ymax)
-                self.pv_label[name] = desc(logs, color, ymin, ymax)
-                traces.append((name, logs, color, ymin, ymax, desc, yaxes))
-        return traces
-
     def onUpdatePlot(self, event=None):
         if self.paused or not self.needs_refresh:
             return
@@ -530,16 +485,26 @@ Matt Newville <newville@cars.uchicago.edu>
 
         ppan = self.plotpanel
 
-        did_update = False
-        itrace = -1
-        xmin = -2
+        xmin = -1
         xmax = 0
-
-        for tracedata in self.get_current_traces():
-            pvname, uselog, color, ymin, ymax, desc, yaxes = tracedata
-            if pvname is None or pvname not in self.pvdata:
+        traces = []
+        for i in range(2):
+            pvname =  self.wids[f'pv{i}'].GetStringSelection()
+            if pvname in (None, 'None', '-') or len(pvname) < 2:
                 continue
-            itrace += 1
+            if pvname not in self.pvdata:
+                continue
+
+            desc = self.wids[f'desc{i}'].GetValue()
+            uselog = (1 == self.wids[f'uselog{i}'].GetSelection())
+            ymin = get_bound(self.wids[f'ymin{i}'].GetValue())
+            ymax = get_bound(self.wids[f'ymax{i}'].GetValue())
+            color = hexcolor(self.wids[f'col{i}'].GetColour())
+
+            self.user_data[pvname] = (desc, uselog, ymin, ymax)
+
+            itrace = i
+            yaxes = i+1
             if len(desc.strip()) < 1:
                 desc = pvname
 
@@ -567,7 +532,6 @@ Matt Newville <newville@cars.uchicago.edu>
             if ymax is None:
                 ymax = max(ydat) + yrange*0.02
 
-
             ylabel = 'ylabel'
             if itrace > 0:
                 ylabel = f'y{1+itrace}label'
@@ -578,30 +542,24 @@ Matt Newville <newville@cars.uchicago.edu>
 
             xmin = tmin/86400.0
             xmax = tmax/86400.0
-            if len(ydat) > 3:
-                ppan.update_line(itrace, tdat, ydat, draw=False, yaxes=yaxes)
-                ppan.set_xylims((xmin, xmax, ymin, ymax), yaxes=yaxes)
+            if True:
+                if len(ydat) > 3:
+                    ppan.update_line(itrace, tdat, ydat, draw=False, yaxes=yaxes)
+                    ppan.set_xylims((xmin, xmax, ymin, ymax), yaxes=yaxes)
+                    setattr(ppan.conf, ylabel, desc)
+                else:
+                    ylog_scale = uselog and min(ydat) > 0
+                    opts = {'show_legend': False, 'xlabel': 'Date / Time',
+                                'drawstyle': 'steps-post',
+                                'delay_draw': True, 'yaxes_tracecolor': True,
+                                'use_dates': True, 'timezone': TZONE}
+                    opts[ylabel] = desc
+                    plot = ppan.plot if itrace==0 else ppan.oplot
+                    plot(tdat, ydat, yaxes=yaxes, color=color,
+                         ymin=ymin, ymax=ymax,
+                         ylog_scale=ylog_scale, label=desc, **opts)
 
-                #_yaxes, _axes = ppan.get_yaxes(yaxes)
-                #_axes.set_ylim((ymin, ymax), emit=True)
-                #_axes.set_xlim((xmin, xmax), emit=True)
-                setattr(ppan.conf, ylabel, desc)
-                print(itrace, yaxes, len(tdat),
-                      min(ydat), max(ydat), ymin, ymax)
 
-            else:
-                ylog_scale = uselog and min(ydat) > 0
-                opts = {'show_legend': False, 'xlabel': 'Date / Time',
-                        'drawstyle': 'steps-post',
-                        'delay_draw': True, 'yaxes_tracecolor': True,
-                        'use_dates': True, 'timezone': TZONE}
-                opts[ylabel] = desc
-                plot = ppan.plot if itrace==0 else ppan.oplot
-                plot(tdat, ydat, yaxes=yaxes, color=color,
-                     ymin=ymin, ymax=ymax,
-                     ylog_scale=ylog_scale, label=desc, **opts)
-
-        #if itrace > 0:
         snow = time.strftime("%Y-%b-%d %H:%M:%S", time.localtime())
         self.plotpanel.set_title(snow, delay_draw=True)
         self.plotpanel.canvas.draw()
