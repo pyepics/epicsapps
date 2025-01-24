@@ -338,8 +338,6 @@ class InstrumentDB(SimpleDB):
 
         if len(self.pvtype_ids) < 1:
             self.map_pvtypes()
-        # kws['notes'] = ''
-        # kws['attributes'] = attributes
 
         self.pvs[name] = epics.get_pv(name)
         self.pvs[name].get(timeout=1.0)
@@ -393,6 +391,9 @@ class InstrumentDB(SimpleDB):
                    'instrument_id': inst.id, 'notes': notes}
             if 'modify_time' in ptab.c:
                 kwargs['modify_time'] = isotime()
+            elif 'date' in ptab.c:
+                kwargs['date'] = isotime()
+
             self.add_row('position', **kwargs)
             pos = self.get_position(posname, instname)
 
