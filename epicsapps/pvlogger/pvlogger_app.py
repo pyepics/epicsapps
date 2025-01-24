@@ -557,12 +557,9 @@ Matt Newville <newville@cars.uchicago.edu>
         workdir =  self.wids['data_folder'].GetValue()
         fname = Path(self.wids['config_file'].GetLabel()).name
         os.chdir(workdir)
-        cmd = [epicsapp, 'pvlogger', '-c', fname]
+        cmd = [epicsapp, '-c', 'pvlogger', fname]
         Popen(cmd)
         print(f"Starting Collection with {fname}")
-
-
-
 
 
     def set_instrument_table(self, instruments, using=None, event=None):
