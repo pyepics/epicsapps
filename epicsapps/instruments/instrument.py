@@ -406,10 +406,13 @@ class InstrumentDB(SimpleDB):
 
             if notes is not None:
                 kwargs['notes'] = notes
-            self.update('position', where=where, **kwargs)
+            if len(kwargs) > 0:
+                try:
+                    self.update('position', where=where, **kwargs)
+                except:
+                    pass
 
         instpvs = self.get_instrument_pvs(instname)
-
         # check for missing pvs in values
         missing_pvs = []
         for pvname in instpvs:
