@@ -2,10 +2,13 @@
 """
 Epics PV Logger Application, wx
 """
+import sys
 import os
 import time
 from threading import Thread
 from pathlib import Path
+from subprocess import Popen
+
 from numpy import array, where
 from functools import partial
 from collections import namedtuple
@@ -499,15 +502,14 @@ Matt Newville <newville@cars.uchicago.edu>
         "save config file"
         wids = self.wids
         workdir =  wids['data_folder'].GetValue()
-
-        fname = Path(wids['config_file'].GetLabel()).name
+        fname = wids['pvlog_folder'].GetValue()
         dlg = wx.FileDialog(self,
                             message='Save PVLogger Configuration',
                             wildcard=YAML_WILDCARD,
                             defaultFile=fname,
                             defaultDir=workdir,
                         style=wx.FD_SAVE|wx.FD_CHANGE_DIR)
-        fout = None
+        output = None
         if dlg.ShowModal() == wx.ID_OK:
             output  = Path(dlg.GetPath()).absolute().as_posix()
         dlg.Destroy()
@@ -539,8 +541,29 @@ Matt Newville <newville@cars.uchicago.edu>
         with open(output, 'w') as fh:
             yaml.dump(config, fh, default_flow_style=False)
 
+        parent = Path(output).parent
+        fname =  Path(output).stem
+        wids['data_folder'].SetValue(parent.as_posix())
+        wids['pvlog_folder'].SetValue(fname)
+        os.chdir(parent)
+        # print("Set Folder to ", parent)
+
     def onStartCollection(self, event=None):
-        print("start collection")
+        root = Path(sys.executable).parent.as_posix()
+        epicsapp = Path(root, 'epicsapps').as_posix()
+        if uname == 'win':
+            epicsapp = Path(root, 'scripts', 'epicsapps.exe').as_posix()
+
+        workdir =  self.wids['data_folder'].GetValue()
+        fname = Path(self.wids['config_file'].GetLabel()).name
+        os.chdir(workdir)
+        cmd = [epicsapp, 'pvlogger', '-c', fname]
+        Popen(cmd)
+        print(f"Starting Collection with {fname}")
+
+
+
+
 
     def set_instrument_table(self, instruments, using=None, event=None):
         wids = self.wids
@@ -828,10 +851,6 @@ Matt Newville <newville@cars.uchicago.edu>
                  "Read PVLogger Configuration File for Data Collection",
                  self.onSelectConfigFile)
 
-        mcollect.AppendSeparator()
-        MenuItem(self, mcollect, "&Start Data Collection\tCtrl+S",
-                 "Start Data Collection", self.onCollect)
-
         mbar = wx.MenuBar()
         mbar.Append(mdata, "File")
         mbar.Append(mcollect, "Collection")
@@ -904,9 +923,6 @@ is not a valid PV Logger Data Folder""",
                                            'writer': partial(self.write_message, panel=1)})
         self.parse_thread.start()
 
-
-    def onCollect(self, event=None):
-        print("on Collect")
 
     def onEditConfig(self, event=None):
         print("on EditConfig")
