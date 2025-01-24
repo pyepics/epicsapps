@@ -2,6 +2,15 @@
 requires = ["setuptools>=45", "setuptools_scm>=6.2"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools_scm]
+write_to = "epicsapps/version.py"
+version_scheme = "post-release"
+
+[tool.setuptools.packages.find]
+include = ["epicsapps", "epicsapps/areadetector",
+           "epicsapps/areadetector", "epicsapps/icons", "epicsapps/instruments",
+           "epicsapps/ionchamber", "epicsapps/microscope", "epicsapps/pvlogger",
+           "epicsapps/stripchart", "epicsapps/utils"]
 [project]
 name = "epicsapps"
 dynamic = ["version"]
@@ -57,10 +66,3 @@ dev = ["build", "twine"]
 doc = ["Sphinx"]
 test = ["pytest", "pytest-cov", "coverage"]
 all = ["epicsapps[dev, doc, test]"]
-
-[tool.setuptools_scm]
-write_to = "epicsapps/version.py"
-version_scheme = "post-release"
-
-[tool.setuptools.packages.find]
-include = ["epicsapps"]
