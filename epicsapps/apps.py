@@ -55,7 +55,7 @@ APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('Sample Microscope', 'microscope', icon='microscope'),
         EpicsApp('areaDetector Viewer', 'adviewer', icon='areadetector'),
         EpicsApp('StripChart',       'stripchart', icon='stripchart'),
-        EpicsApp('PVLogger',         'pvlogger', icon='logger'),
+        EpicsApp('PVLogger',         'pvlogger', icon='logging'),
         )
 
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
@@ -107,10 +107,10 @@ def run_epicsapps():
   stripchart              Epics PV Stripchart
 
 notes:
-  applications with the optional filename will look for a toml- or yaml-formatted
+  applications with the optional filename will look for a yaml-formatted
   configuration file in the folder
       {:s}
-  or will prompt for configuration if this file is not found.
+  or will prompt for configuration file if one is not found.
 '''.format(get_configfolder())
     parser = ArgumentParser(description=desc,
                             epilog=epilog,
@@ -127,14 +127,15 @@ notes:
     parser.add_argument('-c', '--cli', dest='use_cli',
                         action='store_true', default=False,
                         help='use Command-line interface, no GUI (pvlogger only)')
-
-
     parser.add_argument('appname', nargs='?', help='application name')
     parser.add_argument('filename', nargs='?', help='configuration file name')
 
     args = parser.parse_args()
+    runner = None
+    needs_help = False
+    kwargs = {'configfile': args.filename}
     if args.appname is None and args.makeicons is False:
-        parser.print_usage()
+        needs_help = True
     elif args.makeicons:
         for app in APPS:
             app.create_shortcut()
@@ -143,20 +144,21 @@ notes:
             args.prompt = not args.no_prompt
         use_mpl_wxagg()
         isapp = args.appname.lower().startswith
-        fapp = None
-        kwargs = {'configfile': args.filename, 'prompt': args.prompt}
+        kwargs['prompt'] = args.prompt
         if isapp('inst'):
-            fapp = run_instruments
-        if isapp('micro'):
-            fapp = run_samplemicroscope
+            runner = run_instruments
+        elif isapp('micro'):
+            runner = run_samplemicroscope
         elif isapp('strip'):
-            fapp = run_stripchart
+            runner = run_stripchart
         elif isapp('pvlog'):
-            fapp = run_pvlogger
+            runner= run_pvlogger
             kwargs['use_cli'] = args.use_cli
-        elif isapp('adview'):
-            fapp = run_adviewer
-        if fapp is not None:
-            fapp(**kwargs)
+        elif isapp('ad'):
+            runner = run_adviewer
         else:
-            print(__doc__)
+            needs_help = True
+    if needs_help:
+        parser.print_usage()
+    elif runner is not None:
+        runner(**kwargs)
