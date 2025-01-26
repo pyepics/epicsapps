@@ -33,7 +33,7 @@ FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 BGCOL  = (250, 250, 240)
 
 POLLTIME = 100
-
+NPVS = 2
 STY  = wx.GROW|wx.ALL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL
 CSTY = wx.ALIGN_CENTER
@@ -124,12 +124,14 @@ Matt Newville <newville@cars.uchicago.edu>
         label = SimpleText(p1, ' Add PV:')
         self.pvname = TextCtrl(p1, '', size=(250, -1), action=self.onPVname)
         self.pvmsg = SimpleText(p1, '  ',  minsize=(75, -1), style=LSTY|wx.EXPAND)
-
+        self.save_pvconf  = wx.Button(p1, label='Save PV Settings',  size=(200, 30))
+        self.save_pvconf.Bind(wx.EVT_BUTTON, self.onSavePVSettings)
         s1 = wx.BoxSizer(wx.HORIZONTAL)
 
-        s1.Add(label,      0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
+        s1.Add(label,       0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         s1.Add(self.pvname, 0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         s1.Add(self.pvmsg, 1,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
+        s1.Add(self.save_pvconf, 0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
         p1.SetAutoLayout(True)
         p1.SetSizer(s1)
         s1.Fit(p1)
@@ -178,8 +180,8 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(txt(' Label  '))
 
         wids =self.wids = {}
-        sides = (' Left: ' , ' Right: ')
-        for i in range(2):
+        sides = (' Left: ' , ' Right: ', ' Right2: ', ' Right3: ')
+        for i in range(NPVS):
             wids[f'pv{i}'] = Choice(panel, choices=self.pvlist, size=(250, -1),
                                     action = partial(self.onPVchoice, row=i))
             wids[f'pv{i}'].SetSelection(0)
@@ -210,6 +212,8 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel.pack()
         return panel
+
+
     def build_btnpanel(self):
         panel = self.btnpanel = wx.Panel(self, )
         panel.SetBackgroundColour(wx.Colour(*BGCOL))
@@ -225,6 +229,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.time_choice = Choice(panel, size=(120, -1),
                                   choices=('seconds', 'minutes', 'hours'),
                                   action=self.onTimeChoice)
+
         self.time_choice.SetStringSelection(self.timelabel)
         self.time_ctrl  = FloatCtrl(panel, value=60.0, precision=1,
                                     size=(90, -1), action=self.onDisplayTimeVal)
@@ -319,8 +324,10 @@ Matt Newville <newville@cars.uchicago.edu>
             self.pvmsg.SetLabel(msg)
             if not conn:
                 return
+
             self.pvlist.append(name)
             self.pvdata[name] = [(time.time(), pv.get())]
+
             if basename.endswith('.VAL'):
                 basename = basename[:-4]
             if desc is None:
@@ -331,9 +338,12 @@ Matt Newville <newville@cars.uchicago.edu>
                 desc = basename
 
             self.pv_labels[name] = desc
+            self.user_data[name]  = (desc, 0, '', '')
+
             inew = len(self.pvdata)
             new_shown = False
-            for choice in (self.wids['pv0'], self.wids['pv1']):
+            for i in range(NPVS):
+                choice =  self.wids[f'pv{i}']
                 cur = choice.GetSelection()
                 choice.Clear()
                 choice.SetItems(self.pvlist)
@@ -356,7 +366,6 @@ Matt Newville <newville@cars.uchicago.edu>
     def onPVchoice(self, event=None, row=0, **kws):
         self.needs_refresh = True
         pvname = self.wids[f'pv{row}'].GetStringSelection()
-
         if pvname in self.user_data:
             desc, uselog, ymin, ymax = self.user_data[pvname]
             if desc in (None, '', 'None'):
@@ -365,6 +374,24 @@ Matt Newville <newville@cars.uchicago.edu>
             self.wids[f'uselog{row}'].SetSelection(uselog)
             self.wids[f'ymin{row}'].SetValue(f"{ymin}")
             self.wids[f'ymax{row}'].SetValue(f"{ymax}")
+
+    def onSavePVSettings(self, event=None):
+        for i in range(NPVS):
+            pvname =  self.wids[f'pv{i}'].GetStringSelection()
+            if pvname in (None, 'None', '-') or len(pvname) < 2:
+                continue
+
+            desc = self.wids[f'desc{i}'].GetValue()
+            uselog = (1 == self.wids[f'uselog{i}'].GetSelection())
+            ymin = get_bound(self.wids[f'ymin{i}'].GetValue())
+            ymax = get_bound(self.wids[f'ymax{i}'].GetValue())
+            color = hexcolor(self.wids[f'col{i}'].GetColour())
+            if ymin in (None, 'None'):
+                ymin = ''
+            if ymax in (None, 'None'):
+                ymax = ''
+            self.user_data[pvname] = (desc, uselog, ymin, ymax)
+
 
     def onPVcolor(self, event=None, row=None, **kws):
         self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
@@ -491,9 +518,15 @@ Matt Newville <newville@cars.uchicago.edu>
         xmin = -1
         xmax = 0
         traces = []
-        for i in range(2):
+        for i in range(NPVS):
+            yaxes = i+1
             pvname =  self.wids[f'pv{i}'].GetStringSelection()
             if pvname in (None, 'None', '-') or len(pvname) < 2:
+                # print("None for yaxes ", yaxes, len(ppan.fig.get_axes()))
+#                 if i == 3 and len(ppan.fig.get_axes()) == 4:
+#                     ppan.fig.get_axes()[3].clear()
+#                     ppan.conf.y4label = ''
+#                     ppan.conf.traces[3].yaxes = None
                 continue
             if pvname not in self.pvdata:
                 continue
@@ -504,10 +537,6 @@ Matt Newville <newville@cars.uchicago.edu>
             ymax = get_bound(self.wids[f'ymax{i}'].GetValue())
             color = hexcolor(self.wids[f'col{i}'].GetColour())
 
-            self.user_data[pvname] = (desc, uselog, ymin, ymax)
-
-            itrace = i
-            yaxes = i+1
             if len(desc.strip()) < 1:
                 desc = pvname
 
@@ -536,8 +565,8 @@ Matt Newville <newville@cars.uchicago.edu>
                 ymax = max(ydat) + yrange*0.02
 
             ylabel = 'ylabel'
-            if itrace > 0:
-                ylabel = f'y{1+itrace}label'
+            if i > 0:
+                ylabel = f'y{1+i}label'
 
             tspan = tnow - tmin
             tmin = (tmin - tspan*0.02)
@@ -547,7 +576,7 @@ Matt Newville <newville@cars.uchicago.edu>
             xmax = tmax/86400.0
             if True:
                 if len(ydat) > 3:
-                    ppan.update_line(itrace, tdat, ydat, draw=False, yaxes=yaxes)
+                    ppan.update_line(i, tdat, ydat, draw=False, yaxes=yaxes)
                     ppan.set_xylims((xmin, xmax, ymin, ymax), yaxes=yaxes)
                     setattr(ppan.conf, ylabel, desc)
                 else:
@@ -557,7 +586,7 @@ Matt Newville <newville@cars.uchicago.edu>
                                 'delay_draw': True, 'yaxes_tracecolor': True,
                                 'use_dates': True, 'timezone': TZONE}
                     opts[ylabel] = desc
-                    plot = ppan.plot if itrace==0 else ppan.oplot
+                    plot = ppan.plot if i==0 else ppan.oplot
                     plot(tdat, ydat, yaxes=yaxes, color=color,
                          ymin=ymin, ymax=ymax,
                          ylog_scale=ylog_scale, label=desc, **opts)
