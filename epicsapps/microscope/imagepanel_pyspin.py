@@ -26,12 +26,12 @@ from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 LEFT = wx.ALIGN_LEFT|wx.EXPAND
 
 HAS_PYSPIN = False
-#try:
-import PySpin
-from .pyspin_camera import PySpinCamera
-#HAS_PYSPIN = True
-#except ImportError:
-#    print("no pyspin imported?")
+try:
+    import PySpin
+    from .pyspin_camera import PySpinCamera
+    HAS_PYSPIN = True
+except ImportError:
+    HAS_PYSPIN = False
 
 MAX_EXPOSURE_TIME = 58
 
