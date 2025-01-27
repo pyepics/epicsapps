@@ -33,7 +33,7 @@ FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 BGCOL  = (250, 250, 240)
 
 POLLTIME = 100
-NPVS = 2
+NPVS = 4
 STY  = wx.GROW|wx.ALL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL
 CSTY = wx.ALIGN_CENTER
@@ -86,6 +86,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.user_data = {}
         self.pv_labels = {}
         self.wids = {}
+        self.nplot = 0
         self.pvlist = ['-']
         self.needs_refresh = False
         self.paused = False
@@ -518,19 +519,27 @@ Matt Newville <newville@cars.uchicago.edu>
         xmin = -1
         xmax = 0
         traces = []
+        nselected = 0
         for i in range(NPVS):
-            yaxes = i+1
             pvname =  self.wids[f'pv{i}'].GetStringSelection()
             if pvname in (None, 'None', '-') or len(pvname) < 2:
-                # print("None for yaxes ", yaxes, len(ppan.fig.get_axes()))
-#                 if i == 3 and len(ppan.fig.get_axes()) == 4:
-#                     ppan.fig.get_axes()[3].clear()
-#                     ppan.conf.y4label = ''
-#                     ppan.conf.traces[3].yaxes = None
+                continue
+            nselected += 1
+
+        use_update = True
+        if nselected < self.nplot:
+            ppan.clear()
+            use_update = False
+
+        self.nplot = 0
+        for i in range(NPVS):
+            pvname =  self.wids[f'pv{i}'].GetStringSelection()
+            if pvname in (None, 'None', '-') or len(pvname) < 2:
                 continue
             if pvname not in self.pvdata:
                 continue
-
+            yaxes = i+1
+            self.nplot += 1
             desc = self.wids[f'desc{i}'].GetValue()
             uselog = (1 == self.wids[f'uselog{i}'].GetSelection())
             ymin = get_bound(self.wids[f'ymin{i}'].GetValue())
@@ -571,11 +580,12 @@ Matt Newville <newville@cars.uchicago.edu>
             tspan = tnow - tmin
             tmin = (tmin - tspan*0.02)
             tmax = (tnow + tspan*0.02)
-
+            if len(ydat) < 3:
+                use_update = False
             xmin = tmin/86400.0
             xmax = tmax/86400.0
             if True:
-                if len(ydat) > 3:
+                if use_update:
                     ppan.update_line(i, tdat, ydat, draw=False, yaxes=yaxes)
                     ppan.set_xylims((xmin, xmax, ymin, ymax), yaxes=yaxes)
                     setattr(ppan.conf, ylabel, desc)
