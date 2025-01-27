@@ -391,9 +391,6 @@ class InstrumentDB(SimpleDB):
                    'instrument_id': inst.id, 'notes': notes}
             if 'modify_time' in ptab.c:
                 kwargs['modify_time'] = isotime()
-            elif 'date' in ptab.c:
-                kwargs['date'] = isotime()
-
             self.add_row('position', **kwargs)
             pos = self.get_position(posname, instname)
 
