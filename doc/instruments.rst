@@ -1,5 +1,6 @@
-====================================
-Using Epics Instruments
+.. _instruments:
+
+Epics Instruments
 ====================================
 
 Epics Instruments is a GUI application (using wxPython) that lets any user:

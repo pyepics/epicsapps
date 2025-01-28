@@ -26,18 +26,18 @@ The main applications included in EpicsApps include
     history of a set of PV values.  Time ranges and ranges for Y
     values can be changed, and data can be saved to plain text files.
 
-  * *areaDetector Display*: A GUI application to control and view images
+  * :ref:`ad_viewer`: A GUI application to control and view images
     from an Epics Area Detector.  Controls for stqrting acquistion,
     changing image mode, exposure time, and frame rate can also be
     included using a simple configuration file. The end-user can
     change color-table and contrast level, as well as use a Zoom Box
     to enhance portions of the image.
 
-  * *Epics Instruments*: A GUI application to organize PVs, by grouping
+  * :ref:`instruments`: A GUI application to organize PVs, by grouping
     them into user-named "Instruments".  Each Instrument can have a
     set of named positions that the end-user can save and restore.
 
-  * *PVLogger*: A command-line and GUI application to collect and log
+  * :ref:`pvlogger`: A command-line and GUI application to collect and log
     time-series of a handful of PV values into plain text files in a
     folder in a manner that can be easily reviewed.
 

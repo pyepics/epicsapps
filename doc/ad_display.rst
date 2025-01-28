@@ -1,7 +1,6 @@
 .. _ad_viewer:
 
 
-
 Area Detector Display
 ====================================
 
