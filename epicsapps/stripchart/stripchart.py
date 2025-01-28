@@ -93,6 +93,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.nmax = nmax
         if self.nmax is None:
             self.nmax = NMAX_DEFAULT
+        self.ntrim = int(self.nmax*0.01)
         self.timelabel = 'seconds'
 
         self.create_frame(parent)
@@ -584,22 +585,25 @@ Matt Newville <newville@cars.uchicago.edu>
                 use_update = False
             xmin = tmin/86400.0
             xmax = tmax/86400.0
-            if True:
-                if use_update:
+            if use_update:
+                try:
                     ppan.update_line(i, tdat, ydat, draw=False, yaxes=yaxes)
                     ppan.set_xylims((xmin, xmax, ymin, ymax), yaxes=yaxes)
                     setattr(ppan.conf, ylabel, desc)
-                else:
-                    ylog_scale = uselog and min(ydat) > 0
-                    opts = {'show_legend': False, 'xlabel': 'Date / Time',
-                                'drawstyle': 'steps-post',
-                                'delay_draw': True, 'yaxes_tracecolor': True,
-                                'use_dates': True, 'timezone': TZONE}
-                    opts[ylabel] = desc
-                    plot = ppan.plot if i==0 else ppan.oplot
-                    plot(tdat, ydat, yaxes=yaxes, color=color,
-                         ymin=ymin, ymax=ymax,
-                         ylog_scale=ylog_scale, label=desc, **opts)
+                except:
+                    use_update = False
+                    pass
+            if not use_update:
+                ylog_scale = uselog and min(ydat) > 0
+                opts = {'show_legend': False, 'xlabel': 'Date / Time',
+                        'drawstyle': 'steps-post',
+                        'delay_draw': True, 'yaxes_tracecolor': True,
+                        'use_dates': True, 'timezone': TZONE}
+                opts[ylabel] = desc
+                plot = ppan.plot if i==0 else ppan.oplot
+                plot(tdat, ydat, yaxes=yaxes, color=color,
+                     ymin=ymin, ymax=ymax,
+                     ylog_scale=ylog_scale, label=desc, **opts)
 
 
         snow = time.strftime("%Y-%b-%d %H:%M:%S", time.localtime())
