@@ -41,7 +41,14 @@ CSTY = wx.ALIGN_CENTER
 PLOT_COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')
 
-NMAX_DEFAULT = 2**22  # 4M
+# Each recorded value uses 2 doubles (time, value)
+# With NMAX_DEFAULT of 2**22, 4M, each PV will use up to
+# (2**22)*2*8 bytes of data == 64 MB.
+#
+# For events at 10 Hz, 2**22 values will hold
+# 116.5 hours or 4 days, 20.5 hourse worth of data.
+NMAX_DEFAULT = 2**22
+NTRIM_DEFAULT =NMAX_DEFAULT/64
 
 def get_bound(val):
     "return float value of input string or None"
@@ -80,7 +87,7 @@ Also, these key bindings can be used
     about_msg =  """Epics PV Strip Chart  version 0.1
 Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, parent=None, nmax=None):
+    def __init__(self, parent=None, nmax=None, ntrim=None):
         self.pvdata = {}
         self.pvs = {}
         self.user_data = {}
@@ -91,9 +98,11 @@ Matt Newville <newville@cars.uchicago.edu>
         self.needs_refresh = False
         self.paused = False
         self.nmax = nmax
+        self.ntrim = ntrim
         if self.nmax is None:
             self.nmax = NMAX_DEFAULT
-        self.ntrim = int(self.nmax*0.01)
+        if self.ntrim is None:
+            self.ntrim = NTRIM_DEFAULT
         self.timelabel = 'seconds'
 
         self.create_frame(parent)
@@ -363,7 +372,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.needs_refresh = True
         # may need to trim pvdata
         if len(self.pvdata[pvname]) > self.nmax:
-            self.pvdata[pvname] = self.pvdata[pvname][256:]
+            self.pvdata[pvname] = self.pvdata[pvname][self.ntrim:]
 
     def onPVchoice(self, event=None, row=0, **kws):
         self.needs_refresh = True
