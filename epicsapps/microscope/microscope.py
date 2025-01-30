@@ -183,6 +183,7 @@ class MicroscopeFrame(wx.Frame):
         self.create_frame(orientation=self.orientation)
         self.xplot = None
         self.yplot = None
+        self.vcap_thread = None
         self.imgpanel.Start()
 
     def create_frame(self, size=(1500, 750), orientation='landscape'):
@@ -723,14 +724,23 @@ class MicroscopeFrame(wx.Frame):
     def save_videocam(self):
         fullpath = ''
         if HAS_CV2 and self.videocam is not None:
-            cam = cv2.VideoCapture(self.videocam.strip())
+            t0 = time.time()
             imgfile = '%s_hutch.jpg' % time.strftime('%b%d_%H%M%S')
-            fullpath = os.path.join(os.getcwd(), self.imgdir, imgfile)
-            status, image = cam.read()
-            if status:
-                cv2.imwrite(fullpath, image)
-            cam.release()
-        return fullpath
+            self.video_fullpath = os.path.join(os.getcwd(), self.imgdir, imgfile)
+            if self.vcap_thread is not None:
+                if self.vcap_thread.is_alive():
+                    self.vcap_thread.join()
+                
+            def do_videocapture():
+                cam = cv2.VideoCapture(self.videocam.strip())
+                status, image = cam.read()
+                if status:
+                    cv2.imwrite(self.video_fullpath, image)
+                cam.release()
+                
+            self.vcap_thread = Thread(target=do_videocapture)
+            self.vcap_thread.start()
+        return self.video_fullpath
 
     def write_message(self, msg='', index=0):
         "write to status bar"
