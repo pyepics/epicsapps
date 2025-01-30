@@ -108,8 +108,7 @@ class PySpinCamera(object):
     def SetFramerate(self, framerate=18.0):
         arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
         arate.SetValue(framerate*1.0)
-        print("Set Frame rate")
-        time.sleep(0.25)
+        time.sleep(0.1)
 
     def Exit(self):
         self.StopCapture()
