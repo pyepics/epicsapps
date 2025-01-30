@@ -670,7 +670,7 @@ class PositionPanel(wx.Panel):
         imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
         imgfile = os.path.join(self.viewer.imgdir, imgfile)
         tmp_pos = self.viewer.ctrlpanel.read_position()
-        print("Read position ", tmp_pos)
+        # print("Read position ", tmp_pos)
         imgdata, count = None, 0
         if not os.path.exists(self.viewer.imgdir):
             os.makedirs(self.viewer.imgdir)
@@ -759,6 +759,7 @@ class PositionPanel(wx.Panel):
         except:
             self.image_display =  None
 
+        print("Show File ", notes)
         if str(notes['data_format']) == 'file':
             self.image_display.showfile(data, title=posname,
                                         label=label)
@@ -936,7 +937,9 @@ class PositionPanel(wx.Panel):
 
     def set_positions(self, positions):
         "set the list of position on the left-side panel"
+        print("Set Positions  ", len(positions))
         cur_sel = self.pos_list.GetStringSelection()
+
         self.pos_list.Clear()
         self.positions = positions
         for name, val in self.positions.items():
@@ -959,7 +962,7 @@ class PositionPanel(wx.Panel):
             return
         positions = {}
         iname = self.instrument
-        posnames =  [row.name for row in self.instdb.get_positions(iname)]
+        posnames =  self.instdb.get_positionlist(iname, reverse=True)
         self.posnames = posnames
         # self.instdb.make_pvmap()
         for pname in posnames:
@@ -977,6 +980,7 @@ class PositionPanel(wx.Panel):
             for name, val in self.instdb.get_position_values(pname, iname).items():
                 pdat[name] =  val
             positions[pname] = dict(position=pdat, image=image, notes=notes)
+        # print(positions)
         self.set_positions(positions)
 
     def SavePositions(self, fname):
