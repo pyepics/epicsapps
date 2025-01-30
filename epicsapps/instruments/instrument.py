@@ -274,7 +274,7 @@ class InstrumentDB(SimpleDB):
             self.update('position', where={'name': pos.name},
                         name=newname)
 
-    def get_positions(self, instrument):
+    def get_positions(self, instrument, order_by):
         """return list of positions for an instrument
         """
         inst = self.get_instrument(instrument)
@@ -288,6 +288,18 @@ class InstrumentDB(SimpleDB):
             where['instrument_id'] = self.get_instrument(instrument).id
         return self.get_rows('position', where=where,
                              limit_one=True, none_if_empty=True)
+
+    def get_positionlist(self, instname, reverse=False):
+        """return list of position names for an instrument
+        """
+        inst = self.get_instrument(instname)
+        rows = self.get_rows('position', where={'instrument_id': inst.id},
+                              order_by='modify_time')
+        out = [row.name for row in rows]
+        if reverse:
+            out.reverse()
+        return out
+    
 
     def add_instrument(self, name, pvs=None, **kws):
         """add instrument  notes and attributes optional
