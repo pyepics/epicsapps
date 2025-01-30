@@ -154,8 +154,10 @@ class ADMonoImagePanel(wx.Panel):
 
     def connect_pvs(self, prefix):
         self.adcam = Device(prefix,  delim='', attrs=self.ad_attrs)
+        
         self.adcam.add_callback('cam1:ArrayCounter_RBV', self.onNewImage)
 
+        
     def GetImageSize(self):
         return  (self.adcam.get('image1:ArraySize0_RBV'),
                  self.adcam.get('image1:ArraySize1_RBV'))
@@ -296,8 +298,11 @@ class ADMonoImagePanel(wx.Panel):
         h, w = self.GetImageSize()
         if self.rot90 in (1, 3):
             w, h = h, w
-
-        self.scale = max(0.10, min(0.98*fw/(w+0.1), 0.98*fh/(h+0.1)))
+        
+        try:
+            self.scale = max(0.10, min(0.98*fw/(w+0.1), 0.98*fh/(h+0.1)))
+        except:
+            self.scale = 0.25
         wx.CallAfter(self.Refresh)
 
     def onPaint(self, event):
