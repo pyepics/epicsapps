@@ -184,6 +184,7 @@ class MicroscopeFrame(wx.Frame):
         self.xplot = None
         self.yplot = None
         self.vcap_thread = None
+        self.imagelog = None
         self.imgpanel.Start()
 
     def create_frame(self, size=(1500, 750), orientation='landscape'):
@@ -681,6 +682,9 @@ class MicroscopeFrame(wx.Frame):
         fout = open(self.htmllog, 'w')
         fout.write(self.html_header)
         fout.close()
+        self.imagelog = Path(self.imgdir, '_Images.log')
+        with open(self.imagelog, 'a') as fh:
+            fh.write('# Image logs\n######\n')
 
     def save_image(self, fname):
         "save image to file"
@@ -715,12 +719,55 @@ class MicroscopeFrame(wx.Frame):
         txt.append("</table></td></tr></table>")
         txt.append("")
         txt = '\n'.join(txt)
-        fout = open(self.htmllog, 'a')
+        tstamp = thispos['timestamp']
+        with open(self.htmllog, 'a') as fout:
+            fout.write(txt.format(imgfile=imgfile, img2file=img2file, position=name,
+                              tstamp=tstamp))
 
-        fout.write(txt.format(imgfile=imgfile, img2file=img2file, position=name,
-                              tstamp=thispos['timestamp']))
-        fout.close()
+        self.imagelog = Path(self.imgdir, '_Images.log')
+        if not self.imagelog.exists():
+            with open(self.imagelog, 'a') as fh:
+                fh.write('# Image logs\n#')
 
+        # plain log file in folder
+        delim = '|'
+        if delim in name:
+            for dx in ('~', '*', '-', '@', '+', '!', '?', '$', '%',
+                       '^', '&', '=', '~~', '**', '--', '@@', '++',
+                       '~!', '??', '$$', '%%', '^^', '&&', '=='):
+                if dx not in name:
+                    delim = dx
+                    break
+        
+        txt = f"{delim}: {name:s} {delim} {tstamp:s} {delim} {imgfile} {delim} {img2file} {delim}"
+        with open(self.imagelog, 'a') as fh:
+            fh.write(f"{txt}\n")
+
+    def read_imagelog(self):
+        if self.imagelog is None:
+            self.imagelog = Path(self.imgdir, '_Images.log')
+            if not self.imagelog.exists():
+                with open(self.imagelog, 'a') as fh:
+                    fh.write('# Image logs\n#')
+        images = {}
+        with open(self.imagelog, 'r') as fh:
+            lines = fh.readlines()
+        for line in lines:
+            if line.startswith('#'):
+                continue
+            parts = line.split(':', maxsplit=1)
+            delim = parts[0].strip()
+            words = [w.strip() for w in parts[1].split(delim)]
+            name = words[0]
+            tstamp = words[1]
+            imgfile = words[2]
+            img2file = None
+            if len(words) > 2:
+                img2file = words[3]
+            images[name] = imgfile, img2file, tstamp
+        return images
+            
+            
     def save_videocam(self):
         fullpath = ''
         if HAS_CV2 and self.videocam is not None:
