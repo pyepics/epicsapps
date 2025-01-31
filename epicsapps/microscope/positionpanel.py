@@ -1,5 +1,6 @@
 import sys
 import os
+from pathlib import Path
 import wx
 import wx.lib.scrolledpanel as scrolled
 import wx.dataview as dv
@@ -714,61 +715,30 @@ class PositionPanel(wx.Panel):
 
     def onShow(self, event):
         posname = self.pos_list.GetStringSelection()
-        ipos  =  self.pos_list.GetSelection()
         if posname is None or len(posname) < 1:
             return
+        
+        imfile = None
+        imagelist = self.viewer.read_imagelog()
+        if posname in imagelist:
+            imfile, imfile1, tstamp = imagelist[posname]
 
-        thispos = self.positions[posname]
-        try:
-            notes = json.loads(thispos['notes'])
-        except:
-            notes = {'data_format': ''}
-        if isinstance(notes, str):
-            notes = json.loads(notes)
-
-        if 'data_format' not in notes:
-            print('Cannot show image for %s' % posname)
-            try:
-                self.image_display.Destroy()
-                self.image_display = None
-            except:
-                pass
+        # imfile = Path(self.viewer.imgdir, imfile).as_posix()
+        if imfile is None:
+            print('no image file found for position ', posname)
             return
 
-        label = []
-        stages  = self.viewer.stages
-        posvals = self.positions[posname]['position']
-        for pvname, value in posvals.items():
-            value = thispos['position'][pvname]
-            desc = stages.get(pvname, {}).get('desc', None)
-            if desc is None:
-                desc = pvname
-            label.append("%s=%.4f" % (desc, float(value)))
-        label = ', '.join(label)
-        label = '%s: %s' % (posname, label)
-
-        data  = thispos['image']
-
-        if self.image_display is None:
+        try:
+            self.image_display.Raise()
+            self.image_display.Show()
+        except:
             self.image_display = ImageDisplayFrame()
             self.image_display.Raise()
+            self.image_display.Show()            
+            
+        self.image_display.showfile(imfile, title=posname)
 
-        try:
-            self.image_display.Show()
-            self.image_display.Raise()
-        except:
-            self.image_display =  None
-
-        print("Show File ", notes)
-        if str(notes['data_format']) == 'file':
-            self.image_display.showfile(data, title=posname,
-                                        label=label)
-        elif str(notes['data_format']) == 'base64':
-            size = notes.get('image_size', (800, 600))
-            self.image_display.showb64img(data, size=size,
-                                          title=posname, label=label)
-
-
+        
     @EpicsFunction
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
