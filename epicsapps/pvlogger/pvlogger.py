@@ -223,7 +223,7 @@ class PVLogger():
         self.topfolder = Path(self.workdir, self.folder).absolute()
         self.topfolder.mkdir(mode=0o755, parents=False, exist_ok=True)
         os.chdir(self.topfolder)
-        
+
         self.end_datetime = self.config.get('end_datetime', '')
         end_ts = -1
         if len(self.end_datetime) > 1:
@@ -233,7 +233,7 @@ class PVLogger():
             except:
                 pass
         self.end_timestamp = end_ts
-        
+
     def connect_pvs(self):
         """
         initial connection, or re-connection of PVs
@@ -314,8 +314,8 @@ class PVLogger():
                     self.add_pv(f"{prefix}{mfield}",
                                 desc=f"{lpv.desc} {mfield}",  mdel=None)
 
-        with open("_PVLOG.toml", "w+") as fh:
-            fh.write(toml.dumps(out))
+        with open("_PVLOG.yaml", "w+") as fh:
+            yaml.dump(out, fh, default_flow_style=False)
 
         pfiles = ["# PV Name                                |    Log File "]
         for lpv in self.pvs.values():
@@ -361,7 +361,7 @@ class PVLogger():
 
     def look_for_exit_signal(self):
         """
-        look for whether data collection should stop.  
+        look for whether data collection should stop.
         There are two ways to specify stopping:
 
            a) a file named _PVLOG_stop.txt written to the folder will stop collection
@@ -377,7 +377,7 @@ class PVLogger():
             except:
                 pass
         return exit_request
-            
+
 
     def finish(self):
         """finish data collection"""
