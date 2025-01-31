@@ -128,6 +128,10 @@ class LoggedPV():
         if not skip:
             self.value = value
             self.char_value = char_value
+            if '\n' in char_value:
+                self.char_value = char_value.replace('\n', '\\n')
+            if '\r' in char_value:
+                self.char_value = char_value.replace('\r', '\\r')
             if timestamp is None:
                 timestamp = time.time()
             self.timestamp = timestamp
@@ -349,7 +353,7 @@ class PVLogger():
             print("read request file")
             rconfig = PVLoggerConfig(reqfile.as_posix())
             for section in ('pvs', 'instruments'):
-                newdat = rconfig.get(section, [])
+                newdat = rconfig.config.get(section, [])
                 if len(newdat) > 0:
                     self.config[section].extend(newdat)
             self.connect_pvs()
