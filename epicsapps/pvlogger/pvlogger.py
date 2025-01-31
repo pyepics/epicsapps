@@ -8,7 +8,7 @@ from collections import deque
 from pathlib import Path
 from datetime import datetime
 import numpy as np
-import toml
+import yaml
 from epics import get_pv, caget, PV
 from pyshortcuts import debugtimer, fix_filename, new_filename, isotime, gformat
 
