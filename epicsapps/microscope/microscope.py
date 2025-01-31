@@ -23,7 +23,7 @@ import matplotlib
 matplotlib.use('WXAgg')
 from wxmplot import PlotFrame
 
-from epics import caput, Motor
+from epics import caput, Motor, get_pv
 from epics.wx import EpicsFunction
 
 from epics.wx.utils import (add_menu, LTEXT, CEN, LCEN, RCEN, RIGHT)
@@ -628,6 +628,11 @@ class MicroscopeFrame(wx.Frame):
         self.cam_pubaddr = cnf.get('publish_addr', '164.54.160.93')
         self.cam_pubport = cnf.get('publish_port', '17166')
         self.cam_pubdelay = float(cnf.get('publish_delay', '0.25'))
+        pvlog_prefix = cnf.get('pvlog_prefix', None)
+        self.pvlog_pos = None
+        if pvlog_prefix is not None:
+            self.pvlog_pos = get_pv(f'{pvlog_prefix}PositionName')
+        
         self.calibrations = {}
         self.calib_current = None
         calibs = cnf.get('calibration', [])

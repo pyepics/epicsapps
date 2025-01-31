@@ -693,13 +693,13 @@ class PositionPanel(wx.Panel):
                                           'timestamp': time.strftime('%b %d %H:%M:%S'),
                                           'position': tmp_pos,
                                           'notes':  notes}
-
-        print("Save Position ", self.instrument, name, tmp_pos)
         self.instdb.save_position(name, self.instrument, tmp_pos,
                                   notes=notes, image=fullpath)
         self.get_positions_from_db()
-        # self.pos_list.SetStringSelection(name)
-
+        if (self.viewer.pvlog_pos is not None and
+            self.viewer.pvlog_pos.connected):
+            self.viewer.pvlog_pos.put(name)
+            
         imgfile_exists = False
         t0 = time.time()
         if not imgfile_exists and time.time()-t0 < 10:
@@ -907,7 +907,6 @@ class PositionPanel(wx.Panel):
 
     def set_positions(self, positions):
         "set the list of position on the left-side panel"
-        print("Set Positions  ", len(positions))
         cur_sel = self.pos_list.GetStringSelection()
 
         self.pos_list.Clear()
