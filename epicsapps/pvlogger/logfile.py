@@ -115,7 +115,7 @@ def read_logfile(filename):
     text = read_textfile(filename)
     lines = text.split('\n')
     ncol = None
-    return parse_logfile(text, filename)
+    return parse_logfile(lines, filename)
 
 def parse_logfile(textlines, filename):
     dt = debugtimer()
