@@ -62,6 +62,7 @@ class LoggedPV():
         self.timestamp = 0.0
         self.end_timestamp = -1
         self.value = None
+        self.char_value = None
         self.data = deque()
         self.needs_header = False
         self.connected = None
@@ -154,6 +155,12 @@ class LoggedPV():
 
     def write_data(self, with_flush=False):
         if self.needs_header:
+            if self.pv.connected:
+                if self.value is None:
+                    self.value = self.pv.get()
+                if self.char_value is None:
+                    self.char_value = self.pv.get(as_string=True)
+
             buff = ["# pvlog data file",
                     f"# pvname        = {self.pvname}",
                     f"# label         = {self.desc}",
@@ -180,10 +187,11 @@ class LoggedPV():
             buff = []
             for i in range(n):
                 ts, val, cval = self.data.popleft()
-                if i == 0 and self.needs_header: # first point, re-get char value
+                if i == 0 and self.needs_header:
+                    # re-determine the char value for the first point
                     cur_val = self.pv.value
                     cval = self.pv._set_charval(val)
-                    self.char_val = self.pv._set_charval(cur_val)
+                    self.char_value = self.pv._set_charval(cur_val)
                 xval = '<index>'
                 if self.pv.nelm == 1 and 'double' in self.pv.type:
                     try:
