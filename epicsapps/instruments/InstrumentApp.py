@@ -141,7 +141,7 @@ class InstrumentFrame(wx.Frame):
                     set_hostpid = (ret != wx.ID_YES)
                 if set_hostpid:
                     db.set_hostpid()
-
+                db.check_version()
             else:
                 db.create_newdb(dbname, connect=True)
         self.config['dbname'] = dbname
