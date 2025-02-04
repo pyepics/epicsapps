@@ -447,7 +447,7 @@ class TransferPositionsDialog(wx.Frame):
         self.build_dialog()
 
     def build_dialog(self):
-        positions  = self.instdb.get_position_values(self.offline, reverse=True)
+        positions  = self.instdb.get_position_values(self.offline)
         panel = scrolled.ScrolledPanel(self)
         self.checkboxes = {}
         sizer = wx.GridBagSizer(len(positions)+5, 4)
@@ -931,7 +931,7 @@ class PositionPanel(wx.Panel):
             return
         positions = {}
         iname = self.instrument
-        posnames =  self.instdb.get_positionlist(iname, reverse=True)
+        posnames =  self.instdb.get_positionlist(iname)
         self.posnames = posnames
         # self.instdb.make_pvmap()
         for pname in posnames:
