@@ -67,7 +67,7 @@ class ImageDisplayFrame(wx.Frame):
         imgw, imgh = img.GetSize()
         scale = min((winw*1.0 - self.pad)/imgw, (winh*1.0 - self.pad)/imgh)
         ximg = img.Rescale(winw-self.pad, winh-self.pad)
-        self.bitmap.SetBitmap(wx.BitmapFromImage(ximg))
+        self.bitmap.SetBitmap(wx.Bitmap(ximg))
         self.Refresh()
 
     def onClose(self, event=None):
