@@ -31,3 +31,6 @@ sqlcode['1.2'] = [
 sqlcode['1.3'] = ["alter table instrument_pv add column move_order integer;",
                   "update instrument_pv set move_order=1;",
                   ]
+
+# version 1.4 adds "modify_time" to position
+sqlcode['1.4'] = ["alter table instrument add column modify_time DATETIME;"]
