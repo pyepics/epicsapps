@@ -118,6 +118,12 @@ class InstrumentDB(SimpleDB):
                 self.session.execute(statement)
             self.set_info('version', '1.3')
 
+        if version_string < '1.4':
+            print('Upgrading Database to Version 1.4')
+            for statement in upgrades.sqlcode['1.4']:
+                self.session.execute(statement)
+            self.set_info('version', '1.4')
+
 
     def commit(self):
         "commit session state"
@@ -299,7 +305,7 @@ class InstrumentDB(SimpleDB):
         if reverse:
             out.reverse()
         return out
-    
+
 
     def add_instrument(self, name, pvs=None, **kws):
         """add instrument  notes and attributes optional
@@ -397,29 +403,16 @@ class InstrumentDB(SimpleDB):
 
         posname = posname.strip()
         pos  = self.get_position(posname, instname)
-        if pos is None:
-            ptab = self.tables['position']
-            kwargs = {'name': posname,
-                   'instrument_id': inst.id, 'notes': notes}
-            if 'modify_time' in ptab.c:
-                kwargs['modify_time'] = isotime()
-            self.add_row('position', **kwargs)
-            pos = self.get_position(posname, instname)
+        if pos is not None:
+            self.remove_position(posname, instname)
 
-        else:
-            where = {'name': posname, 'instrument_id': inst.id}
-            kwargs = {}
-            ptab = self.tables['position']
-            if 'modify_time' in ptab.c:
-                kwargs['modify_time'] = isotime()
-
-            if notes is not None:
-                kwargs['notes'] = notes
-            if len(kwargs) > 0:
-                try:
-                    self.update('position', where=where, **kwargs)
-                except:
-                    pass
+        ptab = self.tables['position']
+        kwargs = {'name': posname,
+                  'instrument_id': inst.id, 'notes': notes}
+        if 'modify_time' in ptab.c:
+            kwargs['modify_time'] = isotime()
+        self.add_row('position', **kwargs)
+        pos = self.get_position(posname, instname)
 
         instpvs = self.get_instrument_pvs(instname)
         # check for missing pvs in values
@@ -436,7 +429,7 @@ class InstrumentDB(SimpleDB):
             value = values[name]
             self.insert('position_pv', position_id=pos.id,
                         pv_id=pvid, value=values[name],
-                        notes=f"'{inst.name}' / '{posname}'")
+                        notes=f"{inst.name}/{posname}/{name}")
 
 
     def get_position_values(self, posname, instname, exclude_pvs=None):
