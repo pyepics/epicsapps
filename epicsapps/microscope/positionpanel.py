@@ -49,7 +49,7 @@ def read_xyz(instdb, name, xyz_stages):
     returns dictionary of PositionName: (x, y, z)
     """
     out = {}
-    for row in instdb.get_positions(name):
+    for row in instdb.get_positions(name, reverse=True):
         vals =  instdb.get_position_values(row.name, name)
         out[row.name]  = [vals[pos] for pos in xyz_stages]
     return out
@@ -105,6 +105,7 @@ def calc_rotmatrix(d1, d2):
 
     # get initial rotation matrix, assuming that
     # there are orthogonal coordinate systems.
+    os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
     mat = superimposition_matrix(v1, v2, scale=True)
 
     params = Parameters()
@@ -122,8 +123,8 @@ def calc_rotmatrix(d1, d2):
 def make_uscope_rotation(instdb,
                          offline_inst='IDE_Microscope',
                          offline_xyz=('13IDE:m1.VAL', '13IDE:m2.VAL', '13IDE:m3.VAL'),
-                         online_inst='IDE_SampleStage',
-                         online_xyz=('13XRM:m5.VAL', '13XRM:m6.VAL', '13XRM:m4.VAL')):
+                         online_inst='SampleStage',
+                         online_xyz=('13XRM:m4.VAL', '13XRM:m5.VAL', '13XRM:m3.VAL')):
     """
     Calculate and store the rotation maxtrix needed to convert
     positions from the GSECARS offline microscope (OSCAR)
@@ -137,8 +138,6 @@ def make_uscope_rotation(instdb,
     """
     pos_us = read_xyz(instdb, offline_inst, offline_xyz)
     pos_ss = read_xyz(instdb, online_inst, online_xyz)
-    # print('pos us: ', pos_us['A2'])
-    # print('pos ss: ', pos_ss['A2'])
     # calculate the rotation matrix
     mat_us2ss, v1, v2 = calc_rotmatrix(pos_us, pos_ss)
     if mat_us2ss is None:
@@ -160,7 +159,6 @@ def make_uscope_rotation(instdb,
     conf_ss2us = "CoordTrans:%s:%s" % (sname, uname)
     ss2us = dict(source=online_xyz, dest=offline_xyz,
                  rotmat=mat_ss2us.tolist())
-    print("Saving Calibration %s" %  conf_ss2us)
     instdb.set_config(conf_ss2us, json.dumps(ss2us))
 
 ######################
@@ -258,7 +256,7 @@ class PositionModel(dv.DataViewIndexListModel):
 
     def read_data(self):
         self.data = []
-        poslist = self.instdb.get_positions(self.instname)
+        poslist = self.instdb.get_positions(self.instname, reverse=True)
         for pos in poslist:
             posname = pos.name
             erase = True
@@ -447,7 +445,7 @@ class TransferPositionsDialog(wx.Frame):
         self.build_dialog()
 
     def build_dialog(self):
-        positions  = self.instdb.get_position_values(self.offline)
+        positions  = self.instdb.get_positionlist(self.offline, reverse=True)
         panel = scrolled.ScrolledPanel(self)
         self.checkboxes = {}
         sizer = wx.GridBagSizer(len(positions)+5, 4)
@@ -533,15 +531,15 @@ class TransferPositionsDialog(wx.Frame):
             idb = self.instdb
             uscope = idb.get_instrument(self.offline)
             sample = idb.get_instrument(self.instname)
-            print("sample   ", uscope, sample)
+
             uname = uscope.name.replace(' ', '_')
             sname = sample.name.replace(' ', '_')
             conf_name = "CoordTrans:%s:%s" % (uname, sname)
 
             conf = json.loads(idb.get_config(conf_name).notes)
-            print("Transfering positions from ", uscope, ' to ', sample)
             source_pvs = conf['source']
             dest_pvs = conf['dest']
+
             rotmat = np.array(conf['rotmat'])
             upos = {}
             for pname, cbox in self.checkboxes.items():
@@ -563,7 +561,8 @@ class TransferPositionsDialog(wx.Frame):
             pred = np.dot(rotmat, vals)
             os.environ['KMP_DUPLICATE_LIB_OK'] = 'FALSE'
 
-            poslist = idb.get_positions(self.instname)
+            poslist = [r.name for r in idb.get_positions(self.instname,
+                                                         reverse=True)]
             saved_temp = None
 
             if len(poslist) < 1 and self.parent is not None:
@@ -572,7 +571,7 @@ class TransferPositionsDialog(wx.Frame):
                     saved_temp = '__tmp_a0012AZqspkwx9827nf917+o,ppa+'
                 self.parent.onSave(saved_temp)
                 time.sleep(3.0)
-                poslist = idb.get_positions(self.instname)
+                poslist = idb.get_positions(self.instname, reverse=True)
 
             pos0 = idb.get_position_values(poslist[0], self.instname)
             spos = {}
@@ -588,7 +587,7 @@ class TransferPositionsDialog(wx.Frame):
                 spos[ypv] = pred[1, i] + yoffset
                 spos[zpv] = pred[2, i] + zoffset
                 nlabel = '%s%s' % (pname, suff)
-                idb.save_position(self.instname, nlabel, spos)
+                idb.save_position(nlabel, self.instname, spos)
 
             if saved_temp is not None:
                 self.parent.onErase(posname=saved_temp, query=False)
@@ -836,6 +835,7 @@ class PositionPanel(wx.Panel):
 
     def onMicroscopeTransfer(self, event=None):
         offline =  self.offline_instrument
+
         if len(offline) > 0 and self.instdb is not None:
             TransferPositionsDialog(offline, instname=self.instrument,
                                     instdb=self.instdb, parent=self)
@@ -848,7 +848,7 @@ class PositionPanel(wx.Panel):
             offline_xyz = [s.strip() for s in self.offline_xyzmotors]
             online_xyz  = [s.strip() for s in self.xyzmotors]
             if len(offline_xyz) == 3 and len(online_xyz) == 3:
-                print("calibrate %s to %s " % (offline, online))
+                # print("calibrate %s to %s " % (offline, online))
                 # print(offline_xyz, online_xyz)
 
                 make_uscope_rotation(self.instdb,
@@ -931,7 +931,7 @@ class PositionPanel(wx.Panel):
             return
         positions = {}
         iname = self.instrument
-        posnames =  self.instdb.get_positionlist(iname)
+        posnames =  self.instdb.get_positionlist(iname, reverse=True)
         self.posnames = posnames
         # self.instdb.make_pvmap()
         for pname in posnames:
