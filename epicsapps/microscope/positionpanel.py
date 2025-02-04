@@ -49,7 +49,7 @@ def read_xyz(instdb, name, xyz_stages):
     returns dictionary of PositionName: (x, y, z)
     """
     out = {}
-    for row in instdb.get_positions(name, reverse=True):
+    for row in instdb.get_positions(name):
         vals =  instdb.get_position_values(row.name, name)
         out[row.name]  = [vals[pos] for pos in xyz_stages]
     return out
@@ -563,7 +563,7 @@ class TransferPositionsDialog(wx.Frame):
             pred = np.dot(rotmat, vals)
             os.environ['KMP_DUPLICATE_LIB_OK'] = 'FALSE'
 
-            poslist = idb.get_positions(self.instname, reverse=True)
+            poslist = idb.get_positions(self.instname)
             saved_temp = None
 
             if len(poslist) < 1 and self.parent is not None:
@@ -572,7 +572,7 @@ class TransferPositionsDialog(wx.Frame):
                     saved_temp = '__tmp_a0012AZqspkwx9827nf917+o,ppa+'
                 self.parent.onSave(saved_temp)
                 time.sleep(3.0)
-                poslist = idb.get_positions(self.instname, reverse=True)
+                poslist = idb.get_positions(self.instname)
 
             pos0 = idb.get_position_values(poslist[0], self.instname)
             spos = {}
@@ -699,7 +699,7 @@ class PositionPanel(wx.Panel):
         if (self.viewer.pvlog_pos is not None and
             self.viewer.pvlog_pos.connected):
             self.viewer.pvlog_pos.put(name)
-            
+
         imgfile_exists = False
         t0 = time.time()
         if not imgfile_exists and time.time()-t0 < 10:
@@ -717,7 +717,7 @@ class PositionPanel(wx.Panel):
         posname = self.pos_list.GetStringSelection()
         if posname is None or len(posname) < 1:
             return
-        
+
         imfile = None
         imagelist = self.viewer.read_imagelog()
         if posname in imagelist:
@@ -734,11 +734,11 @@ class PositionPanel(wx.Panel):
         except:
             self.image_display = ImageDisplayFrame()
             self.image_display.Raise()
-            self.image_display.Show()            
-            
+            self.image_display.Show()
+
         self.image_display.showfile(imfile, title=posname)
 
-        
+
     @EpicsFunction
     def onGo(self, event):
         posname = self.pos_list.GetStringSelection()
