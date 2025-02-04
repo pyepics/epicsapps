@@ -280,11 +280,14 @@ class InstrumentDB(SimpleDB):
             self.update('position', where={'name': pos.name},
                         name=newname)
 
-    def get_positions(self, instrument, order_by):
+    def get_positions(self, instrument, reverse=False):
         """return list of positions for an instrument
         """
         inst = self.get_instrument(instrument)
-        return self.get_rows('position', where={'instrument_id': inst.id})
+        out = self.get_rows('position', where={'instrument_id': inst.id})
+        if reverse:
+            out.reverse()
+        return out
 
     def get_position(self, name, instrument=None):
         """return position from name and instrument
