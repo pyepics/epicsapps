@@ -52,7 +52,7 @@ class PVLogData:
     def get_datetimes(self):
         """set datetimes to list of datetimes"""
         if (self.datetimes is None or
-            len(self.dateimes) < len(self.timestamps)):
+            len(self.datetimes) < len(self.timestamps)):
             self.datetimes = [datetime.fromtimestamp(ts, tz=TZONE) for ts in self.timestamps]
         return self.datetimes
 
@@ -151,11 +151,10 @@ def parse_logfile(textlines, filename):
             index += 1
             ts, val, cval = float(words[0]), words[1], words[2]
             if ts < MIN_TIMESTAMP:
-                if len(times) < 0:
+                if len(times) < 1:
                     ts = start_tstamp
                 else:
                     ts = times[-1]
-
             if val == '<event>':
                 events.append((ts, cval))
             else:
@@ -167,6 +166,7 @@ def parse_logfile(textlines, filename):
                 else:
                     try:
                         val = float(val)
+                        vals.append(val)
                         cvals.append(cval)
                         times.append(ts)
                     except ValueError:
