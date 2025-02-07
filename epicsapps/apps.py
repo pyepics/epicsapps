@@ -55,7 +55,7 @@ APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('Sample Microscope', 'microscope', icon='microscope'),
         EpicsApp('areaDetector Viewer', 'adviewer', icon='areadetector'),
         EpicsApp('StripChart',       'stripchart', icon='stripchart'),
-        EpicsApp('PVLogger',         'pvlogger', icon='logging'),
+        EpicsApp('PVLogger',         'pvlogviewer', icon='logging'),
         )
 
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
@@ -80,17 +80,18 @@ def run_stripchart(configfile=None, prompt=False):
     from .stripchart import StripChartApp
     StripChartApp(configfile=configfile, prompt=prompt).MainLoop()
 
-def run_pvlogger(configfile=None, prompt=False, use_cli=False):
-    """PV Logger"""
-    from .pvlogger import PVLogger, PVLoggerApp
-    if PVLoggerApp is None:
-        use_cli = True
-    if PVLoggerApp is not None and not use_cli:
-        PVLoggerApp(prompt=prompt).MainLoop()
-    elif use_cli and configfile is not None:
+def run_pvlogger(configfile=None, prompt=False, **kws):
+    """PV Logger Command Line App"""
+    from .pvlogger import PVLogger
+    if configfile is not None:
         PVLogger(configfile=configfile, prompt=prompt).run()
     else:
-        print("cannot run PVLogger: configfile needed for CLI mode")
+        print("cannot run PVLogger: configfile needed")
+
+def run_pvlogviewer(prompt=False):
+    """PV Logger"""
+    from .pvlogger import PVLoggerApp
+    PVLoggerApp(prompt=prompt).MainLoop()
 
 
 ## main wrapper program
@@ -101,10 +102,11 @@ def run_epicsapps():
     desc = 'run pyepics applications'
     epilog ='''applications:
   adviewer     [filename] Area Detector Viewer
-  instruments  [filename] Epics Instruments
+  instruments  [filename] Epics Instruments GUI
   microscope   [filename] Sample Microscope Viewer
-  pvlogger     [filenmae] Epics PV Logger
-  stripchart              Epics PV Stripchart
+  pvlogviewer             Epics PV Logger Viewer GUI
+  stripchart              Epics PV Stripchart GUI
+  pvlogger     [filenmae] Epics PV Logger data collection CLI
 
 notes:
   applications with the optional filename will look for a yaml-formatted
@@ -151,6 +153,9 @@ notes:
             runner = run_samplemicroscope
         elif isapp('strip'):
             runner = run_stripchart
+        elif isapp('pvlogv'):
+            runner= run_pvlogviewer
+            kwargs = {}
         elif isapp('pvlog'):
             runner= run_pvlogger
             kwargs['use_cli'] = args.use_cli
