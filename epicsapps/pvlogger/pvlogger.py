@@ -6,7 +6,7 @@ import os
 import time
 from collections import deque
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 import yaml
 from epics import get_pv, caget, PV
@@ -228,23 +228,27 @@ class PVLogger():
         self.config = self.cfile.config
 
         self.folder = Path(self.config.get('folder', 'pvlog'))
-        self.workdir = self.config.get('workdir', '')
-        if len(self.workdir) < 1 or self.workdir == '.':
-            self.workdir = os.getcwd()
-        self.workdir = Path(self.workdir)
-        self.topfolder = Path(self.workdir, self.folder).absolute()
+        self.datadir = self.config.get('datadir', '')
+        if len(self.datadir) < 1 or self.datadir == '.':
+            self.datadir = os.getcwd()
+        self.datadir = Path(self.datadir)
+        self.topfolder = Path(self.datadir, self.folder).absolute()
         self.topfolder.mkdir(mode=0o755, parents=False, exist_ok=True)
         os.chdir(self.topfolder)
 
-        self.end_datetime = self.config.get('end_datetime', '')
-        end_ts = -1
-        if len(self.end_datetime) > 1:
-            try:
-                dtx = datetime.fromisoformat(self.end_datetime)
-                end_ts = dtx.timestamp()
-            except:
-                pass
-        self.end_timestamp = end_ts
+        # defualt end time is 1 month from now
+        month =  (datetime.now() + timedelta(days=30))
+        end_date = month.isoformat(timespec='seconds', sep=' ')
+        end_tstamp = month.timestamp()
+
+        self.end_date = self.config.get('end_datetime', end_date)
+
+        try:
+            dt = datetime.fromisoformat(self.end_date)
+            end_tstamp = dt.timestamp()
+        except:
+            pass
+        self.end_timestamp = end_tstamp
 
     def connect_pvs(self):
         """
@@ -300,9 +304,12 @@ class PVLogger():
                     mdelpvs[pvname] = get_pv(f"{pref}.MDEL")
 
         time.sleep(0.05)
-        out = {'folder': self.folder.as_posix(),
-               'workdir': self.workdir.as_posix(),
-               'pvs': [], 'motors': [], 'instruments': inst_map}
+        out = {'datadir': self.datadir.as_posix(),
+               'folder': self.folder.as_posix(),
+               'end_datetime': self.end_date,
+               'instruments': inst_map,
+               'motors': [],
+               'pvs': []}
 
         for ipv, pvname in enumerate(_pvnames):
             desc = _pvdesc[ipv]
@@ -327,7 +334,7 @@ class PVLogger():
                                 desc=f"{lpv.desc} {mfield}",  mdel=None)
 
         with open("_PVLOG.yaml", "w+") as fh:
-            yaml.dump(out, fh, default_flow_style=False)
+            yaml.safe_dump(out, fh, default_flow_style=False, sort_keys=False))
 
         pfiles = ["# PV Name                                |    Log File "]
         for lpv in self.pvs.values():
@@ -364,6 +371,17 @@ class PVLogger():
                 newdat = rconfig.config.get(section, [])
                 if len(newdat) > 0:
                     self.config[section].extend(newdat)
+
+            end_date = rconfig.config.get('end_datetime', None)
+            if end_date is not None:
+                try:
+                    dt = datetime.fromisoformat(end_date)
+                    end_tstamp = dt.timestamp()
+                    self.end_date = dt.isoformt(timespec='sec', sep=' ')
+                    self.end_timestamp = end_tstamp
+                except:
+                    pass
+
             self.connect_pvs()
             print("Connected PVs from request file")
             try:
@@ -377,7 +395,7 @@ class PVLogger():
         There are two ways to specify stopping:
 
            a) a file named _PVLOG_stop.txt written to the folder will stop collection
-           b) if the end_datetime specified in the configuration is exceeded
+           b) if the end_datet specified in the configuration is exceeded
         """
         exit_request = ((self.end_timestamp > 65536) and
                         (time.time() > self.end_timestamp))
