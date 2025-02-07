@@ -99,19 +99,26 @@ PLOTOPTS = {'use_dates': True, 'show_legend': True,
 class InstrumentDataModel(dv.DataViewIndexListModel):
     def __init__(self):
         dv.DataViewIndexListModel.__init__(self, 0)
-        self.use = []
         self.data = []
-        self.ncols = 5
-        self.read_data()
+        self.ncols = 3
 
-    def read_data(self):
+    def set_data(self, insts, used):
         self.data = []
-        for name, pvlist in get_instruments().items():
-            self.data.append((name, len(pvlist), (name in self.use)))
+        for name in used:
+            if name in insts:
+                pvlist = insts[name]
+                self.data.append([name, str(len(pvlist)), True])
+
+        for name, pvlist in insts.items():
+            if name not in used:
+                self.data.append([name, str(len(pvlist)), False])
         self.Reset(len(self.data))
 
     def GetColumnType(self, col):
-        return 'bool' if col == 2 else 'string'
+        out = 'string'
+        if col == 2:
+            out = 'bool'
+        return out
 
     def GetValueByRow(self, row, col):
         return self.data[row][col]
@@ -143,13 +150,12 @@ class InstrumentDataModel(dv.DataViewIndexListModel):
 class PVDataModel(dv.DataViewIndexListModel):
     def __init__(self):
         dv.DataViewIndexListModel.__init__(self, 0)
-        self.use = []
         self.data = []
-        self.ncols = 5
+        self.ncols = 4
 
     def set_data(self, pvlist):
         self.data = pvlist
-        for i in range(4):
+        for i in range(3):
             self.data.append(['', '<auto>', '<auto>', True])
 
         self.Reset(len(self.data))
@@ -261,7 +267,7 @@ Matt Newville <newville@cars.uchicago.edu>
                           style=FRAME_STYLE, size=(1100, 650))
 
         self.plot_windows = []
-        self.pvs = []
+        self.pvmap = {} # displayed description to pvname
         self.wids = {}
         self.subframes = {}
         self.config_file = CONFIG_FILE
@@ -297,7 +303,7 @@ Matt Newville <newville@cars.uchicago.edu>
         pack(ltop, ltsizer)
 
         self.pvlist = FileCheckList(lpanel, main=self,
-                                      select_action=self.onShowPV)
+                                    select_action=self.onShowPV)
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(ltop, 0, LEFT|wx.GROW, 1)
         sizer.Add(self.pvlist, 1, LEFT|wx.GROW|wx.ALL, 1)
@@ -371,14 +377,12 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['inst_table'].AssociateModel(wids['inst_model'])
 
         for icol, dat in enumerate((('Instrument Name', 325, 'text', ''),
-                                   (' # PVs', 125, 'text', ''),
+                                   (' # PVs', 125, 'int', ''),
                                    (' Use?', 75, 'bool', False))):
             _title, width, mode, xval= dat
             kws = {'width': width}
             add_col = wids['inst_table'].AppendTextColumn
-            if mode == 'text':
-                kws['mode'] = dv.DATAVIEW_CELL_EDITABLE
-            elif mode == 'bool':
+            if mode == 'bool':
                 add_col = wids['inst_table'].AppendToggleColumn
                 kws['mode'] = dv.DATAVIEW_CELL_ACTIVATABLE
             add_col(_title, icol, **kws)
@@ -570,13 +574,13 @@ Matt Newville <newville@cars.uchicago.edu>
         pvs = {}
         for row in self.wids['pv_model'].data:
             name, desc, mdel, use = row
-            if use and name not in pvs:
+            if use and len(name.strip()) > 1 and name not in pvs:
                 pvs[name] = get_pv(name)
                 if name not in self.live_pvs:
                     self.live_pvs[name] = pvs[name]
 
         for row in self.wids['inst_model'].data:
-            iname, use, npvs = row
+            iname, npvs, use = row
             if use and iname in instruments:
                 for name in instruments[iname]:
                     if name not in pvs:
@@ -674,41 +678,6 @@ Matt Newville <newville@cars.uchicago.edu>
         print(f"Starting Collection with {fname}")
 
 
-    def set_instrument_table(self, instruments, using=None, event=None):
-        pass
-        xxx = """
-        wids = self.wids
-        if using is None:
-            using = []
-        added = []
-        if len(instruments) > 0:
-            inst_data= []
-            if len(using) > 0:
-                for inst in using:
-                    pvlist = instruments.get(inst, [])
-                    if len(pvlist) > 0:
-                        inst_data.append([inst, 1, len(pvlist)])
-                        added.append(inst)
-            for inst, pvlist in instruments.items():
-                if inst not in added:
-                    inst_data.append([inst, 0, len(pvlist)])
-
-            n = len(inst_data)
-            if n >  wids['inst_table'].table.nrows:
-                nadd = n - wids['inst_table'].table.nrows
-                wids['inst_table'].AppendRows(nadd)
-            wids['inst_table'].table.Clear()
-            wids['inst_table'].table.data = inst_data
-            wids['inst_table'].table.View.Refresh()
-        """
-
-    def set_pv_table(self, pvlist, event=None):
-        wids = self.wids
-        n = len(pvlist)
-        print("Set PV TABLE ", pvlist)
-        wids['pv_model'].set_data( pvlist)
-
-
     def onMorePVs(self, event=None):
         self.wids['pv_model'].add_rows(n=3)
 
@@ -741,7 +710,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.wids['data_folder'].SetValue(path)
 
 
-    def onSelectConfigFile(self, event=None):
+    def onReadConfigFile(self, event=None):
         if self.config_file is None:
             self.config_file = CONFIG_FILE
 
@@ -768,7 +737,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.wids['pvlog_folder'].SetValue(folder.absolute().stem)
 
         insts = self.run_config.get('instruments', [])
-        self.set_instrument_table(get_instruments(), using=insts)
+        self.wids['inst_model'].set_data(get_instruments(), insts)
 
         pvlist = []
         for pvline in self.run_config.get('pvs', []):
@@ -783,7 +752,9 @@ Matt Newville <newville@cars.uchicago.edu>
                 if len(words) > 2:
                     mdel = words[2]
                 pvlist.append([name, desc, mdel, True])
-        self.set_pv_table(pvlist)
+
+        self.wids['pv_model'].set_data( pvlist)
+
         self.nb.SetSelection(1)
 
     def onSelectInstPVs(self, event=None):
@@ -855,6 +826,8 @@ Matt Newville <newville@cars.uchicago.edu>
         label = self.log_folder.pvs[pvname].description
 
         data = self.get_pvdata(pvname)
+        print("Got Data for ", pvname, data.is_numeric)
+
         if data is None:
             data = self.get_pvdata(pvname, force=True)
 
@@ -957,7 +930,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         MenuItem(self, mcollect, "&Read Configuration File\tCtrl+R",
                  "Read PVLogger Configuration File for Data Collection",
-                 self.onSelectConfigFile)
+                 self.onReadConfigFile)
 
         MenuItem(self, mcollect, "&Save Configuration File\tCtrl+S",
                  "Saved PVLogger Configuration File for Data Collection",
@@ -984,6 +957,7 @@ Matt Newville <newville@cars.uchicago.edu>
         if path is None or not path.exists():
             return
         self.nb.SetSelection(0)
+        self.pvlist.Clear()
         folder = None
         try:
             folder = read_logfolder(path)
@@ -1092,17 +1066,16 @@ is not a valid PV Logger Data Folder""",
         dlg.Destroy()
 
     def onExit(self, event=None):
-        for pv in self.pvs:
-            pv.clear_callbacks()
-            pv.disconnect()
-            time.sleep(0.001)
         for pvname, pv in self.live_pvs.items():
             pv.clear_callbacks()
             pv.disconnect()
             time.sleep(0.001)
 
         for name, frame in self.subframes.items():
-            frame.Destroy()
+            try:
+                frame.Destroy()
+            except:
+                pass
 
         self.Destroy()
 
