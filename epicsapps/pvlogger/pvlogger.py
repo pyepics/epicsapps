@@ -25,6 +25,10 @@ RUN_FOLDER = 'pvlog'
 motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
                 '.DIR', '_able.VAL', '.SPMG')
 
+# The EPICS EPOCH starts at 1990, and may sometimes
+# send 0 or EPIC2UNIX_EPOCH=631152000.0
+MIN_TIMESTAMP = 1.0e9
+
 def get_instruments(instrument_names=None):
     """look up Epics Instruments, return dict of name:pvlist"""
     escan_cred = os.environ.get('ESCAN_CREDENTIALS', '')
@@ -133,7 +137,7 @@ class LoggedPV():
                 self.char_value = char_value.replace('\n', '\\n')
             if '\r' in char_value:
                 self.char_value = char_value.replace('\r', '\\r')
-            if timestamp is None:
+            if timestamp is None or timestamp < MIN_TIMESTAMP:
                 timestamp = time.time()
             self.timestamp = timestamp
             self.data.append((timestamp, value, char_value))
@@ -323,7 +327,7 @@ class PVLogger():
                               descpv=descpv, mdelpv=mdelpv)
 
             out['pvs'].append(' | '.join([lpv.pvname, lpv.desc, str(lpv.mdel)]))
-            # print("ADD PV ", lpv.pvname, lpv.desc, str(lpv.mdel), descpv, mdelpv)
+
             rtype_pv = rtyppvs.get(pvname, None)
             if rtype_pv is not None and 'motor' == rtype_pv.get():
                 desc = lpv.desc
