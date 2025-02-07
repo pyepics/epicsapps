@@ -86,7 +86,7 @@ class PVTablePanel(wx.Panel) :
         self.dvc.AssociateModel(self.model)
 
         panel = GridPanel(spanel, ncols=4, nrows=4, pad=2, itemstyle=LEFT)
-        ptitle = f"{self.pvlogdata.pvname}   {len(self.pvlogdata.timestamps)} events"
+        ptitle = f"   {self.pvlogdata.pvname}   {len(self.pvlogdata.timestamps)} events"
 
 
         self.btn_show  = Button(panel, label='Show Selected',

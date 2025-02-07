@@ -558,7 +558,8 @@ Matt Newville <newville@cars.uchicago.edu>
                 self.subframes[name].Raise()
                 shown = True
             except:
-                del self.subframes[name]
+                f = self.subframes.pop(name)
+                del f
                 return None
         if not shown:
             self.subframes[name] = frameclass(self, **opts)
@@ -760,8 +761,8 @@ Matt Newville <newville@cars.uchicago.edu>
     def onSelectInstPVs(self, event=None):
         iname = self.wids['instruments'].GetStringSelection()
         self.pvlist.select_none()
+        print("SELECTING PV for INST ", iname)
         self.pvlist.SetCheckedStrings(self.log_folder.instruments[iname])
-
 
     def onSelNone(self, event=None):
         self.pvlist.select_none()
@@ -770,14 +771,15 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvlist.select_all()
 
     def onShowPV(self, event=None, label=None):
-        pvname = event.GetString()
-        self.wids['pv1'].SetStringSelection(pvname)
+        pvdesc = event.GetString()
+        pvname = self.pvmap[pvdesc]
+        self.wids['pv1'].SetStringSelection(pvdesc)
         pvlog = self.log_folder.pvs.get(pvname, None)
         if pvlog is None:
             print("cannot show PV ", pvname)
         else:
             data = self.get_pvdata(pvname)
-
+        print("onShow PV ", pvdesc, pvname, self.pvs_connected)
         if self.pvs_connected == 'unknown':
             if pvname not in self.live_pvs:
                 self.live_pvs[pvname] = get_pv(pvname)
@@ -813,7 +815,8 @@ Matt Newville <newville@cars.uchicago.edu>
         return pvlog.data
 
     def onPlotLive(self, event):
-        pvname = self.wids['pv1'].GetStringSelection()
+        pvdesc = self.wids['pv1'].GetStringSelection()
+        pvname = self.pvmap[pvdesc]
         desc = self.log_folder.pvs[pvname].description
 
         liveplot = self.show_subframe('pvlive', StripChartFrame)
@@ -821,15 +824,15 @@ Matt Newville <newville@cars.uchicago.edu>
 
 
     def onPlotOne(self, event=None):
-        pvname = self.wids['pv1'].GetStringSelection()
+        pvdesc = self.wids['pv1'].GetStringSelection()
+        pvname = self.pvmap[pvdesc]
 
         label = self.log_folder.pvs[pvname].description
-
         data = self.get_pvdata(pvname)
         print("Got Data for ", pvname, data.is_numeric)
 
         if data is None:
-            data = self.get_pvdata(pvname, force=True)
+            data = self.get_pvdata(pvname)
 
         if not data.is_numeric:
             self.show_subframe('pvtable', PVTableFrame,
@@ -975,8 +978,13 @@ is not a valid PV Logger Data Folder""",
         self.log_folder = folder
         self.wids['work_folder'].SetLabel(folder.fullpath)
         os.chdir(folder.fullpath)
-        for pvname in self.log_folder.pvs:
-            self.pvlist.Append(pvname)
+        self.pvmap = {}
+        for pvname, logfile in self.log_folder.pvs.items():
+            desc = logfile.description[:]
+            if desc in self.pvmap:
+                desc = f'{desc} ({pvname})'
+            self.pvmap[desc] = pvname
+            self.pvlist.Append(desc)
 
         def update_choice(wid, values, default=0):
             cur = wid.GetStringSelection()
@@ -988,7 +996,7 @@ is not a valid PV Logger Data Folder""",
                 wid.SetSelection(default)
 
         pvnames = ['None',]
-        pvnames.extend(self.log_folder.pvs)
+        pvnames.extend(list(self.pvmap.keys()))
         update_choice(self.wids['instruments'], list(self.log_folder.instruments))
 
         update_choice(self.wids['pv1'], pvnames, default=1)
