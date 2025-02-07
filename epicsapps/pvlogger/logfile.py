@@ -27,6 +27,10 @@ COMMENTCHARS = '#;%*!$'
 tzname = os.environ.get('TZ', 'US/Central')
 TZONE = pytz.timezone(tzname)
 
+# The EPICS EPOCH starts at 1990, and may sometimes
+# send 0 or EPIC2UNIX_EPOCH=631152000.0
+MIN_TIMESTAMP = 1.0e9
+
 @dataclass
 class PVLogData:
     pvname: str
@@ -126,6 +130,8 @@ def parse_logfile(textlines, filename):
     headers = []
     events = []
     index = -1
+    val_index = 0
+    start_tstamp = MIN_TIMESTAMP
     dt.add('x start')
     for line in textlines:
         line = line.strip()
@@ -133,6 +139,9 @@ def parse_logfile(textlines, filename):
             continue
         if line.startswith('#'):
             headers.append(line)
+            if 'start_time' in line:
+                words = [a.strip() for a in line[1:].split('=')]
+                start_tstamp = datetime.fromisoformat(words[1]).timestamp()
         else:
             words = line.split(maxsplit=2)
             if len(words) == 1:
@@ -141,18 +150,28 @@ def parse_logfile(textlines, filename):
                 words.append(words[1])
             index += 1
             ts, val, cval = float(words[0]), words[1], words[2]
-            times.append(ts)
-            if val in ('<index>', '<event>'):
-                vals.append(index)
-                if val == '<event>':
-                    events.append((ts, cval))
+            if ts < MIN_TIMESTAMP:
+                if len(times) < 0:
+                    ts = start_tstamp
+                else:
+                    ts = times[-1]
+
+            if val == '<event>':
+                events.append((ts, cval))
             else:
-                try:
-                    val = float(val)
-                except ValueError:
-                    pass
-                vals.append(val)
-            cvals.append(cval)
+                if val == '<index>':
+                    val_index  += 1
+                    vals.append(index)
+                    cvals.append(cval)
+                    times.append(ts)
+                else:
+                    try:
+                        val = float(val)
+                        cvals.append(cval)
+                        times.append(ts)
+                    except ValueError:
+                        events.append((ts, cval))
+
     dt.add(f'read 0 {filename}')
     datetimes = None #
     mpldates =  None #
@@ -181,18 +200,8 @@ def parse_logfile(textlines, filename):
         attrs['enum_strs'] = enum_strs
 
     pvname = attrs.pop('pvname')
-
-    ntest = 10
-    npts = max(ntest, len(vals))
-    non_float = []
-    for d in vals[:npts]:
-        try:
-            x = float(d)
-        except ValueError:
-            non_float.append(False)
-    allowed = 1 if (npts > 3*ntest/4.0) else 0
-    is_numeric = len(non_float) <= allowed
-
+    npts = (len(vals) + len(events))
+    is_numeric = (val_index < 0.8*npts)
     return PVLogData(pvname=pvname,
                      filename=fpath.name,
                      is_numeric=is_numeric,
