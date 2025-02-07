@@ -926,7 +926,8 @@ Matt Newville <newville@cars.uchicago.edu>
                  "Open PVLogger Folder", self.onLoadFolder)
 
         mdata.AppendSeparator()
-        MenuItem(self, mdata, "Inspect", "WX Inspect", self.onWxInspect)
+        # MenuItem(self, mdata, "Inspect",
+        #            "WX Inspect", self.onWxInspect)
 
         MenuItem(self, mdata, "E&xit\tCtrl+X", "Exit PVLogger", self.onExit)
         self.Bind(wx.EVT_CLOSE, self.onExit)
