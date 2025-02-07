@@ -229,10 +229,10 @@ class PVLogFolder:
     """
     data and methods for a PVlogger Folder
     """
-    def __init__(self, folder, workdir='', **kws):
+    def __init__(self, folder, datadir='', **kws):
         self.folder = Path(folder).resolve()
         self.fullpath = self.folder.as_posix()
-        self.workdir = Path(workdir)
+        self.datadir = Path(datadir)
 
         self.time_start = 0
         self.time_stop = None

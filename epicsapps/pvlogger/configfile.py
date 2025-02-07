@@ -4,8 +4,8 @@ from ..utils import ConfigFile, load_yaml, get_default_configfile
 
 # default pvlogger configuration
 _configtext = """
+datadir: ""
 folder: "pvlog"
-workdir: ""
 end_datetime: ''
 instruments: []
 pvs:
