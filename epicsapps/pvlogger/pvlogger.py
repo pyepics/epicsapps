@@ -334,7 +334,7 @@ class PVLogger():
                                 desc=f"{lpv.desc} {mfield}",  mdel=None)
 
         with open("_PVLOG.yaml", "w+") as fh:
-            yaml.safe_dump(out, fh, default_flow_style=False, sort_keys=False))
+            yaml.safe_dump(out, fh, default_flow_style=False, sort_keys=False)
 
         pfiles = ["# PV Name                                |    Log File "]
         for lpv in self.pvs.values():
