@@ -560,7 +560,7 @@ Matt Newville <newville@cars.uchicago.edu>
             except:
                 f = self.subframes.pop(name)
                 del f
-                return None
+                shown = False
         if not shown:
             self.subframes[name] = frameclass(self, **opts)
             self.subframes[name].Raise()
@@ -779,8 +779,7 @@ Matt Newville <newville@cars.uchicago.edu>
             print("cannot show PV ", pvname)
         else:
             data = self.get_pvdata(pvname)
-        print("onShow PV ", pvdesc, pvname, self.pvs_connected)
-        if self.pvs_connected == 'unknown':
+        if self.pvs_connected in ('unknown', True):
             if pvname not in self.live_pvs:
                 self.live_pvs[pvname] = get_pv(pvname)
                 time.sleep(0.02)
@@ -799,7 +798,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
         pvlog = self.log_folder.pvs.get(pvname, None)
         if pvlog is None:
-            print("unknown PV  ", pvname)
             return None
         if pvlog.data is None:
             self.write_message(f'parsing data for {pvname} ... ', panel=1)
@@ -812,6 +810,7 @@ Matt Newville <newville@cars.uchicago.edu>
             if not self.parse_thread.is_alive():
                 self.parse_thread.join()
                 self.parse_thread = None
+
         return pvlog.data
 
     def onPlotLive(self, event):
@@ -820,6 +819,7 @@ Matt Newville <newville@cars.uchicago.edu>
         desc = self.log_folder.pvs[pvname].description
 
         liveplot = self.show_subframe('pvlive', StripChartFrame)
+
         liveplot.addPV(pvname, desc=desc)
 
 
@@ -868,13 +868,13 @@ Matt Newville <newville@cars.uchicago.edu>
         tmax = None
         plotted = False
         for i in range(4):
-            pvname = self.wids[f'pv{i+1}'].GetStringSelection()
-            if pvname == 'None':
+            pvdesc = self.wids[f'pv{i+1}'].GetStringSelection()
+            if pvdesc == 'None':
                 continue
-
+            pvname = self.pvmap[pvdesc]
             data = self.get_pvdata(pvname)
             if data is None:
-                data = self.get_pvdata(pvname, force=True)
+                data = self.get_pvdata(pvname)
 
             if not data.is_numeric:
                 self.show_subframe('pvtable', PVTableFrame,
