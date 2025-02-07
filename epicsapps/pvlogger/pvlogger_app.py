@@ -674,7 +674,7 @@ Matt Newville <newville@cars.uchicago.edu>
         datadir =  self.wids['data_folder'].GetValue()
         fname = Path(self.wids['config_file'].GetLabel()).name
         os.chdir(datadir)
-        cmd = [epicsapp, '-c', 'pvlogger', fname]
+        cmd = [epicsapp, 'pvlogger', fname]
         Popen(cmd)
         print(f"Starting Collection with {fname}")
 
