@@ -49,11 +49,13 @@ from .plotter import PlotFrame
 from .pvtableview import PVTableFrame
 
 
-from ..utils import (SelectWorkdir, DataTableGrid, get_icon, get_configfolder,
+from ..utils import (SelectWorkdir, get_icon, get_configfolder,
                      get_default_configfile, load_yaml, read_recents_file,
                      write_recents_file)
 
 from .pvlogger import get_instruments
+
+DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE
 
 PVLOG_FOLDER = 'pvlog'
 CONFIG_FILE = 'pvlog.yaml'
@@ -92,6 +94,100 @@ PLOTOPTS = {'use_dates': True, 'show_legend': True,
             'drawstyle': 'steps-post',
              'yaxes_tracecolor': True,
              'timezone': TZONE }
+
+
+class InstrumentDataModel(dv.DataViewIndexListModel):
+    def __init__(self):
+        dv.DataViewIndexListModel.__init__(self, 0)
+        self.use = []
+        self.data = []
+        self.ncols = 5
+        self.read_data()
+
+    def read_data(self):
+        self.data = []
+        for name, pvlist in get_instruments().items():
+            self.data.append((name, len(pvlist), (name in self.use)))
+        self.Reset(len(self.data))
+
+    def GetColumnType(self, col):
+        return 'bool' if col == 2 else 'string'
+
+    def GetValueByRow(self, row, col):
+        return self.data[row][col]
+
+    def SetValueByRow(self, value, row, col):
+        name, npvs, use = self.data[row]
+        if col == 2:
+            val = bool(value)
+        else:
+            val = str(value)
+        self.data[row][col] = value
+        return True
+
+    def GetColumnCount(self):
+        try:
+            ncol = len(self.data[0])
+        except:
+            ncol = self.ncols
+        return ncol
+
+    def GetCount(self):
+        return len(self.data)
+
+    def AddRow(self, value):
+        self.data.append(value)
+        self.RowAppended()
+
+
+class PVDataModel(dv.DataViewIndexListModel):
+    def __init__(self):
+        dv.DataViewIndexListModel.__init__(self, 0)
+        self.use = []
+        self.data = []
+        self.ncols = 5
+
+    def set_data(self, pvlist):
+        self.data = pvlist
+        for i in range(4):
+            self.data.append(['', '<auto>', '<auto>', True])
+
+        self.Reset(len(self.data))
+
+    def add_rows(self, n=3):
+        for i in range(n):
+            self.data.append(['', '<auto>', '<auto>', True])
+        self.Reset(len(self.data))
+
+    def GetColumnType(self, col):
+        return 'bool' if col == 2 else 'string'
+
+    def GetValueByRow(self, row, col):
+        return self.data[row][col]
+
+    def SetValueByRow(self, value, row, col):
+        name, desc, detlta, use = self.data[row]
+        if col == 3:
+            val = bool(value)
+        else:
+            val = str(value)
+        self.data[row][col] = value
+        return True
+
+    def GetColumnCount(self):
+        try:
+            ncol = len(self.data[0])
+        except:
+            ncol = self.ncols
+        return ncol
+
+    def GetCount(self):
+        return len(self.data)
+
+    def AddRow(self, value):
+        self.data.append(value)
+        self.RowAppended()
+
 
 
 class PVsConnectedDialog(wx.Dialog):
@@ -253,8 +349,6 @@ Matt Newville <newville@cars.uchicago.edu>
                           action=self.onSelectDataFolder)
         btn_check = Button(panel, 'Check PVs', size=(150, -1),
                           action=self.onCheckPVs)
-        btn_save = Button(panel, 'Save Configuration', size=(200, -1),
-                          action=self.onSaveConfiguration)
         btn_start = Button(panel, 'Start Collection', size=(200, -1),
                            action=self.onStartCollection)
         btn_more  = Button(panel, 'Add More PV Rows', size=(200, -1),
@@ -270,33 +364,50 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['data_folder'] = wx.TextCtrl(panel, value='', size=(400, -1))
         wids['pvlog_folder'] = wx.TextCtrl(panel, value=PVLOG_FOLDER, size=(400, -1))
 
-        collabels = [' Instrument Name ', ' Use?', ' # PVS ']
-        colsizes = [325, 60, 100]
-        coltypes = ['str', 'bool', 'float:4,0']
-        coldefs  = ['', 0, 1]
 
-        wids['inst_table'] = DataTableGrid(panel, nrows=5,
-                                           collabels=collabels,
-                                           datatypes=coltypes,
-                                           defaults=coldefs,
-                                           colsizes=colsizes, rowlabelsize=40)
-        wids['inst_table'].SetMinSize((750, 175))
-        wids['inst_table'].EnableEditing(True)
+        wids['inst_table'] = dv.DataViewCtrl(panel, style=DVSTYLE)
+        wids['inst_table'].SetMinSize((725, 200))
+        wids['inst_model'] = InstrumentDataModel()
+        wids['inst_table'].AssociateModel(wids['inst_model'])
 
-        collabels = [' PV Name  ', ' Description ', 'Delta', 'Use?']
-        colsizes = [325, 200, 75, 60]
-        coltypes = ['str', 'str', 'str', 'bool']
-        coldefs  = ['', '<auto>', '<auto>', 1]
+        for icol, dat in enumerate((('Instrument Name', 325, 'text', ''),
+                                   (' # PVs', 125, 'text', ''),
+                                   (' Use?', 75, 'bool', False))):
+            _title, width, mode, xval= dat
+            kws = {'width': width}
+            add_col = wids['inst_table'].AppendTextColumn
+            if mode == 'text':
+                kws['mode'] = dv.DATAVIEW_CELL_EDITABLE
+            elif mode == 'bool':
+                add_col = wids['inst_table'].AppendToggleColumn
+                kws['mode'] = dv.DATAVIEW_CELL_ACTIVATABLE
+            add_col(_title, icol, **kws)
+            col = wids['inst_table'].Columns[icol]
+            col.Sortable = False
+            col.Alignment = wx.ALIGN_LEFT
 
-        wids['pv_table'] = DataTableGrid(panel, nrows=10,
-                                         collabels=collabels,
-                                         datatypes=coltypes,
-                                         defaults=coldefs,
-                                         colsizes=colsizes, rowlabelsize=40)
-        wids['pv_table'].SetMinSize((750, 200))
-        wids['pv_table'].EnableEditing(True)
 
-        self.set_instrument_table(get_instruments())
+        wids['pv_table'] = dv.DataViewCtrl(panel, style=DVSTYLE)
+        wids['pv_table'].SetMinSize((725, 200))
+        wids['pv_model'] = PVDataModel()
+        wids['pv_table'].AssociateModel(wids['pv_model'])
+
+        for icol, dat in enumerate((('PV Name', 325, 'text', ''),
+                                   ('Description', 200, 'text', '<auto>'),
+                                   ('Delta', 80, 'text', '<auto>'),
+                                   (' Use?', 75, 'bool', False))):
+            _title, width, mode, xval= dat
+            kws = {'width': width}
+            add_col = wids['pv_table'].AppendTextColumn
+            if mode == 'text':
+                kws['mode'] = dv.DATAVIEW_CELL_EDITABLE
+            elif mode == 'bool':
+                add_col = wids['pv_table'].AppendToggleColumn
+                kws['mode'] = dv.DATAVIEW_CELL_ACTIVATABLE
+            add_col(_title, icol, **kws)
+            col = wids['pv_table'].Columns[icol]
+            col.Sortable = False
+            col.Alignment = wx.ALIGN_LEFT
 
         def slabel(txt, size=(175, -1)):
             return wx.StaticText(panel, label=txt, size=size)
@@ -319,7 +430,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel.Add((5, 5))
         panel.Add(btn_check, dcol=1, newrow=True)
-        panel.Add(btn_save, dcol=1)
         panel.Add(btn_start, dcol=1)
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
@@ -458,14 +568,14 @@ Matt Newville <newville@cars.uchicago.edu>
     def onCheckPVs(self, event=None):
         instruments = get_instruments()
         pvs = {}
-        for row in self.wids['pv_table'].table.data:
+        for row in self.wids['pv_model'].data:
             name, desc, mdel, use = row
             if use and name not in pvs:
                 pvs[name] = get_pv(name)
                 if name not in self.live_pvs:
                     self.live_pvs[name] = pvs[name]
 
-        for row in self.wids['inst_table'].table.data:
+        for row in self.wids['inst_model'].data:
             iname, use, npvs = row
             if use and iname in instruments:
                 for name in instruments[iname]:
@@ -498,16 +608,18 @@ Matt Newville <newville@cars.uchicago.edu>
             if len(unconn) == len(pvs) and len(pvs) > 5:
                 self.pvs_connected = False
 
-    def onSaveConfiguration(self, event=None):
+    def onSaveConfigFile(self, event=None):
         "save config file"
         wids = self.wids
-        workdir =  wids['data_folder'].GetValue()
+        datadir =  wids['data_folder'].GetValue()
         fname = wids['pvlog_folder'].GetValue()
+        if not fname.endswith('.yaml'):
+            fname = fname + '.yaml'
         dlg = wx.FileDialog(self,
                             message='Save PVLogger Configuration',
                             wildcard=YAML_WILDCARD,
                             defaultFile=fname,
-                            defaultDir=workdir,
+                            defaultDir=datadir,
                         style=wx.FD_SAVE|wx.FD_CHANGE_DIR)
         output = None
         if dlg.ShowModal() == wx.ID_OK:
@@ -522,29 +634,29 @@ Matt Newville <newville@cars.uchicago.edu>
                       dtime.GetHour(), dtime.GetMinute(), 0)
 
         pvs = []
-        for row in self.wids['pv_table'].table.data:
+        for row in self.wids['pv_model'].data:
             name, desc, mdel, use = row
-            if use:
+            if len(name.strip()) > 0 and use:
                 pvs.append(f'{name} | {desc} | {mdel}')
 
         insts = []
-        for row in self.wids['inst_table'].table.data:
-            iname, use, npvs = row
+        for row in self.wids['inst_model'].data:
+            iname, npvs, use = row
             if use:
                 insts.append(iname)
 
-        config = {'workdir': workdir,
+        config = {'datadir': datadir,
                   'folder': wids['pvlog_folder'].GetValue(),
                   'end_datetime': datetime.isoformat(dt, sep=' '),
-                  'pvs': pvs, 'instruments': insts}
+                  'instruments': insts,
+                  'pvs': pvs}
+        print(config)
 
         with open(output, 'w') as fh:
-            yaml.dump(config, fh, default_flow_style=False)
+            yaml.safe_dump(config, fh, default_flow_style=False, sort_keys=False)
 
         parent = Path(output).parent
-        fname =  Path(output).stem
         wids['data_folder'].SetValue(parent.as_posix())
-        wids['pvlog_folder'].SetValue(fname)
         os.chdir(parent)
         # print("Set Folder to ", parent)
 
@@ -554,15 +666,17 @@ Matt Newville <newville@cars.uchicago.edu>
         if uname == 'win':
             epicsapp = Path(root, 'scripts', 'epicsapps.exe').as_posix()
 
-        workdir =  self.wids['data_folder'].GetValue()
+        datadir =  self.wids['data_folder'].GetValue()
         fname = Path(self.wids['config_file'].GetLabel()).name
-        os.chdir(workdir)
+        os.chdir(datadir)
         cmd = [epicsapp, '-c', 'pvlogger', fname]
         Popen(cmd)
         print(f"Starting Collection with {fname}")
 
 
     def set_instrument_table(self, instruments, using=None, event=None):
+        pass
+        xxx = """
         wids = self.wids
         if using is None:
             using = []
@@ -586,20 +700,17 @@ Matt Newville <newville@cars.uchicago.edu>
             wids['inst_table'].table.Clear()
             wids['inst_table'].table.data = inst_data
             wids['inst_table'].table.View.Refresh()
+        """
 
     def set_pv_table(self, pvlist, event=None):
         wids = self.wids
         n = len(pvlist)
-        if n >  wids['pv_table'].table.nrows:
-            nadd = n - wids['pv_table'].table.nrows
-            wids['pv_table'].AppendRows(nadd)
-        wids['pv_table'].AppendRows(2)
-        wids['pv_table'].table.Clear()
-        wids['pv_table'].table.data = pvlist
-        wids['pv_table'].table.View.Refresh()
+        print("Set PV TABLE ", pvlist)
+        wids['pv_model'].set_data( pvlist)
+
 
     def onMorePVs(self, event=None):
-        self.wids['pv_table'].AppendRows(3)
+        self.wids['pv_model'].add_rows(n=3)
 
     def onUseSelected(self, event=None):
         sel_pvs = self.pvlist.GetCheckedStrings()[:4]
@@ -650,7 +761,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.config_file = path.as_posix()
         cfile = PVLoggerConfig(path)
         self.run_config = cfile.config
-        wdir = Path(self.run_config.get('workdir', '.'))
+        wdir = Path(self.run_config.get('datair', '.'))
         folder = Path(self.run_config.get('folder', 'pvlog'))
 
         self.wids['data_folder'].SetValue(wdir.absolute().as_posix())
@@ -844,9 +955,13 @@ Matt Newville <newville@cars.uchicago.edu>
         MenuItem(self, mdata, "E&xit\tCtrl+X", "Exit PVLogger", self.onExit)
         self.Bind(wx.EVT_CLOSE, self.onExit)
 
-        MenuItem(self, mcollect, "&Read Data Collection Configure File\tCtrl+R",
+        MenuItem(self, mcollect, "&Read Configuration File\tCtrl+R",
                  "Read PVLogger Configuration File for Data Collection",
                  self.onSelectConfigFile)
+
+        MenuItem(self, mcollect, "&Save Configuration File\tCtrl+S",
+                 "Saved PVLogger Configuration File for Data Collection",
+                 self.onSaveConfigFile)
 
         mbar = wx.MenuBar()
         mbar.Append(mdata, "File")
