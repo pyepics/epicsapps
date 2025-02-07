@@ -503,10 +503,13 @@ Matt Newville <newville@cars.uchicago.edu>
         dlg.Destroy()
 
     def onExit(self, event=None):
+        self.timer.Stop()
         for pv in self.pvs.values():
             pv.clear_callbacks()
             pv.disconnect()
             time.sleep(0.001)
+
+        time.sleep(0.1)
         self.Destroy()
 
     def onUpdatePlot(self, event=None):
