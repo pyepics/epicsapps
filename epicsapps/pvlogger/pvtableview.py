@@ -74,10 +74,12 @@ class PVLogDataModel(dv.DataViewIndexListModel):
 
 class PVTablePanel(wx.Panel) :
     """View Table of PV Values"""
-    def __init__(self, parent, pvlogdata, npanel=0, size=(700, 400)):
+    def __init__(self, parent, pvlogdata, desc=None, npanel=0, size=(700, 400)):
         self.parent = parent
         self.pvlogdata = pvlogdata
-
+        if desc is None:
+            desc = pvlogdata.pvname
+        self.desc = desc
         wx.Panel.__init__(self, parent, -1, size=size)
 
         spanel = scrolled.ScrolledPanel(self, size=size)
@@ -86,7 +88,7 @@ class PVTablePanel(wx.Panel) :
         self.dvc.AssociateModel(self.model)
 
         panel = GridPanel(spanel, ncols=4, nrows=4, pad=2, itemstyle=LEFT)
-        ptitle = f"   {self.pvlogdata.pvname}   {len(self.pvlogdata.timestamps)} events"
+        ptitle = f"  {desc}  '{self.pvlogdata.pvname}' {len(self.pvlogdata.timestamps)} events"
 
 
         self.btn_show  = Button(panel, label='Show Selected',
@@ -148,7 +150,8 @@ class PVTablePanel(wx.Panel) :
         pdat = self.pvlogdata
         for i, row in enumerate(self.model.data):
             if row[0]:
-                edat = {'name': pdat.pvname,
+                edat = {'desc': self.desc,
+                        'name': pdat.pvname,
                         'datetime': row[1],
                         'value': row[2],
                         'mpldate': pdat.mpldates[i],
@@ -174,7 +177,7 @@ class PVTableFrame(wx.Frame) :
         self.Show()
         self.Raise()
 
-    def add_pvpage(self, pvlogdata):
+    def add_pvpage(self, pvlogdata, desc):
         pages = self.get_panels()
         pvname = pvlogdata.pvname
         if pvname in pages:
@@ -182,7 +185,7 @@ class PVTableFrame(wx.Frame) :
         else:
             npanel = self.nb.GetPageCount()
             panel = PVTablePanel(parent=self.parent, npanel=npanel,
-                                 pvlogdata=pvlogdata)
+                                 pvlogdata=pvlogdata, desc=desc)
             self.nb.AddPage(panel, pvname, True)
             self.nb.SetSelection(self.nb.GetPageCount()-1)
 
