@@ -178,21 +178,24 @@ Matt Newville <newville@cars.uchicago.edu>"""
         bpanel.Add(txt(' Events: ', 400), dcol=2, newrow=True)
         bpanel.Add(clear_btn, dcol=1)
         bpanel.Add((5, 5))
-        bpanel.Add(txt(' PV Name ', 250), newrow=True)
-        bpanel.Add(txt(' Date/Time ', 200))
-        bpanel.Add(txt( ' Value ', 450))
+        bpanel.Add(txt(' PV Description', 180), newrow=True)
+        bpanel.Add(txt(' PV Name ', 200))
+        bpanel.Add(txt(' Date/Time ', 180))
+        bpanel.Add(txt( ' Value ', 350))
         bpanel.Add((5, 5))
-        bpanel.Add(HLine(bpanel, size=(800, 3)), dcol=3, newrow=True)
+        bpanel.Add(HLine(bpanel, size=(850, 3)), dcol=4, newrow=True)
         bpanel.Add((5, 5))
         for i in range(5):
-            wids[f'pv_{i}']  = txt(' - ', 250)
-            wids[f'dt_{i}']  = txt(' - ', 200)
-            wids[f'val_{i}'] = txt(' - ', 450)
-            bpanel.Add(wids[f'pv_{i}'], newrow=True)
+            wids[f'lab_{i}']  = txt(' - ', 180)
+            wids[f'pv_{i}']  = txt(' - ', 200)
+            wids[f'dt_{i}']  = txt(' - ', 180)
+            wids[f'val_{i}'] = txt(' - ', 350)
+            bpanel.Add(wids[f'lab_{i}'], newrow=True)
+            bpanel.Add(wids[f'pv_{i}'])
             bpanel.Add(wids[f'dt_{i}'])
             bpanel.Add(wids[f'val_{i}'])
         bpanel.Add((5, 5))
-        bpanel.Add(HLine(bpanel, size=(800, 3)), dcol=3, newrow=True)
+        bpanel.Add(HLine(bpanel, size=(850, 3)), dcol=4, newrow=True)
         bpanel.pack()
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -213,7 +216,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
 
     def add_event(self, evdat):
-        h = (evdat['mpldate'], evdat['name'],  evdat['value'])
+        h = (evdat['desc'], evdat['name'], evdat['mpldate'], evdat['value'])
         if h not in self.events:
             self.events.append(h)
             xline = self.panel.add_vline(evdat['mpldate'],
@@ -248,8 +251,9 @@ Matt Newville <newville@cars.uchicago.edu>"""
                 x, y, label, edata = mdata
                 # push old events
                 for i in (4, 3, 2, 1):
-                    for a in ('pv', 'dt', 'val'):
+                    for a in ('lab', 'pv', 'dt', 'val'):
                         wids[f'{a}_{i}'].SetLabel(wids[f'{a}_{i-1}'].GetLabel())
+                wids['lab_0'].SetLabel(edata['desc'])
                 wids['pv_0'].SetLabel(edata['name'])
                 wids['dt_0'].SetLabel(edata['datetime'])
                 wids['val_0'].SetLabel(edata['value'])
