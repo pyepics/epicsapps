@@ -268,6 +268,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.plot_windows = []
         self.pvmap = {} # displayed description to pvname
+        self.pvmap_r = {} # reverse map
         self.wids = {}
         self.subframes = {}
         self.config_file = CONFIG_FILE
@@ -532,6 +533,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(slabel(' Plot: '), dcol=1, newrow=True)
         panel.Add(wids['plotone'], dcol=1)
         panel.Add(wids['plotsel'], dcol=1)
+        panel.Add(slabel(' Plot Window: '), dcol=1, newrow=True)
         panel.Add(wids['plot_win'])
         panel.Add((5, 5))
 
@@ -763,9 +765,9 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvlist.select_none()
         sel = []
         for name in self.log_folder.instruments[iname]:
-            for desc, pvn in saelf.pvmap.items():
-                if pvn.strip() == name.strip():
-                    sel.append(desc)
+            desc = self.pvmap_r.get(name, None)
+            if desc is not None:
+                sel.append(desc)
         self.pvlist.SetCheckedStrings(sel)
 
     def onSelNone(self, event=None):
@@ -799,7 +801,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def get_pvdata(self, pvname):
         """get PVdata, caching until it changes"""
-
         pvlog = self.log_folder.pvs.get(pvname, None)
         if pvlog is None:
             return None
@@ -831,16 +832,14 @@ Matt Newville <newville@cars.uchicago.edu>
 
         label = self.log_folder.pvs[pvname].description
         data = self.get_pvdata(pvname)
-        print("Got Data for ", pvname, data.is_numeric)
-
         if data is None:
             data = self.get_pvdata(pvname)
 
-        if not data.is_numeric:
+        if not data.is_numeric or len(data.events) > 0:
             self.show_subframe('pvtable', PVTableFrame,
                                title=f'Epics PV Logger Table')
-            self.subframes['pvtable'].add_pvpage(data)
-        else:
+            self.subframes['pvtable'].add_pvpage(data, pvdesc)
+        if data.is_numeric:
             wname = self.wids['plot_win'].GetStringSelection()
             pwin = self.show_plotwin(wname)
 
@@ -878,11 +877,11 @@ Matt Newville <newville@cars.uchicago.edu>
             if data is None:
                 data = self.get_pvdata(pvname)
 
-            if not data.is_numeric:
+            if not data.is_numeric or len(data.events) > 0:
                 self.show_subframe('pvtable', PVTableFrame,
                             title=f'Epics PV Logger Table')
-                self.subframes['pvtable'].add_pvpage(data)
-            else:
+                self.subframes['pvtable'].add_pvpage(data, pvdesc)
+            if data.is_numeric:
                 yaxes += 1
                 label = self.log_folder.pvs[pvname].description
                 if len(label) < 1:
@@ -982,6 +981,7 @@ is not a valid PV Logger Data Folder""",
         self.wids['work_folder'].SetLabel(folder.fullpath)
         os.chdir(folder.fullpath)
         self.pvmap = {}
+        self.pvmap_r = {}
         for pvname, logfile in self.log_folder.pvs.items():
             desc = logfile.description[:]
             if len(desc) < 1:
@@ -989,6 +989,7 @@ is not a valid PV Logger Data Folder""",
             if desc in self.pvmap:
                 desc = f'{desc} ({pvname})'
             self.pvmap[desc] = pvname
+            self.pvmap_r[pvname] = desc
             self.pvlist.Append(desc)
 
         def update_choice(wid, values, default=0):
