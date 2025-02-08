@@ -761,8 +761,12 @@ Matt Newville <newville@cars.uchicago.edu>
     def onSelectInstPVs(self, event=None):
         iname = self.wids['instruments'].GetStringSelection()
         self.pvlist.select_none()
-        print("SELECTING PV for INST ", iname)
-        self.pvlist.SetCheckedStrings(self.log_folder.instruments[iname])
+        sel = []
+        for name in self.log_folder.instruments[iname]:
+            for desc, pvn in saelf.pvmap.items():
+                if pvn.strip() == name.strip():
+                    sel.append(desc)
+        self.pvlist.SetCheckedStrings(sel)
 
     def onSelNone(self, event=None):
         self.pvlist.select_none()
@@ -817,9 +821,7 @@ Matt Newville <newville@cars.uchicago.edu>
         pvdesc = self.wids['pv1'].GetStringSelection()
         pvname = self.pvmap[pvdesc]
         desc = self.log_folder.pvs[pvname].description
-
         liveplot = self.show_subframe('pvlive', StripChartFrame)
-
         liveplot.addPV(pvname, desc=desc)
 
 
@@ -982,6 +984,8 @@ is not a valid PV Logger Data Folder""",
         self.pvmap = {}
         for pvname, logfile in self.log_folder.pvs.items():
             desc = logfile.description[:]
+            if len(desc) < 1:
+                desc = pvname
             if desc in self.pvmap:
                 desc = f'{desc} ({pvname})'
             self.pvmap[desc] = pvname
