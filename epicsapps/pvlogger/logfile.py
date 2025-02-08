@@ -158,7 +158,7 @@ def parse_logfile(textlines, filename):
             if val == '<event>':
                 events.append((ts, cval))
             else:
-                if val == '<index>':
+                if val in ('<index>', '<non_numeric>'):
                     val_index  += 1
                     vals.append(index)
                     cvals.append(cval)
