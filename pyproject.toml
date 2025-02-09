@@ -63,6 +63,6 @@ Tracker = "https://github.com/pyepics/epicsapps/issues"
 
 [project.optional-dependencies]
 dev = ["build", "twine"]
-doc = ["Sphinx"]
+doc = ["Sphinx", "sphinx-copybutton", "sphinxcontrib-video"]
 test = ["pytest", "pytest-cov", "coverage"]
 all = ["epicsapps[dev, doc, test]"]
