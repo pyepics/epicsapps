@@ -15,6 +15,9 @@ from wxutils import (get_cwd, MenuItem, LEFT, pack, HLine,
 from wxmplot import PlotPanel
 from pyshortcuts import fix_filename, gformat
 
+
+N_EVENTS = 7
+
 class PlotFrame(wx.Frame):
     """
     PVLogger PlotFrame
@@ -185,7 +188,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         bpanel.Add((5, 5))
         bpanel.Add(HLine(bpanel, size=(850, 3)), dcol=4, newrow=True)
         bpanel.Add((5, 5))
-        for i in range(5):
+        for i in range(N_EVENTS):
             wids[f'lab_{i}']  = txt(' - ', 180)
             wids[f'pv_{i}']  = txt(' - ', 200)
             wids[f'dt_{i}']  = txt(' - ', 180)
@@ -225,8 +228,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
             self.event_lines.append(xline)
 
     def clear_events(self, event=None):
-        for i in (4, 3, 2, 1, 0):
-            for a in ('pv', 'dt', 'val'):
+        for i in range(N_EVENTS):
+            for a in ('lab', 'pv', 'dt', 'val'):
                 self.wids[f'{a}_{i}'].SetLabel('-')
         for lx in self.event_lines:
             try:
@@ -250,7 +253,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
             for mdata in marker_data:
                 x, y, label, edata = mdata
                 # push old events
-                for i in (4, 3, 2, 1):
+                for i in reversed(range(1, N_EVENTS)):
                     for a in ('lab', 'pv', 'dt', 'val'):
                         wids[f'{a}_{i}'].SetLabel(wids[f'{a}_{i-1}'].GetLabel())
                 wids['lab_0'].SetLabel(edata['desc'])
