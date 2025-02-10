@@ -162,12 +162,13 @@ will clear the table.
 Collecting PVLogger Data
 ----------------------------
 
-PVLogger will read a YAML-formatted configuration file to tell it what
-PVs to collect, and where to save the data.  A typical file might look
-like this::
+For data collection, PVLogger will read a YAML-formatted configuration
+file to tell it what PVs to collect, and where to save the data.  A
+typical file might look like this::
 
     folder: pvlog
     datadir: '/server/data/beamlineX/2025/userABC'
+    end_datetime: '2025-03-12 09:00:00'
     pvs:
     - S:SRcurrentAI.VAL        | Storage Ring Current | 0.005
     - 'RF-ACIS:FePermit:Sect1To35IdM.VAL | Shutter Permit | 0 '
@@ -184,11 +185,15 @@ like this::
     instruments:
     - SampleStage
 
-Here, `workdir` gives the path to the working directory, and `folder`
-give the name of the PVLogger folder in that working directory to put
-the data collected.  In this case, a folder named
-'/server/data/beamlineX/2025/userABC/pvlog` will be created and used
-for data collection.
+Here, `datadir` gives the path to the main working directory, say for
+the whole experiment, and `folder` give the name of the folder in that
+working directory to put the data collected.  In this case, a folder
+named '/server/data/beamlineX/2025/userABC/pvlog` will be created and
+used for data collection.
+
+The `end_datetime` value gives the date and time for data collection
+to stop.
+
 
 The `pvs` section gives a list of PVs to monitor and collect
 data. Each line is formed as::
@@ -198,25 +203,19 @@ data. Each line is formed as::
 The PV name is required.  Note that, as for one of the examples
 above where `-` is in the PV name that the entire line is in quotes.
 
-The Description field is option. If left off, or the word '<auto>' is
+The Description field is option. If missing or the word '<auto>' is
 used, the PVLogger will try to get this from the corresponding `.DESC`
-field for the PV.
+field for the PV.  The description set or determined here will be used
+when displaying the data later (as shown above), so some care in
+choosing a good description is encouraged.
 
-The `Monitor Delta` value gives the minimal change in the PV value
-that will be recorded - it applies only to Analog, floating point
-values.  This value is absolute, not relative, and it is referenced to
+
+The optional `Monitor Delta` value gives the minimal change in the PV
+value that will be recorded. It applies only to Analog, floating point
+value.  This value is absolute, not relative, and it is referenced to
 the last reported value so that slow cumulative changes are seen, just
-with fewer intermediate values.
-
-PVLogger will try to set the `.MDEL` field of the record. This will
-limit the number of events sent for this PV from the CA server to only
-those that exceed the last reported value by this amount.  If the
-`.MDEL` field cannot be set (perhaps due to permission issues), all
-events will be sent from the CA server, and PVLogger will emulate
-this, recording only those values that change by this amount.
-
-Note that many PVs will have `.MDEL` set to 0 by default so that all
-events are captured.
+with fewer intermediate values. For more details, see
+:ref:`pvlogger_monitor_delta`.
 
 
 
@@ -226,7 +225,46 @@ Running PVLogger to collect data
 With an existing PVLog configuration file, say `my_pvlog.yaml`,
 Logging can be started with::
 
-   epicsapps -c pvlogger my_pvlog.yaml
+   epicsapps pvlogger my_pvlog.yaml
+
+This will start collection in the folders specified in the
+configuration file.
+
+
+.. _pvlogger_monitor_delta:
+
+`Monitor Delta` for PVLogger
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The `Monitor Delta` value for each PV listed in the configuration file
+gives the minimal change in analog (floating point) PV value that will
+be recorded.  This value is absolute, not relative, and it is
+referenced to the last reported value so that slow cumulative changes
+are seen, just with fewer intermediate values.
+
+If explictly set (not `<auto>`), PVLogger will try to set the `.MDEL`
+field of the record. This will limit the number of events sent for
+this PV from the CA server to only those that exceed the last reported
+value by this amount.  If the `.MDEL` field cannot be set (perhaps due
+to permission issues), all events will be sent from the CA server, and
+PVLogger will emulate this, recording only those values that change by
+this amount.
+
+Note that many PVs will have `.MDEL` set to 0 by default so that all
+events are captured.  Note also that it values for `.MDEL` are often
+not preserved by "save-restore" processes and so may be lost if the
+host IOC is restarted.
+
+
+
+Stopping Data Collection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+S
+
+
+Adding PVs to a running PVLogger
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 
