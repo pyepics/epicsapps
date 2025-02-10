@@ -3,7 +3,9 @@
 Epics PV Logger Application, CLI no GUI
 """
 import os
-import time
+import uuid
+import random
+from time import time, sleep
 from collections import deque
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -19,8 +21,11 @@ from .configfile import PVLoggerConfig
 
 STOP_FILE = '_PVLOG_stop.txt'
 TIMESTAMP_FILE = '_PVLOG_timestamp.txt'
+RUNLOG_FILE = '_PVLOG_runlog.txt'
 UPDATETIME = 15.0
-SLEEPTIME = 0.5
+LOGTIME = 300.0
+SLEEPTIME = (4 + random.random())/10.0
+
 RUN_FOLDER = 'pvlog'
 motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
                 '.DIR', '_able.VAL', '.SPMG')
@@ -28,6 +33,10 @@ motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
 # The EPICS EPOCH starts at 1990, and may sometimes
 # send 0 or EPIC2UNIX_EPOCH=631152000.0
 MIN_TIMESTAMP = 1.0e9
+
+def get_machineid_process():
+    """return (matimhine_id, process_id)"""
+    return hex(uuid.getnode())[2:], os.getpid()
 
 def get_instruments(instrument_names=None):
     """look up Epics Instruments, return dict of name:pvlist"""
@@ -44,13 +53,33 @@ def get_instruments(instrument_names=None):
                     insts[iname].append(pvname)
     return insts
 
-
 def save_pvlog_timestamp():
     """
     save timestamp to _PVLOG_timestamp.txt to show when logger last ran
     """
+    macid, pid = get_machineid_process()
     with open(TIMESTAMP_FILE, "w") as fh:
-        fh.write(f'{time.time()}   \n \n')
+        fh.write(f'{int(time())} {macid} {pid} 0 0 0 \n\n')
+
+def check_pvlog_timestamp():
+    """
+    read timestamp file, determine if this process is the one that
+    wrote the file, and so the controlling process
+    """
+    macid, pid = get_machineid_process()
+    _ts, _macid, _pid = 0, '', 0
+    line, words = '', []
+    if Path(TIMESTAMP_FILE).exists():
+        line = ''
+        with open(TIMESTAMP_FILE, "r") as fh:
+            line = fh.readlines()[0]
+    if len(line) > 2:
+        words = [a.strip() for a in line.strip()]
+        _ts = int(words[0])
+        _mid = words[1]
+        _pid = int(words[2])
+    return (_mid == macid and pid == _pid and (time() - _ts) < (2*UPDATETIME))
+
 
 class LoggedPV():
     """wraps a PV for logging
@@ -60,23 +89,36 @@ class LoggedPV():
         self.pvname = normalize_pvname(pvname)
         self.connection_timeout = connection_timeout
         logname = self.pvname.replace('.', '_') + '.log'
-        fpath = Path(new_filename(fix_filename(logname)))
-        self.datafile = open(fpath, 'a')
-        self.filename = fpath.as_posix()
+        self.fpath = Path(new_filename(fix_filename(logname)))
+        self.filename = self.fpath.as_posix()
         self.timestamp = 0.0
         self.end_timestamp = -1
         self.value = None
         self.char_value = None
         self.data = deque()
         self.needs_header = False
-        self.connected = None
         self.needs_flush = False
-        self.lastflush = 0.0
-
+        self.connected = None
+        self.next_flushtime = 0.0
         self.set_desc(desc, descpv)
         self.set_mdel(mdel, mdelpv)
         self.pv = get_pv(self.pvname, callback=self.onChanges,
                          connection_callback=self.onConnect)
+
+    def write(self, txt, flush=False):
+        with open(self.fpath, 'a') as fh:
+            fh.write(txt)
+            if flush:
+                fh.flush()
+                self.next_flushtime = time() + 15.0
+                self.needs_flush = False
+
+
+    def flush(self):
+        self.next_flushtime = time() + 15.0
+        with open(self.fpath, 'a') as fh:
+            fh.flush()
+            self.needs_flush = False
 
     def set_mdel(self, mdel, mdelpv):
         self.mdel = mdel
@@ -86,7 +128,7 @@ class LoggedPV():
                     if (mdelpv.write_access and
                         self.mdel not in (None, 'None', '<auto>')):
                         mdelpv.put(self.mdel)
-                        time.sleep(0.001)
+                        sleep(0.001)
                         self.mdel = mdelpv.get()
                     elif self.mdel in (None, 'None', '<auto>'):
                         self.mdel = mdelpv.get()
@@ -107,7 +149,7 @@ class LoggedPV():
 
 
     def onConnect(self, pvname, conn, pv):
-        ts = time.time()
+        ts = time()
         if conn:
             if self.connected is None: # initial connection
                 self.connected = True
@@ -118,8 +160,7 @@ class LoggedPV():
         else:
             msg = "<event> <CA_disconnected>"
         if msg is not None:
-            self.datafile.write(f"{ts:.3f}  {msg}\n")
-        self.needs_flush = True
+            self.write(f"{ts:.3f}  {msg}\n", flush=True)
 
     def onChanges(self, pvname, value, char_value='', timestamp=None, **kws):
         skip = False
@@ -138,14 +179,9 @@ class LoggedPV():
             if '\r' in char_value:
                 self.char_value = char_value.replace('\r', '\\r')
             if timestamp is None or timestamp < MIN_TIMESTAMP:
-                timestamp = time.time()
+                timestamp = time()
             self.timestamp = timestamp
             self.data.append((timestamp, value, char_value))
-
-    def flush(self):
-        self.lastflush = time.time()
-        self.needs_flush = False
-        self.datafile.flush()
 
     def save_current_value(self):
         """
@@ -155,9 +191,10 @@ class LoggedPV():
         This may be useful to do periodically, or at
         the end of data collection.
         """
-        self.data.append((time.time(), self.value, self.char_value))
+        self.data.append((time(), self.value, self.char_value))
 
-    def write_data(self, with_flush=False):
+    def write_data(self):
+        buff = []
         if self.needs_header:
             if self.pv.connected:
                 if self.value is None:
@@ -183,12 +220,11 @@ class LoggedPV():
 
             buff.extend(["#---------------------------------",
                          "# timestamp       value             char_value", ""])
-            self.datafile.write('\n'.join(buff))
-
+            self.needs_flush = True
+            self.needs_header = False
 
         n = len(self.data)
         if n > 0:
-            buff = []
             for i in range(n):
                 ts, val, cval = self.data.popleft()
                 if i == 0 and self.needs_header:
@@ -209,13 +245,10 @@ class LoggedPV():
 
                 buff.append(f"{ts:.3f}  {xval}   {cval}")
             buff.append('')
-            self.datafile.write('\n'.join(buff))
             self.needs_flush = True
 
-        self.needs_header = False
-        if (with_flush or
-            (self.needs_flush and (time.time() > (self.lastflush + 15)))):
-            self.flush()
+        flush = self.needs_flush and (time() > self.next_flushtime)
+        self.write('\n'.join(buff), flush=flush)
 
 
 class PVLogger():
@@ -236,9 +269,9 @@ class PVLogger():
         if len(self.datadir) < 1 or self.datadir == '.':
             self.datadir = os.getcwd()
         self.datadir = Path(self.datadir)
-        self.topfolder = Path(self.datadir, self.folder).absolute()
-        self.topfolder.mkdir(mode=0o755, parents=False, exist_ok=True)
-        os.chdir(self.topfolder)
+        pvlog_folder = Path(self.datadir, self.folder).absolute()
+        pvlog_folder.mkdir(mode=0o755, parents=False, exist_ok=True)
+        os.chdir(pvlog_folder)
 
         # defualt end time is 1 month from now
         month =  (datetime.now() + timedelta(days=30))
@@ -307,7 +340,7 @@ class PVLogger():
                 if _pvmdel[ipv] in (None, 'None', '<auto>'):
                     mdelpvs[pvname] = get_pv(f"{pref}.MDEL")
 
-        time.sleep(0.05)
+        sleep(0.05)
         out = {'datadir': self.datadir.as_posix(),
                'folder': self.folder.as_posix(),
                'end_datetime': self.end_date,
@@ -402,7 +435,7 @@ class PVLogger():
            b) if the end_datet specified in the configuration is exceeded
         """
         exit_request = ((self.end_timestamp > 65536) and
-                        (time.time() > self.end_timestamp))
+                        (time() > self.end_timestamp))
         stopfile = Path(STOP_FILE)
         if stopfile.exists():
             exit_request = True
@@ -410,33 +443,46 @@ class PVLogger():
                 stopfile.unlink(missing_ok=True)
             except:
                 pass
-        return exit_request
+        if not check_pvlog_timestamp():
+            with open(RUNLOG_FILE, "w+") as fh:
+                macid, pid = get_machineid_process()
+                fh.write(f'not logging process! mac={macid}, pid={pid}')
+            exit_request = True
 
+        return exit_request
 
     def finish(self):
         """finish data collection"""
         for pv in self.pvs.values():
             pv.pv.clear_callbacks()
             pv.save_current_value()
-        time.sleep(SLEEPTIME)
+        sleep(SLEEPTIME)
         for pv in self.pvs.values():
-            pv.write_data(with_flush=True)
+            pv.write_data()
+            self.flush()
+        with open(RUNLOG_FILE, "w+") as fh:
+            fh.write(f'exit at {isotime()}')
 
     def run(self):
         """run, collecting data until the exit signal is given"""
         self.connect_pvs()
         last_update = 0
+        last_logtime = 0
+        SLEEPTIME = SLEEPTIME
         while True:
-            time.sleep(SLEEPTIME)
+            sleep(sleep_time)
             for pv in self.pvs.values():
                 pv.write_data()
 
-            now = time.time()
+            now = time()
             if now > last_update + UPDATETIME:
-                save_pvlog_timestamp()
                 if self.look_for_exit_signal():
                     self.finish()
                     break
                 else:
+                    save_pvlog_timestamp()
                     self.look_for_new_pvs()
                     last_update = now
+            if now > last_logtime + LOGTIME:
+                with open(RUNLOG_FILE, "w+") as fh:
+                    fh.write(f'collecting: {isotime()}')
