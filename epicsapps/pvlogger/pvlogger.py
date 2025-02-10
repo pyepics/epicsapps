@@ -24,7 +24,7 @@ TIMESTAMP_FILE = '_PVLOG_timestamp.txt'
 RUNLOG_FILE = '_PVLOG_runlog.txt'
 UPDATETIME = 15.0
 LOGTIME = 300.0
-SLEEPTIME = (4 + random.random())/10.0
+SLEEPTIME = 0.5
 
 RUN_FOLDER = 'pvlog'
 motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
@@ -66,19 +66,23 @@ def check_pvlog_timestamp():
     read timestamp file, determine if this process is the one that
     wrote the file, and so the controlling process
     """
-    macid, pid = get_machineid_process()
-    _ts, _macid, _pid = 0, '', 0
+    mid, pid = get_machineid_process()
+    _ts, _mid, _pid = 0, 'none', 0
     line, words = '', []
     if Path(TIMESTAMP_FILE).exists():
         line = ''
         with open(TIMESTAMP_FILE, "r") as fh:
             line = fh.readlines()[0]
+    else:
+        return True
     if len(line) > 2:
-        words = [a.strip() for a in line.strip()]
+        words = [a.strip() for a in line.split()]
+        if len(words) < 2:
+            return True
         _ts = int(words[0])
         _mid = words[1]
         _pid = int(words[2])
-    return (_mid == macid and pid == _pid and (time() - _ts) < (2*UPDATETIME))
+    return (_mid == mid and _pid == pid and (time() - _ts) < (2*UPDATETIME))
 
 
 class LoggedPV():
@@ -112,7 +116,6 @@ class LoggedPV():
                 fh.flush()
                 self.next_flushtime = time() + 15.0
                 self.needs_flush = False
-
 
     def flush(self):
         self.next_flushtime = time() + 15.0
@@ -459,16 +462,18 @@ class PVLogger():
         sleep(SLEEPTIME)
         for pv in self.pvs.values():
             pv.write_data()
-            self.flush()
+            pv.flush()
         with open(RUNLOG_FILE, "w+") as fh:
             fh.write(f'exit at {isotime()}')
 
     def run(self):
         """run, collecting data until the exit signal is given"""
         self.connect_pvs()
+        print("connected")
         last_update = 0
         last_logtime = 0
-        SLEEPTIME = SLEEPTIME
+        sleep_time = SLEEPTIME + random.random()/10.0
+        nloops = 0
         while True:
             sleep(sleep_time)
             for pv in self.pvs.values():
@@ -476,13 +481,19 @@ class PVLogger():
 
             now = time()
             if now > last_update + UPDATETIME:
-                if self.look_for_exit_signal():
-                    self.finish()
-                    break
-                else:
-                    save_pvlog_timestamp()
-                    self.look_for_new_pvs()
-                    last_update = now
+                self.look_for_new_pvs()
+                save_pvlog_timestamp()
+                nloops += 1
+                last_update = now
+
+                if nloops % 3 == 0:
+                    if self.look_for_exit_signal():
+                        self.finish()
+                        break
+                if nloops > 10000:
+                    nloops = 0
+
             if now > last_logtime + LOGTIME:
                 with open(RUNLOG_FILE, "w+") as fh:
                     fh.write(f'collecting: {isotime()}')
+                last_logtime = now
