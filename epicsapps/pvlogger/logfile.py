@@ -314,7 +314,8 @@ class PVLogFolder:
         if tstamp_file.exists():
             with open(tstamp_file, 'r') as fh:
                 line = fh.readline()
-                stop_time = float(line[:-1])
+                words = line.split()
+                stop_time = float(words[0])
         self.time_stop = stop_time
 
     def _logfiles_sizeorder(self, reverse=False):
