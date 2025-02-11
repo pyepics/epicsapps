@@ -18,7 +18,7 @@ import numpy as np
 from pyshortcuts import debugtimer
 
 from ..utils.textfile import read_textfile
-from .pvlogger import TIMESTAMP_FILE
+from .pvlogger import TIMESTAMP_FILE, motor_fields
 
 TINY = 1.e-7
 MAX_FILESIZE = 400*1024*1024  # 400 Mb limit
@@ -30,6 +30,13 @@ TZONE = pytz.timezone(tzname)
 # The EPICS EPOCH starts at 1990, and may sometimes
 # send 0 or EPIC2UNIX_EPOCH=631152000.0
 MIN_TIMESTAMP = 1.0e9
+
+def is_int(s):
+    try:
+        _ = int(s)
+        return True
+    except:
+        return False
 
 @dataclass
 class PVLogData:
@@ -156,7 +163,7 @@ def parse_logfile(textlines, filename):
                 else:
                     ts = times[-1]
             if val == '<event>':
-                events.append((ts, cval))
+                events.append([ts, cval])
             else:
                 if val in ('<index>', '<non_numeric>'):
                     val_index  += 1
@@ -277,6 +284,7 @@ class PVLogFolder:
             words = [a.strip() for a in line.split('|', maxsplit=1)]
             if len(words) > 1:
                 logfiles[words[0]] = Path(self.folder, words[1])
+        self.logfiles = logfiles
 
         # main config
         form = 'yaml'
@@ -468,6 +476,38 @@ class PVLogFolder:
         pv = self.pvs.get(pvname, None)
         if pv is None:
             raise ValueError(f"Unknown PV name: '{pvname}'")
-        pv.read_logfile()
+        pv.read_log_text()
         pv.data = read_logfile(pv.logfile)
         pv.mod_time = os.stat(pv.logfile).st_mtime
+
+
+    def read_motor_events(self, motorname):
+        """read Motor Events for motor PVs
+        This will convert the data for the logged "Motor Fields" for a Motor PV
+        ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS', '.DIR', '_able.VAL', '.SPMG')
+        into entries in the "events" list for the Motor data.
+
+       Event data is a list of (timestamp, string) values, and so look like:
+           [(1734109257.422, 'FOFF = Frozen'),
+            (1734109257.422, 'SET = Use'), ...]
+
+        """
+        if motorname in self.motors:
+            pv = self.pvs[motorname]
+            if pv.data is None:
+                pv.read_log_text(parse=True)
+            root = motorname[:-4]
+            for suff in motor_fields:
+                pvname = f'{root}{suff}'
+                label = suff[1:]
+                if pvname in self.logfiles:
+                    pvdat = read_logfile(self.logfiles[pvname])
+                    dtype = pvdat.attrs['type']
+                    enumstrs = pvdat.attrs.get('enum_strs', None)
+                    for ts, val, cval in zip(pvdat.timestamps, pvdat.values,
+                                            pvdat.char_values):
+                        if 'enum' in dtype and enumstrs is not None:
+                            cval = enumstrs.get(val, cval)
+                        pv.data.events.append((ts, f'{label} = {cval}'))
+            pv.data.events = sorted(pv.data.events, key=lambda x: x[0])
+            print('read motor  ', pv.data.events)

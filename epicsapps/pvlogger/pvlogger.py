@@ -222,9 +222,8 @@ class LoggedPV():
                     buff.append(f"#      {index} = {nam}")
 
             buff.extend(["#---------------------------------",
-                         "# timestamp       value             char_value", ""])
+                         "# timestamp       value             char_value"])
             self.needs_flush = True
-            self.needs_header = False
 
         n = len(self.data)
         if n > 0:
@@ -249,6 +248,8 @@ class LoggedPV():
                 buff.append(f"{ts:.3f}  {xval}   {cval}")
             buff.append('')
             self.needs_flush = True
+            self.needs_header = False
+
 
         flush = self.needs_flush and (time() > self.next_flushtime)
         self.write('\n'.join(buff), flush=flush)
