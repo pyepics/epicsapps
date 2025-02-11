@@ -824,7 +824,7 @@ Matt Newville <newville@cars.uchicago.edu>
         desc = self.log_folder.pvs[pvname].description
         liveplot = self.show_subframe('pvlive', StripChartFrame)
         liveplot.addPV(pvname, desc=desc)
-
+        liveplot.Show()
 
     def onPlotOne(self, event=None):
         pvdesc = self.wids['pv1'].GetStringSelection()
