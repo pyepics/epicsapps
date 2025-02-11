@@ -369,8 +369,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
         wids['config_file'] = wx.StaticText(panel, label='', size=(550, -1))
         wids['data_folder'] = wx.TextCtrl(panel, value='', size=(400, -1))
-        wids['pvlog_folder'] = wx.TextCtrl(panel, value=PVLOG_FOLDER, size=(400, -1))
-
 
         wids['inst_table'] = dv.DataViewCtrl(panel, style=DVSTYLE)
         wids['inst_table'].SetMinSize((725, 200))
@@ -426,9 +424,6 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['data_folder'], dcol=2)
         panel.Add(btn_data, dcol=1, newrow=False)
         panel.Add((5, 5))
-        panel.Add(slabel(' Log Folder: ', size=(150, -1)), dcol=1, newrow=True)
-        panel.Add(wids['pvlog_folder'], dcol=2)
-        panel.Add((5, 5))
         panel.Add(slabel(' End Date&Time: ', size=(150, -1)), dcol=1, newrow=True)
         panel.Add(wids['end_date'])
         panel.Add(wids['end_time'])
@@ -467,15 +462,18 @@ Matt Newville <newville@cars.uchicago.edu>
         self.last_plot_type = 'one'
         opts = {'size': (175, -1)}
         wids['plotone'] = Button(panel, 'Show PV 1 ', action=self.onPlotOne, **opts)
-        wids['plotsel'] = Button(panel, 'Show Selected ', action=self.onPlotSel, **opts)
+        wids['plotsel'] = Button(panel, 'Show PV 1 to 4', action=self.onPlotSel, **opts)
 
         wids['plot_win']  = Choice(panel, choices=PlotWindowChoices, **opts)
         wids['plot_win'].SetStringSelection('1')
-        wids['plotlive'] = Button(panel, 'Live Plot for PV 1 ',
-                                  action=self.onPlotLive,
-                                  size=(250, -1))
-        wids['plotlive'].Disable()
+        wids['plotlive_one'] = Button(panel, 'LivePlot PV 1',
+                                   action=self.onPlotLiveOne,
+                                   size=(175, -1))
 
+        wids['plotlive_sel'] = Button(panel, 'LivePlot PV 1 to 4',
+                                   action=self.onPlotLiveSel,
+                                   size=(175, -1))
+        
         wids['use_sel'] = Button(panel, ' Use Selected PVs ',
                                  action=self.onUseSelected, **opts)
         wids['clear_sel'] = Button(panel, ' Clear PVs 2, 3, 4 ',
@@ -538,8 +536,10 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add((5, 5))
 
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
-        panel.Add((5, 5))
-        panel.Add(wids['plotlive'], dcol=3, newrow=True)
+        panel.Add((5, 5)) 
+        panel.Add(slabel(' Live Plots: '), dcol=1, newrow=True)       
+        panel.Add(wids['plotlive_one'])
+        panel.Add(wids['plotlive_sel'])
 
         panel.pack()
         return panel
@@ -596,7 +596,7 @@ Matt Newville <newville@cars.uchicago.edu>
             self.check_pv_connections(pvs)
             PVsConnectedDialog(self, pvs).Show()
 
-    def check_pv_connections(self, pvs=None, waittime=0.01):
+    def check_pv_connections(self, pvs=None, waittime=0.1):
         """check that PVs connect.  If the first 5 PVs tried
            do not connect, set 'self.pvs_connected' to False
            to stop looking for connected PVs
@@ -619,13 +619,10 @@ Matt Newville <newville@cars.uchicago.edu>
         "save config file"
         wids = self.wids
         datadir =  wids['data_folder'].GetValue()
-        fname = wids['pvlog_folder'].GetValue()
-        if not fname.endswith('.yaml'):
-            fname = fname + '.yaml'
         dlg = wx.FileDialog(self,
                             message='Save PVLogger Configuration',
                             wildcard=YAML_WILDCARD,
-                            defaultFile=fname,
+                            defaultFile='pvlog.yaml',
                             defaultDir=datadir,
                         style=wx.FD_SAVE|wx.FD_CHANGE_DIR)
         output = None
@@ -653,7 +650,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 insts.append(iname)
 
         config = {'datadir': datadir,
-                  'folder': wids['pvlog_folder'].GetValue(),
+                  'folder': 'pvlog',
                   'end_datetime': datetime.isoformat(dt, sep=' '),
                   'instruments': insts,
                   'pvs': pvs}
@@ -737,7 +734,6 @@ Matt Newville <newville@cars.uchicago.edu>
         folder = Path(self.run_config.get('folder', 'pvlog'))
 
         self.wids['data_folder'].SetValue(wdir.absolute().as_posix())
-        self.wids['pvlog_folder'].SetValue(folder.absolute().stem)
 
         insts = self.run_config.get('instruments', [])
         self.wids['inst_model'].set_data(get_instruments(), insts)
@@ -785,18 +781,17 @@ Matt Newville <newville@cars.uchicago.edu>
             print("cannot show PV ", pvname)
         else:
             data = self.get_pvdata(pvname)
-        if self.pvs_connected in ('unknown', True):
+
+        #
+        enable_live = self.pvs_connected in ('unknown', True)
+        if enable_live:
             if pvname not in self.live_pvs:
                 self.live_pvs[pvname] = get_pv(pvname)
-                time.sleep(0.02)
-                self.check_pv_connections(waittime=0.05)
+                self.live_pvs[pvname].wait_for_connection(timeout=0.1)                
+                self.check_pv_connections(waittime=0.1)
 
-        enable_live = False
-        if (self.pvs_connected in ('unknown', True) and
-            pvname in self.live_pvs and
-            self.live_pvs[pvname].connected):
-            enable_live = True
-        self.wids['plotlive'].Enable(enable_live)
+        self.wids['plotlive_one'].Enable(enable_live)
+        self.wids['plotlive_sel'].Enable(enable_live)
 
 
     def get_pvdata(self, pvname):
@@ -818,14 +813,25 @@ Matt Newville <newville@cars.uchicago.edu>
 
         return pvlog.data
 
-    def onPlotLive(self, event):
+    def onPlotLiveOne(self, event):
+        liveplot = self.show_subframe('pvlive', StripChartFrame)
         pvdesc = self.wids['pv1'].GetStringSelection()
         pvname = self.pvmap[pvdesc]
         desc = self.log_folder.pvs[pvname].description
-        liveplot = self.show_subframe('pvlive', StripChartFrame)
         liveplot.addPV(pvname, desc=desc)
         liveplot.Show()
 
+    def onPlotLiveSel(self, event):
+        liveplot = self.show_subframe('pvlive', StripChartFrame)
+        for w in ('pv1', 'pv2', 'pv3', 'pv4'):
+            pvdesc = self.wids[w].GetStringSelection()
+            if pvdesc == 'None':
+                continue
+            pvname = self.pvmap[pvdesc]
+            desc = self.log_folder.pvs[pvname].description
+            liveplot.addPV(pvname, desc=desc)
+        liveplot.Show()
+        
     def onPlotOne(self, event=None):
         pvdesc = self.wids['pv1'].GetStringSelection()
         pvname = self.pvmap[pvdesc]
