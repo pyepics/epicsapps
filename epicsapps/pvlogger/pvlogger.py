@@ -58,7 +58,7 @@ def save_pvlog_timestamp():
     save timestamp to _PVLOG_timestamp.txt to show when logger last ran
     """
     macid, pid = get_machineid_process()
-    with open(TIMESTAMP_FILE, "w") as fh:
+    with open(TIMESTAMP_FILE, 'w') as fh:
         fh.write(f'{int(time())} {macid} {pid} 0 0 0 \n\n')
 
 def check_pvlog_timestamp():
@@ -71,7 +71,7 @@ def check_pvlog_timestamp():
     line, words = '', []
     if Path(TIMESTAMP_FILE).exists():
         line = ''
-        with open(TIMESTAMP_FILE, "r") as fh:
+        with open(TIMESTAMP_FILE, 'r') as fh:
             line = fh.readlines()[0]
     else:
         return True
@@ -373,14 +373,14 @@ class PVLogger():
                     self.add_pv(f"{prefix}{mfield}",
                                 desc=f"{lpv.desc} {mfield}",  mdel=None)
 
-        with open("_PVLOG.yaml", "w+") as fh:
+        with open('_PVLOG.yaml', 'w') as fh:
             yaml.safe_dump(out, fh, default_flow_style=False, sort_keys=False)
 
         pfiles = ["# PV Name                                |    Log File "]
         for lpv in self.pvs.values():
             pfiles.append(f"{lpv.pvname:40s} | {lpv.filename:40s}")
         pfiles.append("")
-        with open("_PVLOG_filelist.txt", "w+") as fh:
+        with open('_PVLOG_filelist.txt', 'w') as fh:
             fh.write('\n'.join(pfiles))
 
     def add_pv(self, pvname, desc=None, mdel=None, descpv=None, mdelpv=None):
@@ -447,7 +447,7 @@ class PVLogger():
             except:
                 pass
         if not check_pvlog_timestamp():
-            with open(RUNLOG_FILE, "w+") as fh:
+            with open(RUNLOG_FILE, 'a') as fh:
                 macid, pid = get_machineid_process()
                 fh.write(f'not logging process! mac={macid}, pid={pid}')
             exit_request = True
@@ -463,13 +463,12 @@ class PVLogger():
         for pv in self.pvs.values():
             pv.write_data()
             pv.flush()
-        with open(RUNLOG_FILE, "w+") as fh:
+        with open(RUNLOG_FILE, 'a') as fh:
             fh.write(f'exit at {isotime()}')
 
     def run(self):
         """run, collecting data until the exit signal is given"""
         self.connect_pvs()
-        print("connected")
         last_update = 0
         last_logtime = 0
         sleep_time = SLEEPTIME + random.random()/10.0
@@ -494,6 +493,6 @@ class PVLogger():
                     nloops = 0
 
             if now > last_logtime + LOGTIME:
-                with open(RUNLOG_FILE, "w+") as fh:
+                with open(RUNLOG_FILE, 'a') as fh:
                     fh.write(f'collecting: {isotime()}')
                 last_logtime = now
