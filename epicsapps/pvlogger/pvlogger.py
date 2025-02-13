@@ -11,13 +11,19 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import numpy as np
 import yaml
-from epics import get_pv, caget, PV
 from pyshortcuts import debugtimer, fix_filename, new_filename, isotime, gformat
+
+from epics import get_pv, caget, PV
+from epics import ca
+ca.WITH_CA_MESSAGES = True
+ca.initialize_libca()
 
 from ..instruments import InstrumentDB
 
 from ..utils import (get_pvtypes, get_pvdesc, normalize_pvname)
 from .configfile import PVLoggerConfig
+
+
 
 STOP_FILE = '_PVLOG_stop.txt'
 TIMESTAMP_FILE = '_PVLOG_timestamp.txt'
@@ -197,6 +203,8 @@ class LoggedPV():
         self.data.append((time(), self.value, self.char_value))
 
     def write_data(self):
+        if len(self.data) < 1:
+            return
         buff = []
         if self.needs_header:
             if self.pv.connected:
@@ -253,7 +261,8 @@ class LoggedPV():
 
         flush = self.needs_flush and (time() > self.next_flushtime)
         self.write('\n'.join(buff), flush=flush)
-
+        with open(RUNLOG_FILE, 'a') as fh:
+            fh.write(f'wrote {len(buff)} points for {self.pvname}\n')
 
 class PVLogger():
     about_msg =  """Epics PV Logger, CLI
@@ -383,6 +392,16 @@ class PVLogger():
         pfiles.append("")
         with open('_PVLOG_filelist.txt', 'w') as fh:
             fh.write('\n'.join(pfiles))
+        # count connected PVs
+        sleep(0.1)
+        ntotal = len(self.pvs)
+        nconn = 0
+        for loggedpv in self.pvs.values():
+            if loggedpv.pv.connected:
+                nconn += 1
+        with open(RUNLOG_FILE, 'a') as fh:
+            fh.write(f'Connected to {nconn} of {ntotal} Logged PVs: {isotime()}\n')
+
 
     def add_pv(self, pvname, desc=None, mdel=None, descpv=None, mdelpv=None):
         if pvname not in self.pvs:
@@ -406,7 +425,9 @@ class PVLogger():
         """
         reqfile = Path("_PVLOG_requests.yaml")
         if reqfile.exists():
-            print("read request file")
+            with open(RUNLOG_FILE, 'a') as fh:
+                fh.write(f'read _PVLOG_requests.yaml at {isotime()}\n')
+
             rconfig = PVLoggerConfig(reqfile.as_posix())
             for section in ('pvs', 'instruments'):
                 newdat = rconfig.config.get(section, [])
@@ -424,7 +445,7 @@ class PVLogger():
                     pass
 
             self.connect_pvs()
-            print("Connected PVs from request file")
+
             try:
                 reqfile.unlink(missing_ok=True)
             except:
@@ -450,13 +471,15 @@ class PVLogger():
         if not check_pvlog_timestamp():
             with open(RUNLOG_FILE, 'a') as fh:
                 macid, pid = get_machineid_process()
-                fh.write(f'not logging process! mac={macid}, pid={pid}')
+                fh.write(f'not logging process! mac={macid}, pid={pid}\n')
             exit_request = True
 
         return exit_request
 
     def finish(self):
         """finish data collection"""
+        with open(RUNLOG_FILE, 'a') as fh:
+            fh.write(f'got exit signal at {isotime()}\n')
         for pv in self.pvs.values():
             pv.pv.clear_callbacks()
             pv.save_current_value()
@@ -465,7 +488,7 @@ class PVLogger():
             pv.write_data()
             pv.flush()
         with open(RUNLOG_FILE, 'a') as fh:
-            fh.write(f'exit at {isotime()}')
+            fh.write(f'exit at {isotime()}\n')
 
     def run(self):
         """run, collecting data until the exit signal is given"""
@@ -477,8 +500,8 @@ class PVLogger():
         while True:
             sleep(sleep_time)
             for pv in self.pvs.values():
-                pv.write_data()
-
+                if len(pv.data) > 0:
+                    pv.write_data()
             now = time()
             if now > last_update + UPDATETIME:
                 self.look_for_new_pvs()
@@ -495,5 +518,5 @@ class PVLogger():
 
             if now > last_logtime + LOGTIME:
                 with open(RUNLOG_FILE, 'a') as fh:
-                    fh.write(f'collecting: {isotime()}')
+                    fh.write(f'collecting: {isotime()}\n')
                 last_logtime = now
