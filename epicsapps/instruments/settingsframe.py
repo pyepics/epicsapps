@@ -196,7 +196,8 @@ class InstSelectionFrame(wx.Frame) :
             checked = cb.IsChecked()
             if not checked and pagename in pagemap:
                 page = self.parent.nb.GetPage(pagemap[pagename])
-                page.pos_timer.Stop()
+                if hasattr(page, 'pos_timer'):
+                    page.pos_timer.Stop()
                 page.put_timer.Stop()
                 self.parent.nb.DeletePage(pagemap[pagename])
             elif checked and pagename not in pagemap:
