@@ -60,7 +60,14 @@ Viewing PVLogger Data
 
 For data that has already been collected, the PVLogger GUI Application
 can read the data collected into the PVLOG folder, and display
-it. Opening an existing folder will give a main window display like:
+it. With Desktop Shortcuts installed (see :ref:`install_icons`), this
+application can be launched from the `PVLogger` shortcut with the icon
+of logs in the `Epics Apps` folder, or from the command line with::
+
+       epicsapps pvlogview
+
+
+Opening an existing folder will give a main window display like:
 
 .. image:: images/pvlogger_mainview.png
 
@@ -166,7 +173,6 @@ For data collection, PVLogger will read a YAML-formatted configuration
 file to tell it what PVs to collect, and where to save the data.  A
 typical file might look like this::
 
-    folder: pvlog
     datadir: '/server/data/beamlineX/2025/userABC'
     end_datetime: '2025-03-12 09:00:00'
     pvs:
@@ -186,10 +192,10 @@ typical file might look like this::
     - SampleStage
 
 Here, `datadir` gives the path to the main working directory, say for
-the whole experiment, and `folder` give the name of the folder in that
-working directory to put the data collected.  In this case, a folder
-named '/server/data/beamlineX/2025/userABC/pvlog` will be created and
-used for data collection.
+the whole experiment.  A folder named `pvlog` will be created in this
+data directory to hold all the data collected by PVLogger.  In this
+case, a folder named '/server/data/beamlineX/2025/userABC/pvlog` will
+be created and used for data collection.
 
 The `end_datetime` value gives the date and time for data collection
 to stop.
@@ -256,17 +262,167 @@ not preserved by "save-restore" processes and so may be lost if the
 host IOC is restarted.
 
 
+Data for Epics Motors
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Stopping Data Collection
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+PV Logger generally assumes that only the requested field for a PV is
+collected. For Epics Motors that are requested to be logged, the VAL
+(drive) field will generally be requested.   In addition, all Epics
+Motors also have the following fields monitored and logged::
 
-S
+   .OFF, .FOFF, .SET, .HLS, .LLS, .DIR, _able.VAL, .SPMG
 
+Changes to these fields will generally be very rare, but may change
+the meaning of the VAL field.  These fields are recorded separately,
+each to its own data file.  When read in by the PVLog Viewer, these
+values will be presented as Events that can be displayed with the
+Motor values.
+
+
+Using Epics Instruments
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If using :ref:`instruments` with a PostgresQL database, and if the
+environmental variable `ESCAN_CREDENTIALS` is set, then any of the
+existing Instruments in the database can be loggged simply by giving
+its name in the `instrumenst` setting of the configuration file.
+Setting this will log all of the PVs defined for that Instrument.
+
+
+.. _pvlogger_adding_pvs:
 
 Adding PVs to a running PVLogger
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+You may want to add more PVs to a running PVLogger instance.  To do
+this, you can write a YAML file in the same format as the main
+configuration file with the additional PVs.   When you have this file
+created, perhaps something like::
+
+    pvs:
+    - XXX:m20.VAL  | station slit horiz pos | 0.001
+    - XXX:m21.VAL  | station slit horiz wid | 0.001
+    - XXX:m22.VAL  | station slit vert pos | 0.001
+    - XXX:m23.VAL  | station slit vert wid | 0.001
+
+
+you can copy that to a file named `_PVLOG_requests.yaml` in the running
+`pvlog` folder.
+
+
+You can also set the `end_datetime` in the `_PVLOG_request.txt` file
+to change the ending data collection time.
+
+
+
+Stopping Data Collection
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Data collection can be stopped a few different ways:
+
+1. Setting the `end_datetime` value in the configuration file,
+   including in the `_PVLOG_requests.txt` file described in
+   :ref:`pvlogger_adding_pvs`.
+2. Writing a file named `_PVLOG_stop.txt` (this can be empty) to the
+   running `pvlog` folder.  This will stop collection within 30 seconds.
+3. Kiling the running process.
+
+Options 1 and 2 are recommended, as they will write data that has been
+collected but not yet written, will finalize the timestamps, and will
+cleanly disconnect from the Epics IOCs.
 
 
 The PVLog Folder
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+An important feature of PVLogger is that all of the files are readable
+plaintext files that will be readable in the future.
+
+
+As mentioned above, there are a few files with names like `_PVLOG_xx.yyy`
+in the `pvlog` folder that contain some information about the
+PVLogger process and data. These files are listed in the table below.
+
+.. _pvlogger_file_table:
+
+**Table of PVLogger Files** These files describe the data in
+the`pvlog` folder.  Files with the extension `.yaml` are expected to
+be valid YAML-formatted files, while other files are generic plain
+text.
+
+  +----------------------+-------------------------------------------------------------------------+
+  | filename             |  description                                                            |
+  +======================+=========================================================================+
+  | _PVLOG.yaml          | expanded configuration file of what is collected in the folder          |
+  +----------------------+-------------------------------------------------------------------------+
+  | _PVLOG_filelist.txt  | list of PV names and their individual log file names                    |
+  +----------------------+-------------------------------------------------------------------------+
+  | _PVLOG_runlog.txt    | runtime messages                                                        |
+  +----------------------+-------------------------------------------------------------------------+
+  | _PVLOG_timestamp.txt | a timestamp, machine id, and process id for PVLogger process            |
+  +----------------------+-------------------------------------------------------------------------+
+  | _PVLOG_stop.txt      | special empty file to stop running PVLogger                             |
+  +----------------------+-------------------------------------------------------------------------+
+  | _PVLOG_requests.yaml | special file to add more PVs to a running PVLogger                      |
+  +----------------------+-------------------------------------------------------------------------+
+
+
+
+ For most data, the PV values will be numerical, and the log files themselves will look like this::
+
+   # pvlog data file
+   # pvname        = S:SRcurrentAI.VAL
+   # label         = Storage Ring Current
+   # monitor_delta = 0.01
+   # start_time    = 2025-02-12 12:34:40
+   # count         = 1
+   # nelm          = 1
+   # type          = time_double
+   # units         = mA
+   # precision     = 1
+   # host          = geopv-gw.cars.aps.anl.gov:5064
+   # access        = read-only
+   #---------------------------------
+   # timestamp       value             char_value
+   1739385275.396   178.46212306082   178.5
+   1739385276.396   178.43699046168   178.4
+   1739385277.397   178.41167158919   178.4
+   1739385278.397   178.62177039127   178.6
+
+with a header showing information anbout the PV and logging, and then
+columns of timestamp (seconds since 1970 as a double precision float,
+to millisecond precision), value, and the string representation of the
+value (here, formatted with the PVs precision).
+
+For PVs holding enumerated values, the header section will include a
+list of enumeration states, perhaps::
+
+   # pvlog data file
+   # pvname        = 13IDA:E_BPMFoilPosition.VAL
+   # label         = BPM Foil
+   # monitor_delta = None
+   # start_time    = 2025-02-12 12:34:40
+   # count         = 1
+   # nelm          = 1
+   # type          = time_enum
+   # units         = None
+   # precision     = None
+   # host          = corvette.cars.aps.anl.gov:38983
+   # access        = read/write
+   # enum strings:
+   #      0 = Open
+   #      1 = Ti
+   #      2 = Cr
+   #      3 = Ni
+   #      4 = Al
+   #      5 = Au
+   #---------------------------------
+   # timestamp       value             char_value
+   1739374463.293  2                  Cr
+   1739385331.821  3                  Ni
+
+The intention is that these files will be read by the PVLogger codes itself.
+
+
+Using the PVLog Data from Python
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

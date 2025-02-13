@@ -1,4 +1,3 @@
-====================================
 Installation and Getting Started
 ====================================
 
@@ -59,12 +58,15 @@ and `appname` can be one of
 * `adviewer`     [filename] Area Detector Viewer
 * `instruments`  [filename] Epics Instruments
 * `microscope`   [filename] Sample Microscope Viewer
-* `pvlogger`     [filename] PV Logger application
+* `pvlogger`     [filename] PV Logger data collection
+* `pvlogview`               PV Logger data Viewer
 * `stripchart`              PV Stripchart
 
 
 and `filename` is an optional configuration YAML file.
 
+
+.. _install_icons:
 
 Creating Desktop Shortcuts
 -----------------------------
