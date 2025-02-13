@@ -1,0 +1,122 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Ion Chamber &#8212; Epics Applications Using PyEpics</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    
+    <script src="_static/documentation_options.js?v=f677d9b7"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="PV Logger" href="pvlogger.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div style="background-color: #E4EAED; text-align: left; padding:
+                0px 0px 5px 5px">
+      </div>
+
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="pvlogger.html" title="PV Logger"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">EpicsApps</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Ion Chamber</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="ion-chamber">
+<h1>Ion Chamber<a class="headerlink" href="#ion-chamber" title="Link to this heading">¶</a></h1>
+<p>This non-GUI application is synchrotron-beamline specific.  It reads
+several settings for the photo-current of an ion chamber and calculates
+absorbed and transmitted flux in photons/sec, and writes these back to PVs
+(an associated .db file and medm .adl file are provided).  The script runs
+in a loop, updating the flux values continuously.
+====================================
+Ion Chamber
+====================================</p>
+<p>This application, like the XRF Collector, provides a simple Epics interface
+control of a non-trivial device.  Again, the main point of showing it
+here is as an example of using a python process to interact with a custom
+Epics database to provide a customized way to acquire data.   While the
+standard Epics solution would be to write a state-notation-language program
+that runs in an IOC, the approach here minimizes Epics coding to writing a
+simple database, and putting all the logic and control into a python script
+that runs as a long-running process along-side an IOC process.</p>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="pvlogger.html"
+                          title="previous chapter">PV Logger</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/other.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="pvlogger.html" title="PV Logger"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">EpicsApps</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Ion Chamber</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2025, Matthew Newville, The University of Chicago.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    </div>
+  </body>
+</html>

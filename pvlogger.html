@@ -1,0 +1,503 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>PV Logger &#8212; Epics Applications Using PyEpics</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    
+    <script src="_static/documentation_options.js?v=f677d9b7"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Ion Chamber" href="other.html" />
+    <link rel="prev" title="Epics Instruments" href="instruments.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div style="background-color: #E4EAED; text-align: left; padding:
+                0px 0px 5px 5px">
+      </div>
+
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="other.html" title="Ion Chamber"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="instruments.html" title="Epics Instruments"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">EpicsApps</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">PV Logger</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="pv-logger">
+<span id="pvlogger"></span><h1>PV Logger<a class="headerlink" href="#pv-logger" title="Link to this heading">¶</a></h1>
+<p>The Epics PV Logger collects timeseries of a set of PVs into plain
+text data files in a folder, and displays these data back for
+exploratory analysis.  This is intended for a modest number of PVs
+that are not the primary data being collected during an experiment,
+for a limited time.  The typical use-case could be expressed as
+“around 100 PVs for a week”, which is typical for a single experiment
+at a synchrotron beamline.</p>
+<p>For such experiments, it is often useful to collect values like
+Storage Ring Current, room temperature, positions and temperature of
+beamline optics and components, and detector settings from existing
+Epics PVs.  This sort of <em>metadata</em> cold be put into every data
+fil. While some metadata surely belongs in each data file, items like
+temperature of an upstream mirror or values of beam position monitors
+are really not metadata about the individual data file.  And, while
+there are several larger systems for archiving and retrieving PV
+variables for the whole facility or beamline, these are often meant to
+be facility-wide systems, and not about individual experiments.  Such
+systems may not be easily available after the experiment or away
+from the beamline.</p>
+<p>We found that metadata stored in data file headers or large databases
+oten makes it hard to investigate how values changed over the course
+of an experiment.  Sometimes, it would be nice to browse and compare a
+few Time Series plots for a handful of PVs and to compare those with
+timestamps of the primary data files.</p>
+<p>The PVLogger application aims to fill this gap and is designed to
+collect the meta-data for a particular experiment in a way that can be
+easily digested and investigated during and after the experiment has
+ended. Another way of looking at it is that it expands the
+<a class="reference internal" href="stripchart.html#stripchart"><span class="std std-ref">Strip Chart Display</span></a> application to collect and view many PVs and
+preserve and organize the data for future use.</p>
+<p>The PVLogger application has two mode of operation: <em>collecting data</em>
+and <em>viewing data</em>.  A command-line program run at the beamline will
+collect the data into a dedicated folder using a simple configuration
+file to control what data is collected.</p>
+<p>The PVLogger GUI Application can read the data collected into such a
+folder and allow visualization of the logged data.  While at the
+beamline, The PVLogger application can also be used to launch a
+<a class="reference internal" href="stripchart.html#stripchart"><span class="std std-ref">Strip Chart Display</span></a> application to plot a live view of the changing
+data.  Finally, the PVLogger application can be used to read, modify,
+and save existing configuration files, listing which PVs to log, and
+can start the data collection process.</p>
+<section id="viewing-pvlogger-data">
+<h2>Viewing PVLogger Data<a class="headerlink" href="#viewing-pvlogger-data" title="Link to this heading">¶</a></h2>
+<p>For data that has already been collected, the PVLogger GUI Application
+can read the data collected into the PVLOG folder, and display
+it. With Desktop Shortcuts installed (see <a class="reference internal" href="installation.html#install-icons"><span class="std std-ref">Creating Desktop Shortcuts</span></a>), this
+application can be launched from the <cite>PVLogger</cite> shortcut with the icon
+of logs in the <cite>Epics Apps</cite> folder, or from the command line with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">epicsapps</span> <span class="n">pvlogview</span>
+</pre></div>
+</div>
+<p>Opening an existing folder will give a main window display like:</p>
+<img alt="_images/pvlogger_mainview.png" src="_images/pvlogger_mainview.png" />
+<p>The Left-hand column will show the list of of PVs that were logged
+into the folder.  The names shown will generally be the “description”
+saved for the PV, sometimes with the PV name if the description is not
+unique. Each has a Check Box that you can use to select many PVs at
+once.  The “Clear Selections” button in the upper left will clear all
+checked PVs.  The right-hand portion has 2 Notebook Tabs, labelled
+“View Log Folder” and “Collect Data” – we’ll discuss the “View Log
+Folder” tab here and the “Collect Data” tab in the next section.</p>
+<p>The “View Log Folder” Panel allows you to select what edata to
+visualize. The folder being read is If Epics Instruments were used in
+the data collection, you can select these and then press “Select these
+PVs” to check each of the PVs in that Instrument.</p>
+<p>The central portion of the panel shows up to 4 PVs to be
+displayed. Each of these has a Dropdown list will all the PV
+descriptions.   Selecting any PV in the left-hand PV list will select that
+for  “PV 1”.  Clicking the “Use Selected PVs” button will select
+the first 4 checked PVs from the PV List.  Clicking “Clear PVs 2,3,4”
+will clear those PVs (that is, select “None).</p>
+<p>Below the list of PVs are buttons for what to display.  The “Show PV
+1” button will display the data for the PV selected as “PV 1” The
+“Show Selected” will display the data for all (up to 4) selected PVs.
+For most PVs, the data will be numerical, and the “Show” buttons will
+display a graph of the time dependence of the PV(s).  Up to 10 Plot
+windows can be used, and you can select which to use for any display
+by selecting “Window 1” through “Window 10”.</p>
+<p>When used at the beamline or from a computer that can connect to the
+live beamline PVs, clicking on the “Live Plot for PV 1” will show the
+corresponding PV in a live <a class="reference internal" href="stripchart.html#stripchart"><span class="std std-ref">Strip Chart Display</span></a> application.</p>
+<p>As an example plot of one PV, with “Storage Ring Current (mA)” as PV
+1, clicking the “Show PV 1” button will show:</p>
+<img alt="_images/pvlogger_plotone.png" src="_images/pvlogger_plotone.png" />
+<p>selecting 3 PVs to plot together will show a plot like:</p>
+<img alt="_images/pvlogger_plotsel.png" src="_images/pvlogger_plotsel.png" />
+<p>For PV data that is in the form of discrete states or enumerated data
+(often from “multi-bit binary data” Epics records), the plot will show
+the enumerated strings on the plot labels, as:</p>
+<img alt="_images/pvlogger_plotenum.png" src="_images/pvlogger_plotenum.png" />
+<p>For all plots, there is good interactivity including</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>use Mouse-Down and Drag to Zoom in over a selected region.</p></li>
+<li><p>Ctrl-Z will Zoom out.</p></li>
+<li><p>clicking on the plot label in the Legend will toggle
+whether that trace is displayed.</p></li>
+<li><p>Ctrl-L will toggle the Legend on and off.</p></li>
+<li><p>Ctrl-C will copy the image to the system clipboard.</p></li>
+<li><p>Ctrl-S will save the image to a PNG file.</p></li>
+<li><p>Ctrl-K will show a more complete configuration window
+where you can adjust titles and colors.</p></li>
+</ol>
+</div></blockquote>
+<p>For more details, see <a class="reference external" href="https://newville.github.io/wxmplot/">wxmplot</a>.</p>
+<section id="seeing-event-data-non-numerica-data">
+<h3>Seeing “Event Data” – non-numerica data<a class="headerlink" href="#seeing-event-data-non-numerica-data" title="Link to this heading">¶</a></h3>
+<p>Some data is not numerical but text, and so not easily plotted. To be
+clear, PVs with enumerated or multi-bit binary values can be plotted,
+as shown above.  For PV values that is changing strings (or long
+character waveforms) as for file names or recorded commands, PVLogger
+will show a table of values with timestamps:</p>
+<img alt="_images/pvlogger_table.png" src="_images/pvlogger_table.png" />
+<p>Reading the history of values can be useful. Selecting a few of these
+recorded “Events” and pressing the “Show Selected” Button will put
+vertical lines (of the selected color) on the plot window at the times
+of those values, looking like:</p>
+<img alt="_images/pvlogger_eventval.png" src="_images/pvlogger_eventval.png" />
+<p>Since vertical lines may be shown for many such “Events” and do not
+otherwise show the data values, clicking on the vertical bar for the
+time of each event will print the PV description, name, time of event,
+and value in the table just below the plot. The most recently selected
+event will be shown at the top, with the previous selected events
+below that.  Clicking the “Clear Events” button on the plot window
+will clear the table.</p>
+</section>
+</section>
+<section id="collecting-pvlogger-data">
+<h2>Collecting PVLogger Data<a class="headerlink" href="#collecting-pvlogger-data" title="Link to this heading">¶</a></h2>
+<p>For data collection, PVLogger will read a YAML-formatted configuration
+file to tell it what PVs to collect, and where to save the data.  A
+typical file might look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">datadir</span><span class="p">:</span> <span class="s1">&#39;/server/data/beamlineX/2025/userABC&#39;</span>
+<span class="n">end_datetime</span><span class="p">:</span> <span class="s1">&#39;2025-03-12 09:00:00&#39;</span>
+<span class="n">pvs</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">S</span><span class="p">:</span><span class="n">SRcurrentAI</span><span class="o">.</span><span class="n">VAL</span>        <span class="o">|</span> <span class="n">Storage</span> <span class="n">Ring</span> <span class="n">Current</span> <span class="o">|</span> <span class="mf">0.005</span>
+<span class="o">-</span> <span class="s1">&#39;RF-ACIS:FePermit:Sect1To35IdM.VAL | Shutter Permit | 0 &#39;</span>
+<span class="o">-</span> <span class="n">SXID</span><span class="p">:</span><span class="n">DSID</span><span class="p">:</span><span class="n">GapM</span><span class="o">.</span><span class="n">VAL</span>      <span class="o">|</span> <span class="n">ID</span> <span class="n">Gap</span>  <span class="p">(</span><span class="n">mm</span><span class="p">)</span>      <span class="o">|</span> <span class="mf">0.001</span>
+<span class="o">-</span> <span class="n">SXID</span><span class="p">:</span><span class="n">DSID</span><span class="p">:</span><span class="n">TaperGapM</span><span class="o">.</span><span class="n">VAL</span> <span class="o">|</span> <span class="n">ID</span> <span class="n">Gap</span> <span class="n">Taper</span> <span class="p">(</span><span class="n">mm</span><span class="p">)</span> <span class="o">|</span> <span class="mf">0.001</span>
+<span class="o">-</span> <span class="n">XX</span><span class="p">:</span><span class="n">m1</span><span class="o">.</span><span class="n">VAL</span>               <span class="o">|</span> <span class="o">&lt;</span><span class="n">auto</span><span class="o">&gt;</span>            <span class="o">|</span> <span class="mf">0.001</span>
+<span class="o">-</span> <span class="n">XX</span><span class="p">:</span><span class="n">m2</span><span class="o">.</span><span class="n">VAL</span>               <span class="o">|</span> <span class="o">&lt;</span><span class="n">auto</span><span class="o">&gt;</span>            <span class="o">|</span> <span class="mf">0.001</span>
+<span class="o">-</span> <span class="n">XX</span><span class="p">:</span><span class="n">m3</span><span class="o">.</span><span class="n">VAL</span>               <span class="o">|</span> <span class="o">&lt;</span><span class="n">auto</span><span class="o">&gt;</span>            <span class="o">|</span> <span class="mf">0.001</span>
+<span class="o">-</span> <span class="n">XX</span><span class="p">:</span><span class="n">m4</span><span class="o">.</span><span class="n">VAL</span>               <span class="o">|</span> <span class="o">&lt;</span><span class="n">auto</span><span class="o">&gt;</span>            <span class="o">|</span> <span class="mf">0.001</span>
+<span class="o">-</span> <span class="n">XX</span><span class="p">:</span><span class="n">DMM1Ch1_calc</span><span class="o">.</span><span class="n">VAL</span>     <span class="o">|</span> <span class="n">Mono</span> <span class="n">Temperature</span> <span class="mi">1</span>   <span class="o">|</span> <span class="mf">0.01</span>
+<span class="o">-</span> <span class="n">XX</span><span class="p">:</span><span class="n">DMM1Ch2_calc</span><span class="o">.</span><span class="n">VAL</span>     <span class="o">|</span> <span class="n">Mono</span> <span class="n">Temperature</span> <span class="mi">2</span>   <span class="o">|</span> <span class="mf">0.01</span>
+<span class="o">-</span> <span class="n">XX</span><span class="p">:</span><span class="n">DMM1Ch3_calc</span><span class="o">.</span><span class="n">VAL</span>     <span class="o">|</span> <span class="n">Mono</span> <span class="n">Temperature</span> <span class="mi">3</span>   <span class="o">|</span> <span class="mf">0.01</span>
+<span class="o">-</span> <span class="n">XX</span><span class="p">:</span><span class="n">E_BPMFoilPosition</span><span class="o">.</span><span class="n">VAL</span>
+<span class="n">instruments</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">SampleStage</span>
+</pre></div>
+</div>
+<p>Here, <cite>datadir</cite> gives the path to the main working directory, say for
+the whole experiment.  A folder named <cite>pvlog</cite> will be created in this
+data directory to hold all the data collected by PVLogger.  In this
+case, a folder named ‘/server/data/beamlineX/2025/userABC/pvlog` will
+be created and used for data collection.</p>
+<p>The <cite>end_datetime</cite> value gives the date and time for data collection
+to stop.</p>
+<p>The <cite>pvs</cite> section gives a list of PVs to monitor and collect
+data. Each line is formed as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">PVName</span>   <span class="o">|</span>   <span class="n">Description</span>  <span class="o">|</span> <span class="n">Monitor_Delta</span>
+</pre></div>
+</div>
+<p>The PV name is required.  Note that, as for one of the examples
+above where <cite>-</cite> is in the PV name that the entire line is in quotes.</p>
+<p>The Description field is option. If missing or the word ‘&lt;auto&gt;’ is
+used, the PVLogger will try to get this from the corresponding <cite>.DESC</cite>
+field for the PV.  The description set or determined here will be used
+when displaying the data later (as shown above), so some care in
+choosing a good description is encouraged.</p>
+<p>The optional <cite>Monitor Delta</cite> value gives the minimal change in the PV
+value that will be recorded. It applies only to Analog, floating point
+value.  This value is absolute, not relative, and it is referenced to
+the last reported value so that slow cumulative changes are seen, just
+with fewer intermediate values. For more details, see
+<a class="reference internal" href="#pvlogger-monitor-delta"><span class="std std-ref">Monitor Delta for PVLogger</span></a>.</p>
+<section id="running-pvlogger-to-collect-data">
+<h3>Running PVLogger to collect data<a class="headerlink" href="#running-pvlogger-to-collect-data" title="Link to this heading">¶</a></h3>
+<p>With an existing PVLog configuration file, say <cite>my_pvlog.yaml</cite>,
+Logging can be started with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">epicsapps</span> <span class="n">pvlogger</span> <span class="n">my_pvlog</span><span class="o">.</span><span class="n">yaml</span>
+</pre></div>
+</div>
+<p>This will start collection in the folders specified in the
+configuration file.</p>
+</section>
+<section id="monitor-delta-for-pvlogger">
+<span id="pvlogger-monitor-delta"></span><h3><cite>Monitor Delta</cite> for PVLogger<a class="headerlink" href="#monitor-delta-for-pvlogger" title="Link to this heading">¶</a></h3>
+<p>The <cite>Monitor Delta</cite> value for each PV listed in the configuration file
+gives the minimal change in analog (floating point) PV value that will
+be recorded.  This value is absolute, not relative, and it is
+referenced to the last reported value so that slow cumulative changes
+are seen, just with fewer intermediate values.</p>
+<p>If explictly set (not <cite>&lt;auto&gt;</cite>), PVLogger will try to set the <cite>.MDEL</cite>
+field of the record. This will limit the number of events sent for
+this PV from the CA server to only those that exceed the last reported
+value by this amount.  If the <cite>.MDEL</cite> field cannot be set (perhaps due
+to permission issues), all events will be sent from the CA server, and
+PVLogger will emulate this, recording only those values that change by
+this amount.</p>
+<p>Note that many PVs will have <cite>.MDEL</cite> set to 0 by default so that all
+events are captured.  Note also that it values for <cite>.MDEL</cite> are often
+not preserved by “save-restore” processes and so may be lost if the
+host IOC is restarted.</p>
+</section>
+<section id="data-for-epics-motors">
+<h3>Data for Epics Motors<a class="headerlink" href="#data-for-epics-motors" title="Link to this heading">¶</a></h3>
+<p>PV Logger generally assumes that only the requested field for a PV is
+collected. For Epics Motors that are requested to be logged, the VAL
+(drive) field will generally be requested.   In addition, all Epics
+Motors also have the following fields monitored and logged:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">.</span><span class="n">OFF</span><span class="p">,</span> <span class="o">.</span><span class="n">FOFF</span><span class="p">,</span> <span class="o">.</span><span class="n">SET</span><span class="p">,</span> <span class="o">.</span><span class="n">HLS</span><span class="p">,</span> <span class="o">.</span><span class="n">LLS</span><span class="p">,</span> <span class="o">.</span><span class="n">DIR</span><span class="p">,</span> <span class="n">_able</span><span class="o">.</span><span class="n">VAL</span><span class="p">,</span> <span class="o">.</span><span class="n">SPMG</span>
+</pre></div>
+</div>
+<p>Changes to these fields will generally be very rare, but may change
+the meaning of the VAL field.  These fields are recorded separately,
+each to its own data file.  When read in by the PVLog Viewer, these
+values will be presented as Events that can be displayed with the
+Motor values.</p>
+</section>
+<section id="using-epics-instruments">
+<h3>Using Epics Instruments<a class="headerlink" href="#using-epics-instruments" title="Link to this heading">¶</a></h3>
+<p>If using <a class="reference internal" href="instruments.html#instruments"><span class="std std-ref">Epics Instruments</span></a> with a PostgresQL database, and if the
+environmental variable <cite>ESCAN_CREDENTIALS</cite> is set, then any of the
+existing Instruments in the database can be loggged simply by giving
+its name in the <cite>instrumenst</cite> setting of the configuration file.
+Setting this will log all of the PVs defined for that Instrument.</p>
+</section>
+<section id="adding-pvs-to-a-running-pvlogger">
+<span id="pvlogger-adding-pvs"></span><h3>Adding PVs to a running PVLogger<a class="headerlink" href="#adding-pvs-to-a-running-pvlogger" title="Link to this heading">¶</a></h3>
+<p>You may want to add more PVs to a running PVLogger instance.  To do
+this, you can write a YAML file in the same format as the main
+configuration file with the additional PVs.   When you have this file
+created, perhaps something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pvs</span><span class="p">:</span>
+<span class="o">-</span> <span class="n">XXX</span><span class="p">:</span><span class="n">m20</span><span class="o">.</span><span class="n">VAL</span>  <span class="o">|</span> <span class="n">station</span> <span class="n">slit</span> <span class="n">horiz</span> <span class="n">pos</span> <span class="o">|</span> <span class="mf">0.001</span>
+<span class="o">-</span> <span class="n">XXX</span><span class="p">:</span><span class="n">m21</span><span class="o">.</span><span class="n">VAL</span>  <span class="o">|</span> <span class="n">station</span> <span class="n">slit</span> <span class="n">horiz</span> <span class="n">wid</span> <span class="o">|</span> <span class="mf">0.001</span>
+<span class="o">-</span> <span class="n">XXX</span><span class="p">:</span><span class="n">m22</span><span class="o">.</span><span class="n">VAL</span>  <span class="o">|</span> <span class="n">station</span> <span class="n">slit</span> <span class="n">vert</span> <span class="n">pos</span> <span class="o">|</span> <span class="mf">0.001</span>
+<span class="o">-</span> <span class="n">XXX</span><span class="p">:</span><span class="n">m23</span><span class="o">.</span><span class="n">VAL</span>  <span class="o">|</span> <span class="n">station</span> <span class="n">slit</span> <span class="n">vert</span> <span class="n">wid</span> <span class="o">|</span> <span class="mf">0.001</span>
+</pre></div>
+</div>
+<p>you can copy that to a file named <cite>_PVLOG_requests.yaml</cite> in the running
+<cite>pvlog</cite> folder.</p>
+<p>You can also set the <cite>end_datetime</cite> in the <cite>_PVLOG_request.txt</cite> file
+to change the ending data collection time.</p>
+</section>
+<section id="stopping-data-collection">
+<h3>Stopping Data Collection<a class="headerlink" href="#stopping-data-collection" title="Link to this heading">¶</a></h3>
+<p>Data collection can be stopped a few different ways:</p>
+<ol class="arabic simple">
+<li><p>Setting the <cite>end_datetime</cite> value in the configuration file,
+including in the <cite>_PVLOG_requests.txt</cite> file described in
+<a class="reference internal" href="#pvlogger-adding-pvs"><span class="std std-ref">Adding PVs to a running PVLogger</span></a>.</p></li>
+<li><p>Writing a file named <cite>_PVLOG_stop.txt</cite> (this can be empty) to the
+running <cite>pvlog</cite> folder.  This will stop collection within 30 seconds.</p></li>
+<li><p>Kiling the running process.</p></li>
+</ol>
+<p>Options 1 and 2 are recommended, as they will write data that has been
+collected but not yet written, will finalize the timestamps, and will
+cleanly disconnect from the Epics IOCs.</p>
+</section>
+<section id="the-pvlog-folder">
+<h3>The PVLog Folder<a class="headerlink" href="#the-pvlog-folder" title="Link to this heading">¶</a></h3>
+<p>An important feature of PVLogger is that all of the files are readable
+plaintext files that will be readable in the future.</p>
+<p>As mentioned above, there are a few files with names like <cite>_PVLOG_xx.yyy</cite>
+in the <cite>pvlog</cite> folder that contain some information about the
+PVLogger process and data. These files are listed in the table below.</p>
+<p id="pvlogger-file-table"><strong>Table of PVLogger Files</strong> These files describe the data in
+the`pvlog` folder.  Files with the extension <cite>.yaml</cite> are expected to
+be valid YAML-formatted files, while other files are generic plain
+text.</p>
+<blockquote>
+<div><blockquote>
+<div><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>filename</p></th>
+<th class="head"><p>description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>_PVLOG.yaml</p></td>
+<td><p>expanded configuration file of what is collected in the folder</p></td>
+</tr>
+<tr class="row-odd"><td><p>_PVLOG_filelist.txt</p></td>
+<td><p>list of PV names and their individual log file names</p></td>
+</tr>
+<tr class="row-even"><td><p>_PVLOG_runlog.txt</p></td>
+<td><p>runtime messages</p></td>
+</tr>
+<tr class="row-odd"><td><p>_PVLOG_timestamp.txt</p></td>
+<td><p>a timestamp, machine id, and process id for PVLogger process</p></td>
+</tr>
+<tr class="row-even"><td><p>_PVLOG_stop.txt</p></td>
+<td><p>special empty file to stop running PVLogger</p></td>
+</tr>
+<tr class="row-odd"><td><p>_PVLOG_requests.yaml</p></td>
+<td><p>special file to add more PVs to a running PVLogger</p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>For most data, the PV values will be numerical, and the log files themselves will look like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># pvlog data file</span>
+<span class="c1"># pvname        = S:SRcurrentAI.VAL</span>
+<span class="c1"># label         = Storage Ring Current</span>
+<span class="c1"># monitor_delta = 0.01</span>
+<span class="c1"># start_time    = 2025-02-12 12:34:40</span>
+<span class="c1"># count         = 1</span>
+<span class="c1"># nelm          = 1</span>
+<span class="c1"># type          = time_double</span>
+<span class="c1"># units         = mA</span>
+<span class="c1"># precision     = 1</span>
+<span class="c1"># host          = geopv-gw.cars.aps.anl.gov:5064</span>
+<span class="c1"># access        = read-only</span>
+<span class="c1">#---------------------------------</span>
+<span class="c1"># timestamp       value             char_value</span>
+<span class="mf">1739385275.396</span>   <span class="mf">178.46212306082</span>   <span class="mf">178.5</span>
+<span class="mf">1739385276.396</span>   <span class="mf">178.43699046168</span>   <span class="mf">178.4</span>
+<span class="mf">1739385277.397</span>   <span class="mf">178.41167158919</span>   <span class="mf">178.4</span>
+<span class="mf">1739385278.397</span>   <span class="mf">178.62177039127</span>   <span class="mf">178.6</span>
+</pre></div>
+</div>
+</div></blockquote>
+<p>with a header showing information anbout the PV and logging, and then
+columns of timestamp (seconds since 1970 as a double precision float,
+to millisecond precision), value, and the string representation of the
+value (here, formatted with the PVs precision).</p>
+<p>For PVs holding enumerated values, the header section will include a
+list of enumeration states, perhaps:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># pvlog data file</span>
+<span class="c1"># pvname        = 13IDA:E_BPMFoilPosition.VAL</span>
+<span class="c1"># label         = BPM Foil</span>
+<span class="c1"># monitor_delta = None</span>
+<span class="c1"># start_time    = 2025-02-12 12:34:40</span>
+<span class="c1"># count         = 1</span>
+<span class="c1"># nelm          = 1</span>
+<span class="c1"># type          = time_enum</span>
+<span class="c1"># units         = None</span>
+<span class="c1"># precision     = None</span>
+<span class="c1"># host          = corvette.cars.aps.anl.gov:38983</span>
+<span class="c1"># access        = read/write</span>
+<span class="c1"># enum strings:</span>
+<span class="c1">#      0 = Open</span>
+<span class="c1">#      1 = Ti</span>
+<span class="c1">#      2 = Cr</span>
+<span class="c1">#      3 = Ni</span>
+<span class="c1">#      4 = Al</span>
+<span class="c1">#      5 = Au</span>
+<span class="c1">#---------------------------------</span>
+<span class="c1"># timestamp       value             char_value</span>
+<span class="mf">1739374463.293</span>  <span class="mi">2</span>                  <span class="n">Cr</span>
+<span class="mf">1739385331.821</span>  <span class="mi">3</span>                  <span class="n">Ni</span>
+</pre></div>
+</div>
+<p>The intention is that these files will be read by the PVLogger codes itself.</p>
+</section>
+<section id="using-the-pvlog-data-from-python">
+<h3>Using the PVLog Data from Python<a class="headerlink" href="#using-the-pvlog-data-from-python" title="Link to this heading">¶</a></h3>
+</section>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">PV Logger</a><ul>
+<li><a class="reference internal" href="#viewing-pvlogger-data">Viewing PVLogger Data</a><ul>
+<li><a class="reference internal" href="#seeing-event-data-non-numerica-data">Seeing “Event Data” – non-numerica data</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#collecting-pvlogger-data">Collecting PVLogger Data</a><ul>
+<li><a class="reference internal" href="#running-pvlogger-to-collect-data">Running PVLogger to collect data</a></li>
+<li><a class="reference internal" href="#monitor-delta-for-pvlogger"><cite>Monitor Delta</cite> for PVLogger</a></li>
+<li><a class="reference internal" href="#data-for-epics-motors">Data for Epics Motors</a></li>
+<li><a class="reference internal" href="#using-epics-instruments">Using Epics Instruments</a></li>
+<li><a class="reference internal" href="#adding-pvs-to-a-running-pvlogger">Adding PVs to a running PVLogger</a></li>
+<li><a class="reference internal" href="#stopping-data-collection">Stopping Data Collection</a></li>
+<li><a class="reference internal" href="#the-pvlog-folder">The PVLog Folder</a></li>
+<li><a class="reference internal" href="#using-the-pvlog-data-from-python">Using the PVLog Data from Python</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="instruments.html"
+                          title="previous chapter">Epics Instruments</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="other.html"
+                          title="next chapter">Ion Chamber</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/pvlogger.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="other.html" title="Ion Chamber"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="instruments.html" title="Epics Instruments"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">EpicsApps</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">PV Logger</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2025, Matthew Newville, The University of Chicago.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    </div>
+  </body>
+</html>

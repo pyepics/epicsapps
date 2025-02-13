@@ -1,0 +1,190 @@
+
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Epics Instruments &#8212; Epics Applications Using PyEpics</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    
+    <script src="_static/documentation_options.js?v=f677d9b7"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="PV Logger" href="pvlogger.html" />
+    <link rel="prev" title="Area Detector Display" href="ad_display.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div style="background-color: #E4EAED; text-align: left; padding:
+                0px 0px 5px 5px">
+      </div>
+
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="pvlogger.html" title="PV Logger"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="ad_display.html" title="Area Detector Display"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">EpicsApps</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Epics Instruments</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="epics-instruments">
+<span id="instruments"></span><h1>Epics Instruments<a class="headerlink" href="#epics-instruments" title="Link to this heading">¶</a></h1>
+<p>Epics Instruments is a GUI application (using wxPython) that lets any user:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>Organize PVs into Instruments: a named collection of PVs</p></li>
+<li><p>Manage Instruments with modern Notebook-tab interface.</p></li>
+<li><p>Save Positions for any Instrument by name.</p></li>
+<li><p>Restore Positions for any Instrument by name.</p></li>
+<li><p>Remember Settings for all definitions into a single file that can be loaded later.</p></li>
+<li><p>Multiple Users can be using multiple instrument files at any one time.</p></li>
+</ul>
+</div></blockquote>
+<p>It was originally written to replace and organize the multitude of similar MEDM
+screens that appear at many workstations using Epics.</p>
+<section id="running-epics-instruments">
+<h2>Running Epics Instruments<a class="headerlink" href="#running-epics-instruments" title="Link to this heading">¶</a></h2>
+<p>To run Epics Instruments, use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">epicsapps</span> <span class="n">instruments</span>
+</pre></div>
+</div>
+<p>or click on the icon.</p>
+<p>A small window to select an Epics Instrument File, like this</p>
+<img alt="_images/Inst_Startup.png" src="_images/Inst_Startup.png" />
+<p>If this is your first time using the application, choose a name, and hit return
+to start a new Instrument File.  The next time you run Epics Instruments, it
+should remember which files you have recently used, and present you with a
+drop-down list of Instrument Files.  Since all the definitions, positions, and
+settings are saved in a single file, restoring this file will recall the
+earlier session of instrument definitions and saved positions.</p>
+<p>An Epics <strong>Instrument</strong> is a collection of PVs.  Each Instrument will also
+have a collection of <strong>Positions</strong>, which are just the locations of all the
+PVs in the instrument at the time the Position was saved.  Like a PV, each
+Instrument and each Position for an Instrument has a unique name.</p>
+</section>
+<section id="defining-a-new-instrument">
+<h2>Defining a New Instrument<a class="headerlink" href="#defining-a-new-instrument" title="Link to this heading">¶</a></h2>
+<p>To define a new Instrument, select <strong>Create New Instrument</strong> from the
+Instruments Menu.  A screen will appear in which you can name the
+instrument and the PVs that belong to the Instrument.</p>
+<p>If you add a few PVs and click OK, the PVs will connect, and you will see a
+screen something like this</p>
+<img alt="_images/InstMain_Stage.png" src="_images/InstMain_Stage.png" />
+</section>
+<section id="editing-an-exisiting-instrument">
+<h2>Editing an Exisiting Instrument<a class="headerlink" href="#editing-an-exisiting-instrument" title="Link to this heading">¶</a></h2>
+<img alt="_images/Inst_Edit.png" src="_images/Inst_Edit.png" />
+</section>
+<section id="the-instrument-file">
+<h2>The Instrument File<a class="headerlink" href="#the-instrument-file" title="Link to this heading">¶</a></h2>
+<p>All the information for definitions of your Instruments and their Positions
+are saved in a single file – the Instruments file, with a default
+extension of ‘.ein’ (Epics INstruments).   You can use many different
+Instrument Files for different domains of use.</p>
+<p>The Instrument File is an SQLite database file, and can be browsed and
+manipulated with external tools.  Of course, this can be a very efficient
+way of corrupting the data, so do this with caution.  A further note of
+caution is to avoid having a single Instrument file open by multiple
+applications – this can also cause corruption.  The Instrument files can
+be moved around and copied without problems.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Epics Instruments</a><ul>
+<li><a class="reference internal" href="#running-epics-instruments">Running Epics Instruments</a></li>
+<li><a class="reference internal" href="#defining-a-new-instrument">Defining a New Instrument</a></li>
+<li><a class="reference internal" href="#editing-an-exisiting-instrument">Editing an Exisiting Instrument</a></li>
+<li><a class="reference internal" href="#the-instrument-file">The Instrument File</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="ad_display.html"
+                          title="previous chapter">Area Detector Display</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="pvlogger.html"
+                          title="next chapter">PV Logger</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/instruments.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="pvlogger.html" title="PV Logger"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="ad_display.html" title="Area Detector Display"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">EpicsApps</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Epics Instruments</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2025, Matthew Newville, The University of Chicago.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    </div>
+  </body>
+</html>
