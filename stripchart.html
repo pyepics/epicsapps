@@ -1,53 +1,103 @@
 
 <!DOCTYPE html>
 
-<html lang="en">
+<html lang="en" data-content_root="./">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Strip Chart Display &#8212; Python Epics Applications</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sphinxdoc.css" />
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
+    <title>Strip Chart Display &#8212; Epics Applications Using PyEpics</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    
+    <script src="_static/documentation_options.js?v=f677d9b7"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/bizstyle.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="Using Epics Instruments" href="instrument.html" />
-    <link rel="prev" title="Area Detector Display" href="ad_display.html" /> 
+    <link rel="next" title="Area Detector Display" href="ad_display.html" />
+    <link rel="prev" title="Installation and Getting Started" href="installation.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
   </head><body>
-<div style="background-color: #E4EAED; text-align: left; padding: 0px 0px 15px 15px">
- <h1> <a href="index.html">Epics Applications using PyEpics</a></h1>
-</div>
+    <div style="background-color: #E4EAED; text-align: left; padding:
+                0px 0px 5px 5px">
+      </div>
 
-    <div class="related" role="navigation" aria-label="related navigation">
+    <div class="related" role="navigation" aria-label="Related">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="instrument.html" title="Using Epics Instruments"
+          <a href="ad_display.html" title="Area Detector Display"
              accesskey="N">next</a> |</li>
         <li class="right" >
-          <a href="ad_display.html" title="Area Detector Display"
+          <a href="installation.html" title="Installation and Getting Started"
              accesskey="P">previous</a> |</li>
-   <li><a href="installation.html">Install</a>|</li>
-   <li><a href="ad_display.html">AreaDetector</a>|</li>
-   <li><a href="#">StripChart</a>|</li>
-   <li><a href="instrument.html">Instruments</a>|</li>
-   <li><a href="motorsetup.html">MotorSetup</a>|</li>
-   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
-
+        <li class="nav-item nav-item-0"><a href="index.html">EpicsApps</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Strip Chart Display</a></li> 
       </ul>
-    </div>
+    </div>  
 
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="strip-chart-display">
+<span id="stripchart"></span><h1>Strip Chart Display<a class="headerlink" href="#strip-chart-display" title="Link to this heading">¶</a></h1>
+<p>StripChart is a GUI application for viewing the time series of PVs as
+a strip chart.  It feature interactive graphics, with click-and-drag
+zooming, updating the plotted time range, saving figures as
+high-quality PNGs, and saving data to ASCII files.  Stripchart is
+inspired somewhat by the classic Epics Stripchart application written
+with X/Motif, but has many differences.</p>
+<section id="running-stripchart">
+<h2>Running  Stripchart<a class="headerlink" href="#running-stripchart" title="Link to this heading">¶</a></h2>
+<p>To run the Stripchart application from the command line, use:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">epicsapps</span> <span class="n">stripchart</span>
+</pre></div>
+</div>
+<p>A sample display would look like this:</p>
+<img alt="_images/stripchart.png" src="_images/stripchart.png" />
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
+<p>To use, Add PVs to be monitored in the upper left entry.  Once that PV
+connects, it will be added to the drop-down menus for each of the 4
+available traces.  Colors, Y-ranges, and descriptions (used for the
+Y-axis labels) can be altered.  To save these settings for a PV, press
+“Save PV Settings” in the upper right.</p>
+<p>The time range (in time from the present) can be adjusted on the
+right-hand side, just above the plot.</p>
+<p>The “Pause” and “Resume” buttons pause and then resumes the plotting
+of new values so that you can zoom in on parts of the plot using
+Left-Down and Drag.</p>
+<p>Note that data collection of new values will still happen while the
+plot is paused, and resuming the plotting will show the most recent
+data.</p>
+<p>From the “File” Menu, you can save plain text files with the time
+series data for all monitored PVs, or save a PNG image of the
+plot. With the mouse over the plot window, Control-C will also copy
+the PNG image to the clipboard.</p>
+<p>You can also configure the plot from the “Options” menu.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
   <div>
     <h3><a href="index.html">Table of Contents</a></h3>
@@ -62,13 +112,13 @@
   </div>
   <div>
     <h4>Previous topic</h4>
-    <p class="topless"><a href="ad_display.html"
-                          title="previous chapter">Area Detector Display</a></p>
+    <p class="topless"><a href="installation.html"
+                          title="previous chapter">Installation and Getting Started</a></p>
   </div>
   <div>
     <h4>Next topic</h4>
-    <p class="topless"><a href="instrument.html"
-                          title="next chapter">Using Epics Instruments</a></p>
+    <p class="topless"><a href="ad_display.html"
+                          title="next chapter">Area Detector Display</a></p>
   </div>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -77,7 +127,7 @@
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -85,82 +135,31 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
+</search>
 <script>document.getElementById('searchbox').style.display = "block"</script>
-        </div>
-      </div>
-
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
-            
-  <section id="strip-chart-display">
-<h1>Strip Chart Display<a class="headerlink" href="#strip-chart-display" title="Permalink to this heading">¶</a></h1>
-<p>StripChart is a wxPython GUI application for viewing time traces of PVs as
-a strip chart.  It feature interactive graphics, with click-and-drag
-zooming, updating the plotted time range, saving figures as high-quality
-PNGs, and saving data to ASCII files.  Stripchart is inspired somewhat by the
-classic Epics Stripchart application written with X/Motif, but has many differences.</p>
-<section id="running-stripchart">
-<h2>Running  Stripchart<a class="headerlink" href="#running-stripchart" title="Permalink to this heading">¶</a></h2>
-<p>To run the Stripchart application from the command line, use:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">epicsapps</span> <span class="n">stripchart</span>
-</pre></div>
-</div>
-<p>and enter the base name of the PVs to follow.  Running</p>
-<blockquote>
-<div><p>epicsapps -m</p>
-</div></blockquote>
-<p>will create a folder on your Desktop called “Epics Apps” with a runnable link for the stripchart application.</p>
-<p>A sample display would look like this:</p>
-<img alt="_images/StripChart_Basic.png" src="_images/StripChart_Basic.png" />
-</section>
-<section id="usage">
-<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this heading">¶</a></h2>
-<p>Plot details can be adjusted from the configuration form, available from
-the Options Menu, and shown below.  From this frame, you can adjust trace
-colors, symbols, line width and style, symbol size and styles, axes labels,
-and the contents and location of a plot legend.  Text for titles, axes
-labels, and legend can include latex strings for math/Greek characters.</p>
-<p>From the main plot, Ctrl-C works to copy to the system clipboard, and
-Ctrl-P will open a print dialog.</p>
-<img alt="_images/StripChart_Config.png" src="_images/StripChart_Config.png" />
-</section>
-</section>
-
-
-            <div class="clearer"></div>
-          </div>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related" role="navigation" aria-label="related navigation">
+    <div class="related" role="navigation" aria-label="Related">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="instrument.html" title="Using Epics Instruments"
+          <a href="ad_display.html" title="Area Detector Display"
              >next</a> |</li>
         <li class="right" >
-          <a href="ad_display.html" title="Area Detector Display"
+          <a href="installation.html" title="Installation and Getting Started"
              >previous</a> |</li>
-   <li><a href="installation.html">Install</a>|</li>
-   <li><a href="ad_display.html">AreaDetector</a>|</li>
-   <li><a href="#">StripChart</a>|</li>
-   <li><a href="instrument.html">Instruments</a>|</li>
-   <li><a href="motorsetup.html">MotorSetup</a>|</li>
-   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
-
+        <li class="nav-item nav-item-0"><a href="index.html">EpicsApps</a> &#187;</li>
         <li class="nav-item nav-item-this"><a href="">Strip Chart Display</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2012, Matthew Newville.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
+    &#169; Copyright 2025, Matthew Newville, The University of Chicago.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
     </div>
   </body>
 </html>
