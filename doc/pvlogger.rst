@@ -110,7 +110,7 @@ As an example plot of one PV, with "Storage Ring Current (mA)" as PV
 
 .. image:: images/pvlogger_plotone.png
 
-selecting 3 PVs to plot together will show a plot like:
+selecting 2 PVs to plot together will show a plot like:
 
 .. image:: images/pvlogger_plotsel.png
 
@@ -426,3 +426,34 @@ The intention is that these files will be read by the PVLogger codes itself.
 
 Using the PVLog Data from Python
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To read the PVLogger data from a Python application, you can first
+read the data for the `pvlog` folder, and then data for individual
+log files::
+
+  >>> from epicsapps.pvlogger import read_logfolder
+  >>> folder = read_logfolder('pvlog')
+
+
+This reads the data about the folder, but does not read the individual
+logfiles.  To find the available PVs from the folder, use:::
+
+  >>> folder.pvs.keys()
+
+and to read an individual log file for a PV, use
+
+  >>> folder.read_logfile(PVNAME)
+
+which will put the data into the `data` attribute of
+`folder.pvs[PVNAME]`, so that you can extract the list of
+timestamps and values, from the `data` attribute of the `folder.pvs`::
+
+  >>> timestamps = folder.pvs[PVNAME].data.timestamps
+  >>> values     = folder.pvs[PVNAME].data.values
+
+and so forth.  To plot the data, as with the PV Logger GUI, you could
+sdo something like::
+
+  >>> from wxmplot.interactive import plot
+  >>> dates = folder.pvs['S13ID:USID:TaperGapM.VAL'].data.get_mpldates()
+  >>> plot(dates, values, use_dates=True)
