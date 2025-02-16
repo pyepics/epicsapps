@@ -257,12 +257,10 @@ class LoggedPV():
             buff.append('')
             self.needs_flush = True
             self.needs_header = False
-
-
         flush = self.needs_flush and (time() > self.next_flushtime)
         self.write('\n'.join(buff), flush=flush)
-        with open(RUNLOG_FILE, 'a') as fh:
-            fh.write(f'wrote {len(buff)} points for {self.pvname}\n')
+        # with open(RUNLOG_FILE, 'a') as fh:
+        #     fh.write(f'wrote {len(buff)} points for {self.pvname}\n')
 
 class PVLogger():
     about_msg =  """Epics PV Logger, CLI
