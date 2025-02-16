@@ -55,6 +55,7 @@ class PVLogDataModel(dv.DataViewIndexListModel):
                 self.data.append([False, dtformat(ts), cval])
         self.Reset(len(self.data))
 
+
     def SetValueByRow(self, value, row, col):
         if col == 0:
             self.data[row][col] = bool(value)
@@ -70,6 +71,14 @@ class PVLogDataModel(dv.DataViewIndexListModel):
 
     def GetValueByRow(self, row, col):
         return self.data[row][col]
+
+    def GetAttrByRow(self, row, col, attr):
+        val = self.data[row][col]
+        if col == 2 and '<CA_' in val:
+            attr.SetColour('red')
+            attr.SetBold(True)
+            return True
+        return False
 
     def GetColumnCount(self):
         return self.ncols
@@ -108,8 +117,8 @@ class PVTablePanel(wx.Panel) :
         self.choose_pwin  = Choice(panel, choices=PlotWindowChoices, size=(175, -1))
 
         for icol, dat in enumerate((('Select', 75),
-                                    ('Date/Time', 250),
-                                    ('Value',     350))):
+                                    ('Date/Time', 200),
+                                    ('Value',     400))):
             title, width = dat
             kws = {'width': width}
             add_col = self.dvc.AppendTextColumn
