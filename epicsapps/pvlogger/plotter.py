@@ -10,6 +10,8 @@ from functools import partial
 import wx
 import wx.dataview as dv
 
+from matplotlib import dates
+
 from wxutils import (get_cwd, MenuItem, LEFT, pack, HLine,
                      GridPanel, SimpleText, Button)
 from wxmplot import PlotPanel
@@ -17,6 +19,60 @@ from pyshortcuts import fix_filename, gformat
 
 
 N_EVENTS = 7
+
+class DatePlotPanel(PlotPanel):
+    """subclass PlotPanel to force date formatting"""
+    def __init__(self, parent, **kws):
+        PlotPanel.__init__(self, parent, **kws)
+
+    def xformatter(self, x, pos):
+        " x-axis formatter "
+        if self.use_dates:
+            return self.__date_format(x)
+        else:
+            return self.__format(x, type='x')
+
+    def __date_format(self, x):
+        """ formatter for date x-data. primitive, and probably needs
+        improvement, following matplotlib's date methods.
+        """
+        if x < 1: x = 1
+        span = self.axes.xaxis.get_view_interval()
+        tmin = max(1.0, span[0])
+        tmax = max(2.0, span[1])
+        tmin = dates.num2date(tmin, tz=self.dates_tzinfo).timestamp()
+        tmax = dates.num2date(tmax, tz=self.dates_tzinfo).timestamp()
+        nsec = (tmax - tmin)
+        fmt = "%H:%M\n%S"
+        frac = None
+        if nsec < 0.1:
+            frac = "%.6f"
+            fmt = "%H:%M:%S\n"
+        elif nsec <  25:
+            frac = "%.3f"
+            fmt = "%H:%M\n%S"
+        elif nsec < 600:
+            fmt = "%H:%M\n%S sec"
+        elif nsec < 5*3600:
+            fmt = "%m/%d\n%H:%M"
+        elif nsec < 24*7*3600:
+            fmt = "%m/%d\n%H:%M"
+        else:
+            fmt = "%m/%d"
+
+        dtval = dates.num2date(x, tz=self.dates_tzinfo)
+        try:
+            out = dtval.strftime(fmt)
+        except ValueError:
+            out = dtval.strftime("%H:%M\n%S")
+        if frac is not None:
+            try:
+                fval = frac % (1.e-6*dtval.microsecond)
+                out = out + fval[1:]
+            except:
+                pass
+        return out
+
 
 class PlotFrame(wx.Frame):
     """
@@ -160,7 +216,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         top.SetMinSize((500, 500))
         bot.SetMinSize((500, 100))
 
-        self.panel = PlotPanel(top, **panelkws)
+        self.panel = DatePlotPanel(top, **panelkws)
         self.panel.messenger = self.write_message
         self.panel.nstatusbar = sbar.GetFieldsCount()
         self.panel.cursor_callback = self.onCursor
