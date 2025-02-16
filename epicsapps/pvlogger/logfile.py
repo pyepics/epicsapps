@@ -79,6 +79,7 @@ class PVLogFile:
         self.description = description
         self.monitor_delta = monitor_delta
         self.mod_time = mod_time
+        self.has_motor_events = False
         self.text = text
         self.data = data
 
@@ -470,16 +471,15 @@ class PVLogFolder:
                     pv.data = parse_logfile(pv.text, pv.logfile)
         return new
 
-
     def read_logfile(self, pvname):
         """read logfile, save file timestamp"""
         pv = self.pvs.get(pvname, None)
         if pv is None:
             raise ValueError(f"Unknown PV name: '{pvname}'")
-        pv.read_log_text()
-        pv.data = read_logfile(pv.logfile)
+        pv.read_log_text(parse=True)
         pv.mod_time = os.stat(pv.logfile).st_mtime
-
+        if pvname in self.motors:
+            self.read_motor_events(pvname)
 
     def read_motor_events(self, motorname):
         """read Motor Events for motor PVs
@@ -490,13 +490,16 @@ class PVLogFolder:
        Event data is a list of (timestamp, string) values, and so look like:
            [(1734109257.422, 'FOFF = Frozen'),
             (1734109257.422, 'SET = Use'), ...]
-
         """
         if motorname in self.motors:
             pv = self.pvs[motorname]
+            if pv.has_motor_events:
+                return
             if pv.data is None:
                 pv.read_log_text(parse=True)
             root = motorname[:-4]
+            # print('read motor init events ',pv.data.events)
+
             for suff in motor_fields:
                 pvname = f'{root}{suff}'
                 label = suff[1:]
@@ -510,4 +513,4 @@ class PVLogFolder:
                             cval = enumstrs.get(val, cval)
                         pv.data.events.append((ts, f'{label} = {cval}'))
             pv.data.events = sorted(pv.data.events, key=lambda x: x[0])
-            print('read motor  ', pv.data.events)
+            pv.has_motor_events = True
