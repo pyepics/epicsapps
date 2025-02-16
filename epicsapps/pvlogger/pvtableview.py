@@ -16,37 +16,43 @@ from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
 
 from wxmplot.colors import hexcolor
 
+from .logfile import TZONE
+
 DVSTYLE = dv.DV_SINGLE|dv.DV_VERT_RULES|dv.DV_ROW_LINES
 
 
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON
 FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 
-PLOT_COLORS = ( '#bcbd22', '#8c564b', '#9467bd', '#7f7f7f', '#e377c2', '#17becf')
+PLOT_COLORS = ('#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')
 
 PlotWindowChoices = [f'Window {i+1}' for i in range(10)]
 
-def dtformat(dt):
-    msec = round(0.001*dt.microsecond)
-    return datetime.strftime(dt, "%Y-%m-%d %H:%M:%S") + f'.{msec:03d}'
+def dtformat(ts):
+    dt = datetime.fromtimestamp(ts) # , tz=TZONE)
+    return dt.isoformat(sep=' ', timespec='milliseconds')
 
 class PVLogDataModel(dv.DataViewIndexListModel):
     def __init__(self, pvlogdata):
         dv.DataViewIndexListModel.__init__(self, 0)
         self.pvlog = pvlogdata  # PVLogData instance
         self.data = []
+        self.mpldates = []
         self.ncols = 3
         self.read_data()
 
     def read_data(self):
         self.data = []
-        if (self.pvlog.datetimes is None or
-            len(self.pvlog.datetimes) < 2):
-            self.pvlog.get_datetimes()
+        self.mpldates = []
         dat = self.pvlog
-
-        for dt, cval in zip(dat.datetimes, dat.char_values):
-            self.data.append([False, dtformat(dt), cval])
+        if dat.is_numeric and len(dat.events) > 0:
+            for ts, cval in dat.events:
+                self.mpldates.append(ts/86400.0)
+                self.data.append([False, dtformat(ts), cval])
+        else:
+            for ts, cval in zip(dat.timestamps, dat.char_values):
+                self.mpldates.append(ts/86400.0)
+                self.data.append([False, dtformat(ts), cval])
         self.Reset(len(self.data))
 
     def SetValueByRow(self, value, row, col):
@@ -88,8 +94,7 @@ class PVTablePanel(wx.Panel) :
         self.dvc.AssociateModel(self.model)
 
         panel = GridPanel(spanel, ncols=4, nrows=4, pad=2, itemstyle=LEFT)
-        ptitle = f"  {desc}  '{self.pvlogdata.pvname}' {len(self.pvlogdata.timestamps)} events"
-
+        ptitle = f"  {desc}  [{self.pvlogdata.pvname}]  {len(self.model.data)} events"
 
         self.btn_show  = Button(panel, label='Show Selected',
                                 action=self.onShowSelected, size=(175, -1))
@@ -150,13 +155,12 @@ class PVTablePanel(wx.Panel) :
         pdat = self.pvlogdata
         for i, row in enumerate(self.model.data):
             if row[0]:
-                edat = {'desc': self.desc,
-                        'name': pdat.pvname,
-                        'datetime': row[1],
-                        'value': row[2],
-                        'mpldate': pdat.mpldates[i],
-                        'color': color}
-                pwin.add_event(edat)
+                pwin.add_event({'desc': self.desc,
+                                'name': pdat.pvname,
+                                'color': color,
+                                'datetime': row[1],
+                                'value': row[2],
+                                'mpldate': self.model.mpldates[i]})
 
     def onClearAll(self, event=None):
         self.model.ClearAll()
@@ -179,14 +183,13 @@ class PVTableFrame(wx.Frame) :
 
     def add_pvpage(self, pvlogdata, desc):
         pages = self.get_panels()
-        pvname = pvlogdata.pvname
-        if pvname in pages:
-            self.nb.SetSelection(pages[pvname])
+        if desc in pages:
+            self.nb.SetSelection(pages[desc])
         else:
             npanel = self.nb.GetPageCount()
             panel = PVTablePanel(parent=self.parent, npanel=npanel,
                                  pvlogdata=pvlogdata, desc=desc)
-            self.nb.AddPage(panel, pvname, True)
+            self.nb.AddPage(panel, desc, True)
             self.nb.SetSelection(self.nb.GetPageCount()-1)
 
     def get_panels(self):
