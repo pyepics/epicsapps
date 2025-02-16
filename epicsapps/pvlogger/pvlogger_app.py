@@ -42,12 +42,14 @@ from pyshortcuts import debugtimer, uname
 from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 from epicsapps.stripchart import StripChartFrame
 
+from pyshortcuts import isotime
+
 from .configfile import PVLoggerConfig
 from .logfile import read_logfolder, TZONE
 
 from .plotter import PlotFrame
 from .pvtableview import PVTableFrame
-
+from .eventtableview import EventTableFrame
 
 from ..utils import (SelectWorkdir, get_icon, get_configfolder,
                      get_default_configfile, load_yaml, read_recents_file,
@@ -492,8 +494,24 @@ Matt Newville <newville@cars.uchicago.edu>
             wids[f'col{i+1}'].Bind(csel.EVT_COLOURSELECT,
                                    partial(self.onPVcolor, row=i+1))
 
-        def slabel(txt):
-            return wx.StaticText(panel, label=txt, size=(175, -1))
+        wids['evt_date1'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
+                                                  style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
+        wids['evt_time1'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
+        wids['evt_date1'].SetValue(wx.DateTime.Now() - wx.DateSpan.Day())
+        wids['evt_time1'].SetTime(9, 0, 0)
+
+        wids['evt_date2'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
+                                                  style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
+        wids['evt_time2'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
+        wids['evt_date2'].SetValue(wx.DateTime.Now() - wx.DateSpan.Week())
+        wids['evt_time2'].SetTime(9, 0, 0)
+
+        wids['evt_button'] = Button(panel, 'Show Events for Selected PVs',
+                                   action=self.onShowSelectedEvents,
+                                   size=(250, -1))
+
+        def slabel(txt, wid=150):
+            return wx.StaticText(panel, label=txt, size=(wid, -1))
 
         panel.Add((5, 5))
         panel.Add(title, style=LEFT, dcol=6, newrow=True)
@@ -510,7 +528,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(' PVs: '), dcol=1, newrow=True)
+        panel.Add(slabel(' Select PVs: '), dcol=1, newrow=True)
         panel.Add(wids['use_sel'], dcol=1)
         panel.Add(wids['clear_sel'], dcol=1)
 
@@ -528,18 +546,31 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['col4'])
 
         panel.Add((5, 5))
-        panel.Add(slabel(' Plot: '), dcol=1, newrow=True)
+        panel.Add(slabel(' Plot/Show Table: '), dcol=1, newrow=True)
         panel.Add(wids['plotone'], dcol=1)
         panel.Add(wids['plotsel'], dcol=1)
         panel.Add(slabel(' Plot Window: '), dcol=1, newrow=True)
         panel.Add(wids['plot_win'])
         panel.Add((5, 5))
-
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
         panel.Add(slabel(' Live Plots: '), dcol=1, newrow=True)
         panel.Add(wids['plotlive_one'])
         panel.Add(wids['plotlive_sel'])
+        panel.Add((5, 5))
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
+        panel.Add((5, 5))
+        panel.Add(slabel(' View Table of Events for Seleccted PVs: ', wid=400),
+                      dcol=3, newrow=True)
+
+        panel.Add(slabel(' Start Date/Time: '), dcol=1, newrow=True)
+        panel.Add(wids['evt_date1'])
+        panel.Add(wids['evt_time1'])
+        panel.Add(slabel(' Stop Date/Time: '), dcol=1, newrow=True)
+        panel.Add(wids['evt_date2'])
+        panel.Add(wids['evt_time2'])
+        panel.Add(slabel(' Show Table: '), dcol=1, newrow=True)
+        panel.Add(wids['evt_button'], dcol=2)
 
         panel.pack()
         return panel
@@ -550,7 +581,7 @@ Matt Newville <newville@cars.uchicago.edu>
         sfont.SetWeight(wx.BOLD)
         sfont.SetPointSize(10)
         sbar.SetFont(sfont)
-        self.SetStatusWidths([-3, -2])
+        self.SetStatusWidths([-2, -4])
         self.SetStatusText('', 0)
 
     def show_subframe(self, name, frameclass, **opts):
@@ -812,6 +843,28 @@ Matt Newville <newville@cars.uchicago.edu>
             self.log_folder.read_motor_events(pvname)
         return pvlog.data
 
+
+    def onShowSelectedEvents(self, event=None):
+        print("Show selected events")
+        ddate1 = self.wids['evt_date1'].GetValue()
+        dtime1 = self.wids['evt_time1'].GetValue()
+        ddate2 = self.wids['evt_date2'].GetValue()
+        dtime2 = self.wids['evt_time2'].GetValue()
+        dt1 = datetime(ddate1.GetYear(), 1+ddate1.GetMonth(), ddate1.GetDay(),
+                        dtime1.GetHour(), dtime1.GetMinute(), 0)
+        dt2 = datetime(ddate2.GetYear(), 1+ddate2.GetMonth(), ddate2.GetDay(),
+                           dtime2.GetHour(), dtime2.GetMinute(), 0)
+        event_data = {}
+        for pvdesc in self.pvlist.GetCheckedStrings():
+            pvname = self.pvmap[pvdesc]
+            data = self.get_pvdata(pvname)
+            if data is None:
+                data = self.get_pvdata(pvname)
+            event_data[pvdesc] = data
+
+        self.show_subframe('event_table', EventTableFrame)
+        self.subframes['event_table'].set_data(event_data, dt1, dt2)
+
     def onPlotLiveOne(self, event):
         liveplot = self.show_subframe('pvlive', StripChartFrame)
         pvdesc = self.wids['pv1'].GetStringSelection()
@@ -982,6 +1035,7 @@ is not a valid PV Logger Data Folder""",
 
     def use_logfolder(self, folder):
         self.log_folder = folder
+        self.log_folder.on_read = self.onReadDataFile
         self.wids['work_folder'].SetLabel(folder.fullpath)
         os.chdir(folder.fullpath)
         self.pvmap = {}
@@ -1017,14 +1071,43 @@ is not a valid PV Logger Data Folder""",
         self.write_message(f'reading data for {len(self.log_folder.pvs)} PVs', panel=1)
         wx.CallAfter(self.read_folder)
 
+    def onReadDataFile(self, pvname=None, npvs=None, nproc=1, tstart=None, **kws):
+        message = ''
+        if pvname is not None:
+            message = f"Read data for '{pvname}'"
+        if npvs is not None:
+            message = f"{message}, {npvs} remaining ({nproc} processes)"
+            if npvs == 0:
+                message = f"Reed complete"
+        if len(message) > 0:
+            self.write_message(message, panel=1)
+
+        if self.log_folder.time_start is not None:
+            dt = datetime.fromtimestamp(self.log_folder.time_start)
+            wt = wx.DateTime.Now()
+            wt.SetYear(dt.year)
+            wt.SetMonth(dt.month-1)
+            wt.SetDay(dt.day)
+            self.wids['evt_date1'].SetValue(wt)
+            self.wids['evt_time1'].SetTime(dt.hour, dt.minute, 0)
+            self.wids['evt_date1'].Refresh()
+        if self.log_folder.time_stop is not None:
+            dt = datetime.fromtimestamp(self.log_folder.time_stop)
+            wt = wx.DateTime.Now()
+            wt.SetYear(dt.year)
+            wt.SetMonth(dt.month-1)
+            wt.SetDay(dt.day)
+            self.wids['evt_date2'].SetValue(wt)
+            self.wids['evt_time2'].SetTime(dt.hour, dt.minute, 0)
+
+
     def read_folder(self):
         self.write_message(f'reading folder data....')
         self.log_folder.read_all_logs_text()
         self.write_message('ready')
         self.write_message(' ', panel=1)
         self.parse_thread = Thread(target=self.log_folder.parse_logfiles,
-                                   kwargs={'verbose': True, 'nproc': 8,
-                                           'writer': partial(self.write_message, panel=1)})
+                                   kwargs={'verbose': True, 'nproc': 8})
         self.parse_thread.start()
 
 
