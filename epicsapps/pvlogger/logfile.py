@@ -140,7 +140,6 @@ def parse_logfile(textlines, filename):
     index = -1
     val_index = 0
     start_tstamp = MIN_TIMESTAMP
-    dt.add('x start')
     for line in textlines:
         line = line.strip()
         if len(line) < 1:
@@ -251,13 +250,13 @@ class PVLogFolder:
         self.fullpath = self.folder.as_posix()
         self.datadir = Path(datadir)
 
-        self.time_start = 0
+        self.time_start = None
         self.time_stop = None
         self.kws = kws
         self.pvs = {}
         self.motors = []
         self.instruments = []
-        self.writer = self._writer
+        self.on_read  = None
         self.data = {}
         if self.folder.exists():
             self.read_folder()
@@ -362,13 +361,9 @@ class PVLogFolder:
             dt = time.time()-t0
             print(f"#read {len(self.pvs)} log files, {dt:.2f} secs")
 
-    def _writer(self, msg):
-        sys.stdout.writer(f"{msg}\n")
 
-    def parse_logfiles(self, nproc=4, nmax=None, verbose=False, writer=None):
+    def parse_logfiles(self, nproc=4, nmax=None, verbose=False):
         """parse all unparsed PV logfiles, using multiprocessing"""
-        if writer is None:
-            writer = self._writer
         t0 = time.time()
         # files largest to smallest
         pdata = {}
@@ -385,8 +380,9 @@ class PVLogFolder:
             pvlist = pvlist[:nmax]
 
         npvs = len(pvlist)
-        if verbose:
-            writer(f"parsing {npvs} log files with {nproc} processes")
+        if self.on_read is not None:
+            self.on_read(npvs=npvs, nproc=nproc)
+
 
         # now run up to nproc processes to parse the text files
         def start_next_process(pvlist):
@@ -398,7 +394,6 @@ class PVLogFolder:
                     proc = Process(target=q_parse_logfile, args=args)
                     pdat['proc'] = proc
                     proc.start()
-                    # writer(f"# parsing {self.pvs[pvname].logfile}")
                     pdat['status'] = 'started'
                     break
 
@@ -406,10 +401,9 @@ class PVLogFolder:
             start_next_process(pvlist)
 
         iloop = 0
+        data_start_time = None
         while len(pvlist) > 0:
             iloop += 1
-            writer(f"# {len(pvlist)} PVs left, {(time.time()-t0):.1f} sec" )
-
             nextpv = None
             _size = maxsize + 1
             work = []
@@ -433,11 +427,16 @@ class PVLogFolder:
                 ret = None
             if ret is not None:
                 self.pvs[pvname].data = ret
-
                 pdat['proc'].join()
                 pdat['queue'].close()
                 del pdat['queue'], pdat['proc']
-
+                stime = ret.attrs.get('start_time',  None)
+                if stime is not None:
+                    start_tstamp = datetime.fromisoformat(stime).timestamp()
+                    if data_start_time is None:
+                        data_start_time = start_tstamp
+                    else:
+                        data_start_time = min(data_start_time, start_tstamp)
                 pvlist.remove(pvname)
                 pdat['status'] = 'complete'
                 start_next_process(pvlist)
@@ -450,10 +449,14 @@ class PVLogFolder:
                             npend +=1
                         elif stat.startswith('start'):
                             nstart +=1
-                    writer(f"{len(pvlist)} PVs remaining, {nstart} in progress")
+                if data_start_time != self.time_start:
+                    self.time_start = data_start_time
+                if self.on_read is not None:
+                    self.on_read(npvs=len(pvlist), nstart=nstart, pvname=pvname,
+                                  nproc=nproc, tstart=self.time_start)
         if verbose:
             dt = time.time()-t0
-            writer(f"# parsed {npvs} Log files: {dt:.2f} secs")
+            print(f"# parsed {npvs} Log files: {dt:.2f} secs")
 
     def reset_new_logfiles(self, parse_data=False):
         """find 'new' logfiles,  read the text, and set the
