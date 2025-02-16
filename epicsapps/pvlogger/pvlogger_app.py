@@ -43,7 +43,7 @@ from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
 from epicsapps.stripchart import StripChartFrame
 
 from .configfile import PVLoggerConfig
-from .logfile import read_logfile, read_logfolder, read_textfile, TZONE
+from .logfile import read_logfolder, TZONE
 
 from .plotter import PlotFrame
 from .pvtableview import PVTableFrame
@@ -473,7 +473,7 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['plotlive_sel'] = Button(panel, 'LivePlot PV 1 to 4',
                                    action=self.onPlotLiveSel,
                                    size=(175, -1))
-        
+
         wids['use_sel'] = Button(panel, ' Use Selected PVs ',
                                  action=self.onUseSelected, **opts)
         wids['clear_sel'] = Button(panel, ' Clear PVs 2, 3, 4 ',
@@ -536,8 +536,8 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add((5, 5))
 
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
-        panel.Add((5, 5)) 
-        panel.Add(slabel(' Live Plots: '), dcol=1, newrow=True)       
+        panel.Add((5, 5))
+        panel.Add(slabel(' Live Plots: '), dcol=1, newrow=True)
         panel.Add(wids['plotlive_one'])
         panel.Add(wids['plotlive_sel'])
 
@@ -654,7 +654,6 @@ Matt Newville <newville@cars.uchicago.edu>
                   'end_datetime': datetime.isoformat(dt, sep=' '),
                   'instruments': insts,
                   'pvs': pvs}
-        print(config)
 
         with open(output, 'w') as fh:
             yaml.safe_dump(config, fh, default_flow_style=False, sort_keys=False)
@@ -787,7 +786,7 @@ Matt Newville <newville@cars.uchicago.edu>
         if enable_live:
             if pvname not in self.live_pvs:
                 self.live_pvs[pvname] = get_pv(pvname)
-                self.live_pvs[pvname].wait_for_connection(timeout=0.1)                
+                self.live_pvs[pvname].wait_for_connection(timeout=0.1)
                 self.check_pv_connections(waittime=0.1)
 
         self.wids['plotlive_one'].Enable(enable_live)
@@ -807,10 +806,10 @@ Matt Newville <newville@cars.uchicago.edu>
             pvlog.get_mpldates()
         self.write_message(f'got data for {pvname}', panel=1)
         if self.parse_thread is not None:
-            if not self.parse_thread.is_alive():
-                self.parse_thread.join()
-                self.parse_thread = None
+            time.sleep(0.1)
 
+        if pvname in self.log_folder.motors:
+            self.log_folder.read_motor_events(pvname)
         return pvlog.data
 
     def onPlotLiveOne(self, event):
@@ -831,7 +830,7 @@ Matt Newville <newville@cars.uchicago.edu>
             desc = self.log_folder.pvs[pvname].description
             liveplot.addPV(pvname, desc=desc)
         liveplot.Show()
-        
+
     def onPlotOne(self, event=None):
         pvdesc = self.wids['pv1'].GetStringSelection()
         pvname = self.pvmap[pvdesc]
@@ -858,7 +857,6 @@ Matt Newville <newville@cars.uchicago.edu>
                     'colour':hcol, 'ylabel': f'{label} ({pvname})'}
 
             opts.update(PLOTOPTS)
-
             pwin.plot(data.mpldates, data.values, **opts)
             enum_strs = data.attrs.get('enum_strs', None)
             if enum_strs is not None:
@@ -1047,7 +1045,6 @@ is not a valid PV Logger Data Folder""",
             trace.set_data([], [])
             self.plotpanel.canvas.draw()
         self.needs_refresh = True
-
 
     def onPVchoice(self, event=None, row=None, **kws):
         self.needs_refresh = True
