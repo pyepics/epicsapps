@@ -100,10 +100,14 @@ display a graph of the time dependence of the PV(s).  Up to 10 Plot
 windows can be used, and you can select which to use for any display
 by selecting "Window 1" through "Window 10".
 
-When used at the beamline or from a computer that can connect to the
-live beamline PVs, clicking on the "Live Plot for PV 1" will show the
-corresponding PV in a live :ref:`stripchart` application.
+Below the buttons to plot the logged values, are buttons for "Live
+Plots".  When used at the beamline or from a computer that can connect
+to the live beamline PVs, clicking on the "Live Plot for PV 1" will
+show the corresponding PV in a live :ref:`stripchart` application.
 
+Finally, below the "Live Plot" section, there are Date and Time
+entries to view Event Data.  We'll return to this in the next section
+:ref:`pvlogger_event_data`.
 
 As an example plot of one PV, with "Storage Ring Current (mA)" as PV
 1, clicking the "Show PV 1" button will show:
@@ -137,9 +141,10 @@ For all plots, there is good interactivity including
 
 For more details, see `wxmplot`_.
 
+.. _pvlogger_event_data:
 
-Seeing "Event Data" -- non-numerica data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Event Data: viewing non-numerica data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Some data is not numerical but text, and so not easily plotted. To be
 clear, PVs with enumerated or multi-bit binary values can be plotted,
@@ -163,6 +168,19 @@ and value in the table just below the plot. The most recently selected
 event will be shown at the top, with the previous selected events
 below that.  Clicking the "Clear Events" button on the plot window
 will clear the table.
+
+
+For PVs that are Epics Motors several fields besides the main Drive Value (see
+:ref:`pvlogger_motor_data`) will be logged.  These other values are
+not expected to change very often, and so will be displayed are Events
+for the Motor Drive PV.
+
+
+In addition to showing showing Events for each PV in a single table
+so that selected events can be placed on a plot, you can also use the
+date and time entries at the bottom of the main viewing panel to create a
+single table showing all events for a set of PVs for a selected time
+range.
 
 
 
@@ -261,6 +279,8 @@ events are captured.  Note also that it values for `.MDEL` are often
 not preserved by "save-restore" processes and so may be lost if the
 host IOC is restarted.
 
+
+.. _pvlogger_motor_data:
 
 Data for Epics Motors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
