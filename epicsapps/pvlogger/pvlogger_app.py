@@ -509,9 +509,9 @@ Matt Newville <newville@cars.uchicago.edu>
 
         wids['evt_button'] = Button(panel, 'Show Events for Selected PVs',
                                    action=self.onShowSelectedEvents,
-                                   size=(250, -1))
+                                   size=(300, -1))
 
-        def slabel(txt, wid=150):
+        def slabel(txt, wid=175):
             return wx.StaticText(panel, label=txt, size=(wid, -1))
 
         panel.Add((5, 5))
@@ -561,7 +561,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(' View Table of Events for Seleccted PVs: ', wid=400),
+        panel.Add(slabel(' View Event Table for Selected PVs: ', wid=400),
                       dcol=3, newrow=True)
 
         panel.Add(slabel(' Start Date/Time: '), dcol=1, newrow=True)
@@ -1078,7 +1078,7 @@ is not a valid PV Logger Data Folder""",
         if npvs is not None:
             message = f"{message}, {npvs} remaining ({nproc} processes)"
             if npvs == 0:
-                message = f"Reed complete"
+                message = "Read complete"
         if len(message) > 0:
             self.write_message(message, panel=1)
         wx.CallAfter(self.set_event_times)
