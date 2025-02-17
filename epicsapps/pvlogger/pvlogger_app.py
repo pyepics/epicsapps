@@ -853,7 +853,7 @@ Matt Newville <newville@cars.uchicago.edu>
                         dtime1.GetHour(), dtime1.GetMinute(), 0)
         dt2 = datetime(ddate2.GetYear(), 1+ddate2.GetMonth(), ddate2.GetDay(),
                            dtime2.GetHour(), dtime2.GetMinute(), 0)
-        dt1 = dt1 - timedelta(minutes=1)
+        dt1 = dt1 - timedelta(days=1)
         dt2 = dt2 + timedelta(minutes=1)
         event_data = {}
         for pvdesc in self.pvlist.GetCheckedStrings():
@@ -1084,6 +1084,7 @@ is not a valid PV Logger Data Folder""",
 
         if self.log_folder.time_start is not None:
             dt = datetime.fromtimestamp(self.log_folder.time_start)
+            dt = dt - timedelta(days=1)
             wt = wx.DateTime.Now()
             wt.SetYear(dt.year)
             wt.SetMonth(dt.month-1)
@@ -1093,6 +1094,7 @@ is not a valid PV Logger Data Folder""",
             self.wids['evt_date1'].Refresh()
         if self.log_folder.time_stop is not None:
             dt = datetime.fromtimestamp(self.log_folder.time_stop)
+            dt = dt + timedelta(minutes=1)
             wt = wx.DateTime.Now()
             wt.SetYear(dt.year)
             wt.SetMonth(dt.month-1)
