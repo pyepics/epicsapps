@@ -94,6 +94,7 @@ class PVLogFile:
     def parse(self):
         """parse text to data"""
         self.data = parse_logfile(self.text, self.logfile)
+        self.has_motor_events = False
 
     def get_datetimes(self):
         """set datetimes to list of datetimes"""
@@ -496,12 +497,12 @@ class PVLogFolder:
         """
         if motorname in self.motors:
             pv = self.pvs[motorname]
-            if pv.has_motor_events:
-                return
             if pv.data is None:
                 pv.read_log_text(parse=True)
             root = motorname[:-4]
             # print('read motor init events ',pv.data.events)
+            if pv.has_motor_events and len(pv.data.events) > 7:
+                return
 
             for suff in motor_fields:
                 pvname = f'{root}{suff}'
