@@ -100,7 +100,7 @@ class EventTablePanel(wx.Panel) :
 
         for icol, dat in enumerate((('PV Description ', 200),
                                     ('PV Name ', 175),
-                                    ('Date/Time', 175),
+                                    ('Date/Time', 250),
                                     ('Value',     350))):
             title, width = dat
             self.dvc.AppendTextColumn(title, icol, width=width)
