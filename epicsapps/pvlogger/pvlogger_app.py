@@ -12,7 +12,7 @@ from subprocess import Popen
 from numpy import array, where
 from functools import partial
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, timedelta
 from matplotlib.dates import date2num
 import pytz
 import yaml
@@ -497,13 +497,13 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['evt_date1'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
                                                   style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
         wids['evt_time1'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
-        wids['evt_date1'].SetValue(wx.DateTime.Now() - wx.DateSpan.Day())
+        wids['evt_date1'].SetValue(wx.DateTime.Now() - wx.DateSpan.Week())
         wids['evt_time1'].SetTime(9, 0, 0)
 
         wids['evt_date2'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
                                                   style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
         wids['evt_time2'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
-        wids['evt_date2'].SetValue(wx.DateTime.Now() - wx.DateSpan.Week())
+        wids['evt_date2'].SetValue(wx.DateTime.Now() )
         wids['evt_time2'].SetTime(9, 0, 0)
 
         wids['evt_button'] = Button(panel, 'Show Events for Selected PVs',
@@ -845,7 +845,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
 
     def onShowSelectedEvents(self, event=None):
-        print("Show selected events")
         ddate1 = self.wids['evt_date1'].GetValue()
         dtime1 = self.wids['evt_time1'].GetValue()
         ddate2 = self.wids['evt_date2'].GetValue()
@@ -854,6 +853,8 @@ Matt Newville <newville@cars.uchicago.edu>
                         dtime1.GetHour(), dtime1.GetMinute(), 0)
         dt2 = datetime(ddate2.GetYear(), 1+ddate2.GetMonth(), ddate2.GetDay(),
                            dtime2.GetHour(), dtime2.GetMinute(), 0)
+        dt1 = dt1 - timedelta(minutes=1)
+        dt2 = dt2 + timedelta(minutes=1)
         event_data = {}
         for pvdesc in self.pvlist.GetCheckedStrings():
             pvname = self.pvmap[pvdesc]
@@ -861,7 +862,6 @@ Matt Newville <newville@cars.uchicago.edu>
             if data is None:
                 data = self.get_pvdata(pvname)
             event_data[pvdesc] = data
-
         self.show_subframe('event_table', EventTableFrame)
         self.subframes['event_table'].set_data(event_data, dt1, dt2)
 
