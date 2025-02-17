@@ -117,7 +117,7 @@ class PVTablePanel(wx.Panel) :
         self.choose_pwin  = Choice(panel, choices=PlotWindowChoices, size=(175, -1))
 
         for icol, dat in enumerate((('Select', 75),
-                                    ('Date/Time', 200),
+                                    ('Date/Time', 250),
                                     ('Value',     400))):
             title, width = dat
             kws = {'width': width}
