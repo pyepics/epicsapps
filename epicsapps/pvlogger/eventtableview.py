@@ -54,7 +54,6 @@ class EventDataModel(dv.DataViewIndexListModel):
         tmin = self.dt1.timestamp()
         tmax = self.dt2.timestamp()
         ipv = 0
-        # print("EventDataModel set_data ", self.event_data.keys())
         for pvdesc, dat in self.event_data.items():
             if pvdesc not in self.pvcolors:
                 self.pvcolors[pvdesc] = COLORS[ipv]
@@ -109,7 +108,6 @@ class EventTablePanel(wx.Panel) :
             col.Alignment = wx.ALIGN_LEFT
             col.Sortable = True
             col.SetSortOrder(1)
-        # self.dvc.EnsureVisible(self.model.GetItem(0))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.dvc, 1, LEFT|wx.ALL|wx.GROW)
