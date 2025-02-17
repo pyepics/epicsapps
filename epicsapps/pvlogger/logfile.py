@@ -258,7 +258,7 @@ class PVLogFolder:
         self.pvs = {}
         self.motors = []
         self.instruments = []
-        self.on_read  = None
+        self.on_read = None
         self.data = {}
         if self.folder.exists():
             self.read_folder()
@@ -383,8 +383,7 @@ class PVLogFolder:
 
         npvs = len(pvlist)
         if self.on_read is not None:
-            self.on_read(npvs=npvs, nproc=nproc)
-
+            self.on_read(pvname='Reading PVs', npvs=npvs, nproc=nproc)
 
         # now run up to nproc processes to parse the text files
         def start_next_process(pvlist):
