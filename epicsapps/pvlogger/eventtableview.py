@@ -28,7 +28,7 @@ COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
           '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')
 
 def dtformat(ts):
-    dt = datetime.fromtimestamp(ts) # , tz=TZONE)
+    dt = datetime.fromtimestamp(ts)
     return dt.isoformat(sep=' ', timespec='milliseconds')
 
 class EventDataModel(dv.DataViewIndexListModel):
@@ -51,15 +51,16 @@ class EventDataModel(dv.DataViewIndexListModel):
         self.pvcolors = {}
         if self.event_data is None or self.dt1 is None or self.dt2 is None:
             return
-        ts1 = self.dt1.timestamp()
-        ts2 = self.dt2.timestamp()
+        tmin = self.dt1.timestamp()
+        tmax = self.dt2.timestamp()
         ipv = 0
+        # print("EventDataModel set_data ", self.event_data.keys())
         for pvdesc, dat in self.event_data.items():
             if pvdesc not in self.pvcolors:
                 self.pvcolors[pvdesc] = COLORS[ipv]
                 ipv  = (ipv+1) % len(COLORS)
             for ts, cval in dat.events:
-                if ts >= ts1 and ts <= ts2:
+                if ts >= tmin and ts <= tmax:
                     self.data.append([pvdesc, dat.pvname, dtformat(ts), cval])
         self.data = sorted(self.data, key=lambda x: x[2])
         self.Reset(len(self.data))
@@ -89,7 +90,7 @@ class EventDataModel(dv.DataViewIndexListModel):
 
 class EventTablePanel(wx.Panel) :
     """View Table of Events for Multiple PVs"""
-    def __init__(self, parent,  size=(700, 400)):
+    def __init__(self, parent,  size=(850, 400)):
         self.parent = parent
         wx.Panel.__init__(self, parent, -1, size=size)
 
@@ -98,9 +99,9 @@ class EventTablePanel(wx.Panel) :
         self.model = EventDataModel()
         self.dvc.AssociateModel(self.model)
 
-        for icol, dat in enumerate((('PV Description ', 150),
-                                    ('PV Name ', 150),
-                                    ('Date/Time', 200),
+        for icol, dat in enumerate((('PV Description ', 200),
+                                    ('PV Name ', 175),
+                                    ('Date/Time', 175),
                                     ('Value',     350))):
             title, width = dat
             self.dvc.AppendTextColumn(title, icol, width=width)
@@ -127,7 +128,7 @@ class EventTablePanel(wx.Panel) :
 class EventTableFrame(wx.Frame) :
     """View Table of PV Values"""
     def __init__(self, parent=None, title='PVLogger Event Table View',
-                     size=(750, 500)):
+                     size=(850, 500)):
         self.parent = parent
         wx.Frame.__init__(self, parent, -1, title=title,
                           style=FRAMESTYLE, size=size)
