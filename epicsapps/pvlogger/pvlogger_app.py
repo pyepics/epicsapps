@@ -280,7 +280,8 @@ Matt Newville <newville@cars.uchicago.edu>
         self.parse_thread = None
         self.live_pvs = {}
         self.pvs_connected = 'unknown'
-
+        self.last_time_start = 0
+        self.last_time_stop = 0
         self.create_frame()
 
     def create_frame(self):
@@ -739,7 +740,6 @@ Matt Newville <newville@cars.uchicago.edu>
         dlg.Destroy()
         self.wids['data_folder'].SetValue(path)
 
-
     def onReadConfigFile(self, event=None):
         if self.config_file is None:
             self.config_file = CONFIG_FILE
@@ -1081,27 +1081,32 @@ is not a valid PV Logger Data Folder""",
                 message = f"Reed complete"
         if len(message) > 0:
             self.write_message(message, panel=1)
+        wx.CallAfter(self.set_event_times)
 
+    def set_event_times(self):
         if self.log_folder.time_start is not None:
-            dt = datetime.fromtimestamp(self.log_folder.time_start)
-            dt = dt - timedelta(days=1)
-            wt = wx.DateTime.Now()
-            wt.SetYear(dt.year)
-            wt.SetMonth(dt.month-1)
-            wt.SetDay(dt.day)
-            self.wids['evt_date1'].SetValue(wt)
-            self.wids['evt_time1'].SetTime(dt.hour, dt.minute, 0)
-            self.wids['evt_date1'].Refresh()
-        if self.log_folder.time_stop is not None:
-            dt = datetime.fromtimestamp(self.log_folder.time_stop)
-            dt = dt + timedelta(minutes=1)
-            wt = wx.DateTime.Now()
-            wt.SetYear(dt.year)
-            wt.SetMonth(dt.month-1)
-            wt.SetDay(dt.day)
-            self.wids['evt_date2'].SetValue(wt)
-            self.wids['evt_time2'].SetTime(dt.hour, dt.minute, 0)
+            if abs(self.last_time_start - self.log_folder.time_start) > 2:
+                t0  = self.last_time_start = self.log_folder.time_start
+                dt = datetime.fromtimestamp(t0)
+                dt = dt - timedelta(days=1)
+                wt = wx.DateTime.Now()
+                wt.SetYear(dt.year)
+                wt.SetMonth(dt.month-1)
+                wt.SetDay(dt.day)
+                self.wids['evt_date1'].SetValue(wt)
+                self.wids['evt_time1'].SetTime(dt.hour, dt.minute, 0)
 
+        if self.log_folder.time_stop is not None:
+            if abs(self.last_time_stop - self.log_folder.time_stop) > 2:
+                t0  = self.last_time_stop = self.log_folder.time_stop
+                dt = datetime.fromtimestamp(t0)
+                dt = dt + timedelta(minutes=1)
+                wt = wx.DateTime.Now()
+                wt.SetYear(dt.year)
+                wt.SetMonth(dt.month-1)
+                wt.SetDay(dt.day)
+                self.wids['evt_date2'].SetValue(wt)
+                self.wids['evt_time2'].SetTime(dt.hour, dt.minute, 0)
 
     def read_folder(self):
         self.write_message(f'reading folder data....')
