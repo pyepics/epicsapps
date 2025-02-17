@@ -9,6 +9,7 @@ from time import time, sleep
 from collections import deque
 from pathlib import Path
 from datetime import datetime, timedelta
+from dateutil import parser as dateparser
 import numpy as np
 import yaml
 from pyshortcuts import debugtimer, fix_filename, new_filename, isotime, gformat
@@ -292,7 +293,7 @@ class PVLogger():
         self.end_date = self.config.get('end_datetime', end_date)
 
         try:
-            dt = datetime.fromisoformat(self.end_date)
+            dt = dateparser.parse(self.end_date)
             end_tstamp = dt.timestamp()
         except:
             pass
@@ -435,7 +436,7 @@ class PVLogger():
             end_date = rconfig.config.get('end_datetime', None)
             if end_date is not None:
                 try:
-                    dt = datetime.fromisoformat(end_date)
+                    dt = dateparser.parse(end_date)
                     end_tstamp = dt.timestamp()
                     self.end_date = dt.isoformt(timespec='sec', sep=' ')
                     self.end_timestamp = end_tstamp

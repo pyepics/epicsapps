@@ -11,6 +11,7 @@ import yaml
 from pathlib import Path
 from dataclasses import dataclass
 from datetime import datetime
+from dateutil import parser as dateparser
 import pytz
 from multiprocessing import Process, Queue, Pool
 from matplotlib.dates import date2num
@@ -149,7 +150,7 @@ def parse_logfile(textlines, filename):
             headers.append(line)
             if 'start_time' in line:
                 words = [a.strip() for a in line[1:].split('=')]
-                start_tstamp = datetime.fromisoformat(words[1]).timestamp()
+                start_tstamp = dateparser.parse(words[1]).timestamp()
         else:
             words = line.split(maxsplit=2)
             if len(words) == 1:
@@ -433,7 +434,7 @@ class PVLogFolder:
                 del pdat['queue'], pdat['proc']
                 stime = ret.attrs.get('start_time',  None)
                 if stime is not None:
-                    start_tstamp = datetime.fromisoformat(stime).timestamp()
+                    start_tstamp = dateparser.parse(stime).timestamp()
                     if data_start_time is None:
                         data_start_time = start_tstamp
                     else:
