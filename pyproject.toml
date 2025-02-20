@@ -48,6 +48,7 @@ dependencies = ['pyepics',
              'pyshortcuts>=1.9.5',
              'xraydb',
              'tabulate',
+             'toml',
              'tomli',
              ]
 
