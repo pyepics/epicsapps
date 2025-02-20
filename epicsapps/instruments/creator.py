@@ -14,6 +14,7 @@ from sqlalchemy import (MetaData, create_engine, Table, Column,
                         ForeignKey, UniqueConstraint)
 
 from .utils import dumpsql, backup_versions
+from .simpledb import SimpleDB
 
 def PointerCol(name, other=None, keyid='id', **kws):
     if other is None:
@@ -42,7 +43,7 @@ def NamedTable(tablename, metadata, keyid='id', nameid='name',
     return Table(tablename, metadata, *args)
 
 class InitialData:
-    info    = [["version", "1.2"],
+    info    = [["version", "1.4"],
                ["verify_erase", "1"],
                ["verify_move",   "1"],
                ["verify_overwrite",  "1"],
@@ -62,7 +63,8 @@ def  make_newdb(dbname, server= 'sqlite'):
 
     instrument = NamedTable('instrument', metadata,
                             cols=[Column('show', Integer, default=1),
-                                  Column('display_order', Integer, default=0)])
+                                  Column('display_order', Integer, default=0)
+                                  Column('modify_time', DateTime)])
 
     command    = NamedTable('command', metadata,
                             cols=[StrCol('command'),
@@ -99,8 +101,8 @@ def  make_newdb(dbname, server= 'sqlite'):
                           Column('id', Integer, primary_key=True),
                           PointerCol('instrument'),
                           PointerCol('pv'),
-                          Column('display_order', Integer, default=0))
-
+                          Column('display_order', Integer, default=0),
+                          Column('order', Integer, default=1))
 
     position_pv = Table('position_pv', metadata,
                         Column('id', Integer, primary_key=True),
@@ -113,25 +115,27 @@ def  make_newdb(dbname, server= 'sqlite'):
                        Column('key', Text, primary_key=True, unique=True),
                        StrCol('value'))
 
-    metadata.create_all()
-    session = sessionmaker(bind=engine)()
+    metadata.create_all(bind=engine)
 
+    db = SimpleDB(dbname, server=server)
     for name, notes in InitialData.pvtype:
-        pvtype.insert().execute(name=name, notes=notes)
+        db.insert('pvtype', name=name, notes=notes)
 
     now = datetime.isoformat(datetime.now(), sep=' ')
 
     for key, value in InitialData.info:
         if value == '<now>':
             value = now
-        info.insert().execute(key=key, value=value)
-
-    session.commit()
-
+        rows = db.get_rows('info', key=key)
+        if len(rows) == 0:
+            rows = db.insert('info', key=key, value=value)
+        else:
+            rows = db.update('info', where={'key': key}, value=value)
+    db.close()
 
 if __name__ == '__main__':
     dbname = 'Test.ein'
     backup_versions(dbname)
     make_newdb(dbname)
     print('''%s  created and initialized.''' % dbname)
-    dumpsql(dbname)
+    # dumpsql(dbname)
