@@ -69,7 +69,6 @@ class InstrumentDB(SimpleDB):
         self.conndict.update(kws)
         self.tables = None
         self.engine = None
-        self.session = None
         self.conn    = None
         self.metadata = None
         self.pvs = {}
@@ -83,7 +82,6 @@ class InstrumentDB(SimpleDB):
     def connect_pvs(self):
         for row in self.get_rows('pv'):
             self.pvs[row.name] = epics.get_pv(row.name)
-
         self.map_pvtypes()
         time.sleep(0.01)
         for row in self.get_rows('pv'):
@@ -109,30 +107,30 @@ class InstrumentDB(SimpleDB):
         if version_string < '1.2':
             print('Upgrading Database to Version 1.2')
             for statement in upgrades.sqlcode['1.2']:
-                self.session.execute(statement)
+                self.execute(statement)
             self.set_info('version', '1.2')
 
         if version_string < '1.3':
             print('Upgrading Database to Version 1.3')
             for statement in upgrades.sqlcode['1.3']:
-                self.session.execute(statement)
+                self.execute(statement)
             self.set_info('version', '1.3')
 
         if version_string < '1.4':
             print('Upgrading Database to Version 1.4')
             for statement in upgrades.sqlcode['1.4']:
-                self.session.execute(statement)
+                self.execute(statement)
             self.set_info('version', '1.4')
 
 
     def commit(self):
         "commit session state"
         self.set_info('modify_date', isotime())
-        return self.session.commit()
+        return #
 
     def query(self, *args, **kws):
         "generic query"
-        return self.session.query(*args, **kws)
+        return self.execute(*args, **kws)
 
     def set_hostpid(self, clear=False):
         """set hostname and process ID, as on intial set up"""
