@@ -186,7 +186,7 @@ class ImagePanel_EpicsAD(ImagePanel_Base):
             im_mode = 'I'
             rawdata = rawdata.astype(np.uint32)
         if im_mode in ('L', 'I'):
-            image = wx.EmptyImage(width, height)
+            image = wx.Image(width, height)
             imbuff = Image.frombuffer(im_mode, self.im_size, rawdata,
                                       'raw',  im_mode, 0, 1)
             image.SetData(imbuff.convert('RGB').tobytes())
