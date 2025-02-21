@@ -15,7 +15,7 @@ zmq_push: true
 
 camera_type: areadetector
 camera_id:  1
-ad_prefix: '13IDEPS1:'
+ad_prefix: 'XXIDEPS1:'
 ad_format: JPEG
 web_url:  http://164.54.160.115/jpg/2/image.jpg
 
@@ -28,6 +28,7 @@ overlays:
 
 scandb_credentials: ESCAN_CREDENTIALS
 instrument: SampleStage
+dbname: None
 xyzmotors: ['13XRM:m4.VAL', '13XRM:m5.VAL', '13XRM:m6.VAL']
 offline_instrument:
 offline_xyzmotors: []
