@@ -14,7 +14,7 @@ import json
 import epics
 import time
 import socket
-
+from datetime import datetime
 from sqlalchemy import Row
 from .utils import backup_versions, save_backup, normalize_pvname, MOTOR_FIELDS
 from .creator import make_newdb
@@ -410,8 +410,9 @@ class InstrumentDB(SimpleDB):
         ptab = self.tables['position']
         kwargs = {'name': posname,
                   'instrument_id': inst.id, 'notes': notes}
+        print("TABLE POSITION ", ptab, ptab.c)
         if 'modify_time' in ptab.c:
-            kwargs['modify_time'] = isotime()
+            kwargs['modify_time'] = datetime.now()
         self.add_row('position', **kwargs)
         pos = self.get_position(posname, instname)
 
