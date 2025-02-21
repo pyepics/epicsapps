@@ -63,7 +63,7 @@ def  make_newdb(dbname, server= 'sqlite'):
 
     instrument = NamedTable('instrument', metadata,
                             cols=[Column('show', Integer, default=1),
-                                  Column('display_order', Integer, default=0)
+                                  Column('display_order', Integer, default=0),
                                   Column('modify_time', DateTime)])
 
     command    = NamedTable('command', metadata,
