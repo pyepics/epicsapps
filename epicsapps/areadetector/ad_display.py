@@ -344,7 +344,7 @@ class ADFrame(wx.Frame):
         sizer.Add(self.contrast.label,  (irow, 0), (1, 1), labstyle)
         sizer.Add(self.contrast.choice, (irow, 1), (1, 1), labstyle)
 
-        if self.config['show_1dintegration']:
+        if self.config.get('show_1dintegration', False):
             self.show1d_btn = wx.Button(panel, label='Show 1D Integration',
                                          size=(200, -1))
             self.show1d_btn.Bind(wx.EVT_BUTTON, self.onShowIntegration)
@@ -352,7 +352,7 @@ class ADFrame(wx.Frame):
             irow += 1
             sizer.Add(self.show1d_btn, (irow, 0), (1, 2), labstyle)
 
-        if self.config['show_thumbnail']:
+        if self.config.get('show_thumbnail', False):
             t_size=self.config.get('thumbnail_size', 100)
 
             tnail = ThumbNailImagePanel(panel, imgsize=t_size,
