@@ -27,10 +27,7 @@ class DatePlotPanel(PlotPanel):
 
     def xformatter(self, x, pos):
         " x-axis formatter "
-        if self.use_dates:
-            return self.__date_format(x)
-        else:
-            return self.__format(x, type='x')
+        return self.__date_format(x)
 
     def __date_format(self, x):
         """ formatter for date x-data. primitive, and probably needs
