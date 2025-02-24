@@ -105,8 +105,12 @@ class ThumbNailImagePanel(wx.Panel):
 class ADMonoImagePanel(wx.Panel):
     """Image Panel for monochromatic Area Detector"""
 
-    ad_attrs = ('image1:ArrayData', 'image1:ArraySize0_RBV',
-                'image1:ArraySize1_RBV', 'cam1:ArrayCounter_RBV')
+    ad_attrs = ('image1:ArrayData',
+                'image1:ColorMode_RBV',
+                'image1:ArraySize0_RBV',
+                'image1:ArraySize1_RBV',
+                'image1:ArraySize2_RBV',
+                'cam1:ArrayCounter_RBV')
 
     def __init__(self, parent, prefix=None, writer=None,
                  motion_writer=None, draw_objects=None, rot90=0,
@@ -154,13 +158,14 @@ class ADMonoImagePanel(wx.Panel):
 
     def connect_pvs(self, prefix):
         self.adcam = Device(prefix,  delim='', attrs=self.ad_attrs)
-        
+
         self.adcam.add_callback('cam1:ArrayCounter_RBV', self.onNewImage)
 
-        
+
     def GetImageSize(self):
         return  (self.adcam.get('image1:ArraySize0_RBV'),
-                 self.adcam.get('image1:ArraySize1_RBV'))
+                 self.adcam.get('image1:ArraySize1_RBV'),
+                 self.adcam.get('image1:ArraySize2_RBV'))
 
     def onMotion(self, evt=None):
         """report motion events within image"""
@@ -227,8 +232,16 @@ class ADMonoImagePanel(wx.Panel):
         else: # except:
             data = None
         if data is not None:
-            w, h = self.GetImageSize()
-            data = data.reshape((h, w))
+            if len(data) < 2:
+                return None
+            w, h, j = self.GetImageSize()
+            if j != 0 and w==3:
+                ncol = w
+                w = j # Color!!
+                data = data.reshape((ncol, h, w))
+            else:
+                data = data.reshape((h, w))
+            print("Get Image ", data.shape)
 
             if self.flipv:
                 data = data[::-1, :]
@@ -245,10 +258,8 @@ class ADMonoImagePanel(wx.Panel):
 
             if maxval > NMAX_INT32:
                 data[np.where(data>NMAX_INT32)] = -1
-                # print("data is 32 bit")                
             elif (maxval > NMAX_INT16 and maxval < MAX_INT16 + 15): # data in 16-bit
                 data[np.where(data>NMAX_INT16)] = -1
-                # print("data is 16 bit")
             data[np.where(data<-1)] = -1
         poll()
         return data
@@ -298,7 +309,7 @@ class ADMonoImagePanel(wx.Panel):
         h, w = self.GetImageSize()
         if self.rot90 in (1, 3):
             w, h = h, w
-        
+
         try:
             self.scale = max(0.10, min(0.98*fw/(w+0.1), 0.98*fh/(h+0.1)))
         except:
