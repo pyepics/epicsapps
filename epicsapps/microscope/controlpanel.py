@@ -134,7 +134,7 @@ class ControlPanel(wx.Panel):
         for aname in ('theta', 'chi', 'omega', 'phi', 'rota'):
             if aname in gname:
                 is_angle = True
-                
+
         if is_angle:
             tweaklist = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 30, 45, 90, 180]
 
@@ -142,7 +142,9 @@ class ControlPanel(wx.Panel):
 
         self.tweak_wids[group] = NumericCombo(panel, tweaklist,
                                               precision=precision,
-                                              init=init_tweak)
+                                              init=init_tweak,
+                                              width=100)
+
 
         slabel = wx.BoxSizer(wx.HORIZONTAL)
         slabel.Add(wx.StaticText(panel, label=" %s: " % group, size=(120,-1)),
