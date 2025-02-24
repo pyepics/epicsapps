@@ -410,7 +410,7 @@ class InstrumentDB(SimpleDB):
         ptab = self.tables['position']
         kwargs = {'name': posname,
                   'instrument_id': inst.id, 'notes': notes}
-        print("TABLE POSITION ", ptab, ptab.c)
+
         if 'modify_time' in ptab.c:
             kwargs['modify_time'] = datetime.now()
         self.add_row('position', **kwargs)
