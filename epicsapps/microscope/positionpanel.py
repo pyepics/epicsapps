@@ -600,14 +600,18 @@ class TransferPositionsDialog(wx.Frame):
 class PositionPanel(wx.Panel):
     """panel of position lists, with buttons"""
 
-    def __init__(self, parent, viewer, instrument='SampleStage',
+    def __init__(self, parent, viewer, instrument='SampleStage', dbname=None,
                  xyzmotors=None, offline_instrument=None,
                  offline_xyzmotors=None, safe_move=None, **kws):
+
         wx.Panel.__init__(self, parent, -1, size=(300, 500))
         self.size = (300, 600)
         self.parent = parent
         self.viewer = viewer
         self.instrument = instrument
+        if dbname in ('None', '', False, 'false'):
+            dbname = None
+        self.dbname  = dbname
         self.xyzmotors = xyzmotors
         self.offline_instrument = offline_instrument
         self.offline_xyzmotors = offline_xyzmotors
@@ -646,7 +650,12 @@ class PositionPanel(wx.Panel):
         pack(self, sizer)
         self.SetSize((275, 1300))
 
-        self.instdb = InstrumentDB()
+        if 'ESCAN_CREDENTIALS' in os.environ and self.dbname is None:
+            self.instdb = InstrumentDB()
+        elif Path(self.dbname).exists():
+            self.instdb = InstrumentDB(dbname=self.dbname, server='sqlite')
+        else:
+            raise ValueError("cannot connect to position database")
 
         self.last_refresh = 0
         self.get_positions_from_db()
