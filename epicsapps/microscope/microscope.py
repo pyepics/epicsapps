@@ -164,6 +164,7 @@ class MicroscopeFrame(wx.Frame):
                                   wildcard=wcard)
         if configfile is None:
             sys.exit()
+
         self.read_config(configfile)
         try:
             os.chdir(self.config.get('workdir', os.getcwd()))
@@ -243,6 +244,7 @@ class MicroscopeFrame(wx.Frame):
         ppanel = wx.Panel(self)
         self.pospanel = PositionPanel(ppanel, self,
                                       instrument=config['instrument'],
+                                      dbname=config.get('dbname', None),
                                       xyzmotors=config.get('xyzmotors', ()),
                                       offline_instrument=offline_inst,
                                       offline_xyzmotors=offline_xyz,
@@ -625,14 +627,16 @@ class MicroscopeFrame(wx.Frame):
         self.cam_adform  = cnf.get('ad_format', 'JPEG')
         self.cam_weburl  = cnf.get('web_url', 'http://xxx/image.jpg')
         self.cam_pubtype = cnf.get('publish_type', 'None')
-        self.cam_pubaddr = cnf.get('publish_addr', '164.54.160.93')
+        self.cam_pubaddr = cnf.get('publish_addr', 'None')
         self.cam_pubport = cnf.get('publish_port', '17166')
         self.cam_pubdelay = float(cnf.get('publish_delay', '0.25'))
         pvlog_prefix = cnf.get('pvlog_prefix', None)
+
+
         self.pvlog_pos = None
         if pvlog_prefix is not None:
             self.pvlog_pos = get_pv(f'{pvlog_prefix}PositionName')
-        
+
         self.calibrations = {}
         self.calib_current = None
         calibs = cnf.get('calibration', [])
@@ -656,7 +660,7 @@ class MicroscopeFrame(wx.Frame):
             pref = self.imgdir.split('_')[0]
         except:
             pref = 'Sample'
-        self.htmllog = f'{pref}Stage.html' 
+        self.htmllog = f'{pref}Stage.html'
         Path(self.imgdir).mkdir(parents=True, exist_ok=True)
         if not Path(self.htmllog).exists():
             self.begin_htmllog()
@@ -743,7 +747,7 @@ class MicroscopeFrame(wx.Frame):
                 if dx not in name:
                     delim = dx
                     break
-        
+
         txt = f"{delim}: {name:s} {delim} {tstamp:s} {delim} {imgfile} {delim} {img2file} {delim}"
         with open(self.imagelog, 'a') as fh:
             fh.write(f"{txt}\n")
@@ -771,8 +775,8 @@ class MicroscopeFrame(wx.Frame):
                 img2file = words[3]
             images[name] = imgfile, img2file, tstamp
         return images
-            
-            
+
+
     def save_videocam(self):
         fullpath = ''
         if HAS_CV2 and self.videocam is not None:
@@ -782,14 +786,14 @@ class MicroscopeFrame(wx.Frame):
             if self.vcap_thread is not None:
                 if self.vcap_thread.is_alive():
                     self.vcap_thread.join()
-                
+
             def do_videocapture():
                 cam = cv2.VideoCapture(self.videocam.strip())
                 status, image = cam.read()
                 if status:
                     cv2.imwrite(self.video_fullpath, image)
                 cam.release()
-                
+
             self.vcap_thread = Thread(target=do_videocapture)
             self.vcap_thread.start()
         return self.video_fullpath
@@ -1062,7 +1066,6 @@ class MicroscopeFrame(wx.Frame):
         if self.composite_done:
             self.composite_thread.join()
             self.composite_timer.Stop()
-            print("composite done!")
 
     def onBuildComposite(self, res):
         self.composite_done = False
@@ -1116,7 +1119,6 @@ class MicroscopeFrame(wx.Frame):
                    '# IY   IX     Y      X']
 
         for iy in range(nrows):
-            print(iy)
             xstage.put(xvals[0])
             ystage.put(yvals[iy], wait=True)
             for ix in range(nrows):
