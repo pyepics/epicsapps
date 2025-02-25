@@ -163,10 +163,14 @@ class ADMonoImagePanel(wx.Panel):
 
 
     def GetImageSize(self):
-        return  (self.adcam.get('image1:ArraySize0_RBV'),
-                 self.adcam.get('image1:ArraySize1_RBV'),
-                 self.adcam.get('image1:ArraySize2_RBV'))
+        a, b, c = (self.adcam.get('image1:ArraySize0_RBV'),
+                   self.adcam.get('image1:ArraySize1_RBV'),
+                   self.adcam.get('image1:ArraySize2_RBV'))
+        if c != 0 and a == 3:
+            return b, c 
+        return a, b
 
+    
     def onMotion(self, evt=None):
         """report motion events within image"""
         if self.motion_writer is None and self.thumbnail is None:
@@ -234,15 +238,8 @@ class ADMonoImagePanel(wx.Panel):
         if data is not None:
             if len(data) < 2:
                 return None
-            w, h, j = self.GetImageSize()
-            if j != 0 and w==3:
-                ncol = w
-                w = j # Color!!
-                data = data.reshape((ncol, h, w))
-            else:
-                data = data.reshape((h, w))
-            print("Get Image ", data.shape)
-
+            w, h = self.GetImageSize()
+            data = data.reshape((h, w))
             if self.flipv:
                 data = data[::-1, :]
             if self.fliph:
@@ -283,7 +280,7 @@ class ADMonoImagePanel(wx.Panel):
             self.thumbnail.colormap = self.colormap
 
         data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.001)
-        h, w = data.shape # self.GetImageSize()
+        h, w = data.shape 
 
         if callable(self.colormap):
             data = self.colormap(data)
@@ -309,7 +306,6 @@ class ADMonoImagePanel(wx.Panel):
         h, w = self.GetImageSize()
         if self.rot90 in (1, 3):
             w, h = h, w
-
         try:
             self.scale = max(0.10, min(0.98*fw/(w+0.1), 0.98*fh/(h+0.1)))
         except:
