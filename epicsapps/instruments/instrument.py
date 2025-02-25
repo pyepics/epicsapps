@@ -171,6 +171,8 @@ class InstrumentDB(SimpleDB):
     def get_instrument(self, name):
         """return instrument by name
         """
+        if isinstance(name, (tuple, list)) and len(name) > 5:
+            name = name[1]
         return self.get_rows('instrument', where={'name': name},
                              limit_one=True, none_if_empty=True)
 

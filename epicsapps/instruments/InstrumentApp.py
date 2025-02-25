@@ -371,8 +371,7 @@ class InstrumentFrame(wx.Frame):
         server.SetTimeStamp()
         req = server._request
         if server._inst is None and len(server.InstName)>1:
-            server._inst = self.db.get_instrument(server.InstName)
-
+            server._inst = self.db.get_instrument(server.InstName).name
         if server._moving and self.db.restore_complete():
             server.MoveDone()
 
@@ -395,7 +394,7 @@ class InstrumentFrame(wx.Frame):
 
         elif 'Inst' in req:
             instname = req.pop('Inst')
-            inst = self.db.get_instrument(instname)
+            inst = self.db.get_instrument(instname).name
             if inst is not None:
                 server._inst = inst
             server.InstOK = {True:1, False:0}[inst is not None]
