@@ -100,17 +100,21 @@ display a graph of the time dependence of the PV(s).  Up to 10 Plot
 windows can be used, and you can select which to use for any display
 by selecting "Window 1" through "Window 10".
 
-When used at the beamline or from a computer that can connect to the
-live beamline PVs, clicking on the "Live Plot for PV 1" will show the
-corresponding PV in a live :ref:`stripchart` application.
+Below the buttons to plot the logged values, are buttons for "Live
+Plots".  When used at the beamline or from a computer that can connect
+to the live beamline PVs, clicking on the "Live Plot for PV 1" will
+show the corresponding PV in a live :ref:`stripchart` application.
 
+Finally, below the "Live Plot" section, there are Date and Time
+entries to view Event Data.  We'll return to this in the next section
+:ref:`pvlogger_event_data`.
 
 As an example plot of one PV, with "Storage Ring Current (mA)" as PV
 1, clicking the "Show PV 1" button will show:
 
 .. image:: images/pvlogger_plotone.png
 
-selecting 3 PVs to plot together will show a plot like:
+selecting 2 PVs to plot together will show a plot like:
 
 .. image:: images/pvlogger_plotsel.png
 
@@ -137,9 +141,10 @@ For all plots, there is good interactivity including
 
 For more details, see `wxmplot`_.
 
+.. _pvlogger_event_data:
 
-Seeing "Event Data" -- non-numerica data
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Event Data: viewing non-numerica data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Some data is not numerical but text, and so not easily plotted. To be
 clear, PVs with enumerated or multi-bit binary values can be plotted,
@@ -163,6 +168,19 @@ and value in the table just below the plot. The most recently selected
 event will be shown at the top, with the previous selected events
 below that.  Clicking the "Clear Events" button on the plot window
 will clear the table.
+
+
+For PVs that are Epics Motors several fields besides the main Drive Value (see
+:ref:`pvlogger_motor_data`) will be logged.  These other values are
+not expected to change very often, and so will be displayed are Events
+for the Motor Drive PV.
+
+
+In addition to showing showing Events for each PV in a single table
+so that selected events can be placed on a plot, you can also use the
+date and time entries at the bottom of the main viewing panel to create a
+single table showing all events for a set of PVs for a selected time
+range.
 
 
 
@@ -261,6 +279,8 @@ events are captured.  Note also that it values for `.MDEL` are often
 not preserved by "save-restore" processes and so may be lost if the
 host IOC is restarted.
 
+
+.. _pvlogger_motor_data:
 
 Data for Epics Motors
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -426,3 +446,34 @@ The intention is that these files will be read by the PVLogger codes itself.
 
 Using the PVLog Data from Python
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To read the PVLogger data from a Python application, you can first
+read the data for the `pvlog` folder, and then data for individual
+log files::
+
+  >>> from epicsapps.pvlogger import read_logfolder
+  >>> folder = read_logfolder('pvlog')
+
+
+This reads the data about the folder, but does not read the individual
+logfiles.  To find the available PVs from the folder, use:::
+
+  >>> folder.pvs.keys()
+
+and to read an individual log file for a PV, use
+
+  >>> folder.read_logfile(PVNAME)
+
+which will put the data into the `data` attribute of
+`folder.pvs[PVNAME]`, so that you can extract the list of
+timestamps and values, from the `data` attribute of the `folder.pvs`::
+
+  >>> timestamps = folder.pvs[PVNAME].data.timestamps
+  >>> values     = folder.pvs[PVNAME].data.values
+
+and so forth.  To plot the data, as with the PV Logger GUI, you could
+sdo something like::
+
+  >>> from wxmplot.interactive import plot
+  >>> dates = folder.pvs['S13ID:USID:TaperGapM.VAL'].data.get_mpldates()
+  >>> plot(dates, values, use_dates=True)

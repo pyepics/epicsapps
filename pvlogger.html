@@ -11,7 +11,7 @@
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     
-    <script src="_static/documentation_options.js?v=f677d9b7"></script>
+    <script src="_static/documentation_options.js?v=520f5dae"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -132,13 +132,17 @@ For most PVs, the data will be numerical, and the “Show” buttons will
 display a graph of the time dependence of the PV(s).  Up to 10 Plot
 windows can be used, and you can select which to use for any display
 by selecting “Window 1” through “Window 10”.</p>
-<p>When used at the beamline or from a computer that can connect to the
-live beamline PVs, clicking on the “Live Plot for PV 1” will show the
-corresponding PV in a live <a class="reference internal" href="stripchart.html#stripchart"><span class="std std-ref">Strip Chart Display</span></a> application.</p>
+<p>Below the buttons to plot the logged values, are buttons for “Live
+Plots”.  When used at the beamline or from a computer that can connect
+to the live beamline PVs, clicking on the “Live Plot for PV 1” will
+show the corresponding PV in a live <a class="reference internal" href="stripchart.html#stripchart"><span class="std std-ref">Strip Chart Display</span></a> application.</p>
+<p>Finally, below the “Live Plot” section, there are Date and Time
+entries to view Event Data.  We’ll return to this in the next section
+<a class="reference internal" href="#pvlogger-event-data"><span class="std std-ref">Event Data: viewing non-numerica data</span></a>.</p>
 <p>As an example plot of one PV, with “Storage Ring Current (mA)” as PV
 1, clicking the “Show PV 1” button will show:</p>
 <img alt="_images/pvlogger_plotone.png" src="_images/pvlogger_plotone.png" />
-<p>selecting 3 PVs to plot together will show a plot like:</p>
+<p>selecting 2 PVs to plot together will show a plot like:</p>
 <img alt="_images/pvlogger_plotsel.png" src="_images/pvlogger_plotsel.png" />
 <p>For PV data that is in the form of discrete states or enumerated data
 (often from “multi-bit binary data” Epics records), the plot will show
@@ -159,8 +163,8 @@ where you can adjust titles and colors.</p></li>
 </ol>
 </div></blockquote>
 <p>For more details, see <a class="reference external" href="https://newville.github.io/wxmplot/">wxmplot</a>.</p>
-<section id="seeing-event-data-non-numerica-data">
-<h3>Seeing “Event Data” – non-numerica data<a class="headerlink" href="#seeing-event-data-non-numerica-data" title="Link to this heading">¶</a></h3>
+<section id="event-data-viewing-non-numerica-data">
+<span id="pvlogger-event-data"></span><h3>Event Data: viewing non-numerica data<a class="headerlink" href="#event-data-viewing-non-numerica-data" title="Link to this heading">¶</a></h3>
 <p>Some data is not numerical but text, and so not easily plotted. To be
 clear, PVs with enumerated or multi-bit binary values can be plotted,
 as shown above.  For PV values that is changing strings (or long
@@ -179,6 +183,15 @@ and value in the table just below the plot. The most recently selected
 event will be shown at the top, with the previous selected events
 below that.  Clicking the “Clear Events” button on the plot window
 will clear the table.</p>
+<p>For PVs that are Epics Motors several fields besides the main Drive Value (see
+<a class="reference internal" href="#pvlogger-motor-data"><span class="std std-ref">Data for Epics Motors</span></a>) will be logged.  These other values are
+not expected to change very often, and so will be displayed are Events
+for the Motor Drive PV.</p>
+<p>In addition to showing showing Events for each PV in a single table
+so that selected events can be placed on a plot, you can also use the
+date and time entries at the bottom of the main viewing panel to create a
+single table showing all events for a set of PVs for a selected time
+range.</p>
 </section>
 </section>
 <section id="collecting-pvlogger-data">
@@ -260,7 +273,7 @@ not preserved by “save-restore” processes and so may be lost if the
 host IOC is restarted.</p>
 </section>
 <section id="data-for-epics-motors">
-<h3>Data for Epics Motors<a class="headerlink" href="#data-for-epics-motors" title="Link to this heading">¶</a></h3>
+<span id="pvlogger-motor-data"></span><h3>Data for Epics Motors<a class="headerlink" href="#data-for-epics-motors" title="Link to this heading">¶</a></h3>
 <p>PV Logger generally assumes that only the requested field for a PV is
 collected. For Epics Motors that are requested to be logged, the VAL
 (drive) field will generally be requested.   In addition, all Epics
@@ -413,6 +426,36 @@ list of enumeration states, perhaps:</p>
 </section>
 <section id="using-the-pvlog-data-from-python">
 <h3>Using the PVLog Data from Python<a class="headerlink" href="#using-the-pvlog-data-from-python" title="Link to this heading">¶</a></h3>
+<p>To read the PVLogger data from a Python application, you can first
+read the data for the <cite>pvlog</cite> folder, and then data for individual
+log files:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">epicsapps.pvlogger</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_logfolder</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">folder</span> <span class="o">=</span> <span class="n">read_logfolder</span><span class="p">(</span><span class="s1">&#39;pvlog&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>This reads the data about the folder, but does not read the individual
+logfiles.  To find the available PVs from the folder, use::</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">folder</span><span class="o">.</span><span class="n">pvs</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>and to read an individual log file for a PV, use</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">folder</span><span class="o">.</span><span class="n">read_logfile</span><span class="p">(</span><span class="n">PVNAME</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>which will put the data into the <cite>data</cite> attribute of
+<cite>folder.pvs[PVNAME]</cite>, so that you can extract the list of
+timestamps and values, from the <cite>data</cite> attribute of the <cite>folder.pvs</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">timestamps</span> <span class="o">=</span> <span class="n">folder</span><span class="o">.</span><span class="n">pvs</span><span class="p">[</span><span class="n">PVNAME</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">timestamps</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">values</span>     <span class="o">=</span> <span class="n">folder</span><span class="o">.</span><span class="n">pvs</span><span class="p">[</span><span class="n">PVNAME</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">values</span>
+</pre></div>
+</div>
+<p>and so forth.  To plot the data, as with the PV Logger GUI, you could
+sdo something like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">wxmplot.interactive</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">dates</span> <span class="o">=</span> <span class="n">folder</span><span class="o">.</span><span class="n">pvs</span><span class="p">[</span><span class="s1">&#39;S13ID:USID:TaperGapM.VAL&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="o">.</span><span class="n">get_mpldates</span><span class="p">()</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">plot</span><span class="p">(</span><span class="n">dates</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">use_dates</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
 </section>
 </section>
 </section>
@@ -429,7 +472,7 @@ list of enumeration states, perhaps:</p>
     <ul>
 <li><a class="reference internal" href="#">PV Logger</a><ul>
 <li><a class="reference internal" href="#viewing-pvlogger-data">Viewing PVLogger Data</a><ul>
-<li><a class="reference internal" href="#seeing-event-data-non-numerica-data">Seeing “Event Data” – non-numerica data</a></li>
+<li><a class="reference internal" href="#event-data-viewing-non-numerica-data">Event Data: viewing non-numerica data</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#collecting-pvlogger-data">Collecting PVLogger Data</a><ul>
