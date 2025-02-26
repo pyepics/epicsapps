@@ -86,7 +86,7 @@ def run_pvlogger(configfile=None, prompt=False, **kws):
     if configfile is not None:
         PVLogger(configfile=configfile, prompt=prompt).run()
     else:
-        print("cannot run PVLogger: configfile needed")
+        run_pvlogviewer(prompt=prompt)
 
 def run_pvlogviewer(prompt=False):
     """PV Logger"""
