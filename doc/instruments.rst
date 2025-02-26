@@ -29,7 +29,8 @@ or click on the icon.
 A small window to select an Epics Instrument File, like this
 
 .. image:: images/Inst_Startup.png
-
+    :width: 50%	
+	   
 If this is your first time using the application, choose a name, and hit return
 to start a new Instrument File.  The next time you run Epics Instruments, it
 should remember which files you have recently used, and present you with a
@@ -55,15 +56,14 @@ If you add a few PVs and click OK, the PVs will connect, and you will see a
 screen something like this
 
 .. image:: images/InstMain_Stage.png
-
+    :width: 75%	
 
 
 Editing an Exisiting Instrument
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-
 .. image:: images/Inst_Edit.png
-
+    :width: 40%	
 
 
 The Instrument File
