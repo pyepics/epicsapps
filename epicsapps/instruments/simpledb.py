@@ -153,8 +153,7 @@ class SimpleDB(object):
 
         tables = self.tables = self.metadata.tables
 
-        if self.logfile is None and server.startswith('sqlit'):
-            self.logfile = f"{self.dbname:s}.log"
+        if self.logfile is not None:
             logging.basicConfig()
             logger = logging.getLogger('sqlalchemy.engine')
             logger.addHandler(logging.FileHandler(self.logfile))
