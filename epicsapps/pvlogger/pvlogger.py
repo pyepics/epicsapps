@@ -282,6 +282,13 @@ class PVLogger():
             self.datadir = os.getcwd()
         self.datadir = Path(self.datadir)
         pvlog_folder = Path(self.datadir, self.folder).absolute()
+        if pvlog_folder.exists():
+            tfile = Path(pvlog_folder, TIMESTAMP_FILE)
+            cfile = Path(pvlog_folder, '_PVLOG.yaml')
+            lfile = Path(pvlog_folder, '_PVLOG_filelist.txt')
+            if tfile.exists() and cfile.exists() and lfile.exists():
+                raise ValueError(f"PVLOG folder '{pvlog_folder}' appears to be in use")
+
         pvlog_folder.mkdir(mode=0o755, parents=False, exist_ok=True)
         os.chdir(pvlog_folder)
 
