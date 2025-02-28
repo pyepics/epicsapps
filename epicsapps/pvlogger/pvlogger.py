@@ -12,18 +12,17 @@ from datetime import datetime, timedelta
 from dateutil import parser as dateparser
 import numpy as np
 import yaml
-from pyshortcuts import debugtimer, fix_filename, new_filename, isotime, gformat
+from pyshortcuts import fix_filename, new_filename, isotime, gformat
 
-from epics import get_pv, caget, PV
+from epics import get_pv, PV
 from epics import ca
 ca.WITH_CA_MESSAGES = True
 ca.initialize_libca()
 
 from ..instruments import InstrumentDB
 
-from ..utils import (get_pvtypes, get_pvdesc, normalize_pvname)
+from ..utils import normalize_pvname
 from .configfile import PVLoggerConfig
-
 
 
 STOP_FILE = '_PVLOG_stop.txt'
@@ -65,7 +64,7 @@ def save_pvlog_timestamp():
     save timestamp to _PVLOG_timestamp.txt to show when logger last ran
     """
     macid, pid = get_machineid_process()
-    with open(TIMESTAMP_FILE, 'w') as fh:
+    with open(TIMESTAMP_FILE, 'w', encoding='utf-8') as fh:
         fh.write(f'{int(time())} {macid} {pid} 0 0 0 \n\n')
 
 def check_pvlog_timestamp():
@@ -78,7 +77,7 @@ def check_pvlog_timestamp():
     line, words = '', []
     if Path(TIMESTAMP_FILE).exists():
         line = ''
-        with open(TIMESTAMP_FILE, 'r') as fh:
+        with open(TIMESTAMP_FILE, 'r', encoding='utf-8') as fh:
             line = fh.readlines()[0]
     else:
         return True
@@ -117,7 +116,7 @@ class LoggedPV():
                          connection_callback=self.onConnect)
 
     def write(self, txt, flush=False):
-        with open(self.fpath, 'a') as fh:
+        with open(self.fpath, 'a', encoding='utf-8') as fh:
             fh.write(txt)
             if flush:
                 fh.flush()
@@ -126,7 +125,7 @@ class LoggedPV():
 
     def flush(self):
         self.next_flushtime = time() + 15.0
-        with open(self.fpath, 'a') as fh:
+        with open(self.fpath, 'a', encoding='utf-8') as fh:
             fh.flush()
             self.needs_flush = False
 
@@ -260,15 +259,17 @@ class LoggedPV():
             self.needs_header = False
         flush = self.needs_flush and (time() > self.next_flushtime)
         self.write('\n'.join(buff), flush=flush)
-        # with open(RUNLOG_FILE, 'a') as fh:
-        #     fh.write(f'wrote {len(buff)} points for {self.pvname}\n')
+
 
 class PVLogger():
     about_msg =  """Epics PV Logger, CLI
  Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, configfile=None, prompt=None, wxparent=None):
+    def __init__(self, configfile=None):
         self.pvs = {}
+        self.end_date = None
+        self.end_timestamp = None
+
         if configfile is not None:
             self.read_configfile(configfile)
 
@@ -389,14 +390,14 @@ class PVLogger():
                     self.add_pv(f"{prefix}{mfield}",
                                 desc=f"{lpv.desc} {mfield}",  mdel=None)
 
-        with open('_PVLOG.yaml', 'w') as fh:
+        with open('_PVLOG.yaml', 'w', encoding='utf-8') as fh:
             yaml.safe_dump(out, fh, default_flow_style=False, sort_keys=False)
 
         pfiles = ["# PV Name                                |    Log File "]
         for lpv in self.pvs.values():
             pfiles.append(f"{lpv.pvname:40s} | {lpv.filename:40s}")
         pfiles.append("")
-        with open('_PVLOG_filelist.txt', 'w') as fh:
+        with open('_PVLOG_filelist.txt', 'w', encoding='utf-8') as fh:
             fh.write('\n'.join(pfiles))
         # count connected PVs
         sleep(0.1)
@@ -405,8 +406,8 @@ class PVLogger():
         for loggedpv in self.pvs.values():
             if loggedpv.pv.connected:
                 nconn += 1
-        with open(RUNLOG_FILE, 'a') as fh:
-            fh.write(f'Connected to {nconn} of {ntotal} Logged PVs: {isotime()}\n')
+        with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+            fh.write(f'{isotime()}: Connected to {nconn} of {ntotal} Logged PVs\n')
 
 
     def add_pv(self, pvname, desc=None, mdel=None, descpv=None, mdelpv=None):
@@ -431,8 +432,8 @@ class PVLogger():
         """
         reqfile = Path("_PVLOG_requests.yaml")
         if reqfile.exists():
-            with open(RUNLOG_FILE, 'a') as fh:
-                fh.write(f'read _PVLOG_requests.yaml at {isotime()}\n')
+            with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+                fh.write(f'{isotime()}: read _PVLOG_requests.yaml\n')
 
             rconfig = PVLoggerConfig(reqfile.as_posix())
             for section in ('pvs', 'instruments'):
@@ -475,17 +476,17 @@ class PVLogger():
             except:
                 pass
         if not check_pvlog_timestamp():
-            with open(RUNLOG_FILE, 'a') as fh:
+            with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
                 macid, pid = get_machineid_process()
-                fh.write(f'not logging process! mac={macid}, pid={pid}\n')
+                fh.write(f'{isotime()}: not logging process! mac={macid}, pid={pid}\n')
             exit_request = True
 
         return exit_request
 
     def finish(self):
         """finish data collection"""
-        with open(RUNLOG_FILE, 'a') as fh:
-            fh.write(f'got exit signal at {isotime()}\n')
+        with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+            fh.write(f'{isotime()}: got exit signal\n')
         for pv in self.pvs.values():
             pv.pv.clear_callbacks()
             pv.save_current_value()
@@ -493,8 +494,8 @@ class PVLogger():
         for pv in self.pvs.values():
             pv.write_data()
             pv.flush()
-        with open(RUNLOG_FILE, 'a') as fh:
-            fh.write(f'exit at {isotime()}\n')
+        with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+            fh.write(f'{isotime()}: finishing\n')
 
     def run(self):
         """run, collecting data until the exit signal is given"""
@@ -503,26 +504,47 @@ class PVLogger():
         last_logtime = 0
         sleep_time = SLEEPTIME + random.random()/10.0
         nloops = 0
+        messages = []
         while True:
             sleep(sleep_time)
             for pv in self.pvs.values():
-                if len(pv.data) > 0:
-                    pv.write_data()
+                try:
+                    if len(pv.data) > 0:
+                        pv.write_data()
+                except:
+                    messages.append(f"{isotime()}: error writing data for {pv}")
             now = time()
             if now > last_update + UPDATETIME:
-                self.look_for_new_pvs()
-                save_pvlog_timestamp()
-                nloops += 1
-                last_update = now
+                try:
+                    self.look_for_new_pvs()
+                    save_pvlog_timestamp()
+                    nloops += 1
+                    last_update = now
+                except:
+                    messages.append(f"{isotime()}: error in processing timestamps")
+                try:
+                    if nloops % 3 == 0:
+                        if self.look_for_exit_signal():
+                            messages.append(f"{isotime()}: got exit signal")
+                            self.finish()
+                            break
 
-                if nloops % 3 == 0:
-                    if self.look_for_exit_signal():
-                        self.finish()
-                        break
-                if nloops > 10000:
-                    nloops = 0
+                    if nloops > 10000:
+                        nloops = 0
+                except:
+                    messages.append(f"{isotime()}: error looking for exit signal")
 
             if now > last_logtime + LOGTIME:
-                with open(RUNLOG_FILE, 'a') as fh:
-                    fh.write(f'collecting: {isotime()}\n')
+                messages.append(f'{isotime()}: collecting')
+
+            if len(messages) > 0:
+                messages.append('')
+                with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+                    fh.write("\n".join(messages))
                 last_logtime = now
+                messages = []
+        # done
+        messages.append("{isotime()}: collection done")
+        messages.append('')
+        with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+            fh.write("\n".join(messages))
