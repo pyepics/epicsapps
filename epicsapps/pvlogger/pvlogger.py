@@ -265,7 +265,7 @@ class PVLogger():
     about_msg =  """Epics PV Logger, CLI
  Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, configfile=None):
+    def __init__(self, configfile=None, prompt=None):
         self.pvs = {}
         self.end_date = None
         self.end_timestamp = None
