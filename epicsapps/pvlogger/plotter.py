@@ -13,7 +13,7 @@ import wx.dataview as dv
 from matplotlib import dates
 
 from wxutils import (get_cwd, MenuItem, LEFT, pack, HLine,
-                     GridPanel, SimpleText, Button)
+                     GridPanel, SimpleText, Button, DARK_THEME)
 from wxmplot import PlotPanel
 from pyshortcuts import fix_filename, gformat
 
@@ -131,7 +131,10 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if panelkws is not None:
             self.panelkw.update(panelkws)
 
+        if theme is None or theme.lower().startwith('<auto'):
+            theme = 'dark' if DARK_THEME else 'white-background'
         self.theme = theme
+
         if axisbg is not None:
             self.panelkws['axisbg'] = axisbg
         self.BuildFrame()

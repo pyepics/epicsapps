@@ -91,7 +91,7 @@ YAML_WILDCARD = 'PVLogger Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
 PLOTOPTS = {'use_dates': True, 'show_legend': True,
             'xlabel': 'time', 'linewidth': 2.5,
             'marker': '+', 'markersize': 2.5,
-            'theme': 'white-background',
+            'theme': '<auto>',
             'fullbox': False,
             'drawstyle': 'steps-post',
              'yaxes_tracecolor': True,
