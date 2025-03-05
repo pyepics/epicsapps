@@ -1004,14 +1004,12 @@ class PositionPanel(wx.Panel):
                 self.positions[name] = {'image': img, 'timestamp': ts,
                                         'position': tmp_pos, 'notes': notes}
             except:
-                print( 'Cannot set', name, tmp_pos, notes, img)
+                print('Could not set position ', name, tmp_pos)
             try:
-                self.instdb.save_position(self.instrument, name, tmp_pos,
-                                          notes=json.dumps(notes), image=img)
+                self.instdb.save_position(name, self.instrument, tmp_pos,
+                                          notes=json.dumps(notes))
             except:
-                print( 'Could save ', name, tmp_pos, notes, img)
-            #print(" Import Pos ", name, img, notes)
-
+                print( 'Could not save position ', name, tmp_pos)
         self.set_positions(self.positions)
 
         return 0
