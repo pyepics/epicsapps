@@ -167,10 +167,10 @@ class ADMonoImagePanel(wx.Panel):
                    self.adcam.get('image1:ArraySize1_RBV'),
                    self.adcam.get('image1:ArraySize2_RBV'))
         if c != 0 and a == 3:
-            return b, c 
+            return b, c
         return a, b
 
-    
+
     def onMotion(self, evt=None):
         """report motion events within image"""
         if self.motion_writer is None and self.thumbnail is None:
@@ -253,7 +253,7 @@ class ADMonoImagePanel(wx.Panel):
                 data = data[::-1, ::-1].transpose()
 
             maxval = data.max()
-            
+
             if maxval > NMAX_INT32:
                 data[np.where(data>NMAX_INT32)] = -1
             elif (maxval > NMAX_INT16 and maxval < MAX_INT16 + 15): # data in 16-bit
@@ -281,21 +281,26 @@ class ADMonoImagePanel(wx.Panel):
             self.thumbnail.contrast_levels = self.contrast_levels
             self.thumbnail.colormap = self.colormap
 
-        data = (255.0*(np.clip(data, jmin, jmax) - jmin)/(jmax+0.001))
-        h, w  = data.shape 
+        data = (255.0*(np.clip(data, jmin, jmax) - jmin)/(jmax+0.0001)).astype('uint8')
+        print("Grabbed Wx ", data.dtype, data.min(), data.max(), data.mean())
+        h, w  = data.shape
         if callable(self.colormap):
             data = self.colormap(data)
             if data.shape[2] == 4: # with alpha channel
-                image = wx.Image(w, h,
-                                 (data[:,:,:3]*255.).astype('uint8'),
-                                 (data[:,:,3]*255.).astype('uint8'))
+                image = wx.Image(w, h, (data[:,:,:3], data[:,:,3]))
+#                                 (data[:,:,:3]*255.).astype('uint8'),
+#                                 (data[:,:,3]*255.).astype('uint8'))
             else:
-                image = wx.Image(w, h, (data*255.).astype('uint8'))
+#                image = wx.Image(w, h, (data*255.).astype('uint8'))
+                image = wx.Image(w, h, data)
         else:
+#            rgb = np.zeros((h, w, 3), dtype='float')
+#            rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
+#            image = wx.Image(w, h, (rgb).astype('uint8'))
             rgb = np.zeros((h, w, 3), dtype='uint8')
             rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
             image = wx.Image(w, h, rgb)
-        
+
         return image.Scale(int(self.scale*w), int(self.scale*h))
 
     def onSize(self, evt=None):
