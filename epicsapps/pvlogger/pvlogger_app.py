@@ -25,7 +25,6 @@ import wx.lib.scrolledpanel as scrolled
 import wx.lib.agw.flatnotebook as flat_nb
 import wx.lib.mixins.inspection
 import wx.lib.filebrowsebutton as filebrowse
-import wx.lib.masked as masked
 
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
