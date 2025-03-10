@@ -106,10 +106,10 @@ class ADMonoImagePanel(wx.Panel):
     """Image Panel for monochromatic Area Detector"""
 
     ad_attrs = ('image1:ArrayData',
-                'image1:ColorMode_RBV',
+                #'image1:ColorMode_RBV',
                 'image1:ArraySize0_RBV',
                 'image1:ArraySize1_RBV',
-                'image1:ArraySize2_RBV',
+                #'image1:ArraySize2_RBV',
                 'cam1:ArrayCounter_RBV')
 
     def __init__(self, parent, prefix=None, writer=None,
@@ -163,13 +163,8 @@ class ADMonoImagePanel(wx.Panel):
 
 
     def GetImageSize(self):
-        a, b, c = (self.adcam.get('image1:ArraySize0_RBV'),
-                   self.adcam.get('image1:ArraySize1_RBV'),
-                   self.adcam.get('image1:ArraySize2_RBV'))
-        if c != 0 and a == 3:
-            return b, c
-        return a, b
-
+        return (self.adcam.get('image1:ArraySize0_RBV'),
+                self.adcam.get('image1:ArraySize1_RBV'))
 
     def onMotion(self, evt=None):
         """report motion events within image"""
@@ -232,13 +227,11 @@ class ADMonoImagePanel(wx.Panel):
     def GrabNumpyImage(self):
         """get raw image data, as numpy ndarray, correctly shaped"""
         if True:
-            data = self.adcam.PV('image1:ArrayData').get()
+            data = self.adcam.PV('image1:ArrayData').get().astype('float32')
         else: # except:
             data = None
 
         if data is not None:
-            if len(data) < 2:
-                return None
             w, h = self.GetImageSize()
             data = data.reshape((h, w))
             if self.flipv:
@@ -259,9 +252,9 @@ class ADMonoImagePanel(wx.Panel):
             elif (maxval > NMAX_INT16 and maxval < MAX_INT16 + 15): # data in 16-bit
                 data[np.where(data>NMAX_INT16)] = -1
             data[np.where(data<-1)] = -1
-        # poll()
+        poll()
         return data
-
+    
     def GrabWxImage(self):
         """get wx Image:
         - scaled in size
@@ -282,24 +275,18 @@ class ADMonoImagePanel(wx.Panel):
             self.thumbnail.colormap = self.colormap
 
         data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.0001)
-        # print("Grabbed Wx ", data.dtype, data.min(), data.max(), data.mean())
         h, w  = data.shape
         if callable(self.colormap):
-            data = self.colormap(data)
+            data = self.colormap(data)*255
             if data.shape[2] == 4: # with alpha channel
-                image = wx.Image(w, h,
-                                 (data[:,:,:3]*255.).astype('uint8'),
-                                 (data[:,:,3]*255.).astype('uint8'))
+                image = wx.Image(w, h, (data[:,:,:3]).astype('uint8'),
+                                       (data[:,:,3]).astype('uint8'))
             else:
-                image = wx.Image(w, h, (data*255.).astype('uint8'))
+                image = wx.Image(w, h, data.astype('uint8'))
         else:
             rgb = np.zeros((h, w, 3), dtype='float')
-            rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
-            image = wx.Image(w, h, (rgb*255.0).astype('uint8'))
-#            rgb = np.zeros((h, w, 3), dtype='uint8')
-#            rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
-#            image = wx.Image(w, h, rgb)
-
+            rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data*255.0
+            image = wx.Image(w, h, rgb.astype('uint8'))
         return image.Scale(int(self.scale*w), int(self.scale*h))
 
     def onSize(self, evt=None):
