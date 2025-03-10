@@ -281,25 +281,24 @@ class ADMonoImagePanel(wx.Panel):
             self.thumbnail.contrast_levels = self.contrast_levels
             self.thumbnail.colormap = self.colormap
 
-        data = (255.0*(np.clip(data, jmin, jmax) - jmin)/(jmax+0.0001)).astype('uint8')
-        print("Grabbed Wx ", data.dtype, data.min(), data.max(), data.mean())
+        data = (np.clip(data, jmin, jmax) - jmin)/(jmax+0.0001)
+        # print("Grabbed Wx ", data.dtype, data.min(), data.max(), data.mean())
         h, w  = data.shape
         if callable(self.colormap):
             data = self.colormap(data)
             if data.shape[2] == 4: # with alpha channel
-                image = wx.Image(w, h, (data[:,:,:3], data[:,:,3]))
-#                                 (data[:,:,:3]*255.).astype('uint8'),
-#                                 (data[:,:,3]*255.).astype('uint8'))
+                image = wx.Image(w, h,
+                                 (data[:,:,:3]*255.).astype('uint8'),
+                                 (data[:,:,3]*255.).astype('uint8'))
             else:
-#                image = wx.Image(w, h, (data*255.).astype('uint8'))
-                image = wx.Image(w, h, data)
+                image = wx.Image(w, h, (data*255.).astype('uint8'))
         else:
-#            rgb = np.zeros((h, w, 3), dtype='float')
-#            rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
-#            image = wx.Image(w, h, (rgb).astype('uint8'))
-            rgb = np.zeros((h, w, 3), dtype='uint8')
+            rgb = np.zeros((h, w, 3), dtype='float')
             rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
-            image = wx.Image(w, h, rgb)
+            image = wx.Image(w, h, (rgb*255.0).astype('uint8'))
+#            rgb = np.zeros((h, w, 3), dtype='uint8')
+#            rgb[:, :, 0] = rgb[:, :, 1] = rgb[:, :, 2] = data
+#            image = wx.Image(w, h, rgb)
 
         return image.Scale(int(self.scale*w), int(self.scale*h))
 
