@@ -406,7 +406,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def onPVcolor(self, event=None, row=None, **kws):
         self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
-                                            trace=row-1)
+                                            trace=row)
         self.needs_refresh = True
 
     def onPVwid(self, event=None, row=None, **kws):
