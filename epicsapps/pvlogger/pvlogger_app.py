@@ -30,10 +30,11 @@ FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
 from epics import get_pv
 
-from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
-                     FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     HLine, GUIColors, COLORS, Button, flatnotebook,
-                     Choice, FileSave, FileCheckList, LEFT, RIGHT, pack)
+from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem,
+                     OkCancel, Popup, FileOpen, SavedParameterDialog,
+                     Font, FloatSpin, HLine, GUIColors, COLORS,
+                     Button, flatnotebook, Choice, FileSave,
+                     FileCheckList, LEFT, RIGHT, pack)
 
 from wxmplot.colors import hexcolor
 from pyshortcuts import debugtimer, uname
@@ -96,6 +97,14 @@ PLOTOPTS = {'use_dates': True, 'show_legend': True,
              'yaxes_tracecolor': True,
              'timezone': TZONE }
 
+def update_choice(wid, values, default=0):
+    cur = wid.GetStringSelection()
+    wid.Clear()
+    wid.SetItems(values)
+    if cur in values:
+        wid.SetStringSelection(cur)
+    else:
+        wid.SetSelection(default)        
 
 class InstrumentDataModel(dv.DataViewIndexListModel):
     def __init__(self):
@@ -487,6 +496,9 @@ Matt Newville <newville@cars.uchicago.edu>
         opts['choices'] = []
         wids['instruments'] = Choice(panel, action=self.onSelectInst, **opts)
 
+        wids['save_inst'] = TextCtrl(panel, '', action=self.onSaveInst,
+                                     size=(350, -1))
+        
         for i in range(4):
             wids[f'pv{i+1}'] = Choice(panel, **opts)
             wids[f'col{i+1}'] = csel.ColourSelect(panel, -1, '',PLOT_COLORS[i],
@@ -546,6 +558,8 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['col4'])
 
         panel.Add((5, 5))
+        panel.Add(slabel(' Save as Instrument: '), dcol=1, newrow=True)
+        panel.Add(wids['save_inst'], dcol=3)
         panel.Add(slabel(' Plot/Show Table: '), dcol=1, newrow=True)
         panel.Add(wids['plotone'], dcol=1)
         panel.Add(wids['plotsel'], dcol=1)
@@ -785,6 +799,25 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.nb.SetSelection(1)
 
+    def onSaveInst(self, event=None):
+        iname = self.wids['save_inst'].GetValue()
+        cur_insts = self.log_folder.instruments
+        pvnames  = []
+        for i in range(4):
+            pvdesc = self.wids[f'pv{i+1}'].GetStringSelection()
+            if pvdesc == 'None':
+                continue
+
+            pvnames.append(self.pvmap[pvdesc])
+            
+        self.log_folder.instruments[iname] = pvnames
+
+        update_choice(self.wids['instruments'], list(self.log_folder.instruments))
+        ifile = Path(self.log_folder.folder, '_PVLOG_instruments.txt').absolute()
+        with open(ifile, 'w', encoding='utf-8') as fh:
+            yaml.safe_dump(self.log_folder.instruments, fh,
+                           default_flow_style=False, sort_keys=False)        
+              
     def onSelectInstPVs(self, event=None):
         iname = self.wids['instruments'].GetStringSelection()
         self.pvlist.select_none()
@@ -794,7 +827,8 @@ Matt Newville <newville@cars.uchicago.edu>
             if desc is not None:
                 sel.append(desc)
         self.pvlist.SetCheckedStrings(sel)
-
+        self.onUseSelected()
+        
     def onSelNone(self, event=None):
         self.pvlist.select_none()
 
@@ -1049,15 +1083,6 @@ is not a valid PV Logger Data Folder""",
             self.pvmap_r[pvname] = desc
             self.pvlist.Append(desc)
 
-        def update_choice(wid, values, default=0):
-            cur = wid.GetStringSelection()
-            wid.Clear()
-            wid.SetItems(values)
-            if cur in values:
-                wid.SetStringSelection(cur)
-            else:
-                wid.SetSelection(default)
-
         pvnames = ['None',]
         pvnames.extend(list(self.pvmap.keys()))
         update_choice(self.wids['instruments'], list(self.log_folder.instruments))
@@ -1128,11 +1153,17 @@ is not a valid PV Logger Data Folder""",
         self.needs_update = True
         self.force_redraw  = True
 
+    def get_plotpanel(self):
+        wname = self.wids['plot_win'].GetStringSelection()
+        pframe = self.show_plotwin(wname)
+        return pframe.panel
+        
     def onPVshow(self, event=None, row=0):
         if not event.IsChecked():
-            trace = self.plotpanel.conf.get_mpl_line(row)
+            plotpanel = self.get_plotpanel()
+            trace = plotpanel.conf.get_mpl_line(row)
             trace.set_data([], [])
-            self.plotpanel.canvas.draw()
+            plotpanel.canvas.draw()
         self.needs_refresh = True
 
     def onPVchoice(self, event=None, row=None, **kws):
@@ -1140,22 +1171,27 @@ is not a valid PV Logger Data Folder""",
         pvname = self.pvchoices[row].GetStringSelection()
         if pvname in self.pv_desc:
             self.pvlabels[row].SetValue(self.pv_desc[pvname])
+        plotpanel = self.get_plotpanel()            
         for i in range(len(self.pvlist)+1):
             try:
-                trace = self.plotpanel.conf.get_mpl_line(row-1)
+                trace = plotpanel.conf.get_mpl_line(row-1)
                 trace.set_data([], [])
             except:
                 pass
-        self.plotpanel.conf.set_viewlimits()
+        plotpanel.conf.set_viewlimits()
 
     def onPVcolor(self, event=None, row=None, **kws):
-        self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
-                                            trace=row-1)
+        plotpanel = self.get_plotpanel()             
+        plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
+                                       trace=row-1)
         self.needs_refresh = True
 
     def write_message(self, s, panel=0):
         """write a message to the Status Bar"""
-        self.SetStatusText(s, panel)
+        try:
+            self.SetStatusText(s, panel)
+        except:
+            pass
 
 
     def onAbout(self, event=None):
