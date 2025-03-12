@@ -25,6 +25,7 @@ TINY = 1.e-7
 MAX_FILESIZE = 400*1024*1024  # 400 Mb limit
 COMMENTCHARS = '#;%*!$'
 
+
 tzname = os.environ.get('TZ', 'US/Central')
 TZONE = pytz.timezone(tzname)
 
@@ -296,7 +297,7 @@ class PVLogFolder:
             cfile = Path(self.folder, '_PVLOG.toml')
             if not cfile.exists():
                 raise ValueError(f"'{self.folder}' is not a valid PVlog folder: no config file")
-        ctext = open(cfile, 'r').read()
+        ctext = open(cfile, 'r', encoding='utf-8').read()
         if form == 'yaml':
             conf = yaml.load(ctext, Loader=yaml.Loader)
         else:
@@ -316,13 +317,21 @@ class PVLogFolder:
                                          monitor_delta=words[2])
 
         self.motors = conf['motors']
+        # look for extra instrumens, as added during/after collection
+        conf['extra_instruments'] = {}
+        xin_file = Path(self.folder, '_PVLOG_instruments.txt')
+        if xin_file.exists():
+            with open(xin_file, 'r', encoding='utf-8') as fh:
+                xtext = fh.read()
+            xconf = yaml.load(xtext, Loader=yaml.Loader)
+            conf['instruments'].update(xconf)
         self.instruments = conf['instruments']
-
+        
         # determine start and stop time
         start_time, stop_time = 0, 0
         tstamp_file = Path(self.folder, TIMESTAMP_FILE)
         if tstamp_file.exists():
-            with open(tstamp_file, 'r') as fh:
+            with open(tstamp_file, 'r', encoding='utf-8') as fh:
                 line = fh.readline()
                 words = line.split()
                 stop_time = float(words[0])
