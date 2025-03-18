@@ -127,13 +127,13 @@ class MoveToDialog(wx.Dialog):
         pos_pvs = self.db.get_position_values(thispos.name, self.instname)
         for pvname, save_val in pos_pvs.items():
             pvname = normalize_pvname(pvname)
-            desc = get_pvdesc(pvname)
-            if desc != pvname:
-                desc = f"{desc} ({pvname})"
-            curr_val = None
-            if pvname in self.pvs:
-                curr_val = self.pvs[pvname].get(as_string=True)
-
+            desc = pvname
+            curr_val = 'not connected'
+            if pvname in self.pvs and self.pvs[pvname].connected:
+                    desc = get_pvdesc(pvname)
+                    if desc != pvname:
+                        desc = f"{desc} ({pvname})"
+                    curr_val = self.pvs[pvname].get(as_string=True)
             if curr_val is None:
                 # may have been removed from instrument definition
                 continue
@@ -474,16 +474,17 @@ class InstrumentPanel(wx.Panel):
             except AttributeError:
                 pass
 
-        #   pvtype  = get_pvtypes(pv)[0]
         self.pv_components[pvname] = (True, pvtype, pv)
         self.pvs[pvname] = pv
-        # self.db.set_pvtype(pvname, pvtype)
 
     @EpicsFunction
     def save_current_position(self, posname):
         values = {}
         for pv in self.pvs.values():
-            values[pv.pvname] = pv.get(as_string=True)
+            val = None
+            if pv.connected:
+                val = pv.get(as_string=True, timeout=1.0)
+            values[pv.pvname] = val
         self.db.save_position(posname, self.instname, values)
         self.write("Saved position '%s' for '%s'" % (posname, self.instname))
 
@@ -534,7 +535,8 @@ class InstrumentPanel(wx.Panel):
         if verify == 0:
             self.restore_position(posname)
         elif verify == 1:
-            dlg = MoveToDialog(self, posname, self.instname, self.db, pvs=self.pvs)
+            dlg = MoveToDialog(self, posname, self.instname, self.db,
+                               pvs=self.pvs)
             dlg.Raise()
             if dlg.ShowModal() == wx.ID_OK:
                 exclude_pvs = []
