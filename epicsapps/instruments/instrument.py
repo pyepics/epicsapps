@@ -443,13 +443,13 @@ class InstrumentDB(SimpleDB):
         inst = self.get_instrument(instname)
         if inst is None:
             raise InstrumentDBException(
-                'restore_postion needs valid instrument')
+                'get_position_value needs valid instrument')
 
         posname = posname.strip()
         pos  = self.get_position(posname, instname)
         if pos is None:
             raise InstrumentDBException(
-                f"restore_postion  position '{posname}' not found")
+                f"get_postion_value  position '{posname}' not found")
 
         if exclude_pvs is None:
             exclude_pvs = []
