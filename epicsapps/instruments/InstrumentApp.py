@@ -394,7 +394,9 @@ class InstrumentFrame(wx.Frame):
 
         elif 'Inst' in req:
             instname = req.pop('Inst')
-            inst = self.db.get_instrument(instname).name
+            inst = self.db.get_instrument(instname)
+            if inst is not None:
+                inst = inst.name
             if inst is not None:
                 server._inst = inst
             server.InstOK = {True:1, False:0}[inst is not None]
