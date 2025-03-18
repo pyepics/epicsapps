@@ -15,7 +15,7 @@ import epics
 import time
 import socket
 from datetime import datetime
-from sqlalchemy import Row
+from sqlalchemy import Row, text
 from .utils import backup_versions, save_backup, normalize_pvname, MOTOR_FIELDS
 from .creator import make_newdb
 
@@ -107,19 +107,19 @@ class InstrumentDB(SimpleDB):
         if version_string < '1.2':
             print('Upgrading Database to Version 1.2')
             for statement in upgrades.sqlcode['1.2']:
-                self.execute(statement)
+                self.execute(text(statement))
             self.set_info('version', '1.2')
 
         if version_string < '1.3':
             print('Upgrading Database to Version 1.3')
             for statement in upgrades.sqlcode['1.3']:
-                self.execute(statement)
+                self.execute(text(statement))
             self.set_info('version', '1.3')
 
         if version_string < '1.4':
             print('Upgrading Database to Version 1.4')
             for statement in upgrades.sqlcode['1.4']:
-                self.execute(statement)
+                self.execute(text(statement))
             self.set_info('version', '1.4')
 
 
