@@ -86,7 +86,7 @@ class MoveToDialog(wx.Dialog):
         if mode == 'show':
             title = f"Instrument {instname} / Position '{posname}'"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title,
-                           size=(700, 400))
+                           size=(750, 425))
         self.build_dialog(parent, thispos)
 
     @EpicsFunction
@@ -174,9 +174,9 @@ class MoveToDialog(wx.Dialog):
         pack(self, sizer)
         wc, hc = self.GetSize()
         wb, hb = self.GetBestSize()
-        w = min(max(wb, wc), 700)
-        h = min(max(hb, hc), 350)
-        self.SetSize((25*int((w + 12)/25.), 25*int((h + 12)/25.)))
+        w = max(wb, wc, 750)
+        h = max(hb, hc, 425, 25*(irow+5))
+        self.SetSize((25*int((w + 20)/25.), 25*int((h + 20)/25.)))
 
 class InstrumentPanel(wx.Panel):
     """ create Panel for an instrument"""
