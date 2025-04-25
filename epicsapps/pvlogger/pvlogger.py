@@ -2,7 +2,10 @@
 """
 Epics PV Logger Application, CLI no GUI
 """
+import sys
 import os
+import atexit
+import traceback
 import uuid
 import random
 from time import time, sleep
@@ -28,6 +31,7 @@ from .configfile import PVLoggerConfig
 STOP_FILE = '_PVLOG_stop.txt'
 TIMESTAMP_FILE = '_PVLOG_timestamp.txt'
 RUNLOG_FILE = '_PVLOG_runlog.txt'
+ERROR_FILE = '_PVLOG_error.txt'
 UPDATETIME = 15.0
 LOGTIME = 300.0
 SLEEPTIME = 0.5
@@ -269,7 +273,7 @@ class PVLogger():
         self.pvs = {}
         self.end_date = None
         self.end_timestamp = None
-
+        self.exc = None
         if configfile is not None:
             self.read_configfile(configfile)
 
@@ -497,54 +501,69 @@ class PVLogger():
         with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
             fh.write(f'{isotime()}: finishing\n')
 
+    def on_exit(self):
+        with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+            fh.write(f'{isotime()}: exit.\n')
+
+        if self.exc is not None:
+            with open(ERROR_FILE, 'a', encoding='utf-8') as fh:
+                traceback.print_exception(self.exc, file=fh)
+
     def run(self):
         """run, collecting data until the exit signal is given"""
         self.connect_pvs()
+        atexit.register(self.on_exit)
+
         last_update = 0
         last_logtime = 0
-        sleep_time = SLEEPTIME + random.random()/10.0
-        nloops = 0
-        messages = []
         while True:
-            sleep(sleep_time)
-            for pv in self.pvs.values():
-                try:
-                    if len(pv.data) > 0:
-                        pv.write_data()
-                except:
-                    messages.append(f"{isotime()}: error writing data for {pv}")
-            now = time()
+            try:
+                messages = []
+                sleep(SLEEPTIME)
+                now = time()
+            except KeyboardInterrupt:
+                self.exc = sys.exception()
+                break
+            except:
+                self.exc = sys.exception()
+            try:
+                for pv in self.pvs.values():
+                    try:
+                        if len(pv.data) > 0:
+                            pv.write_data()
+                    except:
+                        messages.append(f"{isotime()}: error writing data for {pv}")
+            except:
+                self.exc = sys.exception()
+
             if now > last_update + UPDATETIME:
                 try:
-                    self.look_for_new_pvs()
                     save_pvlog_timestamp()
-                    nloops += 1
+                    if self.look_for_exit_signal():
+                        messages.append(f"{isotime()}: got exit signal")
+                        self.finish()
+                        break
+                except:
+                    self.exc = sys.exception()
+                    messages.append(f"{isotime()}: error saving timestamps/looking for exit")
+                try:
+                    self.look_for_new_pvs()
                     last_update = now
                 except:
-                    messages.append(f"{isotime()}: error in processing timestamps")
-                try:
-                    if nloops % 3 == 0:
-                        if self.look_for_exit_signal():
-                            messages.append(f"{isotime()}: got exit signal")
-                            self.finish()
-                            break
+                    self.exc = sys.exception()
+                    messages.append(f"{isotime()}: error looking for new pvs")
 
-                    if nloops > 10000:
-                        nloops = 0
-                except:
-                    messages.append(f"{isotime()}: error looking for exit signal")
+            try:
+                if now > last_logtime + LOGTIME:
+                    messages.append(f'{isotime()}: collecting')
 
-            if now > last_logtime + LOGTIME:
-                messages.append(f'{isotime()}: collecting')
+                if len(messages) > 0:
+                    messages.append('')
+                    with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+                        fh.write("\n".join(messages))
+                    last_logtime = now
+            except:
+                self.exc = sys.exception()
 
-            if len(messages) > 0:
-                messages.append('')
-                with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
-                    fh.write("\n".join(messages))
-                last_logtime = now
-                messages = []
-        # done
-        messages.append("{isotime()}: collection done")
-        messages.append('')
         with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
-            fh.write("\n".join(messages))
+            fh.write(f"{isotime()}: collection done.\n")
