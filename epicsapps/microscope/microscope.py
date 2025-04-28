@@ -821,7 +821,7 @@ class MicroscopeFrame(wx.Frame):
 
     def onAutoFocus(self, event=None, **kws):
         self.af_done = False
-        self.ctrlpanel.af_button.Disable()
+        # self.ctrlpanel.af_button.Disable()
         self.af_thread = Thread(target=self.do_autofocus)
         self.af_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onAFTimer, self.af_timer)
@@ -834,8 +834,11 @@ class MicroscopeFrame(wx.Frame):
             report = self.ctrlpanel.af_message.SetLabel
         if report is not None:
             report('Auto-setting exposure')
-        expdat = self.imgpanel.GetExposureGain()
-        self.imgpanel.AutoSetExposureTime()
+        try:
+            expdat = self.imgpanel.GetExposureGain()
+            self.imgpanel.AutoSetExposureTime()
+        except:
+            pass
         report('Auto-focussing start')
 
         def make_fibs(max=3000):
@@ -920,7 +923,10 @@ class MicroscopeFrame(wx.Frame):
 
         get_score(best)
         report('Auto-focussing done. ')
-        self.imgpanel.SetExposureGain(expdat)
+        try:
+            self.imgpanel.SetExposureGain(expdat)
+        except:
+            pass
         self.ctrlpanel.af_button.Enable()
 
     def onMoveToCenter(self, event=None, **kws):
