@@ -125,14 +125,14 @@ class ImagePanel_PySpin(ImagePanel_Base):
             atime = self.camera.GetExposureTime()
             if imgmax > 250:
                 if  pgain > 4.0:
-                    pgain = 0.75 * pgain
+                    pgain = max(39.9, 0.75 * pgain)
                     self.camera.SetGain(pgain, auto=False)
                     self.confpanel.wids['gain'].SetValue(pgain)
                 else:
                     self.SetExposureTime(0.75*atime)
             elif imgave < 100:
                 if atime > 45:
-                    pgain = 1.75 * pgain
+                    pgain = min(39.9, 1.75 * pgain)
                     self.camera.SetGain(pgain, auto=False)
                     self.confpanel.wids['gain'].SetValue(pgain)
                 else:
@@ -338,7 +338,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
             self.camera.SetExposureTime(float(value), auto=False)
         elif prop == 'gain':
             self.wids['%s_auto' % prop].SetValue(0)
-            self.camera.SetGain(float(value), auto=False)
+            self.camera.SetGain(max(39.9, float(value)), auto=False)
         elif prop in ('wb_red', 'wb_blue'):
             self.wids['wb_auto'].SetValue(0)
             red =  self.wids['wb_red'].GetValue()
