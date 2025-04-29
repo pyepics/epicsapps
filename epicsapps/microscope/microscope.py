@@ -157,7 +157,7 @@ class MicroscopeFrame(wx.Frame):
         if configfile is None:
             default_file = configfile or CONFFILE
             fpath = Path(default_file)
-            wcard = 'Detector Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
+            wcard = 'Microscope Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
             configfile = FileOpen(self, "Read Microscope Configuration File",
                                   default_file=fpath.name,
                                   default_dir=fpath.parent.as_posix(),
@@ -1010,9 +1010,6 @@ class MicroscopeFrame(wx.Frame):
                 self.overlayframe.Destroy()
             except:
                 pass
-
-
-
 
             self.Destroy()
 
