@@ -22,6 +22,7 @@ from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
 import pytz
 
+from .configfile import StripChartConfig, CONFFILE, get_default_configfile
 from ..utils import SelectWorkdir, get_icon
 
 tzname = os.environ.get('TZ', 'US/Central')
@@ -87,7 +88,7 @@ Also, these key bindings can be used
     about_msg =  """Epics PV Strip Chart  version 0.1
 Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, parent=None, nmax=None, ntrim=None):
+    def __init__(self, parent=None, configfile=None, nmax=None, ntrim=None):
         self.pvdata = {}
         self.pvs = {}
         self.user_data = {}
@@ -105,12 +106,36 @@ Matt Newville <newville@cars.uchicago.edu>
             self.ntrim = NTRIM_DEFAULT
         self.timelabel = 'seconds'
 
+        if configfile is None:
+            configfile = get_default_configfile(CONFFILE)
+        if configfile is None:
+            default_file = configfile or CONFFILE
+            fpath = Path(default_file)
+            wcard = 'StripChart Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
+            configfile = FileOpen(self, "Read StripChart Configuration File",
+                                  default_file=fpath.name,
+                                  default_dir=fpath.parent.as_posix(),
+                                  wildcard=wcard)
+        if configfile is None:
+            sys.exit()
+        self.read_config(configfile)
+        try:
+            os.chdir(self.config.get('workdir', os.getcwd()))
+        except:
+            pass
+        
         self.create_frame(parent)
 
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
         self.timer.Start(POLLTIME)
 
+    def read_config(self, fname=None):
+        "read config file"
+        self.configfile = StripChartConfig(fname=fname)
+        cnf = self.config = self.configfile.config
+        self.known_pvs = cnf.get('pvs')
+        
     def create_frame(self, parent, size=(950, 450), **kwds):
         self.parent = parent
 
