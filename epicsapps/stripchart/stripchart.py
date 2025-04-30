@@ -3,11 +3,12 @@
 Epics Strip Chart application
 """
 import os
+import sys
 import time
 import numpy as np
 from numpy import array, where
 from functools import partial
-
+from pathlib import Path
 import wx
 import wx.lib.colourselect  as csel
 
@@ -106,25 +107,27 @@ Matt Newville <newville@cars.uchicago.edu>
             self.ntrim = NTRIM_DEFAULT
         self.timelabel = 'seconds'
 
+        self.create_frame(parent)
+
         if configfile is None:
             configfile = get_default_configfile(CONFFILE)
         if configfile is None:
             default_file = configfile or CONFFILE
             fpath = Path(default_file)
             wcard = 'StripChart Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
-            configfile = FileOpen(self, "Read StripChart Configuration File",
+            configfile = FileOpen(parent, "Read StripChart Configuration File",
                                   default_file=fpath.name,
                                   default_dir=fpath.parent.as_posix(),
                                   wildcard=wcard)
         if configfile is None:
-            sys.exit()
-        self.read_config(configfile)
+            print("no config read" ) # sys.exit()
+        else:
+            self.read_config(configfile)
         try:
             os.chdir(self.config.get('workdir', os.getcwd()))
         except:
             pass
-        
-        self.create_frame(parent)
+
 
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
@@ -135,7 +138,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.configfile = StripChartConfig(fname=fname)
         cnf = self.config = self.configfile.config
         self.known_pvs = cnf.get('pvs')
-        
+
     def create_frame(self, parent, size=(950, 450), **kwds):
         self.parent = parent
 
