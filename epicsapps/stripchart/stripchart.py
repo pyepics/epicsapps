@@ -119,6 +119,7 @@ Matt Newville <newville@cars.uchicago.edu>
                                   default_file=fpath.name,
                                   default_dir=fpath.parent.as_posix(),
                                   wildcard=wcard)
+            
         if configfile is None:
             print("no config read" ) # sys.exit()
         else:
@@ -532,6 +533,23 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def onExit(self, event=None):
         self.timer.Stop()
+        conf_pvs = {}
+        for cpvs in self.config['pvs']:
+            pname, pdesc = cpvs
+            conf_pvs[pname] =  pdesc
+            
+        for name in self.pvs:
+            conf_pvs[name] = self.pv_labels.get(name, 'unknown')
+
+        pvs = []
+        for key, val in conf_pvs.items():
+            pvs.append([key, val])
+
+        self.config['pvs'] = pvs
+        self.config['workdir'] = os.getcwd()
+
+        self.configfile.write(config=self.config)
+            
         for pv in self.pvs.values():
             pv.clear_callbacks()
             pv.disconnect()
