@@ -136,7 +136,7 @@ class ImagePanel_PySpin(ImagePanel_Base):
                     self.camera.SetGain(pgain, auto=False)
                     self.confpanel.wids['gain'].SetValue(pgain)
                 else:
-                    etime = max(10, min(50, 1.75*atime))
+                    etime = max(10, min(56, 1.75*atime))
                     self.SetExposureTime(etime)
             else:
                 break
@@ -259,23 +259,18 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.wids['wb_auto'].SetValue(0)
         self.read_props_timer.Start(3000)
         self.title.SetLabel("Camera Model: %s" % (self.camera.device_name))
-        # self.title2.SetLabel("Serial #: %s" % (self.camera.device_id))
-        # self.title3.SetLabel("Firmware: %s" % (self.camera.device_version))
 
-        self.camera.SetFramerate(14.5)
+        self.camera.SetFramerate(18)
         self.framerate_set_count = 0
-        self.camera.SetExposureTime(30, auto=False)
+        self.camera.SetExposureTime(45, auto=False)
 
     def onEnableDataPush(self, evt=None, **kws):
         self.image_panel.datapush = evt.IsChecked()
 
     def onTimer(self, evt=None, **kws):
-        # print(" Timer ",  self.camera.GetExposureTime(),
-        #       self.camera.GetGain(), self.image_panel.fps_current)
-
-        if (self.image_panel.fps_current > 16.0 and
+        if (self.image_panel.fps_current > 18.0 and
             self.framerate_set_count < 2):
-            self.camera.SetFramerate(14.5)
+            self.camera.SetFramerate(18)
             self.framerate_set_count += 1
             time.sleep(0.5)
 
