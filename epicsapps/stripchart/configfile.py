@@ -3,8 +3,8 @@
 from ..utils import ConfigFile, load_yaml, get_default_configfile
 
 _configtext = """
-workdir: /home/user
-pvs
+workdir: "/home/user"
+pvs:
    - ['S:SRcurrentAI.VAL', 'Storage Ring Current']
 """
 
