@@ -5,7 +5,10 @@ Epics Strip Chart application
 import os
 import sys
 import time
+from collections import namedtuple
+
 import numpy as np
+
 from numpy import array, where
 from functools import partial
 from pathlib import Path
@@ -17,7 +20,8 @@ from epics.wx import EpicsFunction, DelayedEpicsCallback
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     FloatCtrl, Choice, YesNo, TextCtrl, LEFT)
+                     FloatCtrl, Choice, YesNo, TextCtrl, pack,
+                     Check, LEFT, HLine, Button)
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
@@ -63,7 +67,75 @@ def get_bound(val):
         val = None
     return val
 
+class PVSelectDialog(wx.Dialog):
+    def __init__(self, parent, pvs=None, **kws):
+        self.parent = parent
+        self.pvs = pvs
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(550, 450),
+                           title="Select Starting PVs for StripChart")
 
+        panel = GridPanel(self, ncols=3, nrows=4, pad=4, itemstyle=LEFT)
+        self.wids = wids = {}
+        def add_text(text, dcol=1, newrow=True):
+            panel.Add(SimpleText(panel, text), dcol=dcol, newrow=newrow)
+
+        wids['sel_all'] = Button(panel, 'Select All ', size=(175, -1),
+                                 action=self.onSelAll)
+        wids['sel_none'] = Button(panel, 'Select None ', size=(175, -1),
+                                  action=self.onSelNone)
+
+        add_text(' Select Recently Used PVs for StripChart ', newrow=True, dcol=4) 
+        panel.Add(wids['sel_all'], newrow=True)
+        panel.Add(wids['sel_none'])
+        add_text(' PV Name ', newrow=True)            
+        add_text(' Description ', newrow=False)            
+        add_text(' Use?  ', newrow=False)
+        panel.Add(HLine(panel, size=(500, 3)), dcol=4, newrow=True)
+        i = 0
+        for pvname, desc in self.pvs:
+            add_text(pvname, newrow=True)            
+            add_text(desc, newrow=False)            
+            w = wids[f'use_{i}'] = Check(panel, default=False, label='')
+            panel.Add(w)
+            i += 1
+            
+        panel.Add(HLine(panel, size=(500, 3)), dcol=4, newrow=True)
+        panel.Add(OkCancel(panel), dcol=2, newrow=True)
+        panel.pack()
+        
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        sizer.Add(panel, 1, LEFT, 5)
+        pack(self, sizer)
+        self.Fit()
+        w0, h0 = self.GetSize()
+        w1, h1 = self.GetBestSize()
+        self.SetSize((max(w0, w1, 500)+25, max(h0, h1, 250)+25))
+              
+
+    def onSelAll(self, event=None):
+        for wname, wid in self.wids.items():
+            if wname.startswith('use'):
+                wid.SetValue(1)
+                
+    def onSelNone(self, event=None):
+        for wname, wid in self.wids.items():
+            if wname.startswith('use'):
+                wid.SetValue(0)
+        
+    def GetResponse(self):
+        self.Raise()
+        response = namedtuple('PVSelection', ('ok', 'pvs'))
+        ok, use_pvs = False, []
+        if self.ShowModal() == wx.ID_OK:
+            use_pvs = []
+            ok = True
+            for wname, wid in self.wids.items():
+                if wname.startswith('use'):
+                    i = int(wname.replace('use_', ''))
+                    if wid.IsChecked():
+                        use_pvs.append(self.pvs[i])
+        return response(ok, use_pvs)
+    
 class StripChartFrame(wx.Frame):
     help_msg =  """Quick help:
 
@@ -119,17 +191,23 @@ Matt Newville <newville@cars.uchicago.edu>
                                   default_file=fpath.name,
                                   default_dir=fpath.parent.as_posix(),
                                   wildcard=wcard)
-            
-        if configfile is None:
-            print("no config read" ) # sys.exit()
-        else:
+
+        if configfile is not None:
             self.read_config(configfile)
         try:
             os.chdir(self.config.get('workdir', os.getcwd()))
         except:
             pass
 
-
+        if len(self.config['pvs']) > 0:
+            dlg = PVSelectDialog(self, self.config['pvs'])
+            res = dlg.GetResponse()
+            dlg.Destroy()
+            
+            if res.ok:
+                for name, desc in res.pvs:
+                    self.addPV(name, desc=desc)
+                    
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
         self.timer.Start(POLLTIME)
@@ -391,6 +469,8 @@ Matt Newville <newville@cars.uchicago.edu>
                 if cur == 0 and not new_shown:
                     choice.SetSelection(inew)
                     new_shown = True
+                    if desc is not None:
+                        self.wids[f'desc{i}'].SetValue(desc)                        
             self.needs_refresh = True
 
     @DelayedEpicsCallback
