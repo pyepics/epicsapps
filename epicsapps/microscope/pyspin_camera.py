@@ -82,14 +82,14 @@ class PySpinCamera(object):
             acq_mode.SetIntValue(acq_mode.GetEntryByName('Continuous').GetValue())
         except:
             pass
-            
+
         try:
             fauto = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionFrameRateAuto'))
             fauto.SetIntValue(fauto.GetEntryByName('Off').GetValue())
         except:
             pass
-            
-        time.sleep(0.25)
+
+        time.sleep(0.1)
         try:
             arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
             arate.SetValue(18)
@@ -106,9 +106,17 @@ class PySpinCamera(object):
             pass
 
     def SetFramerate(self, framerate=18.0):
-        arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
-        arate.SetValue(framerate*1.0)
-        time.sleep(0.1)
+        try:
+            fauto = PySpin.CEnumerationPtr(self.nodemap.GetNode('AcquisitionFrameRateAuto'))
+            fauto.SetIntValue(fauto.GetEntryByName('Off').GetValue())
+        except:
+            pass
+
+        try:
+            arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
+            arate.SetValue(framerate*1.0)
+        except:
+            pass
 
     def Exit(self):
         self.StopCapture()
@@ -277,14 +285,14 @@ class PySpinCamera(object):
                 waiting = img.IsIncomplete() and (time.time() - t0 < 0.5)
         if img.IsIncomplete():
             print( "Image incomplete, status %d ..." % img.GetImageStatus())
-                    
-                
+
+
         ncols, nrows = img.GetHeight(), img.GetWidth()
         # size = ncols * nrows
         shape = (ncols, nrows)
         if format in ('rgb', 'bgr'):
             shape = (ncols, nrows, 3)
- 
+
         out = self.imageproc.Convert(img, pixel_formats[format]).GetData()
         img.Release()
         return out.reshape(shape)
