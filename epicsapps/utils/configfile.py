@@ -81,10 +81,9 @@ class ConfigFile(object):
     write(fname=None, config=None):  write config to file
 
     """
-    def __init__(self, fname, default_config=None):
+    def __init__(self, fname=None, default_config=None):
         self.filename = fname
         self.default_config = {}
-        self.default_configfile =Path(get_configfolder(), fname).absolute().as_posix()
         if default_config is not None:
             self.default_config.update(default_config)
 
@@ -121,6 +120,7 @@ class ConfigFile(object):
 
         if not fpath.exists():
             print("No config file to read: ", fname)
+            self.config = self.default_config
             return
 
 
