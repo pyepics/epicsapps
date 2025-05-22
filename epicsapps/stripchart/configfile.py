@@ -4,8 +4,9 @@ from ..utils import ConfigFile, load_yaml, get_default_configfile
 
 _configtext = """
 workdir: "/home/user"
+##   pvname, pvdesc, use_log, ymin, ymax
 pvs:
-   - ['S:SRcurrentAI.VAL', 'Storage Ring Current']
+   - ['S:SRcurrentAI.VAL', 'Storage Ring Current', 0, '', '']
 """
 
 CONFFILE = 'stripchart.yaml'
