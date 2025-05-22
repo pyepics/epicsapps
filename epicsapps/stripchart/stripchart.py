@@ -84,25 +84,25 @@ class PVSelectDialog(wx.Dialog):
         wids['sel_none'] = Button(panel, 'Select None ', size=(175, -1),
                                   action=self.onSelNone)
 
-        add_text(' Select Recently Used PVs for StripChart ', newrow=True, dcol=4) 
+        add_text(' Select Recently Used PVs for StripChart ', newrow=True, dcol=4)
         panel.Add(wids['sel_all'], newrow=True)
         panel.Add(wids['sel_none'])
-        add_text(' PV Name ', newrow=True)            
-        add_text(' Description ', newrow=False)            
+        add_text(' PV Name ', newrow=True)
+        add_text(' Description ', newrow=False)
         add_text(' Use?  ', newrow=False)
         panel.Add(HLine(panel, size=(500, 3)), dcol=4, newrow=True)
         i = 0
-        for pvname, desc in self.pvs:
-            add_text(pvname, newrow=True)            
-            add_text(desc, newrow=False)            
+        for pvname, desc, uselog, ymin, ymax in pvs:
+            add_text(pvname, newrow=True)
+            add_text(desc, newrow=False)
             w = wids[f'use_{i}'] = Check(panel, default=False, label='')
             panel.Add(w)
             i += 1
-            
+
         panel.Add(HLine(panel, size=(500, 3)), dcol=4, newrow=True)
         panel.Add(OkCancel(panel), dcol=2, newrow=True)
         panel.pack()
-        
+
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(panel, 1, LEFT, 5)
         pack(self, sizer)
@@ -110,18 +110,18 @@ class PVSelectDialog(wx.Dialog):
         w0, h0 = self.GetSize()
         w1, h1 = self.GetBestSize()
         self.SetSize((max(w0, w1, 500)+25, max(h0, h1, 250)+25))
-              
+
 
     def onSelAll(self, event=None):
         for wname, wid in self.wids.items():
             if wname.startswith('use'):
                 wid.SetValue(1)
-                
+
     def onSelNone(self, event=None):
         for wname, wid in self.wids.items():
             if wname.startswith('use'):
                 wid.SetValue(0)
-        
+
     def GetResponse(self):
         self.Raise()
         response = namedtuple('PVSelection', ('ok', 'pvs'))
@@ -135,7 +135,7 @@ class PVSelectDialog(wx.Dialog):
                     if wid.IsChecked():
                         use_pvs.append(self.pvs[i])
         return response(ok, use_pvs)
-    
+
 class StripChartFrame(wx.Frame):
     help_msg =  """Quick help:
 
@@ -164,8 +164,7 @@ Matt Newville <newville@cars.uchicago.edu>
     def __init__(self, parent=None, configfile=None, nmax=None, ntrim=None):
         self.pvdata = {}
         self.pvs = {}
-        self.user_data = {}
-        self.pv_labels = {}
+        self.pv_opts = {}
         self.wids = {}
         self.nplot = 0
         self.pvlist = ['-']
@@ -180,6 +179,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.timelabel = 'seconds'
 
         self.create_frame(parent)
+        self.config = {'workdir': os.getcwd(), 'pvs': []}
 
         if configfile is None:
             configfile = get_default_configfile(CONFFILE)
@@ -192,31 +192,33 @@ Matt Newville <newville@cars.uchicago.edu>
                                   default_dir=fpath.parent.as_posix(),
                                   wildcard=wcard)
 
-        if configfile is not None:
-            self.read_config(configfile)
-        try:
-            os.chdir(self.config.get('workdir', os.getcwd()))
-        except:
-            pass
+        self.read_config(configfile)
 
-        if len(self.config['pvs']) > 0:
+        if configfile is not None and len(self.config['pvs']) > 0:
+            try:
+                os.chdir(self.config.get('workdir', os.getcwd()))
+            except:
+                pass
             dlg = PVSelectDialog(self, self.config['pvs'])
             res = dlg.GetResponse()
             dlg.Destroy()
-            
             if res.ok:
-                for name, desc in res.pvs:
-                    self.addPV(name, desc=desc)
-                    
+                for name, desc, uselog, ymin, ymax in res.pvs:
+                    self.addPV(name, desc=desc, uselog=uselog, ymin=ymin, ymax=ymax)
+
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
         self.timer.Start(POLLTIME)
 
     def read_config(self, fname=None):
         "read config file"
+        print("read config ", fname)
         self.configfile = StripChartConfig(fname=fname)
-        cnf = self.config = self.configfile.config
-        self.known_pvs = cnf.get('pvs')
+        self.config = {'workdir': os.getcwd(), 'pvs': []}
+
+        self.config = self.configfile.config
+        print("config ", fname, self.config)
+
 
     def create_frame(self, parent, size=(950, 450), **kwds):
         self.parent = parent
@@ -242,7 +244,7 @@ Matt Newville <newville@cars.uchicago.edu>
         label = SimpleText(p1, ' Add PV:')
         self.pvname = TextCtrl(p1, '', size=(250, -1), action=self.onPVname)
         self.pvmsg = SimpleText(p1, '  ',  minsize=(75, -1), style=LSTY|wx.EXPAND)
-        self.save_pvconf  = wx.Button(p1, label='Save PV Settings',  size=(200, 30))
+        self.save_pvconf  = wx.Button(p1, label='Save PV Options',  size=(200, 30))
         self.save_pvconf.Bind(wx.EVT_BUTTON, self.onSavePVSettings)
         s1 = wx.BoxSizer(wx.HORIZONTAL)
 
@@ -305,7 +307,7 @@ Matt Newville <newville@cars.uchicago.edu>
             wids[f'pv{i}'].SetSelection(0)
 
             wids[f'uselog{i}'] = Choice(panel, choices=('No', 'Yes'), size=(65, -1),
-                                     action=self.onPVwid)
+                                     action=self.onPVLogwid)
             wids[f'uselog{i}'].SetSelection(0)
             wids[f'ymin{i}'] = wx.TextCtrl(panel, -1, '', size=(75, -1),
                                            style=wx.TE_PROCESS_ENTER)
@@ -396,10 +398,13 @@ Matt Newville <newville@cars.uchicago.edu>
         mopt = wx.Menu()
         MenuItem(self, mopt, "Configure Plot\tCtrl+K",
                  "Configure Plot", pp.configure)
+        MenuItem(self, mopt, "Zoom Out\tCtrl+Z",
+                 "Zoom out to full data range", pp.unzoom_all)
 
         mopt.AppendSeparator()
         MenuItem(self, mopt, "Zoom Out\tCtrl+Z",
                  "Zoom out to full data range", pp.unzoom_all)
+
 
         mhelp = wx.Menu()
         MenuItem(self, mhelp, "Quick Reference",
@@ -422,7 +427,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.addPV(self.pvname.GetValue())
 
     @EpicsFunction
-    def addPV(self, name, desc=None):
+    def addPV(self, name, desc=None, uselog=0, ymin=None, ymax=None):
         if name is not None and name not in self.pvlist:
             basename = str(name)
             if len(basename) < 2:
@@ -454,9 +459,8 @@ Matt Newville <newville@cars.uchicago.edu>
                 desc =  descpv.get(timeout=1.0)
             if desc is None or len(desc) < 1:
                 desc = basename
-
-            self.pv_labels[name] = desc
-            self.user_data[name]  = (desc, 0, '', '')
+            self.pv_opts[name] = (desc, uselog, ymin, ymax)
+            print("Add PV ", name, self.pv_opts[name])
 
             inew = len(self.pvdata)
             new_shown = False
@@ -470,7 +474,15 @@ Matt Newville <newville@cars.uchicago.edu>
                     choice.SetSelection(inew)
                     new_shown = True
                     if desc is not None:
-                        self.wids[f'desc{i}'].SetValue(desc)                        
+                        self.wids[f'desc{i}'].SetValue(desc)
+                    if ymin in (None, 'None'):
+                        ymin = ''
+                    if ymax in (None, 'None'):
+                        ymax = ''
+                    self.wids[f'ymin{i}'].SetValue(f"{ymin}")
+                    self.wids[f'ymax{i}'].SetValue(f"{ymax}")
+                    self.wids[f'uselog{i}'].SetSelection(1 if uselog else 0)
+
             self.needs_refresh = True
 
     @DelayedEpicsCallback
@@ -486,10 +498,12 @@ Matt Newville <newville@cars.uchicago.edu>
     def onPVchoice(self, event=None, row=0, **kws):
         self.needs_refresh = True
         pvname = self.wids[f'pv{row}'].GetStringSelection()
-        if pvname in self.user_data:
-            desc, uselog, ymin, ymax = self.user_data[pvname]
-            if desc in (None, '', 'None'):
-                desc = self.pv_labels.get(pvname, pvname)
+        if pvname in self.pv_opts:
+            desc, uselog, ymin, ymax = self.pv_opts[pvname]
+            if ymin in (None, 'None'):
+                ymin = ''
+            if ymax in (None, 'None'):
+                ymax = ''
             self.wids[f'desc{row}'].SetValue(desc)
             self.wids[f'uselog{row}'].SetSelection(uselog)
             self.wids[f'ymin{row}'].SetValue(f"{ymin}")
@@ -510,12 +524,15 @@ Matt Newville <newville@cars.uchicago.edu>
                 ymin = ''
             if ymax in (None, 'None'):
                 ymax = ''
-            self.user_data[pvname] = (desc, uselog, ymin, ymax)
-
+            self.pv_opts[pvname] = (desc, uselog, ymin, ymax)
 
     def onPVcolor(self, event=None, row=None, **kws):
         self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
                                             trace=row)
+        self.needs_refresh = True
+
+    def onPVLogwid(self, event=None, row=None, **kws):
+        self.force_replot = True
         self.needs_refresh = True
 
     def onPVwid(self, event=None, row=None, **kws):
@@ -613,23 +630,18 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def onExit(self, event=None):
         self.timer.Stop()
-        conf_pvs = {}
-        for cpvs in self.config['pvs']:
-            pname, pdesc = cpvs
-            conf_pvs[pname] =  pdesc
-            
-        for name in self.pvs:
-            conf_pvs[name] = self.pv_labels.get(name, 'unknown')
+        conf_pvs = []
+        for pvname, dat in self.pv_opts.items():
+            desc, uselog, ymin, ymax = dat
+            conf_pvs.append([pvname, desc, uselog, ymin, ymax])
 
-        pvs = []
-        for key, val in conf_pvs.items():
-            pvs.append([key, val])
-
-        self.config['pvs'] = pvs
+        self.config['pvs'] = conf_pvs
         self.config['workdir'] = os.getcwd()
+        if self.configfile.filename is None:
+            self.configfile.filename = 'stripchart.yaml'
 
         self.configfile.write(config=self.config)
-            
+
         for pv in self.pvs.values():
             pv.clear_callbacks()
             pv.disconnect()
@@ -731,7 +743,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 except:
                     use_update = False
                     pass
-            if not use_update:
+            if not use_update or self.force_replot:
                 ylog_scale = uselog and min(ydat) > 0
                 opts = {'show_legend': False, 'xlabel': 'Date / Time',
                         'drawstyle': 'steps-post',
@@ -742,7 +754,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 plot(tdat, ydat, yaxes=yaxes, color=color,
                      ymin=ymin, ymax=ymax,
                      ylog_scale=ylog_scale, label=desc, **opts)
-
+                self.force_replot = False
 
         snow = time.strftime("%Y-%b-%d %H:%M:%S", time.localtime())
         self.plotpanel.set_title(snow, delay_draw=True)
