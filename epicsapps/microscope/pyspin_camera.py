@@ -94,7 +94,7 @@ class PySpinCamera(object):
             arate = PySpin.CFloatPtr(self.nodemap.GetNode('AcquisitionFrameRate'))
             arate.SetValue(18)
             time.sleep(0.25)
-            self.SetExposureTime(30.0, auto=False)
+            self.SetExposureTime(40.0, auto=False)
         except:
             pass
 
@@ -136,7 +136,7 @@ class PySpinCamera(object):
             prop.SetValue(0)
         # self.SetGamma(1.0)
         self.SetGain(1, auto=False)
-        self.SetExposureTime(30.0, auto=False)
+        self.SetExposureTime(40.0, auto=False)
 
     def GetWhiteBalance(self):
         """ Get White Balance (red, blue)"""
