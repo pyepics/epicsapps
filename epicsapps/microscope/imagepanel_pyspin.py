@@ -33,7 +33,7 @@ try:
 except ImportError:
     HAS_PYSPIN = False
 
-MAX_EXPOSURE_TIME = 58
+MAX_EXPOSURE_TIME = 77
 
 class ImagePanel_PySpin(ImagePanel_Base):
     """Image Panel for Spinnaker camera"""
@@ -116,32 +116,45 @@ class ImagePanel_PySpin(ImagePanel_Base):
         """auto set exposure time"""
         count, IMAX = 0, 255.0
         self.confpanel.wids['gain_auto'].SetValue(0)
-        while count < 5:
+        expdat = self.GetExposureGain()        
+        while count < 10:
             count += 1
-            img = self.GrabNumpyImage()
-            imgmin, imgmax = np.percentile(img, [1, 99])
+            img = self.data
+            imgmin, imgmax = [float(a) for a in np.percentile(img, [1, 99])]
             imgave = img.mean()
             pgain = self.camera.GetGain()
             atime = self.camera.GetExposureTime()
-            if imgmax > 250:
-                if  pgain > 4.0:
-                    pgain = min(39.9, 0.75 * pgain)
-                    self.camera.SetGain(pgain, auto=False)
-                    self.confpanel.wids['gain'].SetValue(pgain)
-                else:
-                    self.SetExposureTime(0.75*atime)
-            elif imgave < 100:
-                if atime > 45:
-                    pgain = min(39.9, 1.75 * pgain)
-                    self.camera.SetGain(pgain, auto=False)
-                    self.confpanel.wids['gain'].SetValue(pgain)
-                else:
-                    etime = max(10, min(56, 1.75*atime))
-                    self.SetExposureTime(etime)
-            else:
+            # print(f"Loop {count=} {imgmax=}, {imgave=:.3f}, {pgain=:.3f}, {atime=:.3f}")
+            if imgave > 70 and imgave < 200:
                 break
-            time.sleep(0.1)
+            elif imgave < 70:
+                if atime > 50.0:
+                    pgain = min(39., 1.75*pgain)
+                else:
+                    atime = max(10, min(60, atime*125/imgave))                    
+            elif imgave > 200:
+                if pgain > 2.0:
+                    pgain = min(39.,  0.6*pgain)
+                else:
+                    atime = max(10, min(60, atime*125/imgave))                    
 
+            # print(f"  set {pgain=:.3f}, {atime=:.3f}")
+            self.camera.SetGain(pgain, auto=False)            
+            self.confpanel.wids['gain'].SetValue(pgain)
+            self.camera.SetExposureTime(atime)
+            self.confpanel.wids['exposure'].SetValue(atime)
+            self.confpanel.wids['exposure_auto'].SetValue(0)
+            time.sleep(0.75)
+            
+    def sharpness(self):
+        img = self.data*1.0
+        if len(img.shape) == 3:
+            img = img.sum(axis=2)
+        w, h = img.shape
+        w1, w2, h1, h2 = int(0.2*w), int(0.8*w), int(0.2*h), int(0.8*h)
+        img = img[w1:w2, h1:h2]
+        return float(((img - img.mean())**2).sum()/(w*h))
+        
     def GrabWxImage(self, scale=1, rgb=True, can_skip=True,
                     quality=wx.IMAGE_QUALITY_HIGH):
         try:
@@ -173,6 +186,7 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.framerate_set_count = 0
 
         self.title = self.txt("PySpinnaker: ", size=285)
+        
         next_row = self.show_position_info(row=0)
 
         self.__initializing = True
