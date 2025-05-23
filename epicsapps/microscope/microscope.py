@@ -66,21 +66,6 @@ CEN_BOT  = wx.ALIGN_BOTTOM
 
 txtstyle = wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER
 
-def image_blurriness(imgpanel, full=False):
-    """ get image blurriness of central half of intensity
-
-    want to maximize sharpness = sum([image - <image>]**2)
-
-    """
-    img = imgpanel.GrabNumpyImage().astype(np.float32)
-    if len(img.shape) == 3:
-        img = img.sum(axis=2)
-    w, h = img.shape
-    w1, w2, h1, h2 = int(0.15*w), int(0.85*w), int(0.15*h), int(0.85*h)
-    img = img[w1:w2, h1:h2]
-    sharpness = ((img - img.mean())**2).sum()/(w*h)
-    return -sharpness
-
 
 class VideoDialog(wx.Dialog):
     """dialog for video options"""
@@ -207,6 +192,7 @@ class MicroscopeFrame(wx.Frame):
                     lamp=self.lamp)
 
         autofocus_cb = self.onAutoFocus
+        autoexpose_cb = self.onAutoExposure
 
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
@@ -254,33 +240,33 @@ class MicroscopeFrame(wx.Frame):
                                       groups=self.stage_groups,
                                       config=self.stages,
                                       center_cb=self.onMoveToCenter,
-                                      autofocus=autofocus_cb)
+                                      autofocus=autofocus_cb,
+                                      autoexpose=autoexpose_cb)
 
         self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel,
                                    calibrations=self.calibrations,
                                    calib_cb=self.onSetCalibration, **opts)
 
-
         zpanel = wx.Panel(ppanel)
         zlab1 = wx.StaticText(zpanel, label='ZoomBox size (\u03bCm):',
                               size=(150, -1), style=txtstyle)
-        # zlab2 = wx.StaticText(zpanel, label='ZoomBox Sharpness:',
-        #                       size=(150, -1), style=txtstyle)
-        # zsharp = wx.StaticText(zpanel, label='=',
-        #                        size=(100, -1), style=txtstyle)
+        zlab2 = wx.StaticText(zpanel, label='Sharpness:',
+                              size=(150, -1), style=txtstyle)
+        zsharp = wx.StaticText(zpanel, label='=',
+                               size=(100, -1), style=txtstyle)
         self.zoomsize = FloatSpin(zpanel, value=150, min_val=5, increment=5,
                                   action=self.onZoomSize,
                                 size=(80, -1), style=txtstyle)
         self.imgpanel.zoompanel = ZoomPanel(zpanel, imgsize=150,
                                             size=(275, 275),
-                                            # sharpness_label=zsharp,
+                                            sharpness_label=zsharp,
                                             **opts)
         zsizer = wx.GridBagSizer(2, 2)
         zsizer.Add(zlab1,         (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
         zsizer.Add(self.zoomsize, (0, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        # zsizer.Add(zlab2,         (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        # zsizer.Add(zsharp,        (2, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        zsizer.Add(self.imgpanel.zoompanel, (1, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(zlab2,         (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(zsharp,        (1, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(self.imgpanel.zoompanel, (2, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
         zpanel.SetSizer(zsizer)
         zsizer.Fit(zpanel)
 
@@ -828,101 +814,82 @@ class MicroscopeFrame(wx.Frame):
         self.af_timer.Start(2000)
         self.af_thread.start()
 
+        
+    def onAutoExposure(self, event=None):
+        report = None
+        if self.ctrlpanel.af_message is not None:
+            report = self.ctrlpanel.af_message.SetLabel
+        if report is not None:
+            report('Auto-setting exposure')
+        Thread(target=self.imgpanel.AutoSetExposureTime).start()
+
     def do_autofocus(self):
         report = None
         if self.ctrlpanel.af_message is not None:
             report = self.ctrlpanel.af_message.SetLabel
         if report is not None:
             report('Auto-setting exposure')
-        try:
-            expdat = self.imgpanel.GetExposureGain()
-            self.imgpanel.AutoSetExposureTime()
-        except:
-            pass
+        self.imgpanel.AutoSetExposureTime()
+
         report('Auto-focussing start')
 
-        def make_fibs(max=3000):
-            f = [1., 1.]
-            i = 0
-            while True:
-                val = f[i] + f[i+1]
-                if val > max:
-                    break
-                f.append(val)
-                i += 1
-            return f
-
         zstage = self.ctrlpanel.motors['z']._pvs['VAL']
-
         start_pos = zstage.get()
-        focus_data = []
-
         def get_score(pos):
             zpos = start_pos + pos * 0.001
             zstage.put(zpos, wait=True)
-            time.sleep(0.05)
-            score = image_blurriness(self.imgpanel)
-            dat = (pos, zstage.get(), score)
-            focus_data.append(dat)
-            return score
+            time.sleep(0.75)
+            return self.imgpanel.sharpness()
 
-        # step 1: take up to 15 steps of 250 microns
+        # step 1: take up to 12 steps of 200 microns
         # while score is still improving
-        report('Auto-focussing finding rough focus')
-        scores = []
-        NMAX = 15
-        step = 250.0
-        score0 = get_score(0)
-        scorep = get_score(step)
-        scorem = get_score(-step)
-        sign = None
-        best = 0.0
-        if scorem < score0:
-            score0 = scorem
-            sign = -1.0
-        elif scorep < score0:
-            score0 = scorep
-            sign = 1.0
-
-        if sign is not None:
-            i = 1
-            while i < NMAX:
-                i=i+1
-                tmp = sign*step*(i+1)
-                score = get_score(tmp)
-                if score > score0:
-                    break
-                score0, best = score, tmp
-        zstage.put(start_pos + best * 0.001, wait=True)
-
-        # now refine
-        start_pos = zstage.get()
-        report('Auto-focussing refining focus')
-        start, stop = -300, 300
-        fibs = make_fibs(max=abs(stop-start))
-        nfibs = len(fibs)
-        step = fibs[nfibs-3] / fibs[nfibs-1]
-        best = (start+stop)/2
-        z1, z2 = int(start + step*(stop-start)), int(stop - step*(stop-start))
-        score1, score2 = get_score(z1), get_score(z2)
-        for i in range(nfibs-2):
-            step = fibs[nfibs-i-3] / fibs[nfibs-i-1]
-            report("Auto-focussing refining focus %i " %(i+1))
-            if score1 > score2:
-                start = z1
-                best = int(stop - step*(stop-start))
-                z1, z2 = z2, best
-                score1, score2 = score2, get_score(best)
+        report('AutoFocus: finding rough focus')
+        step = 200.0
+        best_step = 0.0
+        sign = 1
+        best_score = get_score(0)
+        score1 = get_score(step)
+        if score1 > best_score:
+            best_score = score1
+            best_step = step
+            sign = 1
+        else:
+            score2 = get_score(-step)
+            if score2 > best_score:
+                best_score = score2
+                best_step = -step            
+                sign = -1
             else:
-                stop = z2
-                best = int(start + step*(stop-start))
-                z1, z2 = best, z1
-                score1, score2 = get_score(best), score1
-            if abs(z1-z2) < 2:
-                break
+                sign = 1 if score1>score2 else -1
 
-        get_score(best)
-        report('Auto-focussing done. ')
+        if best_step != 0:
+            i = 0
+            while i < 12:
+                i=i+1
+                test_pos = sign*step*(i+1)
+                score = get_score(test_pos)
+                if score > best_score:
+                    best_score = score
+                    best_step = test_pos
+                else:
+                    break
+
+        zstage.put(start_pos + best_step * 0.001, wait=True)
+        for i, s in enumerate((128, 64, 32, 16, 8, 4, 2)):
+            report(f'AutoFocus: refining focus ({i+1}/7)')        
+            score1 = get_score(best_step+sign*s)
+            if score1 > best_score:
+                best_score = score1
+                best_step = best_step+s
+            else:
+                score2 = get_score(best_step-sign*s)
+                if score2 > best_score:
+                    best_score = score2
+                    best_step = best_step-s     
+                    sign = -sign
+                    
+        zstage.put(start_pos + best_step * 0.001, wait=True)                    
+        report('AutoFocus: done. ')
         try:
             self.imgpanel.SetExposureGain(expdat)
         except:
