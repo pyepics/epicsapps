@@ -12,7 +12,6 @@ import json
 import numpy as np
 from pathlib import Path
 from threading import Thread
-from collections import deque
 import base64
 from epics import get_pv, Device, poll
 from PIL import Image
@@ -531,13 +530,13 @@ class ZoomPanel(wx.Panel):
                  sharpness_label=None, **kws):
         super(ZoomPanel, self).__init__(parent, size=size)
         self.sharpness_label = sharpness_label
-        self.sharpness_data = []
-        self.imgsize = max(10, min(500, imgsize))
+
+        self.sharpness = None
+        self.imgsize = max(5, min(2000, imgsize))
         self.SetBackgroundColour("#CCBBAAA")
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.SetSize(size)
         self.data = None
-        self.zoomhist = deque(maxlen=10)
         self.scale = 1.0
         self.xcen = self.ycen = self.x = self.y = 0
         self.Bind(wx.EVT_PAINT, self.onPaint)
@@ -546,7 +545,7 @@ class ZoomPanel(wx.Panel):
         data, xcen, ycen = self.data, self.xcen, self.ycen
         if data is None or xcen is None or ycen is None:
             return
-        self.imgsize = max(10, min(500, self.imgsize))        
+        self.imgsize = max(5, min(2000, self.imgsize))        
         h, w, x = data.shape
 
         if ycen < self.imgsize/2.0:
@@ -593,7 +592,8 @@ class ZoomPanel(wx.Panel):
 
         if self.sharpness_label is not None:
             rgb = rgb.sum(axis=2)
-            sharpness = ((rgb - rgb.mean())**2).mean()
-            self.zoomhist.append(sharpness)
-            sreport = np.array(self.zoomhist).mean()
-            self.sharpness_label.SetLabel("%.1f" % sreport)
+            new_sharp = ((rgb - rgb.mean())**2).mean()
+            if self.sharpness is None:
+                self.sharpness = new_sharp
+            self.sharpness = 0.135*new_sharp + 0.865*self.sharpness # basic smoothing
+            self.sharpness_label.SetLabel(f"{self.sharpness:.1f}")
