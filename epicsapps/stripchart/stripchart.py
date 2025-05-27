@@ -212,12 +212,10 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def read_config(self, fname=None):
         "read config file"
-        print("read config ", fname)
         self.configfile = StripChartConfig(fname=fname)
         self.config = {'workdir': os.getcwd(), 'pvs': []}
-
-        self.config = self.configfile.config
-        print("config ", fname, self.config)
+        nconf = getattr(self.configfile, 'config', {})
+        self.config.update(nconf)
 
 
     def create_frame(self, parent, size=(950, 450), **kwds):
@@ -460,7 +458,6 @@ Matt Newville <newville@cars.uchicago.edu>
             if desc is None or len(desc) < 1:
                 desc = basename
             self.pv_opts[name] = (desc, uselog, ymin, ymax)
-            print("Add PV ", name, self.pv_opts[name])
 
             inew = len(self.pvdata)
             new_shown = False
