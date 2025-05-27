@@ -113,10 +113,9 @@ class ConfigFile(object):
         """
         fpath = Path(fname).absolute()
         if not fpath.exists():
-            for fpath in (Path(get_configfolder(), fname),
-                          Path(self.default_configfile)):
-                if fpath.exists():
-                    break
+            _path = Path(get_configfolder(), fname)
+            if _path.exists():
+                fpath  = _path
 
         if not fpath.exists():
             print("No config file to read: ", fname)
