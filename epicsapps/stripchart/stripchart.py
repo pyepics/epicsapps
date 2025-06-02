@@ -161,7 +161,7 @@ Also, these key bindings can be used
     about_msg =  """Epics PV Strip Chart  version 0.1
 Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, parent=None, configfile=None, nmax=None, ntrim=None):
+    def __init__(self, parent=None, configfile=None, prompt=False, nmax=None, ntrim=None):
         self.pvdata = {}
         self.pvs = {}
         self.pv_opts = {}
@@ -183,18 +183,26 @@ Matt Newville <newville@cars.uchicago.edu>
 
         if configfile is None:
             configfile = get_default_configfile(CONFFILE)
+        else:
+            self.onReadConfig(fname=configfile)
+        self.timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
+        self.timer.Start(POLLTIME)
+
+    def onReadConfig(self, event=None, fname=None):
+        if fname is None:
+            fname = CONFFILE
+        fpath = Path(fname)
+        wcard = 'StripChart Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
+        configfile = FileOpen(self.parent, "Read StripChart Configuration File",
+                              default_file=fpath.name,
+                              default_dir=fpath.parent.as_posix(),
+                              wildcard=wcard)
         if configfile is None:
-            default_file = configfile or CONFFILE
-            fpath = Path(default_file)
-            wcard = 'StripChart Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
-            configfile = FileOpen(parent, "Read StripChart Configuration File",
-                                  default_file=fpath.name,
-                                  default_dir=fpath.parent.as_posix(),
-                                  wildcard=wcard)
+            return
 
         self.read_config(configfile)
-
-        if configfile is not None and len(self.config['pvs']) > 0:
+        if len(self.config['pvs']) > 0:
             try:
                 os.chdir(self.config.get('workdir', os.getcwd()))
             except:
@@ -206,9 +214,6 @@ Matt Newville <newville@cars.uchicago.edu>
                 for name, desc, uselog, ymin, ymax in res.pvs:
                     self.addPV(name, desc=desc, uselog=uselog, ymin=ymin, ymax=ymax)
 
-        self.timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
-        self.timer.Start(POLLTIME)
 
     def read_config(self, fname=None):
         "read config file"
@@ -216,7 +221,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.config = {'workdir': os.getcwd(), 'pvs': []}
         nconf = getattr(self.configfile, 'config', {})
         self.config.update(nconf)
-
+        print("SelfConfigfile" , self.configfile)
 
     def create_frame(self, parent, size=(950, 450), **kwds):
         self.parent = parent
@@ -368,8 +373,11 @@ Matt Newville <newville@cars.uchicago.edu>
         mbar = wx.MenuBar()
         mfile = wx.Menu()
         pp = self.plotpanel
+        MenuItem(self, mfile, "&Read Config\tCtrl+R",
+                 "Read Configuration File", self.onReadConfig)
+
         MenuItem(self, mfile, "&Save Data\tCtrl+S",
-                 "Save PNG Image of Plot", self.onSaveData)
+                 "Save Text File of Data", self.onSaveData)
 
         MenuItem(self, mfile, "Save Plot Image\t",
                  "Save PNG Image of Plot", pp.save_figure)
@@ -505,6 +513,7 @@ Matt Newville <newville@cars.uchicago.edu>
             self.wids[f'uselog{row}'].SetSelection(uselog)
             self.wids[f'ymin{row}'].SetValue(f"{ymin}")
             self.wids[f'ymax{row}'].SetValue(f"{ymax}")
+
 
     def onSavePVSettings(self, event=None):
         for i in range(NPVS):
