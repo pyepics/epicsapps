@@ -13,11 +13,7 @@ from functools import partial
 import base64
 import json
 
-try:
-    import cv2
-    HAS_CV2 = True
-except ImportError:
-    HAS_CV2 = False
+import cv2
 
 import matplotlib
 matplotlib.use('WXAgg')
@@ -411,7 +407,6 @@ class MicroscopeFrame(wx.Frame):
         add_menu(self, fmenu, label="&Save Config", text="Save Configuration",
                  action = self.onSaveConfig)
 
-        # if HAS_CV2:
         add_menu(self, fmenu, label="Capture Video",
                  text="Capture Video",
                  action = self.onCaptureVideo)
@@ -764,11 +759,10 @@ class MicroscopeFrame(wx.Frame):
 
 
     def save_videocam(self):
-        fullpath = ''
-        if HAS_CV2 and self.videocam is not None:
-            t0 = time.time()
-            imgfile = '%s_hutch.jpg' % time.strftime('%b%d_%H%M%S')
-            self.video_fullpath = os.path.join(os.getcwd(), self.imgdir, imgfile)
+        t0 = time.time()
+        imgfile = '%s_hutch.jpg' % time.strftime('%b%d_%H%M%S')
+        self.video_fullpath = os.path.join(os.getcwd(), self.imgdir, imgfile)
+        if self.videocam is not None:
             if self.vcap_thread is not None:
                 if self.vcap_thread.is_alive():
                     self.vcap_thread.join()

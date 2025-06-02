@@ -50,6 +50,7 @@ dependencies = ['pyepics',
              'tabulate',
              'toml',
              'tomli',
+	     'opencv-python',
              ]
 
 [project.scripts]
