@@ -832,7 +832,7 @@ class MicroscopeFrame(wx.Frame):
         def get_score(pos):
             zpos = start_pos + pos * 0.001
             zstage.put(zpos, wait=True)
-            time.sleep(0.95)
+            time.sleep(0.5)
             return self.imgpanel.sharpness()
 
         # step 1: take up to 12 steps of 200 microns
@@ -855,13 +855,13 @@ class MicroscopeFrame(wx.Frame):
                 sign = -1
             else:
                 sign = 1 if score1>score2 else -1
-
         if best_step != 0:
             i = 0
             while i < 12:
                 i=i+1
                 test_pos = sign*step*(i+1)
                 score = get_score(test_pos)
+                # print("Focus ", test_pos, score, best_score)
                 if score > best_score:
                     best_score = score
                     best_step = test_pos
@@ -872,16 +872,16 @@ class MicroscopeFrame(wx.Frame):
         for i, s in enumerate((128, 64, 32, 16, 8, 4, 2)):
             report(f'AutoFocus: refining focus ({i+1}/7)')
             score1 = get_score(best_step+sign*s)
+            # print("Focus ", i, best_step+sign*s, score1, best_score)            
             if score1 > best_score:
                 best_score = score1
-                best_step = best_step+s
+                best_step = best_step+sign*s
             else:
                 score2 = get_score(best_step-sign*s)
                 if score2 > best_score:
                     best_score = score2
-                    best_step = best_step-s
+                    best_step = best_step-sign*s
                     sign = -sign
-
         zstage.put(start_pos + best_step * 0.001, wait=True)
         report('AutoFocus: done. ')
         try:
