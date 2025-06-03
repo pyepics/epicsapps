@@ -808,7 +808,7 @@ class MicroscopeFrame(wx.Frame):
         self.af_timer.Start(2000)
         self.af_thread.start()
 
-        
+
     def onAutoExposure(self, event=None):
         report = None
         if self.ctrlpanel.af_message is not None:
@@ -832,7 +832,7 @@ class MicroscopeFrame(wx.Frame):
         def get_score(pos):
             zpos = start_pos + pos * 0.001
             zstage.put(zpos, wait=True)
-            time.sleep(0.75)
+            time.sleep(0.95)
             return self.imgpanel.sharpness()
 
         # step 1: take up to 12 steps of 200 microns
@@ -851,7 +851,7 @@ class MicroscopeFrame(wx.Frame):
             score2 = get_score(-step)
             if score2 > best_score:
                 best_score = score2
-                best_step = -step            
+                best_step = -step
                 sign = -1
             else:
                 sign = 1 if score1>score2 else -1
@@ -870,7 +870,7 @@ class MicroscopeFrame(wx.Frame):
 
         zstage.put(start_pos + best_step * 0.001, wait=True)
         for i, s in enumerate((128, 64, 32, 16, 8, 4, 2)):
-            report(f'AutoFocus: refining focus ({i+1}/7)')        
+            report(f'AutoFocus: refining focus ({i+1}/7)')
             score1 = get_score(best_step+sign*s)
             if score1 > best_score:
                 best_score = score1
@@ -879,10 +879,10 @@ class MicroscopeFrame(wx.Frame):
                 score2 = get_score(best_step-sign*s)
                 if score2 > best_score:
                     best_score = score2
-                    best_step = best_step-s     
+                    best_step = best_step-s
                     sign = -sign
-                    
-        zstage.put(start_pos + best_step * 0.001, wait=True)                    
+
+        zstage.put(start_pos + best_step * 0.001, wait=True)
         report('AutoFocus: done. ')
         try:
             self.imgpanel.SetExposureGain(expdat)
