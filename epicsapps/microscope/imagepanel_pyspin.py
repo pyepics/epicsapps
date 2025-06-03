@@ -151,7 +151,7 @@ class ImagePanel_PySpin(ImagePanel_Base):
         if len(img.shape) == 3:
             img = img.sum(axis=2)
         w, h = img.shape
-        w1, w2, h1, h2 = int(0.2*w), int(0.8*w), int(0.2*h), int(0.8*h)
+        w1, w2, h1, h2 = int(0.25*w), int(0.75*w), int(0.25*h), int(0.75*h)
         img = img[w1:w2, h1:h2]
         return float(((img - img.mean())**2).sum()/(w*h))
         
