@@ -1,9 +1,8 @@
-
 import json
 import numpy as np
 
 try:
-    from pyFAI.azimuthalIntegrator import AzimuthalIntegrator
+    from pyFAI import AzimuthalIntegrator
     HAS_PYFAI = True
 except ImportError:
     HAS_PYFAI = False
