@@ -171,7 +171,9 @@ class InstrumentDB(SimpleDB):
     def get_instrument(self, name):
         """return instrument by name
         """
-        if isinstance(name, (tuple, list)) and len(name) > 5:
+        if isinstance(name, Row):
+            name = name.name
+        if isinstance(name, (tuple, list)) and len(name) > 4:
             name = name[1]
         return self.get_rows('instrument', where={'name': name},
                              limit_one=True, none_if_empty=True)
@@ -371,6 +373,8 @@ class InstrumentDB(SimpleDB):
         return row
 
     def remove_position(self, posname, instname):
+        if isinstance(instname, Row):
+            instname = instname.name
         inst = self.get_instrument(instname)
         if inst is None:
             raise InstrumentDBException('Save Postion needs valid instrument')
@@ -386,12 +390,14 @@ class InstrumentDB(SimpleDB):
         self.delete_rows('position', {'id': pos.id})
 
     def remove_instrument(self, instname):
+        if isinstance(instname, Row):
+            instname = instname.name
         inst = self.get_instrument(instname)
         if inst is None:
             raise InstrumentDBException('Save Postion needs valid instrument')
 
         for pos in self.get_positions(instname):
-            self.remove_position(pos.name, instname)
+            self.remove_position(pos.name, inst.name)
 
         self.delete_rows('position',      {'instrument_id': inst.id})
         self.delete_rows('instrument_pv', {'instrument_id': inst.id})

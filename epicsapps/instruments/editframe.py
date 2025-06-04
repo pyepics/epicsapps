@@ -537,13 +537,11 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
             inst = self.db.get_instrument(self.page.instname)
             for pname, cbox in self.checkboxes.items():
                 if cbox.IsChecked():
-                     self.db.remove_position(pname, inst)
+                     self.db.remove_position(pname, inst.name)
+
         self.page.pos_timer.Stop()
         self.page.put_timer.Stop()
-        self.page.pos_list.Clear()
-        for pos in self.inst.positions:
-            self.page.pos_list.Append(pos.name)
-
+        self.page.refresh_position_list()
         self.Destroy()
 
     def onCancel(self, event=None):
