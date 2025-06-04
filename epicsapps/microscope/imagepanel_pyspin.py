@@ -18,7 +18,7 @@ from epics import get_pv, Device, caput, poll
 
 from epics.wx import DelayedEpicsCallback, EpicsFunction
 
-from wxutils import FloatSpin, FloatCtrl, pack, Button
+from wxutils import FloatSpin, FloatCtrl, pack, Button, HLine
 
 from .imagepanel_base import ImagePanel_Base, ConfPanel_Base
 
@@ -192,20 +192,18 @@ class ConfPanel_PySpin(ConfPanel_Base):
         self.__initializing = True
         i = next_row + 1
 
-        sizer.Add(self.title,          (i,  0), (1, 3), LEFT)
+        sizer.Add(self.title,    (i,  0), (1, 3), LEFT)
 
         i += 1
         for dat in (('exposure', 'ms',  50, 0.03, MAX_EXPOSURE_TIME),
                     ('gain', 'dB',      5,  0, 40)):
-            # ('gamma', '',       1, 0.5, 4)):
-
             key, units, defval, minval, maxval = dat
             wids[key] = FloatCtrl(self, value=defval,
                                   minval=minval, maxval=maxval,
                                   precision=2,
                                   action=self.onValue,
                                   act_on_losefocus=True,
-                                  action_kws={'prop': key}, size=(75, -1))
+                                  action_kws={'prop': key}, size=(85, -1))
             label = '%s' % (key.title())
             if len(units)> 0:
                 label = '%s (%s)' % (key.title(), units)
@@ -238,8 +236,6 @@ class ConfPanel_PySpin(ConfPanel_Base):
                 wids[akey].Bind(wx.EVT_CHECKBOX, partial(self.onAuto, prop=key))
                 sizer.Add(wids[akey], (i, 2), (1, 1), LEFT)
             i += 1
-
-        # sizer.Add(btn_start,          (i, 0), (1, 2), LEFT)
 
         pack(self, sizer)
         self.__initializing = False

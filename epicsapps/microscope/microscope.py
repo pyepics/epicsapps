@@ -25,7 +25,7 @@ from epics.wx import EpicsFunction
 from epics.wx.utils import (add_menu, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from wxutils import (GridPanel, OkCancel, FloatSpin, NumericCombo,
-                     SimpleText, FileSave, FileOpen, pack, Popup)
+                     Button, SimpleText, FileSave, FileOpen, pack, Popup)
 
 from pyshortcuts import fix_filename
 
@@ -187,9 +187,6 @@ class MicroscopeFrame(wx.Frame):
                     xhair_cb=self.onShowCrosshair,
                     lamp=self.lamp)
 
-        autofocus_cb = self.onAutoFocus
-        autoexpose_cb = self.onAutoExposure
-
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
             ImagePanel, ConfPanel = ImagePanel_Fly2, ConfPanel_Fly2
@@ -199,7 +196,6 @@ class MicroscopeFrame(wx.Frame):
         elif self.cam_type.startswith('adfly'):
             opts['prefix'] = self.cam_adpref
             ImagePanel, ConfPanel = ImagePanel_Fly2AD, ConfPanel_Fly2AD
-            autofocus_cb = None
         elif self.cam_type.startswith('area'):
             opts['prefix'] = self.cam_adpref
             ImagePanel, ConfPanel = ImagePanel_EpicsAD, ConfPanel_EpicsAD
@@ -210,11 +206,9 @@ class MicroscopeFrame(wx.Frame):
             ImagePanel, ConfPanel = ImagePanel_ZMQ, ConfPanel_ZMQ
             opts['host'] = self.cam_pubaddr
             opts['port'] = self.cam_pubport
-            autofocus_cb = None
         elif self.cam_type.startswith('epicsarray'):
             ImagePanel, ConfPanel = ImagePanel_EpicsArray, ConfPanel_EpicsArray
             opts['prefix'] = self.cam_pubaddr
-            autofocus_cb = None
 
         self.imgpanel  = ImagePanel(self, **opts)
         self.imgpanel.SetMinSize((285, 250))
@@ -224,7 +218,7 @@ class MicroscopeFrame(wx.Frame):
         safe_move   = config.get('safe_move', None)
 
         ppanel = wx.Panel(self)
-        self.pospanel = PositionPanel(ppanel, self,
+        self.pospanel = PositionPanel(self, self,
                                       instrument=config['instrument'],
                                       dbname=config.get('dbname', None),
                                       xyzmotors=config.get('xyzmotors', ()),
@@ -235,15 +229,20 @@ class MicroscopeFrame(wx.Frame):
         self.ctrlpanel = ControlPanel(ppanel,
                                       groups=self.stage_groups,
                                       config=self.stages,
-                                      center_cb=self.onMoveToCenter,
-                                      autofocus=autofocus_cb,
-                                      autoexpose=autoexpose_cb)
+                                      center_cb=self.onMoveToCenter)
 
         self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel,
                                    calibrations=self.calibrations,
                                    calib_cb=self.onSetCalibration, **opts)
 
         zpanel = wx.Panel(ppanel)
+        
+        self.aex_button = Button(zpanel, "Auto Exposure",
+                                 action=self.onAutoExposure, size=(150, -1))
+        self.af_button = Button(zpanel, "AutoFocus",
+                                action=self.onAutoFocus, size=(150, -1))
+        self.af_message = wx.StaticText(zpanel, label="", size=(200,-1))
+        
         zlab1 = wx.StaticText(zpanel, label='ZoomBox size (\u03bCm):',
                               size=(150, -1), style=txtstyle)
         zlab2 = wx.StaticText(zpanel, label='Sharpness:',
@@ -257,30 +256,32 @@ class MicroscopeFrame(wx.Frame):
                                             size=(275, 275),
                                             sharpness_label=zsharp,
                                             **opts)
+
         zsizer = wx.GridBagSizer(2, 2)
-        zsizer.Add(zlab1,         (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        zsizer.Add(self.zoomsize, (0, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        zsizer.Add(zlab2,         (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        zsizer.Add(zsharp,        (1, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        zsizer.Add(self.imgpanel.zoompanel, (2, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
-        zpanel.SetSizer(zsizer)
-        zsizer.Fit(zpanel)
+        zsizer.Add(self.aex_button, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(self.af_button,  (0, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(self.af_message, (1, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(zlab1,         (2, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(self.zoomsize, (2, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(zlab2,         (3, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(zsharp,        (3, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(self.imgpanel.zoompanel, (4, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
+        pack(zpanel, zsizer)
 
+        size = (1500, 750)
         if orientation.lower().startswith('land'):
-            size = (1500, 750)
-            msizer = wx.GridBagSizer(2, 2)
-            msizer.Add(self.ctrlpanel, (0, 0), (1, 1), LEFT_TOP, 1)
-            msizer.Add(self.confpanel, (1, 0), (1, 1), LEFT_TOP, 1)
-            # msizer.Add((1, 1),         (2, 0), (1, 1), ALL_EXP, 1)
-            msizer.Add(zpanel,         (2, 0), (1, 1), LEFT_TOP, 1)
-            msizer.Add(self.pospanel,  (0, 1), (5, 1), ALL_EXP, 1)
-            self.pospanel.SetMinSize((275, 1000))
-
+            msizer = wx.BoxSizer(wx.VERTICAL)
+            msizer.Add(self.ctrlpanel, 0, LEFT_TOP, 1)
+            msizer.Add(self.confpanel, 0, LEFT_TOP, 1)
+            msizer.Add(zpanel,         1, LEFT_TOP, 1)
             pack(ppanel, msizer)
 
+            self.pospanel.SetMinSize((275, 700))
+
             sizer = wx.BoxSizer(wx.HORIZONTAL)
-            sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
-                           (ppanel,     1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
+            sizer.AddMany([(self.imgpanel, 5, ALL_EXP|LEFT_CEN, 0),
+                           (ppanel,        1, ALL_EXP|LEFT_CEN|wx.GROW, 1),
+                           (self.pospanel, 1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
             pack(self, sizer)
 
         else: # portrait mode
@@ -290,7 +291,6 @@ class MicroscopeFrame(wx.Frame):
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add(self.pospanel,  (0, 1), (3, 1), ALL_EXP|LEFT_TOP, 2)
             msizer.Add(self.confpanel, (0, 2), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            msizer.Add((10, 10),       (1, 2), (1, 1), ALL_EXP, 1)
             msizer.Add(zpanel,         (2, 2), (1, 1), ALL_EXP, 1)
             pack(ppanel, msizer)
             sizer = wx.BoxSizer(wx.VERTICAL)
@@ -795,13 +795,13 @@ class MicroscopeFrame(wx.Frame):
         if self.af_done:
             self.af_thread.join()
             self.af_timer.Stop()
-            if self.ctrlpanel.af_message is not None:
-                self.ctrlpanel.af_message.SetLabel('')
-            self.ctrlpanel.af_button.Enable()
+            if self.af_message is not None:
+                self.af_message.SetLabel('')
+            self.af_button.Enable()
 
     def onAutoFocus(self, event=None, **kws):
         self.af_done = False
-        # self.ctrlpanel.af_button.Disable()
+        self.af_button.Disable()
         self.af_thread = Thread(target=self.do_autofocus)
         self.af_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onAFTimer, self.af_timer)
@@ -811,16 +811,16 @@ class MicroscopeFrame(wx.Frame):
 
     def onAutoExposure(self, event=None):
         report = None
-        if self.ctrlpanel.af_message is not None:
-            report = self.ctrlpanel.af_message.SetLabel
+        if self.af_message is not None:
+            report = self.af_message.SetLabel
         if report is not None:
             report('Auto-setting exposure')
         Thread(target=self.imgpanel.AutoSetExposureTime).start()
 
     def do_autofocus(self):
         report = None
-        if self.ctrlpanel.af_message is not None:
-            report = self.ctrlpanel.af_message.SetLabel
+        if self.af_message is not None:
+            report = self.af_message.SetLabel
         if report is not None:
             report('Auto-setting exposure')
         self.imgpanel.AutoSetExposureTime()
@@ -888,7 +888,7 @@ class MicroscopeFrame(wx.Frame):
             self.imgpanel.SetExposureGain(expdat)
         except:
             pass
-        self.ctrlpanel.af_button.Enable()
+        self.af_button.Enable()
 
     def onMoveToCenter(self, event=None, **kws):
         "bring last pixel to image center"

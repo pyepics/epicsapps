@@ -33,8 +33,7 @@ def make_steps(precision=3, minstep=0, maxstep=10, decades=7, steps=(1,2,5)):
     return out
 
 class ControlPanel(wx.Panel):
-    def __init__(self, parent, groups=None, config={}, center_cb=None,
-                 autofocus=None, autoexpose=None, showblur=None):
+    def __init__(self, parent, groups=None, config={}, center_cb=None,  **kws):
         wx.Panel.__init__(self, parent, -1)
         self.subpanels = {}
         self.center_cb = center_cb
@@ -45,7 +44,7 @@ class ControlPanel(wx.Panel):
         self.motor_wids  = {}   # motor panel widgets, key=desc
         self.motors      = {}   # epics motor,         key=desc
         self.scale       = {}   # motor sign for ZFM,  key=desc
-        self.af_message = None
+        # self.af_message = None
         # self.SetMinSize((320, 200))
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -77,24 +76,6 @@ class ControlPanel(wx.Panel):
                                     action=self.onBringToCenter, size=(225, -1))
             sizer.Add(ctr_button, 0, LEFT_TOP)
 
-
-        bpanel = wx.Panel(self)
-        bsizer = wx.BoxSizer(wx.HORIZONTAL)
-        self.af_message = None
-        if autoexpose is not None:
-            self.aex_button = Button(bpanel, "Auto Exposure",
-                                        action=autoexpose, size=(150, -1))
-            bsizer.Add(self.aex_button, 0, LEFT_TOP)
-        if autofocus is not None:
-            self.af_button = Button(bpanel, "AutoFocus",
-                                        action=autofocus, size=(150, -1))
-            self.af_message = wx.StaticText(self, label="", size=(200,-1))
-            bsizer.Add(self.af_button, 0, LEFT_TOP)
-            
-        pack(bpanel, bsizer)
-        sizer.Add(bpanel, 0, LEFT_TOP)
-        if self.af_message is not None:
-            sizer.Add(self.af_message, 0, LEFT_TOP)
         pack(self, sizer)
         self.connect_motors()
 
@@ -106,9 +87,6 @@ class ControlPanel(wx.Panel):
             desc = data['desc']
             self.motors[desc] = Motor(name=name)
             self.scale[desc] = data['scale']
-
-        #for desc in self.motor_wids:
-        #    self.motor_wids[desc].SelectMotor(self.motors[desc])
 
     def read_position(self):
         out = OrderedDict()

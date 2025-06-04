@@ -459,8 +459,8 @@ class ConfPanel_Base(wx.Panel):
 
         self.wids = wids = {}
         self.sizer = wx.GridBagSizer(4, 4)
-        self.sizer.SetVGap(4)
-        self.sizer.SetHGap(4)
+        self.sizer.SetVGap(3)
+        self.sizer.SetHGap(3)
 
         self.img_size  = self.txt(' ', size=140)
         self.img_size_shown = False
@@ -483,7 +483,7 @@ class ConfPanel_Base(wx.Panel):
             row += 1
             calibs = list(self.calibrations.keys())
             self.calib = Choice(self, choices=calibs, default=0,
-                                size=(150, -1), action=self.onCalib)
+                                size=(125, -1), action=self.onCalib)
             _label = self.txt("Calibration:")
             sizer.Add(_label,      (row, 0), (1, 1), wx.ALIGN_LEFT)
             sizer.Add(self.calib,  (row, 1), (1, 2), wx.ALIGN_LEFT)
@@ -498,7 +498,7 @@ class ConfPanel_Base(wx.Panel):
                                 max_val=self.lamp['maxval'],
                                 increment=self.lamp['step'],
                                 action=self.onLampVal,
-                                size=(80, -1),
+                                size=(85, -1),
                                 style=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER)
 
             sizer.Add(self.txt('Lamp Intensity:'), (row, 0), (1, 1), wx.ALIGN_LEFT)
