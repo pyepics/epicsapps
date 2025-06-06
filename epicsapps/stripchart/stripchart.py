@@ -731,8 +731,10 @@ Matt Newville <newville@cars.uchicago.edu>
                 ymax = max(ydat) + yrange*0.02
 
             ylabel = 'ylabel'
-            if i > 0:
-                ylabel = f'y{1+i}label'
+            logscale = 'ylog_scale'
+            if yaxes > 1:
+                ylabel = f'y{yaxes}label'
+                logscale = f'y{yaxes}log_scale'
 
             tspan = tnow - tmin
             tmin = (tmin - tspan*0.02)
@@ -750,21 +752,20 @@ Matt Newville <newville@cars.uchicago.edu>
                     use_update = False
                     pass
             if not use_update or self.force_replot:
-                ylog_scale = uselog and min(ydat) > 0
                 opts = {'show_legend': False, 'xlabel': 'Date / Time',
                         'drawstyle': 'steps-post',
                         'delay_draw': True, 'yaxes_tracecolor': True,
                         'use_dates': True, 'timezone': TZONE}
                 opts[ylabel] = desc
+                opts[logscale] = uselog and min(ydat) > 0
                 plot = ppan.plot if i==0 else ppan.oplot
                 plot(tdat, ydat, yaxes=yaxes, color=color,
-                     ymin=ymin, ymax=ymax,
-                     ylog_scale=ylog_scale, label=desc, **opts)
-                self.force_replot = False
+                     ymin=ymin, ymax=ymax, label=desc, **opts)
 
         snow = time.strftime("%Y-%b-%d %H:%M:%S", time.localtime())
         self.plotpanel.set_title(snow, delay_draw=True)
         self.plotpanel.canvas.draw()
+        self.force_replot = False
         self.needs_refresh = False
 
         return
