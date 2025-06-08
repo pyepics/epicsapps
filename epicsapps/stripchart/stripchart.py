@@ -5,6 +5,7 @@ Epics Strip Chart application
 import os
 import sys
 import time
+import shutil
 from collections import namedtuple
 
 import numpy as np
@@ -12,6 +13,9 @@ import numpy as np
 from numpy import array, where
 from functools import partial
 from pathlib import Path
+
+import pytz
+
 import wx
 import wx.lib.colourselect  as csel
 
@@ -25,15 +29,13 @@ from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
 
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
-import pytz
 
-from .configfile import StripChartConfig, CONFFILE, get_default_configfile
-from ..utils import SelectWorkdir, get_icon
+from ..utils import SelectWorkdir, get_icon, ConfigFile, load_yaml
 
-tzname = os.environ.get('TZ', 'US/Central')
-TZONE = pytz.timezone(tzname)
+TZONE = pytz.timezone(os.environ.get('TZ', 'US/Central'))
 
-ICON_FILE = 'stripchart.ico'
+CONFFILE = 'stripchart.yaml'
+
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
 BGCOL  = (250, 250, 240)
@@ -55,6 +57,18 @@ PLOT_COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
 # 116.5 hours or 4 days, 20.5 hourse worth of data.
 NMAX_DEFAULT = 2**22
 NTRIM_DEFAULT =NMAX_DEFAULT/64
+
+
+_configtext = """
+##   pvname, pvdesc, use_log, ymin, ymax
+pvs:
+   - ['S:SRcurrentAI.VAL', 'Storage Ring Current', 0, '', '']
+"""
+
+class StripChartConfig(ConfigFile):
+    def __init__(self, fname=CONFFILE):
+        dconf = load_yaml(_configtext)
+        ConfigFile.__init__(self, fname, default_config=dconf)
 
 def get_bound(val):
     "return float value of input string or None"
@@ -179,34 +193,29 @@ Matt Newville <newville@cars.uchicago.edu>
         self.timelabel = 'seconds'
 
         self.create_frame(parent)
-        self.config = {'workdir': os.getcwd(), 'pvs': []}
 
-        if configfile is None:
-            configfile = get_default_configfile(CONFFILE)
-        else:
-            self.onReadConfig(fname=configfile)
+        ret = SelectWorkdir(self)
+        self.config = {'pvs': []}
+        self.onImportPVs(configfile)
+
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
         self.timer.Start(POLLTIME)
 
-    def onReadConfig(self, event=None, fname=None):
-        if fname is None:
-            fname = CONFFILE
-        fpath = Path(fname)
+    def onReadConfig(self, event=None):
         wcard = 'StripChart Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
-        configfile = FileOpen(self.parent, "Read StripChart Configuration File",
-                              default_file=fpath.name,
-                              default_dir=fpath.parent.as_posix(),
-                              wildcard=wcard)
-        if configfile is None:
-            return
+        cfile = FileOpen(self.parent, "Read StripChart Configuration File",
+                              default_file=CONFFILE, wildcard=wcard)
+        if cfile is not None:
+            self.onImportPVs(cfile)
 
-        self.read_config(configfile)
+    def onImportPVs(self, conffile):
+        if conffile is None:
+            conffile = CONFFILE
+        if Path(conffile).exists():
+            self.read_config(conffile)
+
         if len(self.config['pvs']) > 0:
-            try:
-                os.chdir(self.config.get('workdir', os.getcwd()))
-            except:
-                pass
             dlg = PVSelectDialog(self, self.config['pvs'])
             res = dlg.GetResponse()
             dlg.Destroy()
@@ -218,10 +227,9 @@ Matt Newville <newville@cars.uchicago.edu>
     def read_config(self, fname=None):
         "read config file"
         self.configfile = StripChartConfig(fname=fname)
-        self.config = {'workdir': os.getcwd(), 'pvs': []}
+        self.config = {'pvs': []}
         nconf = getattr(self.configfile, 'config', {})
         self.config.update(nconf)
-        print("SelfConfigfile" , self.configfile)
 
     def create_frame(self, parent, size=(950, 450), **kwds):
         self.parent = parent
@@ -373,7 +381,7 @@ Matt Newville <newville@cars.uchicago.edu>
         mbar = wx.MenuBar()
         mfile = wx.Menu()
         pp = self.plotpanel
-        MenuItem(self, mfile, "&Read Config\tCtrl+R",
+        MenuItem(self, mfile, "&Read Configuration\tCtrl+R",
                  "Read Configuration File", self.onReadConfig)
 
         MenuItem(self, mfile, "&Save Data\tCtrl+S",
@@ -588,7 +596,7 @@ Matt Newville <newville@cars.uchicago.edu>
         if dlg.ShowModal() == wx.ID_OK:
             path = dlg.GetPath()
             self.SaveDataFiles(path)
-            self.write_message('Saved data to %s' % path)
+            self.write_message(f'Saved data to {path}')
         dlg.Destroy()
 
     def SaveDataFiles(self, path):
@@ -616,7 +624,7 @@ Matt Newville <newville@cars.uchicago.edu>
             for tx, yval in data:
                 buff.append("  %.3f %16g     %.3f"  % (tx, yval, tx-tnow))
 
-            fout = open(fname, 'w')
+            fout = open(fname, 'w', encoding='utf-8')
             fout.write("\n".join(buff))
             fout.close()
             #dat = tnow, func(tnow)
@@ -642,9 +650,17 @@ Matt Newville <newville@cars.uchicago.edu>
             conf_pvs.append([pvname, desc, uselog, ymin, ymax])
 
         self.config['pvs'] = conf_pvs
-        self.config['workdir'] = os.getcwd()
         if self.configfile.filename is None:
-            self.configfile.filename = 'stripchart.yaml'
+            self.configfile.filename = CONFFILE
+
+        # save a backup config file
+        if Path(self.configfile.filename).exists():
+            ofile = self.confifile.filename.as_posix()
+            nfile = ofile.replace('.yaml', '_bak.yaml')
+            try:
+                shutil.copy(ofile, nfile)
+            except:
+                pass
 
         self.configfile.write(config=self.config)
 
@@ -756,6 +772,7 @@ Matt Newville <newville@cars.uchicago.edu>
                         'drawstyle': 'steps-post',
                         'delay_draw': True, 'yaxes_tracecolor': True,
                         'use_dates': True, 'timezone': TZONE}
+
                 opts[ylabel] = desc
                 opts[logscale] = uselog and min(ydat) > 0
                 plot = ppan.plot if i==0 else ppan.oplot
