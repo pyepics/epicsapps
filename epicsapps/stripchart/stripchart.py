@@ -655,7 +655,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         # save a backup config file
         if Path(self.configfile.filename).exists():
-            ofile = self.confifile.filename.as_posix()
+            ofile = self.configfile.filename.as_posix()
             nfile = ofile.replace('.yaml', '_bak.yaml')
             try:
                 shutil.copy(ofile, nfile)
