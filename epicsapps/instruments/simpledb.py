@@ -4,12 +4,10 @@ Simple database interface using SQLAlchemy 2.0
 """
 
 import os
-import time
-import random
 import logging
 from datetime import datetime
 
-from sqlalchemy import MetaData, create_engine, text, and_
+from sqlalchemy import MetaData, create_engine, and_
 from sqlalchemy.orm import Session
 from sqlalchemy.sql.sqltypes import INTEGER
 
@@ -51,7 +49,7 @@ password: db_user_password
 
 def json_encode(val):
     "simple wrapper around json.dumps"
-    if val is None or isinstance(val, (str, unicode)):
+    if val is None or isinstance(val, str)):
         return val
     return  json.dumps(val)
 
@@ -151,7 +149,7 @@ class SimpleDB(object):
         except:
             raise ValueError(f'{dbname:s} is not a valid database')
 
-        tables = self.tables = self.metadata.tables
+        self.tables = self.metadata.tables
 
         if self.logfile is not None:
             logging.basicConfig()
@@ -239,7 +237,8 @@ class SimpleDB(object):
                 if len(out) == 0 and (default is not None or
                                       as_int is not None or
                                       as_bool is not None):
-                    if default is None: default = 0
+                    if default is None:
+                        default = 0
                     out = cast(default, as_int, as_bool)
         else:
             out = {}
@@ -273,7 +272,7 @@ class SimpleDB(object):
             funcname = 'handle_where'
         tab = self.tables.get(tablename, None)
         if tab is None:
-            self.table_error(f"no table found", tablename, funcname)
+            self.table_error("no table found", tablename, funcname)
 
         filters = []
         if where is None or isinstance(where, bool) and where:
@@ -290,7 +289,7 @@ class SimpleDB(object):
                     if coldat.primary_key and isinstance(coldat.type, INTEGER):
                         filters.append(getattr(tab.c, colname)==where)
             if len(filters) == 0:
-                self.table_error(f"could not interpret integer `where` value",
+                self.table_error("could not interpret integer `where` value",
                                       tablename, funcname)
         elif isinstance(where, dict):
             where.update(kws)
@@ -326,7 +325,7 @@ class SimpleDB(object):
         """
         tab = self.tables.get(tablename, None)
         if tab is None:
-            self.table_error(f"no table found", tablename, 'get_rows')
+            self.table_error("no table found", tablename, 'get_rows')
 
         where = self.handle_where(tablename, where=where, funcname='get_rows', **kws)
         query = tab.select().where(where)
@@ -379,7 +378,7 @@ class SimpleDB(object):
         """
         tab = self.tables.get(tablename, None)
         if tab is None:
-            self.table_error(f"no table found", tablename, 'update')
+            self.table_error("no table found", tablename, 'update')
 
         where = self.handle_where(tablename, where=where, funcname='update')
         self.execute(tab.update().where(where).values(**kws), set_modify_date=True)
@@ -396,7 +395,7 @@ class SimpleDB(object):
 
         tab = self.tables.get(tablename, None)
         if tab is None:
-            self.table_error(f"no table found", tablename, 'delete')
+            self.table_error("no table found", tablename, 'delete')
 
         where = self.handle_where(tablename, where=where, funcname='delete')
         self.execute(tab.delete().where(where), set_modify_date=True)
