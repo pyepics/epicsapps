@@ -181,6 +181,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pv_opts = {}
         self.wids = {}
         self.nplot = 0
+        self.configfile = None
         self.pvlist = ['-']
         self.needs_refresh = False
         self.paused = False
@@ -650,19 +651,21 @@ Matt Newville <newville@cars.uchicago.edu>
             conf_pvs.append([pvname, desc, uselog, ymin, ymax])
 
         self.config['pvs'] = conf_pvs
-        if self.configfile.filename is None:
-            self.configfile.filename = CONFFILE
+        if self.configfile is not None:
+            cfname = getattr(self.configfile, 'filename', None)
+            if cfame is None:
+                cfname = self.configfile.filename = CONFFILE
 
-        # save a backup config file
-        if Path(self.configfile.filename).exists():
-            ofile = self.configfile.filename.as_posix()
-            nfile = ofile.replace('.yaml', '_bak.yaml')
-            try:
-                shutil.copy(ofile, nfile)
-            except:
-                pass
+            # save a backup config file
+            if Path(cfname).exists():
+                ofile = cfname.as_posix()
+                nfile = ofile.replace('.yaml', '_bak.yaml')
+                try:
+                    shutil.copy(ofile, nfile)
+                except:
+                    pass
 
-        self.configfile.write(config=self.config)
+            self.configfile.write(config=self.config)
 
         for pv in self.pvs.values():
             pv.clear_callbacks()
