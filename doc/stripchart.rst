@@ -20,6 +20,11 @@ To run the Stripchart application from the command line, use::
     epicsapps stripchart
 
 
+You will be prompted for a Working Directory, where a configuration
+file `stripchart.yaml` may be found, and where any images or data
+files you save will be written.
+
+
 A sample display would look like this:
 
 .. image:: images/stripchart.png
@@ -28,12 +33,11 @@ A sample display would look like this:
 Usage
 ~~~~~~~~~
 
-To use, Add PVs to be monitored in the upper left entry.  Once that PV
-connects, it will be added to the drop-down menus for each of the 4
-available traces.  Colors, Y-ranges, and descriptions (used for the
-Y-axis labels) can be altered.  To save these settings for a PV, press
-"Save PV Settings" in the upper right.
-
+To use StripChart, PVs to be monitored in the upper left entry.  Once
+that PV connects, it will be added to the drop-down menus for each of
+the 4 available traces.  Colors, Y-ranges, and descriptions (used for
+the Y-axis labels) can be altered.  To save these settings for a PV,
+press "Save PV Settings" in the upper right.
 
 The time range (in time from the present) can be adjusted on the
 right-hand side, just above the plot.
@@ -52,3 +56,51 @@ plot. With the mouse over the plot window, Control-C will also copy
 the PNG image to the clipboard.
 
 You can also configure the plot from the "Options" menu.
+
+
+Reading PVs from previous sessions
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+On startup, if a file called `stripchart.yaml` is found in the working
+folder, it will be read, and you can select PVs from that file to
+monitor.  You can also read PVs from a configuration file with a
+different name or location using File Menu->"Read Configuration". When
+you choose to read a configuration file, this will bring up a dialog
+like this:
+
+.. image:: images/stripchart_pvselect.png
+
+where you can select which of these PVs to import.
+
+This configuration file will include a list of the PVs (and
+saved descriptions, ranges, etc), and might look like this::
+
+    pvs:
+    - ['S:SRcurrentAI.VAL', Storage Ring Current, false, '', '']
+    - ['13XRM:QE2:SumAll:MeanValue_RBV', BPM Sum, false, '', '']
+    - ['13IDE:userTran1.J', I0, false, '', '']
+
+Here, for each PV, the PV name, description, whether to you Log-scale,
+minimum value, and maximum value are written.
+
+
+When StripChart is closed, it will save its configuration to
+`stripchart.yaml` in the current working folder, making a backup if
+needed.
+
+
+.. _stripchart_timezone:
+
+A note on Time Zone
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The data plotted with StripChart uses date and time for the X axis.
+The epics data received is as Unix timestamps (seconds since 1970 or
+1990).  When converting these to date and clock time, the current time
+zone must be known.
+
+It the displayed times look incorrect, it may be because the times are
+assumed to be referenced to the `US/Central` timezone.  Setting the system
+environmental variable  `TZ` to hold the name of the time zone (such
+as `US/Eastern` or `Australia/Melbourne`) should fix the times to be
+displayed correctly.
