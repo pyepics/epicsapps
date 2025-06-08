@@ -1,18 +1,12 @@
-import sys
 import time
 import wx
 import wx.lib.scrolledpanel as scrolled
 
 import epics
 from epics.wx import EpicsFunction
-
-from epics.wx.utils import add_menu
-
-from wxutils import (NumericCombo, pack, SimpleText, FileSave, FileOpen,
-                     SelectWorkdir, Button)
+from wxutils import (pack, SimpleText, Button)
 
 from .utils import GUIColors, YesNo, set_font_with_children
-from . import instrument
 
 class PVTypeChoice(wx.Choice):
     def __init__(self, parent, choices=None, size=(125, -1), **kws):
@@ -42,7 +36,6 @@ class pvNameCtrl(wx.TextCtrl):
     def onChar(self, event):
         key   = event.GetKeyCode()
         entry = wx.TextCtrl.GetValue(self).strip()
-        pos   = wx.TextCtrl.GetSelection(self)
         if key == wx.WXK_RETURN:
             self.owner.connect_pv(entry, wid=self.GetId())
         event.Skip()
@@ -92,12 +85,8 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
         self.db = db
         self.instname = instname
         self.inst = db.get_instrument(instname)
-        STY  = wx.GROW|wx.ALL
         LSTY = wx.ALIGN_LEFT|wx.GROW|wx.ALL
-        RSTY = wx.ALIGN_RIGHT|STY
-        CSTY = wx.ALIGN_CENTER|STY
         CEN  = wx.ALIGN_CENTER|wx.GROW|wx.ALL
-        LEFT = wx.ALIGN_LEFT|wx.GROW|wx.ALL
 
         self.name =  wx.TextCtrl(panel, value='', size=(200, -1))
         sizer = wx.GridBagSizer(12, 3)
@@ -202,7 +191,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         titlefont.PointSize += 1
         titlefont.SetWeight(wx.BOLD)
 
-        self.inst = db.get_instrument(instname)
+        db.get_instrument(instname)
         self.connecting_pvs = {}
 
         STY  = wx.GROW|wx.ALL|wx.ALIGN_CENTER_VERTICAL
@@ -463,7 +452,6 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
         panel = scrolled.ScrolledPanel(self, size=(550, 550),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
 
-        colors = GUIColors()
         font = self.GetFont()
         if parent is not None:
             font = parent.GetFont()
@@ -476,7 +464,6 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
         posnames = [p.name for p in db.get_positions(page.instname)]
 
         ALL_EXP  = wx.ALL|wx.EXPAND
-        CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
         LEFT_CEN = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL
 
         self.checkboxes = {}

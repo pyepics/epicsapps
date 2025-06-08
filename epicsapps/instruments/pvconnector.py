@@ -1,8 +1,7 @@
 import time
 import wx
 import epics
-from epics.wx import EpicsFunction, DelayedEpicsCallback
-from epics import Motor
+from epics.wx import EpicsFunction
 
 from .utils import MOTOR_FIELDS, normalize_pvname
 
@@ -29,7 +28,6 @@ class PVNameCtrl(wx.TextCtrl):
     def onChar(self, event):
         key   = event.GetKeyCode()
         value = wx.TextCtrl.GetValue(self).strip()
-        pos   = wx.TextCtrl.GetSelection(self)
         if key == wx.WXK_RETURN and self.pvlist is not None:
             self.pvlist.connect_pv(value, action=self.action,
                                    wid=self.GetId())
@@ -147,7 +145,7 @@ class EpicsPVList(object):
             return
 
         try:
-            wid, action, itime = self.in_progress.pop(pvname)
+            wid, action, _ = self.in_progress.pop(pvname)
         except KeyError:
             wid, action, itime = None, None, 0
         pv.get_ctrlvars()

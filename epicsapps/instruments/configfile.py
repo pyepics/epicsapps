@@ -1,5 +1,5 @@
 import os
-from ..utils import ConfigFile, get_default_configfile, get_configfolder
+from ..utils import ConfigFile, get_configfolder
 CONFFILE = 'instruments.yaml'
 
 class InstrumentConfig(ConfigFile):

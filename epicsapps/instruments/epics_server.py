@@ -2,7 +2,6 @@
 import time
 import epics
 import epics.devices
-from .instrument import isInstrumentDB, InstrumentDB
 
 class EpicsInstrumentServer(epics.Device):
     """

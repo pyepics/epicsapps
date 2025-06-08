@@ -4,11 +4,11 @@ import time
 import wx
 
 import epics
-from epics.wx import (EpicsFunction, PVText, PVFloatCtrl, PVTextCtrl,
+from epics.wx import (EpicsFunction, PVFloatCtrl, PVTextCtrl,
                       PVEnumChoice, MotorPanel)
 from wxutils import pack, Popup, Button, SimpleText
 
-from ..utils import  GUIColors, get_pvtypes, get_pvdesc, normalize_pvname
+from ..utils import  GUIColors, get_pvdesc, normalize_pvname
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 
@@ -24,7 +24,6 @@ class RenameDialog(wx.Dialog):
         title = "Rename Position '{posname}' for '{instname}' ?"
         wx.Dialog.__init__(self, parent, wx.ID_ANY, title=title)
         panel = wx.Panel(self)
-        colors = GUIColors()
 
         self.SetFont(parent.GetFont())
         titlefont  = self.GetFont()
@@ -34,7 +33,6 @@ class RenameDialog(wx.Dialog):
         sizer = wx.GridBagSizer(10, 3)
 
         labstyle  = wx.ALIGN_LEFT|wx.ALL
-        rlabstyle = wx.ALIGN_RIGHT|wx.ALL
         tstyle    = wx.ALIGN_LEFT
 
         label1  = SimpleText(panel, 'Old name= {posname}', style=tstyle)
@@ -334,7 +332,6 @@ class InstrumentPanel(wx.Panel):
         for icomp, val in enumerate(pvcomps):
             pvname, comp = val
             connected, pvtype, pv = comp
-            grow = 0
             panel = None
             if pvtype == 'motor':
                 try:
@@ -371,35 +368,11 @@ class InstrumentPanel(wx.Panel):
                 sizer.Add(label,  0, wx.ALL, 2)
                 sizer.Add(ctrl,   0, wx.ALL, 2)
                 sizer.Add(dlabel, 0, wx.ALL, 2)
-
-                if (pvtype != 'motor' and icomp < len(pvcomps)-1 and
-                    pvcomps[icomp+1][1][1] != 'motor'): #  and False):
-                    pass
-                    a = """
-                    conn, pvtype2, pv2 = pvcomps[icomp+1][1]
-                    skip.append(pv2.pvname)
-
-                    l2 = SimpleText(panel, '  %s' % pv2.pvname,
-                                    colour=self.colors.pvname,
-                                    minsize=(180,-1), style=wx.ALIGN_LEFT)
-                    if 'enum' in pvtype2:
-                        c2 = PVEnumChoice(panel, pv=pv2, size=(150, -1))
-                    elif 'string' in pvtype2: #  in ('string', 'unicode'):
-                        c2 = PVTextCtrl(panel, pv=pv2, size=(150, -1))
-                    else:
-                        c2 = PVFloatCtrl(panel, pv=pv2, size=(150, -1))
-
-                    sizer.Add(l2, 0, wx.ALL, 2)
-                    sizer.Add(c2, 0, wx.ALL, 2)
-                    current_comps.append(c2)
-                    current_comps.append(l2)
-                    """
                 pack(panel, sizer)
 
             if panel is not None:
                 current_comps.append(panel)
                 self.leftsizer.Add(panel, 0,  wx.ALIGN_LEFT|wx.TOP|wx.ALL|wx.GROW, 1)
-            # dt.add(f'add comp {val}')
 
         pack(self.leftpanel, self.leftsizer)
         for wid in self.leftpanel.Children:
@@ -468,7 +441,6 @@ class InstrumentPanel(wx.Panel):
         # pv.get_ctrlvars()
         pvtype = self.pv_components[pvname][1]
         if pvtype is None:
-            pvrow = self.db.get_pv(pvname)
             try:
                 pvtype = str(db_pv.pvtype.name)
             except AttributeError:

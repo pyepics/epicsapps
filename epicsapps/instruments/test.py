@@ -1,6 +1,3 @@
-import sys
-from epics import caget
-import time
 import instrument
 
 db = instrument.InstrumentDB('Test.ein')

@@ -10,13 +10,12 @@ classes for Tables:
 """
 
 import os
-import json
 import epics
 import time
 import socket
 from datetime import datetime
 from sqlalchemy import Row, text
-from .utils import backup_versions, save_backup, normalize_pvname, MOTOR_FIELDS
+from .utils import backup_versions, normalize_pvname, MOTOR_FIELDS
 from .creator import make_newdb
 
 from .simpledb import (SimpleDB, isSimpleDB, get_credentials, isotime)
@@ -236,7 +235,7 @@ class InstrumentDB(SimpleDB):
     def get_pvtype(self, pvname):
         pvrow = self.get_pv(pvname)
         if pvrow is None:
-            raise InstrumentDBException(f"PV '{name}' not found in database")
+            raise InstrumentDBException(f"PV '{pvname}' not found in database")
         if len(self.pvtype_ids) < 1:
             self.map_pvtypes()
         return self.pvtype_names[pvrow.pvtype_id]
@@ -285,7 +284,6 @@ class InstrumentDB(SimpleDB):
     def get_positions(self, instrument, reverse=False):
         """return list of positions for an instrument
         """
-        inst = self.get_instrument(instrument)
         out = self.get_rows('position', where={'instrument_id': inst.id})
         if reverse:
             out.reverse()
@@ -303,7 +301,6 @@ class InstrumentDB(SimpleDB):
     def get_positionlist(self, instname, reverse=False):
         """return list of position names for an instrument
         """
-        inst = self.get_instrument(instname)
         rows = self.get_rows('position', where={'instrument_id': inst.id},
                               order_by='modify_time')
         out = [row.name for row in rows]
@@ -332,7 +329,7 @@ class InstrumentDB(SimpleDB):
     def add_instrument_pvs(self, instname, pvlist):
         inst = self.get_instrument(instname)
         if inst is None:
-            raise InstrumentDBException(f"No Instrument '{name}' found")
+            raise InstrumentDBException(f"No Instrument '{instname}' found")
         npvs = 1+len(self.get_instrument_pvs(instname))
         for i, pvname in enumerate(pvlist):
             thispv = self.get_pv(pvname, add=True)
@@ -343,7 +340,7 @@ class InstrumentDB(SimpleDB):
     def remove_instrument_pv(self, instname, pvname):
         inst = self.get_instrument(instname)
         if inst is None:
-            raise InstrumentDBException(f"No Instrument '{name}' found")
+            raise InstrumentDBException(f"No Instrument '{instname}' found")
 
         thispv = self.get_pv(pvname, add=False)
         if thispv is not None:
@@ -478,7 +475,6 @@ class InstrumentDB(SimpleDB):
         """
         restore named position for instrument
         """
-        t0 = time.time()
         if exclude_pvs is None:
             exclude_pvs = []
         posdict = self.get_position_values(posname, instname,

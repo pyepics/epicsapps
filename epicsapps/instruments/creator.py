@@ -3,17 +3,13 @@
  provides make_newdb() function to create an empty Epics Instrument Library
 
 """
-import sys
-import os
-
 from datetime import datetime
 
-from sqlalchemy.orm import sessionmaker, create_session
 from sqlalchemy import (MetaData, create_engine, Table, Column,
-                        Integer, Float, String, Text, DateTime,
+                        Integer, String, Text, DateTime,
                         ForeignKey, UniqueConstraint)
 
-from .utils import dumpsql, backup_versions
+from .utils import backup_versions
 from .simpledb import SimpleDB
 
 def PointerCol(name, other=None, keyid='id', **kws):
@@ -61,59 +57,59 @@ def  make_newdb(dbname, server= 'sqlite'):
     metadata =  MetaData()
     metadata.reflect(engine)
 
-    instrument = NamedTable('instrument', metadata,
-                            cols=[Column('show', Integer, default=1),
-                                  Column('display_order', Integer, default=0),
-                                  Column('modify_time', DateTime)])
+    NamedTable('instrument', metadata,
+               cols=[Column('show', Integer, default=1),
+                     Column('display_order', Integer, default=0),
+                     Column('modify_time', DateTime)])
 
-    command    = NamedTable('command', metadata,
-                            cols=[StrCol('command'),
-                                  StrCol('arguments'),
-                                  StrCol('output_value'),
-                                  StrCol('output_name')])
+    NamedTable('command', metadata,
+               cols=[StrCol('command'),
+                     StrCol('arguments'),
+                     StrCol('output_value'),
+                     StrCol('output_name')])
 
 
-    position  = Table('position', metadata,
-                      Column('id', Integer, primary_key=True),
-                      StrCol('name', nullable=False),
-                      StrCol('notes'),
-                      StrCol('attributes'),
-                      Column('date', DateTime),
-                      StrCol('image'),
-                      Column('modify_time', DateTime),
-                      Column("instrument_id",  ForeignKey('instrument.id')),
-                      UniqueConstraint('name', 'instrument_id'))
+    Table('position', metadata,
+          Column('id', Integer, primary_key=True),
+          StrCol('name', nullable=False),
+          StrCol('notes'),
+          StrCol('attributes'),
+          Column('date', DateTime),
+          StrCol('image'),
+          Column('modify_time', DateTime),
+          Column("instrument_id",  ForeignKey('instrument.id')),
+          UniqueConstraint('name', 'instrument_id'))
 
-    instrument_precommand = NamedTable('instrument_precommand', metadata,
-                                       cols=[Column('order', Integer),
-                                             PointerCol('command'),
-                                             PointerCol('instrument')])
+    NamedTable('instrument_precommand', metadata,
+               cols=[Column('order', Integer),
+                     PointerCol('command'),
+                     PointerCol('instrument')])
 
-    instrument_postcommand = NamedTable('instrument_postcommand', metadata,
-                                        cols=[Column('order', Integer),
-                                              PointerCol('command'),
-                                              PointerCol('instrument')])
+    NamedTable('instrument_postcommand', metadata,
+                cols=[Column('order', Integer),
+                      PointerCol('command'),
+                      PointerCol('instrument')])
 
-    pvtype  = NamedTable('pvtype', metadata)
-    pv      = NamedTable('pv', metadata, cols=[PointerCol('pvtype')])
+    NamedTable('pvtype', metadata)
+    NamedTable('pv', metadata, cols=[PointerCol('pvtype')])
 
-    instrument_pv = Table('instrument_pv', metadata,
-                          Column('id', Integer, primary_key=True),
-                          PointerCol('instrument'),
-                          PointerCol('pv'),
-                          Column('display_order', Integer, default=0),
-                          Column('order', Integer, default=1))
+    Table('instrument_pv', metadata,
+          Column('id', Integer, primary_key=True),
+          PointerCol('instrument'),
+          PointerCol('pv'),
+          Column('display_order', Integer, default=0),
+          Column('order', Integer, default=1))
 
-    position_pv = Table('position_pv', metadata,
-                        Column('id', Integer, primary_key=True),
-                        StrCol('notes'),
-                        PointerCol('position'),
-                        PointerCol('pv'),
-                        StrCol('value'))
+    Table('position_pv', metadata,
+          Column('id', Integer, primary_key=True),
+         StrCol('notes'),
+         PointerCol('position'),
+         PointerCol('pv'),
+         StrCol('value'))
 
-    info       = Table('info', metadata,
-                       Column('key', Text, primary_key=True, unique=True),
-                       StrCol('value'))
+    Table('info', metadata,
+          Column('key', Text, primary_key=True, unique=True),
+          StrCol('value'))
 
     metadata.create_all(bind=engine)
 
@@ -138,4 +134,3 @@ if __name__ == '__main__':
     backup_versions(dbname)
     make_newdb(dbname)
     print('''%s  created and initialized.''' % dbname)
-    # dumpsql(dbname)

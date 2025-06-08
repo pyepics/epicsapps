@@ -1,19 +1,12 @@
 import os
 import shutil
-import time
 from collections import namedtuple
 import wx
 import wx.lib.filebrowsebutton as filebrowse
 
-from sqlalchemy import Row
-import epics
 
-from ..utils import normalize_pvname, get_pvdesc
 
-from wxutils import (GridPanel, BitmapButton, FloatCtrl, FloatSpin,
-                     FloatSpinWithPin, get_icon, SimpleText, Choice, YesNo,
-                     SetTip, Check, Button, HLine, OkCancel, LCEN, RCEN,
-                     pack)
+from wxutils import (GridPanel, SimpleText, Choice, HLine)
 
 FileBrowser = filebrowse.FileBrowseButtonWithHistory
 
@@ -65,7 +58,7 @@ def save_backup(fname, outfile=None):
 def set_font_with_children(widget, font, dsize=None):
     cfont = widget.GetFont()
     font.SetWeight(cfont.GetWeight())
-    if dsize == None:
+    if dsize is None:
         dsize = font.PointSize - cfont.PointSize
     else:
         font.PointSize = cfont.PointSize + dsize
@@ -130,7 +123,8 @@ class ConnectDialog(wx.Dialog):
         panel.Add(SimpleText(panel, ' PostgresQL database connection'),
                   dcol=3, newrow=True)
 
-        if dbname is None: dbname = ''
+        if dbname is None:
+                dbname = ''
         if host in (None, ''):
             host = 'localhost'
         if port in (None, ''):

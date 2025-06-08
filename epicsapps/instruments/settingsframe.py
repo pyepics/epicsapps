@@ -1,11 +1,7 @@
-import sys
-import time
-
 import wx
 import wx.lib.scrolledpanel as scrolled
 
-from wxutils import (NumericCombo, pack, SimpleText, FileSave,
-                     FileOpen, SelectWorkdir, Button)
+from wxutils import (pack, SimpleText, Button)
 
 from .utils import GUIColors, set_font_with_children
 
@@ -16,9 +12,7 @@ class SettingsFrame(wx.Frame) :
         self.parent = parent
         self.db = db
 
-        style    = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
         labstyle  = wx.ALIGN_LEFT|wx.ALL
-        rlabstyle = wx.ALIGN_RIGHT|wx.ALL
         tstyle    = wx.ALIGN_LEFT
 
         wx.Frame.__init__(self, None, -1, 'Epics Instruments:  Settings')
@@ -37,9 +31,9 @@ class SettingsFrame(wx.Frame) :
                            minsize=(130, -1),
                            colour=self.colors.title, style=tstyle)
 
-        self.v_move   = wx.CheckBox(panel, -1, 'Verify Move')# , style=wx.ALIGN_RIGHT)
-        self.v_erase  = wx.CheckBox(panel, -1, 'Verify Erase ')# style=wx.ALIGN_RIGHT)
-        self.v_owrite = wx.CheckBox(panel, -1, 'Verify Overwrie')#, style=wx.ALIGN_RIGHT)
+        self.v_move   = wx.CheckBox(panel, -1, 'Verify Move')
+        self.v_erase  = wx.CheckBox(panel, -1, 'Verify Erase ')
+        self.v_owrite = wx.CheckBox(panel, -1, 'Verify Overwrie')
 
         self.v_move.SetValue(1==int(self.db.get_info('verify_move')))
         self.v_erase.SetValue(1==int(self.db.get_info('verify_erase')))
@@ -116,9 +110,7 @@ class InstSelectionFrame(wx.Frame) :
         self.parent = parent
         self.db = db
 
-        style    = wx.DEFAULT_FRAME_STYLE|wx.TAB_TRAVERSAL
         labstyle  = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
-        rlabstyle = wx.ALIGN_RIGHT|wx.ALIGN_CENTER_VERTICAL|wx.ALL
         tstyle    = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL
 
         wx.Frame.__init__(self, None, -1,
@@ -150,7 +142,7 @@ class InstSelectionFrame(wx.Frame) :
         for inst in self.db.get_all_instruments():
             isshown = inst.name in self.get_page_map()
             iname = (inst.name + ' '*strlen)[:strlen]
-            cb = wx.CheckBox(panel, -1, iname)#, style=wx.ALIGN_RIGHT)
+            cb = wx.CheckBox(panel, -1, iname)
             cb.SetValue(isshown)
             self.hideframes[inst.name] = cb
             sizer.Add(cb, (irow, icol), (1, 1), labstyle,  5)
@@ -189,8 +181,6 @@ class InstSelectionFrame(wx.Frame) :
         return out
 
     def OnOK(self, event=None):
-        yesno = {True: 1, False: 0}
-
         pagemap = self.get_page_map()
         for pagename, cb in self.hideframes.items():
             checked = cb.IsChecked()

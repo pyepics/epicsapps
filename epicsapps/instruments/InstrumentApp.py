@@ -1,23 +1,16 @@
 #!/usr/bin/python
 #
 #  Instruments GUI
-
 import os
-import sys
 import time
 import shutil
 
 import wx
 import wx.lib.agw.flatnotebook as flat_nb
 import wx.lib.mixins.inspection
-import wx.lib.agw.advancedsplash as AS
 import wx.adv
 
-import epics
-from epics.wx import finalize_epics, EpicsFunction
-from epics.wx.utils import add_menu
-
-from wxutils import FileSave, FileOpen, Popup, pack, NumericCombo
+from wxutils import FileSave, FileOpen, Popup, pack, MenuItem
 
 from .configfile import InstrumentConfig, CONFFILE, get_default_configfile
 from .instrument import isInstrumentDB, InstrumentDB
@@ -189,7 +182,7 @@ class InstrumentFrame(wx.Frame):
         iconfile = get_icon('instrument')
         try:
             self.SetIcon(wx.Icon(iconfile, wx.BITMAP_TYPE_ICO))
-        except:
+        except Exception:
             pass
 
         # self.Refresh()
@@ -208,7 +201,7 @@ class InstrumentFrame(wx.Frame):
                 show = int(row.show)
             if show:
                 self.add_instrument_page(row.name)
-        current_page = self.nb.GetCurrentPage()
+
         self.initializing = False
         self.init_stime = time.time()
         self.init_timer = wx.Timer(self)
@@ -254,7 +247,6 @@ class InstrumentFrame(wx.Frame):
 
     def connect_pvs(self, instname, wait_time=0.10):
         """connect to PVs for an instrument.."""
-        panel = self.panels[instname]
         return
 
     def create_Menus(self):
@@ -265,59 +257,59 @@ class InstrumentFrame(wx.Frame):
         inst_menu = wx.Menu()
         help_menu = wx.Menu()
 
-        add_menu(self, file_menu,
+        MenuItem(self, file_menu,
                  "&Open Database", "Open or Create Instruments File/Connection",
                  action=self.onOpen)
-        add_menu(self, file_menu,
+        MenuItem(self, file_menu,
                  "&Save", "Save Instruments File",
                  action=self.onSave)
         file_menu.AppendSeparator()
 
-        add_menu(self, file_menu,
+        MenuItem(self, file_menu,
                  "E&xit", "Terminate the program",
                  action=self.onClose)
 
-        add_menu(self, inst_menu,
+        MenuItem(self, inst_menu,
                  "&Create New Instrument",
                  "Add New Instrument",
                  action=self.onAddInstrument)
 
-        add_menu(self, inst_menu,
+        MenuItem(self, inst_menu,
                  "&Remove Current Instrument",
                  "Permanently Remove Current Instrument",
                  action=self.onRemoveInstrument)
 
         inst_menu.AppendSeparator()
 
-        add_menu(self, inst_menu,
+        MenuItem(self, inst_menu,
                  "&Edit Current Instrument",
                  "Edit Current Instrument",
                  action=self.onEditInstrument)
 
-        add_menu(self, inst_menu,
+        MenuItem(self, inst_menu,
                  "Enter a Position for the Current Instrument",
                  "Enter a Position for the Current Instrument",
                  action=self.onEnterPosition)
 
-        add_menu(self, inst_menu,
+        MenuItem(self, inst_menu,
                  "Erase Positions for the Current Instrument",
                  "Erase Positions for the Current Instrument",
                  action=self.onErasePositions)
 
-        add_menu(self, opts_menu, "&Select Instruments to Show",
+        MenuItem(self, opts_menu, "&Select Instruments to Show",
                  "Change Which Instruments are Shown",
                  action=self.onSelectInstruments)
 
-        add_menu(self, opts_menu, "&General Settings",
+        MenuItem(self, opts_menu, "&General Settings",
                  "Change Settings for GUI behavior, Epics Connection",
                  action=self.onSettings)
 
 
-        add_menu(self, opts_menu,
+        MenuItem(self, opts_menu,
                  "Change &Font", "Select Font",
                  action=self.onSelectFont)
 
-        add_menu(self, help_menu,
+        MenuItem(self, help_menu,
                  'About', "More information about this program",
                  action=self.onAbout)
 
@@ -597,5 +589,6 @@ class EpicsInstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         frame = InstrumentFrame(configfile=self.configfile, prompt=self.prompt)
         frame.Show()
         self.SetTopWindow(frame)
-        if DEBUG: self.ShowInspectionTool()
+        if DEBUG:
+            self.ShowInspectionTool()
         return True
