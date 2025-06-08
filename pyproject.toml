@@ -20,12 +20,11 @@ readme = "README.md"
 authors = [
     {name = "Matthew Newville", email = "newville@cars.uchicago.edu"}
 ]
-license = {file = "LICENSE"}
+license-files = ["LICENSE"]
 keywords = ["epics", "experimental data acquistion"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
@@ -33,9 +32,10 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     ]
+
 dependencies = ['pyepics',
              'sqlalchemy',
-             'psycopg2',
+             'psycopg2-binary',
              'pyyaml',
              'numpy',
              'matplotlib',
@@ -50,7 +50,7 @@ dependencies = ['pyepics',
              'tabulate',
              'toml',
              'tomli',
-	     'opencv-python',
+             'opencv-python',
              ]
 
 [project.scripts]
