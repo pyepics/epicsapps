@@ -14,7 +14,6 @@ from functools import partial
 from collections import namedtuple
 from datetime import datetime, timedelta
 from matplotlib.dates import date2num
-import pytz
 import yaml
 
 import wx
@@ -104,7 +103,7 @@ def update_choice(wid, values, default=0):
     if cur in values:
         wid.SetStringSelection(cur)
     else:
-        wid.SetSelection(default)        
+        wid.SetSelection(default)
 
 class InstrumentDataModel(dv.DataViewIndexListModel):
     def __init__(self):
@@ -498,7 +497,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         wids['save_inst'] = TextCtrl(panel, '', action=self.onSaveInst,
                                      size=(350, -1))
-        
+
         for i in range(4):
             wids[f'pv{i+1}'] = Choice(panel, **opts)
             wids[f'col{i+1}'] = csel.ColourSelect(panel, -1, '',PLOT_COLORS[i],
@@ -809,15 +808,15 @@ Matt Newville <newville@cars.uchicago.edu>
                 continue
 
             pvnames.append(self.pvmap[pvdesc])
-            
+
         self.log_folder.instruments[iname] = pvnames
 
         update_choice(self.wids['instruments'], list(self.log_folder.instruments))
         ifile = Path(self.log_folder.folder, '_PVLOG_instruments.txt').absolute()
         with open(ifile, 'w', encoding='utf-8') as fh:
             yaml.safe_dump(self.log_folder.instruments, fh,
-                           default_flow_style=False, sort_keys=False)        
-              
+                           default_flow_style=False, sort_keys=False)
+
     def onSelectInstPVs(self, event=None):
         iname = self.wids['instruments'].GetStringSelection()
         self.pvlist.select_none()
@@ -828,7 +827,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 sel.append(desc)
         self.pvlist.SetCheckedStrings(sel)
         self.onUseSelected()
-        
+
     def onSelNone(self, event=None):
         self.pvlist.select_none()
 
@@ -1157,7 +1156,7 @@ is not a valid PV Logger Data Folder""",
         wname = self.wids['plot_win'].GetStringSelection()
         pframe = self.show_plotwin(wname)
         return pframe.panel
-        
+
     def onPVshow(self, event=None, row=0):
         if not event.IsChecked():
             plotpanel = self.get_plotpanel()
@@ -1171,7 +1170,7 @@ is not a valid PV Logger Data Folder""",
         pvname = self.pvchoices[row].GetStringSelection()
         if pvname in self.pv_desc:
             self.pvlabels[row].SetValue(self.pv_desc[pvname])
-        plotpanel = self.get_plotpanel()            
+        plotpanel = self.get_plotpanel()
         for i in range(len(self.pvlist)+1):
             try:
                 trace = plotpanel.conf.get_mpl_line(row-1)
@@ -1181,7 +1180,7 @@ is not a valid PV Logger Data Folder""",
         plotpanel.conf.set_viewlimits()
 
     def onPVcolor(self, event=None, row=None, **kws):
-        plotpanel = self.get_plotpanel()             
+        plotpanel = self.get_plotpanel()
         plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
                                        trace=row-1)
         self.needs_refresh = True
