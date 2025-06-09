@@ -6,7 +6,7 @@ Epics Instruments
 Epics Instruments is a GUI application (using wxPython) that lets any user:
 
   * Organize PVs into Instruments: a named collection of PVs
-  * Manage Instruments with modern Notebook-tab interface.
+  * Manage Instruments with Notebook or tabbed interface.
   * Save Positions for any Instrument by name.
   * Restore Positions for any Instrument by name.
   * Remember Settings for all definitions into a single file that can be loaded later.
@@ -23,14 +23,13 @@ To run Epics Instruments, use::
 
    epicsapps instruments
 
-
 or click on the icon.
 
 A small window to select an Epics Instrument File, like this
 
 .. image:: images/Inst_Startup.png
-    :width: 50%	
-	   
+    :width: 50%
+
 If this is your first time using the application, choose a name, and hit return
 to start a new Instrument File.  The next time you run Epics Instruments, it
 should remember which files you have recently used, and present you with a
@@ -56,14 +55,14 @@ If you add a few PVs and click OK, the PVs will connect, and you will see a
 screen something like this
 
 .. image:: images/InstMain_Stage.png
-    :width: 75%	
+    :width: 75%
 
 
 Editing an Exisiting Instrument
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. image:: images/Inst_Edit.png
-    :width: 40%	
+    :width: 40%
 
 
 The Instrument File
