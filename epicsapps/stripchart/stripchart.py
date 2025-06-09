@@ -14,8 +14,8 @@ from numpy import array, where
 from functools import partial
 from pathlib import Path
 
+from datetime import datetime, timezone
 import pytz
-
 import wx
 import wx.lib.colourselect  as csel
 
@@ -32,10 +32,11 @@ from wxmplot.colors import hexcolor
 
 from ..utils import SelectWorkdir, get_icon, ConfigFile, load_yaml
 
-TZONE = pytz.timezone(os.environ.get('TZ', 'US/Central'))
+TZONE = str(datetime.now(timezone.utc).astimezone().tzinfo)
+if os.environ.get('TZ', None) is not None:
+    TZONE = pytz.timezone(os.environ.get('TZ', TZONE))
 
 CONFFILE = 'stripchart.yaml'
-
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
 BGCOL  = (250, 250, 240)

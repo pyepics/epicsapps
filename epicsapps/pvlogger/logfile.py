@@ -10,7 +10,7 @@ import tomli
 import yaml
 from pathlib import Path
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from dateutil import parser as dateparser
 import pytz
 from multiprocessing import Process, Queue, Pool
@@ -26,8 +26,9 @@ MAX_FILESIZE = 400*1024*1024  # 400 Mb limit
 COMMENTCHARS = '#;%*!$'
 
 
-tzname = os.environ.get('TZ', 'US/Central')
-TZONE = pytz.timezone(tzname)
+TZONE = str(datetime.now(timezone.utc).astimezone().tzinfo)
+if os.environ.get('TZ', None) is not None:
+    TZONE = pytz.timezone(os.environ.get('TZ', TZONE))
 
 # The EPICS EPOCH starts at 1990, and may sometimes
 # send 0 or EPIC2UNIX_EPOCH=631152000.0
@@ -326,7 +327,7 @@ class PVLogFolder:
             xconf = yaml.load(xtext, Loader=yaml.Loader)
             conf['instruments'].update(xconf)
         self.instruments = conf['instruments']
-        
+
         # determine start and stop time
         start_time, stop_time = 0, 0
         tstamp_file = Path(self.folder, TIMESTAMP_FILE)
