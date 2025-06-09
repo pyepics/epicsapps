@@ -49,7 +49,7 @@ password: db_user_password
 
 def json_encode(val):
     "simple wrapper around json.dumps"
-    if val is None or isinstance(val, str)):
+    if val is None or isinstance(val, str):
         return val
     return  json.dumps(val)
 
