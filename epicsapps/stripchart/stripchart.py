@@ -654,7 +654,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.config['pvs'] = conf_pvs
         if self.configfile is not None:
             cfname = getattr(self.configfile, 'filename', None)
-            if cfame is None:
+            if cfname is None:
                 cfname = self.configfile.filename = CONFFILE
 
             # save a backup config file
