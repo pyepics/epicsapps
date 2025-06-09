@@ -184,7 +184,9 @@ Matt Newville <newville@cars.uchicago.edu>
         self.nplot = 0
         self.configfile = None
         self.pvlist = ['-']
+        self.plotted_pvs = {i: None for i in range(NPVS)}
         self.needs_refresh = False
+        self.force_replot = False
         self.paused = False
         self.nmax = nmax
         self.ntrim = ntrim
@@ -414,9 +416,6 @@ Matt Newville <newville@cars.uchicago.edu>
         mopt = wx.Menu()
         MenuItem(self, mopt, "Configure Plot\tCtrl+K",
                  "Configure Plot", pp.configure)
-        MenuItem(self, mopt, "Zoom Out\tCtrl+Z",
-                 "Zoom out to full data range", pp.unzoom_all)
-
         mopt.AppendSeparator()
         MenuItem(self, mopt, "Zoom Out\tCtrl+Z",
                  "Zoom out to full data range", pp.unzoom_all)
@@ -659,10 +658,9 @@ Matt Newville <newville@cars.uchicago.edu>
 
             # save a backup config file
             if Path(cfname).exists():
-                ofile = cfname.as_posix()
-                nfile = ofile.replace('.yaml', '_bak.yaml')
+                nfile = cfname.replace('.yaml', '_bak.yaml')
                 try:
-                    shutil.copy(ofile, nfile)
+                    shutil.copy(cfname, nfile)
                 except:
                     pass
 
@@ -770,7 +768,7 @@ Matt Newville <newville@cars.uchicago.edu>
                     setattr(ppan.conf, ylabel, desc)
                 except:
                     use_update = False
-                    pass
+
             if not use_update or self.force_replot:
                 opts = {'show_legend': False, 'xlabel': 'Date / Time',
                         'drawstyle': 'steps-post',
@@ -782,6 +780,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 plot = ppan.plot if i==0 else ppan.oplot
                 plot(tdat, ydat, yaxes=yaxes, color=color,
                      ymin=ymin, ymax=ymax, label=desc, **opts)
+                self.plotted_pvs[i] = pvname
 
         snow = time.strftime("%Y-%b-%d %H:%M:%S", time.localtime())
         self.plotpanel.set_title(snow, delay_draw=True)
