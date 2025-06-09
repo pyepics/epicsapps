@@ -650,8 +650,12 @@ Matt Newville <newville@cars.uchicago.edu>
             desc, uselog, ymin, ymax = dat
             conf_pvs.append([pvname, desc, uselog, ymin, ymax])
 
-        self.config['pvs'] = conf_pvs
-        if self.configfile is not None:
+        if len(conf_pvs) > 0:
+            self.config['pvs'] = conf_pvs
+            print("CONFIG FILE ", self.configfile)
+            if self.configfile is None:
+                self.configfile = StripChartConfig()
+
             cfname = getattr(self.configfile, 'filename', None)
             if cfname is None:
                 cfname = self.configfile.filename = CONFFILE
