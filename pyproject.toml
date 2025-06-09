@@ -40,7 +40,7 @@ dependencies = ['pyepics',
              'numpy',
              'matplotlib',
              'pytz',
-             'datetime'
+             'datetime',
              'python-dateutil',
              'wxpython>=4.1.0',
              'wxmplot',
