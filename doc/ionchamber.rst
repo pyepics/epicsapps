@@ -2,9 +2,9 @@
 .. _IonChamber IOC Files: https://github.com/pyepics/epicsapps/tree/master/epicsapps/ionchamber/iocApp
 
 .. _xraydb: https://xraypy.github.io/XrayDB/
+.. _xraydb flux calculation: https://xraydb.seescience.org/ionchamber
 
-
-.. _Ion Chamber flux calculations: https://xraypy.github.io/XrayDB/examples.html#ion-chamber-flux-calculations
+.. _Ion Chamber flux calculations: https://xraypy.github.io/XrayDB/examples.html#x-ray-flux-calculations-for-ionization-chambers-and-photodiodes
 
 .. _ionchamber:
 
@@ -21,7 +21,7 @@ database, calculate the fluxes, and write them back to the Epics
 database.  An `adl` display file for the MEDM display manager is
 provided as a simple UI.
 
-`IonChamber.db` and loading into an soft IOC
+Loading `IonChamber.db` into a soft IOC
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
@@ -49,9 +49,9 @@ to be the `stripchart` application.
   +=======================+======+===========================================+
   | $(P)$(Q):AmpPV        | In   | Prefix for SRS570 Amp                     |
   +-----------------------+------+-------------------------------------------+
-  | $(P)$(Q):EnergyPV     | In   | PV for Energy Value                       |
-  +-----------------------+------+-------------------------------------------+
   | $(P)$(Q):VoltPV       | In   | PV for IonChamber Voltage                 |
+  +-----------------------+------+-------------------------------------------+
+  | $(P)$(Q):EnergyPV     | In   | PV for X-ray Energy Value in eV           |
   +-----------------------+------+-------------------------------------------+
   | $(P)$(Q):Desc         | In   | Description of Ion Chamber                |
   +-----------------------+------+-------------------------------------------+
@@ -76,16 +76,46 @@ to be the `stripchart` application.
   +-----------------------+------+-------------------------------------------+
 
 
-Runnint the Ionchamber script
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Running the Ionchamber script and Display
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Once the database is loaded, you will need to set the PV names for:
+
+  1. the prefix for the current amplifier.  This is assumed to be a Stanford SRS70
+     current amplifier.
+  2. the PV for the output voltage of that amplifier.
+  3. the PV for the X-ray energy, in eV.
+
+You will also need to set the length of the ion chamber (in cm), and the gas in
+the ion chamber.  The gas is assumed to be only one gas, either Air, He, N2,
+Ar, or Kr.
+
+With these inputs set, you can run a script like this::
+
+    #!/usr/bin/python
+    import sys
+    from epicsapps.ionchamber import start_ionchamber
+
+    prefix = '13XRM:IC0:'
+    start_ionchamber(prefix=prefix)
+
+which will continuously read the ion chamber sensitivity, voltages, and X-ray
+energy, and so forth.  This will the compute the fluxes and update the output
+PVs list in :ref:`Table of PVs for Ion Chamber <ionchamber_pv_table>`.
 
 
-Once the database is loaded,
+You can run a display file (available at `IonChamber IOC Files`_) to view these
+values by running MEDM with::
 
+    medm -x  -macro "P=13XRM:,Q=IC0" IonChamber.adl
+
+or a similar Epics display command.
 
 
 Calculation details
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The calculation of flux uses `xraydb`_.  Details of the calculation
-are given at `Ion Chamber flux calculations`_.
+The calculation of flux uses `xraydb`_.  Details of the calculation are given
+at `Ion Chamber flux calculations`_.  This includes both photo-electric
+absorption and the current generated from Compton scattering.  See also
+`xraydb flux calculation`_ for examples.
