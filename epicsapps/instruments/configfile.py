@@ -1,5 +1,5 @@
 import os
-from ..utils import ConfigFile, get_configfolder
+from ..utils import ConfigFile, get_configfolder, get_default_configfile
 CONFFILE = 'instruments.yaml'
 
 class InstrumentConfig(ConfigFile):
@@ -10,5 +10,5 @@ class InstrumentConfig(ConfigFile):
                                   recent_dbs=[])
         if fname is None:
             fname = os.path.join(get_configfolder(), CONFFILE)
-       
+
         ConfigFile.__init__(self, fname, default_config=default_config)

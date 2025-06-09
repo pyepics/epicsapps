@@ -284,6 +284,7 @@ class InstrumentDB(SimpleDB):
     def get_positions(self, instrument, reverse=False):
         """return list of positions for an instrument
         """
+        inst = self.get_instrument(instrument)
         out = self.get_rows('position', where={'instrument_id': inst.id})
         if reverse:
             out.reverse()
