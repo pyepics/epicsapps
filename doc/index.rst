@@ -41,6 +41,10 @@ The main applications included in EpicsApps include
     time-series of a handful of PV values into plain text files in a
     folder in a manner that can be easily reviewed.
 
+  * :ref:`ionchamber`: A non-GUI application to read Ion Chamber
+    voltages and compute X-ray fluxes and write these back to Epics PVs.
+
+
   * *Sample Microscope*: A GSECARS-specific GUI for moving a set of
     motors for a sample stage, grabbing microscope images from a
     webcam, and saving named positions.
@@ -55,4 +59,4 @@ The main applications included in EpicsApps include
    ad_display
    instruments
    pvlogger
-   other
+   ionchamber
