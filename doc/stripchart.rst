@@ -76,7 +76,7 @@ This configuration file will include a list of the PVs (and
 saved descriptions, ranges, etc), and might look like this::
 
     pvs:
-    - ['S:SRcurrentAI.VAL', Storage Ring Current, false, '', '']
+    - ['S:SRcurrenxtAI.VAL', Storage Ring Current, false, '', '']
     - ['13XRM:QE2:SumAll:MeanValue_RBV', BPM Sum, false, '', '']
     - ['13IDE:userTran1.J', I0, false, '', '']
 
@@ -91,16 +91,17 @@ needed.
 
 .. _stripchart_timezone:
 
-A note on Time Zone
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+A note on Time Zones
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The data plotted with StripChart uses date and time for the X axis.
-The epics data received is as Unix timestamps (seconds since 1970 or
-1990).  When converting these to date and clock time, the current time
-zone must be known.
+The values plotted with StripChart uses date and time for the X axis.
+The data received uses normal Unix timestamps (seconds since 1970,
+recorded as floating point numbers).  When converting these to date
+and time for plotting, the current time zone must be known.
 
-It the displayed times look incorrect, it may be because the times are
-assumed to be referenced to the `US/Central` timezone.  Setting the system
-environmental variable  `TZ` to hold the name of the time zone (such
-as `US/Eastern` or `Australia/Melbourne`) should fix the times to be
+If the displayed times are incorrect, it may be because the timezone
+is not properly set. StripChart tries to automatically determine the
+local timezone, but this may not always be correct.  Setting the
+system environmental variable `TZ` to hold the name of the time zone
+(such as `US/Eastern` or `Australia/Melbourne`) should make the times be
 displayed correctly.

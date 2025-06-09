@@ -40,7 +40,6 @@ ended. Another way of looking at it is that it expands the
 :ref:`stripchart` application to collect and view many PVs and
 preserve and organize the data for future use.
 
-
 The PVLogger application has two mode of operation: *collecting data*
 and *viewing data*.  A command-line program run at the beamline will
 collect the data into a dedicated folder using a simple configuration
@@ -53,6 +52,9 @@ beamline, The PVLogger application can also be used to launch a
 data.  Finally, the PVLogger application can be used to read, modify,
 and save existing configuration files, listing which PVs to log, and
 can start the data collection process.
+
+If date and times seem to shown with the wrong timezone, see :ref:`stripchart_timezone`.
+
 
 
 Viewing PVLogger Data
