@@ -274,27 +274,30 @@ class InstrumentFrame(wx.Frame):
                  "Add New Instrument",
                  action=self.onAddInstrument)
 
-        MenuItem(self, inst_menu,
-                 "&Remove Current Instrument",
-                 "Permanently Remove Current Instrument",
-                 action=self.onRemoveInstrument)
-
         inst_menu.AppendSeparator()
 
-        MenuItem(self, inst_menu,
-                 "&Edit Current Instrument",
-                 "Edit Current Instrument",
-                 action=self.onEditInstrument)
 
         MenuItem(self, inst_menu,
-                 "Enter a Position for the Current Instrument",
+                 "Current Instrument: Enter a Position",
                  "Enter a Position for the Current Instrument",
                  action=self.onEnterPosition)
 
         MenuItem(self, inst_menu,
-                 "Erase Positions for the Current Instrument",
+                 "Current Instrument: Erase Many Positions",
                  "Erase Positions for the Current Instrument",
                  action=self.onErasePositions)
+
+        MenuItem(self, inst_menu,
+                 "Current Instrument: Edit",
+                 "Edit Current Instrument",
+                 action=self.onEditInstrument)
+
+        MenuItem(self, inst_menu,
+                 "Current Instrument: Remove",
+                 "Permanently Remove Current Instrument",
+                 action=self.onRemoveInstrument)
+
+
 
         MenuItem(self, opts_menu, "&Select Instruments to Show",
                  "Change Which Instruments are Shown",
@@ -303,11 +306,6 @@ class InstrumentFrame(wx.Frame):
         MenuItem(self, opts_menu, "&General Settings",
                  "Change Settings for GUI behavior, Epics Connection",
                  action=self.onSettings)
-
-
-        MenuItem(self, opts_menu,
-                 "Change &Font", "Select Font",
-                 action=self.onSelectFont)
 
         MenuItem(self, help_menu,
                  'About', "More information about this program",
