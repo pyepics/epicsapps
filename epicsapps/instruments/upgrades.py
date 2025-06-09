@@ -34,3 +34,8 @@ sqlcode['1.3'] = ["alter table instrument_pv add column move_order integer;",
 
 # version 1.4 adds "modify_time" to position
 sqlcode['1.4'] = ["alter table instrument add column modify_time DATETIME;"]
+
+
+# version 1.5 adds "admin_only" to instrument
+sqlcode['1.5'] = ["alter table instrument add column admin_only INTEGER default 0;",
+                  "insert into info (key, value) values ('admin_password', '_')]
