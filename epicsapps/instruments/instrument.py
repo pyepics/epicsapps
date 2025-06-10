@@ -314,7 +314,7 @@ class InstrumentDB(SimpleDB):
     def get_positionlist(self, instname, reverse=False):
         """return list of position names for an instrument
         """
-        inst = self.get_instrument(instrument)
+        inst = self.get_instrument(instname)
         rows = self.get_rows('position', where={'instrument_id': inst.id},
                               order_by='modify_time')
         out = [row.name for row in rows]
