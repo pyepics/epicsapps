@@ -17,7 +17,7 @@ from datetime import datetime
 from sqlalchemy import Row, text
 from .utils import backup_versions, normalize_pvname, MOTOR_FIELDS
 from .creator import make_newdb
-
+from .passwords import hash_password, test_password
 from .simpledb import (SimpleDB, isSimpleDB, get_credentials, isotime)
 from . import upgrades
 
@@ -121,6 +121,12 @@ class InstrumentDB(SimpleDB):
                 self.execute(text(statement))
             self.set_info('version', '1.4')
 
+        if version_string < '1.5':
+            print('Upgrading Database to Version 1.5')
+            for statement in upgrades.sqlcode['1.5']:
+                self.execute(text(statement))
+            self.set_info('version', '1.5')
+
 
     def commit(self):
         "commit session state"
@@ -161,10 +167,16 @@ class InstrumentDB(SimpleDB):
         return self.get_rows('config', where={'name': name},
                              none_if_empty=True, limit_one=True)
 
+    def set_admin_password(self, password):
+        """set admin password"""
+        self.set_info('admin_password', hash_password(password))
+
+    def check_admin_password(self, password):
+        """check admin password"""
+        return hash_password(password) == self.get_info('admin_password', '_')
 
     def get_all_instruments(self):
-        """return instrument list
-        """
+        """return instrument list"""
         return self.get_rows('instrument')
 
     def get_instrument(self, name):
@@ -302,6 +314,7 @@ class InstrumentDB(SimpleDB):
     def get_positionlist(self, instname, reverse=False):
         """return list of position names for an instrument
         """
+        inst = self.get_instrument(instrument)
         rows = self.get_rows('position', where={'instrument_id': inst.id},
                               order_by='modify_time')
         out = [row.name for row in rows]
@@ -346,7 +359,7 @@ class InstrumentDB(SimpleDB):
         thispv = self.get_pv(pvname, add=False)
         if thispv is not None:
             self.delete_rows('instrument_pv',
-                            {'instrument_id': inst.id, 'pv_id': thispv.id})
+                             {'instrument_id': inst.id, 'pv_id': thispv.id})
 
     def add_pv(self, name, pvtype=None, **kws):
         """add pv
