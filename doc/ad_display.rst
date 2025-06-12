@@ -4,14 +4,21 @@
 Area Detector Display
 ====================================
 
-Epics Area Detector Display is a wxPython GUI application for viewing
-images from an Epics Area Detector.  To run this application, simply
-run AD_Display.py at the command line::
+AreaDetector Display is a GUI Application for viewing images from an Epics
+areaDetector. This provides a simple set of controls for viewing the image from
+an areaDetector.  If `epicsapps -m` is run after installation, a folder called
+Epics Apps should be placed on your desktop which as a shortcut labeled
+areaDetecor_Viewer which can be used to launch the application.  From a command
+line terminal, you can also use::
 
     epicsapps adviewer
 
-This will start with a file browser to search for an AreaDetector
-configuration file, which uses yaml syntax.
+
+This will start with a dialog to either select an areaDetector PV or to
+browse for or select an AreaDetector configuration file, which uses yaml syntax.
+
+.. image:: images/AD_slect.png
+    :width: 40%
 
 A few examples of configuration files are given at
 https://github.com/pyepics/epicsapps/tree/master/examples/areaDetector, with a sample lookng like this::
