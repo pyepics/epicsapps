@@ -18,7 +18,7 @@ This will start with a dialog to either select an areaDetector PV or to
 browse for or select an AreaDetector configuration file, which uses yaml syntax.
 
 .. image:: images/AD_select.png
-    :width: 40%
+    :width: 65%
 
 A few examples of configuration files are given at
 https://github.com/pyepics/epicsapps/tree/master/examples/areaDetector, with a sample lookng like this::
