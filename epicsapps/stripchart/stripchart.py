@@ -41,7 +41,7 @@ FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 
 BGCOL  = (250, 250, 240)
 
-POLLTIME = 100
+POLLTIME = 80
 NPVS = 4
 STY  = wx.GROW|wx.ALL
 LSTY = wx.ALIGN_LEFT|wx.EXPAND|wx.ALL
@@ -652,7 +652,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
         if len(conf_pvs) > 0:
             self.config['pvs'] = conf_pvs
-            print("CONFIG FILE ", self.configfile)
             if self.configfile is None:
                 self.configfile = StripChartConfig()
 
@@ -711,13 +710,14 @@ Matt Newville <newville@cars.uchicago.edu>
             use_update = False
 
         self.nplot = 0
+        yaxes = 0
         for i in range(NPVS):
             pvname =  self.wids[f'pv{i}'].GetStringSelection()
             if pvname in (None, 'None', '-') or len(pvname) < 2:
                 continue
             if pvname not in self.pvdata:
                 continue
-            yaxes = i+1
+            yaxes = yaxes+1
             self.nplot += 1
             desc = self.wids[f'desc{i}'].GetValue()
             uselog = (1 == self.wids[f'uselog{i}'].GetSelection())
@@ -765,10 +765,11 @@ Matt Newville <newville@cars.uchicago.edu>
                 use_update = False
             xmin = tmin/86400.0
             xmax = tmax/86400.0
-            if use_update:
+            if use_update and not self.force_replot:
                 try:
-                    ppan.update_line(i, tdat, ydat, draw=False, yaxes=yaxes)
+                    ppan.update_line(yaxes-1, tdat, ydat, draw=False, yaxes=yaxes)
                     ppan.set_xylims((xmin, xmax, ymin, ymax), yaxes=yaxes)
+                    ppan.conf.set_trace_color(color, trace=yaxes-1, delay_draw=True)
                     setattr(ppan.conf, ylabel, desc)
                 except:
                     use_update = False
