@@ -765,7 +765,7 @@ Matt Newville <newville@cars.uchicago.edu>
                 use_update = False
             xmin = tmin/86400.0
             xmax = tmax/86400.0
-            if use_update and not self.force_replot:
+            if use_update: #  and not self.force_replot:
                 try:
                     ppan.update_line(yaxes-1, tdat, ydat, draw=False, yaxes=yaxes)
                     ppan.set_xylims((xmin, xmax, ymin, ymax), yaxes=yaxes)
@@ -782,7 +782,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
                 opts[ylabel] = desc
                 opts[logscale] = uselog and min(ydat) > 0
-                plot = ppan.plot if i==0 else ppan.oplot
+                plot = ppan.plot if yaxes==1 else ppan.oplot
                 plot(tdat, ydat, yaxes=yaxes, color=color,
                      ymin=ymin, ymax=ymax, label=desc, **opts)
                 self.plotted_pvs[i] = pvname
