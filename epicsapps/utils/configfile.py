@@ -111,6 +111,8 @@ class ConfigFile(object):
               file will be read.
 
         """
+        if fname is None:
+            return
         fpath = Path(fname).absolute()
         if not fpath.exists():
             _path = Path(get_configfolder(), fname)
@@ -121,7 +123,6 @@ class ConfigFile(object):
             print("No config file to read: ", fname)
             self.config = self.default_config
             return
-
 
         self.filename = fpath.absolute().as_posix()
         stem  = fpath.suffix
