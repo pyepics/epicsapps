@@ -17,7 +17,7 @@ line terminal, you can also use::
 This will start with a dialog to either select an areaDetector PV or to
 browse for or select an AreaDetector configuration file, which uses yaml syntax.
 
-.. image:: images/AD_slect.png
+.. image:: images/AD_select.png
     :width: 40%
 
 A few examples of configuration files are given at
