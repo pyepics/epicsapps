@@ -79,6 +79,13 @@ class ConnectDialog(wx.Dialog):
             for name in recent_pvs:
                 pvlist.append(name)
 
+
+        self.rb_pv  = wx.RadioButton(panel, -1, 'Use PV', style=wx.RB_GROUP)
+        self.rb_file = wx.RadioButton(panel, -1, 'Use Config File', style=0)
+        self.rb_pv.Bind(wx.EVT_RADIOBUTTON, self.onRadButton)
+        self.rb_file.Bind(wx.EVT_RADIOBUTTON, self.onRadButton)
+
+
         self.mode_message = SimpleText(panel, size=(500, -1), label='')
 
         self.filebrowser = FileBrowser(panel, size=(650, -1))
@@ -86,25 +93,32 @@ class ConnectDialog(wx.Dialog):
         self.filebrowser.SetLabel('Recent Configuration File:')
         self.filebrowser.fileMask = YAML_WILDCARD
         self.filebrowser.changeCallback = self.onConfigFile
+        self.filebrowser.Disable()
 
         if len(conflist) > 0:
             self.filebrowser.SetValue(conflist[0])
 
         self.pvchoice = Choice(panel, size=(300, -1),
                                 choices=pvlist, action=self.onPVChoice)
+        pvname = ''
+        if len(pvlist)  > 0:
+            pvname = pvlist[0]
 
-        self.pvname = TextCtrl(panel, size=(300, -1), value='',
+        self.pvname = TextCtrl(panel, size=(300, -1), value=pvname,
                                action=self.onPVName, act_on_losefocus=False)
         self.pvname.SetToolTip('PV Prefix, not including "cam1:" or "image1:"')
+        self.mode = 'pvname'
 
+        panel.Add(self.rb_pv, dcol=1)
+        panel.Add(self.rb_file, dcol=1)
+        panel.Add(HLine(panel, size=(500, -1)), dcol=5, newrow=True)
         panel.Add(self.filebrowser, dcol=3, newrow=True)
 
         panel.Add(HLine(panel, size=(500, -1)), dcol=5, newrow=True)
-        panel.Add(SimpleText(panel, 'Recently Used PV: '), dcol=1, newrow=True)
+        panel.Add(SimpleText(panel, 'Recent  PVs: '), dcol=1, newrow=True)
         panel.Add(self.pvchoice, dcol=2)
         panel.Add(SimpleText(panel, " PV Prefix:"), dcol=1, newrow=True)
         panel.Add(self.pvname, dcol=2)
-
 
         panel.Add(HLine(panel, size=(500, -1)), dcol=5, newrow=True)
         panel.Add(self.mode_message, dcol=3, newrow=True)
@@ -118,6 +132,15 @@ class ConnectDialog(wx.Dialog):
         panel.Add(btnsizer, dcol=3, newrow=True)
 
         panel.pack()
+        self.mode_message.SetLabel("")
+        wx.CallAfter(self.onRadButton)
+
+    def onRadButton(self, event=None, **kws):
+        is_pv = self.rb_pv.GetValue()
+        self.filebrowser.Enable(not is_pv)
+        self.pvchoice.Enable(is_pv)
+        self.pvname.Enable(is_pv)
+        self.mode = 'pvname' if is_pv else 'conffile'
 
     def onPVChoice(self, event=None, **kws):
         s = event.GetString()
@@ -391,11 +414,8 @@ class ADFrame(wx.Frame):
         mainsizer.Fit(self)
         self.Bind(wx.EVT_CLOSE, self.onClose)
         self.SetAutoLayout(True)
-        iconfile = self.config.get('iconfile', None)
-        if not os.path.exists(iconfile):
-            iconfile = get_icon('camera')
         try:
-            self.SetIcon(wx.Icon(iconfile, wx.BITMAP_TYPE_ICO))
+            self.SetIcon(wx.Icon(get_icon('camera'), wx.BITMAP_TYPE_ICO))
         except:
             pass
         self.connect_pvs()
