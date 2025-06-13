@@ -33,7 +33,7 @@ from pyshortcuts import fix_filename
 from ..utils import MoveToDialog, normalize_pvname, get_pvdesc
 
 from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
-                     FileOpen, SavedParameterDialog, Font, FloatSpin,
+                     FileOpen, FileSave, SavedParameterDialog, Font, FloatSpin,
                      Button, Choice, TextCtrl, HLine)
 
 try:
@@ -99,7 +99,7 @@ class ConnectDialog(wx.Dialog):
             self.filebrowser.SetValue(conflist[0])
 
         self.pvchoice = Choice(panel, size=(300, -1),
-                                choices=pvlist, action=self.onPVChoice)
+                               choices=pvlist, action=self.onPVChoice)
         pvname = ''
         if len(pvlist)  > 0:
             pvname = pvlist[0]
@@ -174,7 +174,7 @@ class ConnectDialog(wx.Dialog):
             for attr in ('image1:', 'cam1:'):
                 if attr in pvname:
                     pvname = pvname.split(attr)[0]
-            conffile = self.filebrowser.GetValue()
+                    conffile = self.filebrowser.GetValue()
         return response(ok, mode, conffile, pvname)
 
 class ADFrame(wx.Frame):
@@ -536,8 +536,12 @@ class ADFrame(wx.Frame):
         print("Saved image File ", epics.caget(file_pv,  as_string=True))
 
     def onSaveConf(self, event=None):
-        fname = self.configfile.write(config=self.config, defaultfile=True)
-        print("wrote %s" % fname)
+        outfile = FileSave(self, 'Save areadDetector Config File',
+                           wildcard=YAML_WILDCARD,
+                           default_file='ad_display.yaml')
+        if outfile is not None:        
+            fname = self.configfile.write(fname=outfile, config=self.config)
+        print("wrote %s" % outfile)
 
     def onClose(self, event=None):
         self.ad_cam.Acquire = 0
