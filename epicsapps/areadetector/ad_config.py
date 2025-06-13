@@ -23,7 +23,6 @@ int1d_flipy: true
 show_thumbnail: true
 thumbnail_size: 100
 
-enabled_plugins: [image1, Over1, Over2, Over3, Over4, ROI1, ROI2, JPEG1, TIFF1]
 image_attributes: [ArrayData, UniqueId_RBV]
 
 camera_attributes:
@@ -38,7 +37,6 @@ camera_attributes:
 - TriggerMode
 - TriggerMode_RBV
 
-
 colormaps: [gray, magma, inferno, plasma, viridis, coolwarm, hot]
 scandb_instrument: None
 
@@ -52,6 +50,8 @@ epics_controls:
  - ['Acquire Message', 'cam1:StatusMessage_RBV', true, pvtext, false, 250, 10]
 
 """
+# enabled_plugins: [image1, Over1, Over2, Over3, Over4, ROI1, ROI2, JPEG1, TIFF1]
+
 
 CONFFILE = 'areadetector.yaml'
 
