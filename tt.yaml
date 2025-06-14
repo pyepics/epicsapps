@@ -1,8 +1,0 @@
-end_datetime: '2025-01-27 09:00:00'
-folder: pvlogx
-instruments: [BPM Foil]
-pvs: ['RF-ACIS:FePermit:Sect1To35IdM.VAL | Shutter Permit | <auto>', 'S:SRcurrentAI.VAL
-    | Storage Ring Current | 0.002', 'S13ID:DSID:GapM.VAL | ID Gap, ID-C/D | 0.001',
-  'S13ID:DSID:TaperGapM.VAL | ID Gap Taper, ID-C/D | 0.001', 'S13ID:USID:GapM.VAL
-    | ID Gap, ID-E | 0.001', 'S13ID:USID:TaperGapM.VAL | ID Gap Taper, ID-E | 0.001']
-workdir: C:/Users/xas_user/Documents/GitHub/epicsapps
