@@ -11,7 +11,7 @@
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     
-    <script src="_static/documentation_options.js?v=520f5dae"></script>
+    <script src="_static/documentation_options.js?v=9986cd63"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -58,7 +58,7 @@
 <blockquote>
 <div><ul class="simple">
 <li><p>Organize PVs into Instruments: a named collection of PVs</p></li>
-<li><p>Manage Instruments with modern Notebook-tab interface.</p></li>
+<li><p>Manage Instruments with Notebook or tabbed interface.</p></li>
 <li><p>Save Positions for any Instrument by name.</p></li>
 <li><p>Restore Positions for any Instrument by name.</p></li>
 <li><p>Remember Settings for all definitions into a single file that can be loaded later.</p></li>
@@ -75,7 +75,7 @@ screens that appear at many workstations using Epics.</p>
 </div>
 <p>or click on the icon.</p>
 <p>A small window to select an Epics Instrument File, like this</p>
-<a class="reference internal image-reference" href="_images/Inst_Startup.png"><img alt="_images/Inst_Startup.png" src="_images/Inst_Startup.png" style="width: 50%;" />
+<a class="reference internal image-reference" href="_images/Inst_Startup.png"><img alt="_images/Inst_Startup.png" src="_images/Inst_Startup.png" style="width: 80%;" />
 </a>
 <p>If this is your first time using the application, choose a name, and hit return
 to start a new Instrument File.  The next time you run Epics Instruments, it
@@ -95,12 +95,12 @@ Instruments Menu.  A screen will appear in which you can name the
 instrument and the PVs that belong to the Instrument.</p>
 <p>If you add a few PVs and click OK, the PVs will connect, and you will see a
 screen something like this</p>
-<a class="reference internal image-reference" href="_images/InstMain_Stage.png"><img alt="_images/InstMain_Stage.png" src="_images/InstMain_Stage.png" style="width: 75%;" />
+<a class="reference internal image-reference" href="_images/InstMain_Stage.png"><img alt="_images/InstMain_Stage.png" src="_images/InstMain_Stage.png" style="width: 95%;" />
 </a>
 </section>
 <section id="editing-an-exisiting-instrument">
 <h2>Editing an Exisiting Instrument<a class="headerlink" href="#editing-an-exisiting-instrument" title="Link to this heading">¶</a></h2>
-<a class="reference internal image-reference" href="_images/Inst_Edit.png"><img alt="_images/Inst_Edit.png" src="_images/Inst_Edit.png" style="width: 40%;" />
+<a class="reference internal image-reference" href="_images/Inst_Edit.png"><img alt="_images/Inst_Edit.png" src="_images/Inst_Edit.png" style="width: 50%;" />
 </a>
 </section>
 <section id="the-instrument-file">
@@ -115,6 +115,102 @@ way of corrupting the data, so do this with caution.  A further note of
 caution is to avoid having a single Instrument file open by multiple
 applications – this can also cause corruption.  The Instrument files can
 be moved around and copied without problems.</p>
+</section>
+<section id="accessing-instruments-and-positions-with-epics">
+<h2>Accessing Instruments and Positions with Epics<a class="headerlink" href="#accessing-instruments-and-positions-with-epics" title="Link to this heading">¶</a></h2>
+<p>You may want to be able to access Instrument and Positions from outside the
+Instruments application.  For example, you may want to define an Instrument for
+“Detector Stages”, and save positions called “In” and “Out”.  It would be
+helpful if you could move the detector to “In” or “Out” from Epics Channel
+Access, either from a script or a data collection application.</p>
+<p>Instruments can be set up to respond to Channel Access puts and move an
+Instrument to a Position.  To do this, use <a class="reference external" href="https://raw.githubusercontent.com/pyepics/epicsapps/refs/heads/master/examples/instruments/epics_client/PyInstrument.db">PyInstrument.db</a>, and load that
+into an Epics IOC with a command like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dbLoadRecords</span><span class="p">(</span><span class="s2">&quot;PyInstrument.db&quot;</span><span class="p">,</span><span class="s2">&quot;P=13XRM:, Q=Inst&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>From the Instruments app, you can go to the Options-&gt;General Settings menu, to
+see a screen like</p>
+<a class="reference internal image-reference" href="_images/Inst_Conf.png"><img alt="_images/Inst_Conf.png" src="_images/Inst_Conf.png" style="width: 60%;" />
+</a>
+<p>Checking the “Use Epics Db” box and entering the Prefix defined with the
+<cite>dbLoadRecords</cite> command will then enable the Instruments program to respond to
+Channel Access requests to move Instruments to Positions.</p>
+<p>Using the <a class="reference external" href="https://raw.githubusercontent.com/pyepics/epicsapps/refs/heads/master/examples/instruments/epics_client/PyInstrument.adl">PyInstrument.adl</a> display file and an MEDM command like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">medm</span> <span class="o">-</span><span class="n">x</span> <span class="o">-</span><span class="n">macro</span> <span class="s2">&quot;P=13XRM:,Q=Inst&quot;</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">epics</span><span class="o">/</span><span class="n">adl</span><span class="o">/</span><span class="nb">all</span><span class="o">/</span><span class="n">PyInstruments</span><span class="o">.</span><span class="n">adl</span>
+</pre></div>
+</div>
+<p>will then bring up a display screen like this</p>
+<a class="reference internal image-reference" href="_images/Inst_PyInst.png"><img alt="_images/Inst_PyInst.png" src="_images/Inst_PyInst.png" style="width: 60%;" />
+</a>
+<p>where you can enter the name of an Instrument, enter the name of a Position,
+and hit the Move button to move to that position. Several Epics PVs listed in
+the table below are used for this communication.  Note that the Instruments App
+itself must be running in order for these moves to happen.</p>
+<p id="instruments-pv-table"><strong>Table of CA interface to Instruments</strong> These PVs will be used for the CA
+interface to Epics Instruments.</p>
+<blockquote>
+<div><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>PV Name</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>$(P)$(Q):InstName</p></td>
+<td><p>Instrument Name</p></td>
+</tr>
+<tr class="row-odd"><td><p>$(P)$(Q):PosName</p></td>
+<td><p>Position Name</p></td>
+</tr>
+<tr class="row-even"><td><p>$(P)$(Q):InstOK</p></td>
+<td><p>Flag for Instrument Name is valid</p></td>
+</tr>
+<tr class="row-odd"><td><p>$(P)$(Q):PosOK</p></td>
+<td><p>Flag for Position Name is valid</p></td>
+</tr>
+<tr class="row-even"><td><p>$(P)$(Q):Move</p></td>
+<td><p>Command to Move</p></td>
+</tr>
+<tr class="row-odd"><td><p>$(P)$(Q):Message</p></td>
+<td><p>Runtime message</p></td>
+</tr>
+<tr class="row-even"><td><p>$(P)$(Q):TSTAMP</p></td>
+<td><p>timestamp, showing Instrument is connected.</p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>From pyepics, you could also do a move with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">epics</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_pv</span><span class="p">,</span> <span class="n">poll</span>
+<span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;13XRM:Inst:&#39;</span>
+<span class="n">move_pv</span> <span class="o">=</span> <span class="n">get_pv</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s1">Move&#39;</span><span class="p">)</span>
+<span class="n">iname_pv</span> <span class="o">=</span> <span class="n">get_pv</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s1">InstName&#39;</span><span class="p">)</span>
+<span class="n">pname_pv</span> <span class="o">=</span> <span class="n">get_pv</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s1">PosName&#39;</span><span class="p">)</span>
+<span class="n">iok_pv</span> <span class="o">=</span> <span class="n">get_pv</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s1">InstOK)</span>
+<span class="n">pok_pv</span> <span class="o">=</span> <span class="n">get_pv</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">prefix</span><span class="si">}</span><span class="s1">PosOK&#39;</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">move_instrument</span><span class="p">(</span><span class="n">instrument</span><span class="p">,</span> <span class="n">position</span><span class="p">):</span>
+    <span class="n">iname_pv</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">instname</span><span class="p">)</span>
+    <span class="n">pname_pv</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">posname</span><span class="p">)</span>
+    <span class="n">poll</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">iok_pv</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find instrument &#39;</span><span class="si">{</span><span class="n">instname</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">pok_pv</span><span class="o">.</span><span class="n">get</span><span class="p">()</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Could not find position &#39;</span><span class="si">{</span><span class="n">posname</span><span class="si">}</span><span class="s2">&#39; for &#39;</span><span class="si">{</span><span class="n">instname</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">move_pv</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="n">move_instrument</span><span class="p">(</span><span class="s1">&#39;SampleStage&#39;</span><span class="p">,</span> <span class="s1">&#39;Sample 1&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="using-postgresql-and-epicsscan">
+<h2>Using PostgresQL and epicsscan<a class="headerlink" href="#using-postgresql-and-epicsscan" title="Link to this heading">¶</a></h2>
+<p>If you are using the EpicsScan application for data collection, you can also
+use its Postgres database as an Epics Instruments database.  This requires a
+bit more setup, but allows mulitple client programs to access and use the
+Instruments at the same time.</p>
 </section>
 </section>
 
@@ -133,6 +229,8 @@ be moved around and copied without problems.</p>
 <li><a class="reference internal" href="#defining-a-new-instrument">Defining a New Instrument</a></li>
 <li><a class="reference internal" href="#editing-an-exisiting-instrument">Editing an Exisiting Instrument</a></li>
 <li><a class="reference internal" href="#the-instrument-file">The Instrument File</a></li>
+<li><a class="reference internal" href="#accessing-instruments-and-positions-with-epics">Accessing Instruments and Positions with Epics</a></li>
+<li><a class="reference internal" href="#using-postgresql-and-epicsscan">Using PostgresQL and epicsscan</a></li>
 </ul>
 </li>
 </ul>
@@ -187,7 +285,7 @@ be moved around and copied without problems.</p>
     </div>
     <div class="footer" role="contentinfo">
     &#169; Copyright 2025, Matthew Newville, The University of Chicago.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     </div>
   </body>
 </html>

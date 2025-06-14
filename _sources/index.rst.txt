@@ -11,40 +11,47 @@
 Epics Applications with PyEpics
 =====================================
 
-EpicsApps is a collection of Epics Applications written in python,
+EpicsApps is a collection of Epics Applications written in Python,
 using the `pyepics`_ library for interacting with Epics devices
-through Channel Access.  Many of these are GUI Applications, built
-with `wxPython`_, and some use other Python libraries for interacting
-wih data. While a part of the goal for this project is to demonstrate
-how one can build complex programs with `pyepics`_, the applications
-here are intended to be useful to beamline scientists and end-users at
-facilities such as synchrotrons that use the Epics control system.
+through Channel Access.  Many of the applications are Graphical User
+Interface programs built with `wxPython`_.
 
-The main applications included in EpicsApps include
+While a part of the goal for this project is to demonstrate how one
+can build complex programs with `pyepics`_, the applications here are
+intended to be useful to beamline scientists and users at facilities
+such as synchrotrons that use the Epics control system.
 
-  * :ref:`stripchart`: A GUI application to show a "live plot" of the recent
-    history of a set of PV values.  Time ranges and ranges for Y
-    values can be changed, and data can be saved to plain text files.
+The main applications included in EpicsApps are
 
-  * :ref:`ad_viewer`: A GUI application to control and view images
-    from an Epics Area Detector.  Controls for stqrting acquistion,
-    changing image mode, exposure time, and frame rate can also be
-    included using a simple configuration file. The end-user can
-    change color-table and contrast level, as well as use a Zoom Box
-    to enhance portions of the image.
+  * :ref:`stripchart`: A GUI application to show a live, real-time
+    plot of the recent values for a set of PV values.  Time ranges and
+    ranges for Y values can be changed, and data can be saved to plain
+    text files.
+
+  * :ref:`ad_viewer`: A GUI application to view live images and
+    control the data collection for an Epics Area Detector.  Standard
+    controls allow starting and stopping acquistion, changing image
+    mode, exposure time, and frame rate, and more controls can be be
+    added using a simple configuration file. The user can change the
+    color table, contrast level, and orientation of the image, and
+    use a Zoom Box to enhance portions of the image.
 
   * :ref:`instruments`: A GUI application to organize PVs, by grouping
-    them into user-named "Instruments".  Each Instrument can have a
-    set of named positions that the end-user can save and restore.
+    them into user-defined "Instruments".  Each Instrument can have
+    any number of PVs included.  For each Instrument, positions can be
+    saved by named, and then restored using that named position.
 
-  * :ref:`pvlogger`: A command-line and GUI application to collect and log
-    time-series of a handful of PV values into plain text files in a
-    folder in a manner that can be easily reviewed.
+  * :ref:`pvlogger`: A pair of applications to collect and view time
+    seriese of "metadata" PVs.  Run from a command-line with a
+    configuration file listing PVs to save, this will save data for
+    PVs into plain text files in a folder named `pvlog`.  Run as a GUI
+    Application during or after acquisition, this application can read
+    data from that folder and plot data as time-series for reviewing
+    changes in these meta-data PVs.
 
-  * *Sample Microscope*: A GSECARS-specific GUI for moving a set of
-    motors for a sample stage, grabbing microscope images from a
-    webcam, and saving named positions.
-
+  * :ref:`ionchamber`: A non-GUI application to read Ion Chamber
+    voltages and amplifier setting, compute X-ray fluxes, and write
+    these back to Epics PVs.
 
 
 .. toctree::
@@ -55,4 +62,4 @@ The main applications included in EpicsApps include
    ad_display
    instruments
    pvlogger
-   other
+   ionchamber

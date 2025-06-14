@@ -1,63 +1,211 @@
 
 <!DOCTYPE html>
 
-<html lang="en">
+<html lang="en" data-content_root="./">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Ion Chamber &#8212; Python Epics Applications</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/sphinxdoc.css" />
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/jquery.js"></script>
-    <script src="_static/underscore.js"></script>
-    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
+    <title>Converting Ion Chamber readings to flux &#8212; Epics Applications Using PyEpics</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=03e43079" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
+    
+    <script src="_static/documentation_options.js?v=9986cd63"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="_static/copybutton.js?v=f281be69"></script>
+    <script src="_static/bizstyle.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="XRF Collector" href="xrfcollect.html" />
-    <link rel="prev" title="Using Epics Motor Setup" href="motorsetup.html" /> 
+    <link rel="prev" title="PV Logger" href="pvlogger.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
   </head><body>
-<div style="background-color: #E4EAED; text-align: left; padding: 0px 0px 15px 15px">
- <h1> <a href="index.html">Epics Applications using PyEpics</a></h1>
-</div>
+    <div style="background-color: #E4EAED; text-align: left; padding:
+                0px 0px 5px 5px">
+      </div>
 
-    <div class="related" role="navigation" aria-label="related navigation">
+    <div class="related" role="navigation" aria-label="Related">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="xrfcollect.html" title="XRF Collector"
-             accesskey="N">next</a> |</li>
-        <li class="right" >
-          <a href="motorsetup.html" title="Using Epics Motor Setup"
+          <a href="pvlogger.html" title="PV Logger"
              accesskey="P">previous</a> |</li>
-   <li><a href="installation.html">Install</a>|</li>
-   <li><a href="ad_display.html">AreaDetector</a>|</li>
-   <li><a href="stripchart.html">StripChart</a>|</li>
-   <li><a href="instrument.html">Instruments</a>|</li>
-   <li><a href="motorsetup.html">MotorSetup</a>|</li>
-   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
-
-        <li class="nav-item nav-item-this"><a href="">Ion Chamber</a></li> 
+        <li class="nav-item nav-item-0"><a href="index.html">EpicsApps</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Converting Ion Chamber readings to flux</a></li> 
       </ul>
-    </div>
+    </div>  
 
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="converting-ion-chamber-readings-to-flux">
+<span id="ionchamber"></span><h1>Converting Ion Chamber readings to flux<a class="headerlink" href="#converting-ion-chamber-readings-to-flux" title="Link to this heading">¶</a></h1>
+<p>The Epicsapps Ion Chamber application is non-GUI application that uses
+several Epics records to calculate the flux absorbed in and
+transmitted through an Ionization Chamber.  uses a small Epics
+database that needs to be loaded in a soft IOC to hold values.  A
+python program can then be run which will read settings from this
+database, calculate the fluxes, and write them back to the Epics
+database.  An <cite>adl</cite> display file for the MEDM display manager is
+provided as a simple UI.</p>
+<section id="loading-ionchamber-db-into-a-soft-ioc">
+<h2>Loading <cite>IonChamber.db</cite> into a soft IOC<a class="headerlink" href="#loading-ionchamber-db-into-a-soft-ioc" title="Link to this heading">¶</a></h2>
+<p>To use the Ion Chamber application, the <a class="reference external" href="https://raw.githubusercontent.com/pyepics/epicsapps/refs/heads/master/epicsapps/ionchamber/iocApp/IonChamber.db">IonChamber.db</a> file
+(with related files at <a class="reference external" href="https://github.com/pyepics/epicsapps/tree/master/epicsapps/ionchamber/iocApp">IonChamber IOC Files</a>), needs
+to be loaded into a soft IOC, with a load command like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dbLoadRecords</span><span class="p">(</span><span class="s2">&quot;IonChamber.db&quot;</span><span class="p">,</span><span class="s2">&quot;P=13IDE:,Q=I0&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>where the values for “P” and “Q” will be used to generate standard
+PV prefixes. This will generate PV names listed in the
+<a class="reference internal" href="#ionchamber-pv-table"><span class="std std-ref">Table of PVs for Ion Chamber</span></a>.</p>
+<p id="ionchamber-pv-table"><strong>Table of PVs for Ion Chamber</strong> These PVs will be used either as
+input or output for the Ion Chamber calculations.  Here “In” means the
+user is expected to provide these, while “Out” values will be written
+to be the <cite>stripchart</cite> application.</p>
+<blockquote>
+<div><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>PV Name</p></th>
+<th class="head"><p>I/O</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>$(P)$(Q):AmpPV</p></td>
+<td><p>In</p></td>
+<td><p>Prefix for SRS570 Amp</p></td>
+</tr>
+<tr class="row-odd"><td><p>$(P)$(Q):VoltPV</p></td>
+<td><p>In</p></td>
+<td><p>PV for IonChamber Voltage</p></td>
+</tr>
+<tr class="row-even"><td><p>$(P)$(Q):EnergyPV</p></td>
+<td><p>In</p></td>
+<td><p>PV for X-ray Energy Value in eV</p></td>
+</tr>
+<tr class="row-odd"><td><p>$(P)$(Q):Desc</p></td>
+<td><p>In</p></td>
+<td><p>Description of Ion Chamber</p></td>
+</tr>
+<tr class="row-even"><td><p>$(P)$(Q):Length</p></td>
+<td><p>In</p></td>
+<td><p>IonChamber Length (cm)</p></td>
+</tr>
+<tr class="row-odd"><td><p>$(P)$(Q):Gas</p></td>
+<td><p>In</p></td>
+<td><p>IonChamber Gas (one of a selection)</p></td>
+</tr>
+<tr class="row-even"><td><p>$(P)$(Q):Volts</p></td>
+<td><p>Out</p></td>
+<td><p>IonChamber Voltage</p></td>
+</tr>
+<tr class="row-odd"><td><p>$(P)$(Q):Energy</p></td>
+<td><p>Out</p></td>
+<td><p>X-ray energy (eV)</p></td>
+</tr>
+<tr class="row-even"><td><p>$(P)$(Q):AbsPercent</p></td>
+<td><p>Out</p></td>
+<td><p>percent of flux absorbed in Ion Chamber</p></td>
+</tr>
+<tr class="row-odd"><td><p>$(P)$(Q):Current
+$(P)$(Q):FluxAbs</p></td>
+<td><p>Out
+Out</p></td>
+<td><p>current generated in Ion Chamber (uA)
+flux absorbed in Ion Chamber (Hz)</p></td>
+</tr>
+<tr class="row-even"><td><p>$(P)$(Q):FluxOut</p></td>
+<td><p>Out</p></td>
+<td><p>flux transmitted out of Ion Chamber (Hz)</p></td>
+</tr>
+<tr class="row-odd"><td><p>$(P)$(Q):FluxOutS</p></td>
+<td><p>Out</p></td>
+<td><p>string for flux transmitted</p></td>
+</tr>
+<tr class="row-even"><td><p>$(P)$(Q):TimeStamp</p></td>
+<td><p>Out</p></td>
+<td><p>timestamp of last update</p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</section>
+<section id="running-the-ionchamber-script-and-display">
+<h2>Running the Ionchamber script and Display<a class="headerlink" href="#running-the-ionchamber-script-and-display" title="Link to this heading">¶</a></h2>
+<p>Once the database is loaded, you will need to set the PV names for:</p>
+<blockquote>
+<div><ol class="arabic simple">
+<li><p>the prefix for the current amplifier.  This is assumed to be a Stanford SRS70
+current amplifier.</p></li>
+<li><p>the PV for the output voltage of that amplifier.</p></li>
+<li><p>the PV for the X-ray energy, in eV.</p></li>
+</ol>
+</div></blockquote>
+<p>You will also need to set the length of the ion chamber (in cm), and the gas in
+the ion chamber.  The gas is assumed to be only one gas, either Air, He, N2,
+Ar, or Kr.</p>
+<p>With these inputs set, you can run a script like this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="ch">#!/usr/bin/python</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">epicsapps.ionchamber</span><span class="w"> </span><span class="kn">import</span> <span class="n">start_ionchamber</span>
+
+<span class="n">prefix</span> <span class="o">=</span> <span class="s1">&#39;13XRM:IC0:&#39;</span>
+<span class="n">start_ionchamber</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="n">prefix</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>which will continuously read the ion chamber sensitivity, voltages, and X-ray
+energy, and so forth.  This will the compute the fluxes and update the output
+PVs list in <a class="reference internal" href="#ionchamber-pv-table"><span class="std std-ref">Table of PVs for Ion Chamber</span></a>.</p>
+<p>You can run a display file (available at <a class="reference external" href="https://github.com/pyepics/epicsapps/tree/master/epicsapps/ionchamber/iocApp">IonChamber IOC Files</a>) to view these
+values by running MEDM with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">medm</span> <span class="o">-</span><span class="n">x</span>  <span class="o">-</span><span class="n">macro</span> <span class="s2">&quot;P=13XRM:,Q=IC0&quot;</span> <span class="n">IonChamber</span><span class="o">.</span><span class="n">adl</span>
+</pre></div>
+</div>
+<p>or a similar Epics display command.</p>
+</section>
+<section id="calculation-details">
+<h2>Calculation details<a class="headerlink" href="#calculation-details" title="Link to this heading">¶</a></h2>
+<p>The calculation of flux uses <a class="reference external" href="https://xraypy.github.io/XrayDB/">xraydb</a>.  Details of the calculation are given
+at <a class="reference external" href="https://xraypy.github.io/XrayDB/examples.html#x-ray-flux-calculations-for-ionization-chambers-and-photodiodes">Ion Chamber flux calculations</a>.  This includes both photo-electric
+absorption and the current generated from Compton scattering.  See also
+<a class="reference external" href="https://xraydb.seescience.org/ionchamber">xraydb flux calculation</a> for examples.</p>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
   <div>
-    <h4>Previous topic</h4>
-    <p class="topless"><a href="motorsetup.html"
-                          title="previous chapter">Using Epics Motor Setup</a></p>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Converting Ion Chamber readings to flux</a><ul>
+<li><a class="reference internal" href="#loading-ionchamber-db-into-a-soft-ioc">Loading <cite>IonChamber.db</cite> into a soft IOC</a></li>
+<li><a class="reference internal" href="#running-the-ionchamber-script-and-display">Running the Ionchamber script and Display</a></li>
+<li><a class="reference internal" href="#calculation-details">Calculation details</a></li>
+</ul>
+</li>
+</ul>
+
   </div>
   <div>
-    <h4>Next topic</h4>
-    <p class="topless"><a href="xrfcollect.html"
-                          title="next chapter">XRF Collector</a></p>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="pvlogger.html"
+                          title="previous chapter">PV Logger</a></p>
   </div>
   <div role="note" aria-label="source link">
     <h3>This Page</h3>
@@ -66,7 +214,7 @@
             rel="nofollow">Show Source</a></li>
     </ul>
    </div>
-<div id="searchbox" style="display: none" role="search">
+<search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
     <form class="search" action="search.html" method="get">
@@ -74,60 +222,28 @@
       <input type="submit" value="Go" />
     </form>
     </div>
-</div>
+</search>
 <script>document.getElementById('searchbox').style.display = "block"</script>
-        </div>
-      </div>
-
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          <div class="body" role="main">
-            
-  <section id="ion-chamber">
-<h1>Ion Chamber<a class="headerlink" href="#ion-chamber" title="Permalink to this heading">¶</a></h1>
-<p>This application, like the XRF Collector, provides a simple Epics interface
-control of a non-trivial device.  Again, the main point of showing it
-here is as an example of using a python process to interact with a custom
-Epics database to provide a customized way to acquire data.   While the
-standard Epics solution would be to write a state-notation-language program
-that runs in an IOC, the approach here minimizes Epics coding to writing a
-simple database, and putting all the logic and control into a python script
-that runs as a long-running process along-side an IOC process.</p>
-</section>
-
-
-            <div class="clearer"></div>
-          </div>
         </div>
       </div>
       <div class="clearer"></div>
     </div>
-    <div class="related" role="navigation" aria-label="related navigation">
+    <div class="related" role="navigation" aria-label="Related">
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
           <a href="genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="xrfcollect.html" title="XRF Collector"
-             >next</a> |</li>
-        <li class="right" >
-          <a href="motorsetup.html" title="Using Epics Motor Setup"
+          <a href="pvlogger.html" title="PV Logger"
              >previous</a> |</li>
-   <li><a href="installation.html">Install</a>|</li>
-   <li><a href="ad_display.html">AreaDetector</a>|</li>
-   <li><a href="stripchart.html">StripChart</a>|</li>
-   <li><a href="instrument.html">Instruments</a>|</li>
-   <li><a href="motorsetup.html">MotorSetup</a>|</li>
-   &nbsp;&nbsp;<li><a href="search.html">search</a></li>
-
-        <li class="nav-item nav-item-this"><a href="">Ion Chamber</a></li> 
+        <li class="nav-item nav-item-0"><a href="index.html">EpicsApps</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Converting Ion Chamber readings to flux</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
-        &#169; Copyright 2012, Matthew Newville.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
+    &#169; Copyright 2025, Matthew Newville, The University of Chicago.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     </div>
   </body>
 </html>

@@ -11,7 +11,7 @@
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     
-    <script src="_static/documentation_options.js?v=520f5dae"></script>
+    <script src="_static/documentation_options.js?v=9986cd63"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -54,16 +54,47 @@
             
   <section id="area-detector-display">
 <span id="ad-viewer"></span><h1>Area Detector Display<a class="headerlink" href="#area-detector-display" title="Link to this heading">¶</a></h1>
-<p>Epics Area Detector Display is a wxPython GUI application for viewing
-images from an Epics Area Detector.  To run this application, simply
-run AD_Display.py at the command line:</p>
+<p>AreaDetector Display is a GUI Application for viewing images from an Epics
+areaDetector. This provides a simple set of controls for viewing the image from
+an areaDetector.  If <cite>epicsapps -m</cite> is run after installation, a folder called
+Epics Apps should be placed on your desktop which as a shortcut labeled
+areaDetecor_Viewer which can be used to launch the application.  From a command
+line terminal, you can also use:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">epicsapps</span> <span class="n">adviewer</span>
 </pre></div>
 </div>
-<p>This will start with a file browser to search for an AreaDetector
-configuration file, which uses yaml syntax.</p>
-<p>A few examples of configuration files are given at
-<a class="reference external" href="https://github.com/pyepics/epicsapps/tree/master/examples/areaDetector">https://github.com/pyepics/epicsapps/tree/master/examples/areaDetector</a>, with a sample lookng like this:</p>
+<p>This will start with a dialog to either select an areaDetector PV or to
+browse for or select an AreaDetector configuration file, which uses yaml syntax.</p>
+<a class="reference internal image-reference" href="_images/AD_select.png"><img alt="_images/AD_select.png" src="_images/AD_select.png" style="width: 75%;" />
+</a>
+<p>Typing the prefix (without ‘cam1’ or ‘det1’, but with the trailing colon) for
+an areaDetector would then bring up an image like this:</p>
+<img alt="_images/AD_Display_Basic.png" src="_images/AD_Display_Basic.png" />
+<p>By default there are buttons to start and stop acquisition, and controls for
+the Trigger Mode, number of images, exposure time, and a few messages about
+acquisition.   It is a basic but useable interface for collecting images with
+the detector.</p>
+<p>For the image display, the color lookup table can changed to a handful of
+supplied colortables (taken from matplotlib), and reversing that table is
+allowed.  Contrast levels can be set using a percentage value to clip the
+intensity range. A value of <cite>1</cite> will set the displayed intensity range to be
+from the 1%% to 99%% intensity level of the image data.  This can be a very
+useful option for many areaDetectors either with bad pixels or high dynamic
+range, as the full scale image is often unusable.  The “Options” menu will
+allow to flip and rotate the image.</p>
+<p>The display shows a “thumbnail image” in the lower left, with an ajustable
+size, in pixels.  At startup, this is centered on the image, but clicking the
+mouse on the image will center that portion of the image in the Zoom box.</p>
+<section id="using-a-configuration-file">
+<h2>Using a configuration file<a class="headerlink" href="#using-a-configuration-file" title="Link to this heading">¶</a></h2>
+<p>A configuration file can be saved from the File menu.  This file can be edited
+to change some of the default settings such as PREFIX for the detector,
+displayed title, and also the list of PVs for controls.  For some cameras, you
+may want to include a file plugin Path or other PV on this simple display.  A
+few examples of configuration files are given at
+<a class="reference external" href="https://github.com/pyepics/epicsapps/tree/master/examples/areaDetector">https://github.com/pyepics/epicsapps/tree/master/examples/areaDetector</a>, with a
+sample example that includes the Path for the TIFF file-writing plugin lookng
+like this:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">name</span><span class="p">:</span> <span class="n">IDA</span> <span class="n">Beam</span> <span class="n">Viewer</span>
 <span class="n">prefix</span><span class="p">:</span> <span class="s1">&#39;13IDAPG1:&#39;</span>
 <span class="n">title</span><span class="p">:</span> <span class="n">AD</span> <span class="n">Display</span> <span class="o">/</span>  <span class="n">IDA</span> <span class="n">Beam</span> <span class="n">Viewer</span>
@@ -72,7 +103,6 @@ configuration file, which uses yaml syntax.</p>
 <span class="n">colormaps</span><span class="p">:</span> <span class="p">[</span><span class="n">gray</span><span class="p">,</span> <span class="n">magma</span><span class="p">,</span> <span class="n">inferno</span><span class="p">,</span> <span class="n">plasma</span><span class="p">,</span> <span class="n">viridis</span><span class="p">,</span> <span class="n">coolwarm</span><span class="p">,</span> <span class="n">hot</span><span class="p">,</span> <span class="n">jet</span><span class="p">]</span>
 <span class="n">colormode</span><span class="p">:</span> <span class="n">Mono</span>
 <span class="n">default_rotation</span><span class="p">:</span> <span class="mi">0</span>
-<span class="n">enabled_plugins</span><span class="p">:</span> <span class="p">[</span><span class="n">image1</span><span class="p">,</span> <span class="n">Over1</span><span class="p">,</span> <span class="n">Over2</span><span class="p">,</span> <span class="n">Over3</span><span class="p">,</span> <span class="n">Over4</span><span class="p">,</span> <span class="n">ROI1</span><span class="p">,</span> <span class="n">ROI2</span><span class="p">,</span> <span class="n">JPEG1</span><span class="p">,</span> <span class="n">TIFF1</span><span class="p">]</span>
 <span class="n">epics_controls</span><span class="p">:</span>
 <span class="o">-</span> <span class="p">[</span><span class="n">Trigger</span> <span class="n">Mode</span><span class="p">,</span> <span class="s1">&#39;cam1:TriggerMode&#39;</span><span class="p">,</span> <span class="n">true</span><span class="p">,</span> <span class="n">pvenum</span><span class="p">,</span> <span class="n">_RBV</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span>
 <span class="o">-</span> <span class="p">[</span><span class="n">Image</span> <span class="n">Mode</span><span class="p">,</span> <span class="s1">&#39;cam1:ImageMode&#39;</span><span class="p">,</span> <span class="n">true</span><span class="p">,</span> <span class="n">pvenum</span><span class="p">,</span> <span class="n">_RBV</span><span class="p">,</span> <span class="mi">150</span><span class="p">,</span> <span class="mi">10</span><span class="p">]</span>
@@ -116,22 +146,10 @@ note:</p>
 <li><p>the font size for the widget, here 10.</p></li>
 </ul>
 </div></blockquote>
-<p>The areaDetector display will allow changing color table lookup using
-a few supplied colortables (from matplotlib) - reversing that color
-table is allowded.</p>
-<p>Contrast levels can be set using a percentage value to clip the
-intensity range. That is, a value of 1 will set the intensity range to
-be from the 1%% to 99%% intensity level of the entire image.  This can
-be a very useful option for many areaDetectors either with bad pixels
-or high dynamic range, as the full scale image is often unusable.</p>
-<p>In addition, the display shows a “thumbnail image” with an ajustable
-size.  At startup, this is centered on the image, but clicking the
-mouse on the image will center that portion of the image in the Zoom
-box.</p>
-<p>Finally, if an Epics ScanDB data is setup with <cite>Instruments</cite> and a
-postgresql database, saved positions from one or more instruments can
-be included in the display, for example to move a camera or shutter
-into saved positions.</p>
+<p>Finally, if an Epics ScanDB data is setup with <cite>Instruments</cite> and a postgresql
+database, saved positions from one or more instruments can be included in the
+display, for example to move a camera or shutter into saved positions.</p>
+</section>
 </section>
 
 
@@ -141,6 +159,16 @@ into saved positions.</p>
       </div>
       <div class="sphinxsidebar" role="navigation" aria-label="Main">
         <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">Area Detector Display</a><ul>
+<li><a class="reference internal" href="#using-a-configuration-file">Using a configuration file</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
   <div>
     <h4>Previous topic</h4>
     <p class="topless"><a href="stripchart.html"
@@ -190,7 +218,7 @@ into saved positions.</p>
     </div>
     <div class="footer" role="contentinfo">
     &#169; Copyright 2025, Matthew Newville, The University of Chicago.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
     </div>
   </body>
 </html>
