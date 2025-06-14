@@ -7,10 +7,12 @@ write_to = "epicsapps/version.py"
 version_scheme = "post-release"
 
 [tool.setuptools.packages.find]
-include = ["epicsapps", "epicsapps/areadetector",
-           "epicsapps/areadetector", "epicsapps/icons", "epicsapps/instruments",
-           "epicsapps/ionchamber", "epicsapps/microscope", "epicsapps/pvlogger",
-           "epicsapps/stripchart", "epicsapps/utils"]
+include = ["epicsapps", "epicsapps.areadetector",
+           "epicsapps.areadetector", "epicsapps.icons", "epicsapps.instruments",
+           "epicsapps.ionchamber", "epicsapps.ionchamber.iocApp",
+           "epicsapps.microscope", "epicsapps.pvlogger",
+           "epicsapps.stripchart", "epicsapps.utils"]
+
 [project]
 name = "epicsapps"
 dynamic = ["version"]
