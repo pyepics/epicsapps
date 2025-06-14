@@ -4,13 +4,15 @@
 Strip Chart Display
 ====================================
 
-StripChart is a GUI application for viewing live time series of PVs.  The plots
-are dynamically updated as the PVs change value. Up to 4 PVs can be plotted at
-a time, with convenient controls for changing the time range displayed, and
-setting labels, value ranges, and colors for each PV. Plotting can be paused
-and resumed, with data collection will continue in the background.
-Interactive graphics with click-and-drag zooming are used, and figures of plots
-can be saved as high-quality PNGs, or data can be exported to plain text files.
+StripChart is a GUI application for viewing live time series of PVs.
+The plots are dynamically updated as the PVs change value. Up to 4 PVs
+can be plotted at a time, with convenient controls for changing the
+time range displayed, and setting labels, value ranges, and colors for
+each PV. Plotting can be paused and resumed, though data collection
+will continue in the background even while plotting is paused.
+Interactive graphics with click-and-drag zooming are used, and figures
+of plots can be saved as high-quality PNGs, or data can be exported to
+plain text files.
 
 
 Running  Stripchart

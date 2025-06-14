@@ -31,7 +31,7 @@ or click on the icon.
 A small window to select an Epics Instrument File, like this
 
 .. image:: images/Inst_Startup.png
-    :width: 50%
+    :width: 80%
 
 If this is your first time using the application, choose a name, and hit return
 to start a new Instrument File.  The next time you run Epics Instruments, it
@@ -57,14 +57,14 @@ If you add a few PVs and click OK, the PVs will connect, and you will see a
 screen something like this
 
 .. image:: images/InstMain_Stage.png
-    :width: 75%
+    :width: 95%
 
 
 Editing an Exisiting Instrument
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. image:: images/Inst_Edit.png
-    :width: 40%
+    :width: 50%
 
 
 The Instrument File
@@ -102,7 +102,7 @@ From the Instruments app, you can go to the Options->General Settings menu, to
 see a screen like
 
 .. image:: images/Inst_Conf.png
-    :width: 50%
+    :width: 60%
 
 
 Checking the "Use Epics Db" box and entering the Prefix defined with the
