@@ -174,7 +174,7 @@ class ConnectDialog(wx.Dialog):
             for attr in ('image1:', 'cam1:'):
                 if attr in pvname:
                     pvname = pvname.split(attr)[0]
-                    conffile = self.filebrowser.GetValue()
+            conffile = self.filebrowser.GetValue()
         return response(ok, mode, conffile, pvname)
 
 class ADFrame(wx.Frame):
