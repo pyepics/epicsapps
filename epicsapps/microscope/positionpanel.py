@@ -604,8 +604,8 @@ class PositionPanel(wx.Panel):
                  xyzmotors=None, offline_instrument=None,
                  offline_xyzmotors=None, safe_move=None, **kws):
 
-        wx.Panel.__init__(self, parent, -1, size=(300, 500))
-        self.size = (300, 600)
+        wx.Panel.__init__(self, parent, -1, size=(300, 800))
+        self.size = (300, 900)
         self.parent = parent
         self.viewer = viewer
         self.instrument = instrument

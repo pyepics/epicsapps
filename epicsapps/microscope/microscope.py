@@ -285,17 +285,20 @@ class MicroscopeFrame(wx.Frame):
             pack(self, sizer)
 
         else: # portrait mode
-            size = (900, 1500)
-            self.pospanel.SetMinSize((250, 450))
+            size = (900, 1100)
+            self.pospanel.SetMinSize((250, 750))
+            zpanel.SetSize((50, 50))
             msizer = wx.GridBagSizer(3, 3)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            msizer.Add(self.pospanel,  (0, 1), (3, 1), ALL_EXP|LEFT_TOP, 2)
-            msizer.Add(self.confpanel, (0, 2), (1, 1), ALL_EXP|LEFT_TOP, 1)
-            msizer.Add(zpanel,         (2, 2), (1, 1), ALL_EXP, 1)
+          
+            msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
+            msizer.Add(zpanel,         (1, 1), (1, 1), ALL_EXP, 1)
             pack(ppanel, msizer)
-            sizer = wx.BoxSizer(wx.VERTICAL)
-            sizer.AddMany([(self.imgpanel,  5, ALL_EXP|LEFT_CEN, 0),
-                          (ppanel,    1, ALL_EXP|LEFT_CEN|wx.GROW, 1)])
+            sizer = wx.GridBagSizer(1, 1)
+            sizer.Add(self.imgpanel,  (0, 0), (1, 1), ALL_EXP|wx.GROW)
+            sizer.Add(self.pospanel,  (0, 1), (1, 1), ALL_EXP|wx.GROW)
+            sizer.Add(ppanel,         (1, 0), (2, 1), ALL_EXP|wx.GROW)
+   
             pack(self, sizer)
 
         self.imgpanel.confpanel = self.confpanel
