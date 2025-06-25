@@ -583,9 +583,9 @@ class TransferPositionsDialog(wx.Frame):
             zoffset = self.zoff.GetValue()
             xpv, ypv, zpv = dest_pvs
             for i, pname in enumerate(newnames):
-                spos[xpv] = pred[0, i] + xoffset
-                spos[ypv] = pred[1, i] + yoffset
-                spos[zpv] = pred[2, i] + zoffset
+                spos[xpv] = float(pred[0, i] + xoffset)
+                spos[ypv] = float(pred[1, i] + yoffset)
+                spos[zpv] = float(pred[2, i] + zoffset)
                 nlabel = '%s%s' % (pname, suff)
                 idb.save_position(nlabel, self.instname, spos)
 
