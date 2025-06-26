@@ -29,7 +29,6 @@ from ..instruments import InstrumentDB
 
 from ..utils import MoveToDialog, normalize_pvname, get_pvdesc
 
-from lmfit import Parameters, minimize
 from .transformations import superimposition_matrix
 from .imageframe import ImageDisplayFrame
 
@@ -54,27 +53,8 @@ def read_xyz(instdb, name, xyz_stages):
         out[row.name]  = [vals[pos] for pos in xyz_stages]
     return out
 
-def params2rotmatrix(params, mat):
-    """--private--  turn fitting parameters
-    into rotation matrix
-    """
-    mat[0][1] = params['c01'].value
-    mat[1][0] = params['c10'].value
-    mat[0][2] = params['c02'].value
-    mat[2][0] = params['c20'].value
-    mat[1][2] = params['c12'].value
-    mat[2][1] = params['c21'].value
-    return mat
-#enddef
-
-def resid_rotmatrix(params, mat, v1, v2):
-    "--private-- resdiual function for fit"
-    mat = params2rotmatrix(params, mat)
-    return (v2 - np.dot(mat, v1)).flatten()
-#enddef
-
 def calc_rotmatrix(d1, d2):
-    """get best-fit rotation matrix to transform coordinates
+    """get rotation matrix to transform coordinates
     from 1st position dict into the 2nd position dict
     """
     labels = []
@@ -82,15 +62,34 @@ def calc_rotmatrix(d1, d2):
     for x in d1.keys():
         if x in d2keys:
             labels.append(x)
-        #endif
-    #endfor
     labels.sort()
     if len(labels) < 6:
-        print( """Error: need at least 6 saved positions
-  in common to calculate rotation matrix""")
-
+        print( """Error: need at least 6 saved positions in common to calculate rotation matrix""")
         return None, None, None
-    #endif
+
+    # find mean and stddev of position differences
+    xdiff, ydiff, zdiff = [], [], []
+    for lab in labels:
+        xdiff.append(d2[lab][0] - d1[lab][0])
+        ydiff.append(d2[lab][1] - d1[lab][1])
+        zdiff.append(d2[lab][2] - d1[lab][2])
+    x0, xs = np.array(xdiff).mean(), np.array(xdiff).std()
+    y0, ys = np.array(ydiff).mean(), np.array(ydiff).std()
+    z0, zs = np.array(zdiff).mean(), np.array(zdiff).std()
+
+    #  remove outliers
+    if xs > 1.2 or ys > 1.2 or zs > 1.2:
+        u1, u2 = {}, {}
+        for i, lab in enumerate(labels):
+            p1, p2 = d1[lab], d2[lab]
+            dx, dy, dz = p2[0]-p1[0], p2[1]-p1[0], p2[2]-p1[2]
+            if abs(dx-x0) < 2*xs and abs(dy-y0) < 2*ys and abs(dz-z0) < 2*zs:
+                u1[lab] = p1
+                u2[lab] = p2
+            else:
+                print("skip outlier point ", lab, p1, p2)
+        d1, d2 = u1, u2
+    labels = list(d1.keys)
     print("Calculate Rotation Matrix with Positions:", labels)
     v1 = np.ones((4, len(labels)))
     v2 = np.ones((4, len(labels)))
@@ -101,30 +100,17 @@ def calc_rotmatrix(d1, d2):
         v2[0, i] = d2[label][0]
         v2[1, i] = d2[label][1]
         v2[2, i] = d2[label][2]
-    #endfor
 
-    # get initial rotation matrix, assuming that
-    # there are orthogonal coordinate systems.
+    # get rotation matrix
     os.environ['KMP_DUPLICATE_LIB_OK'] = 'TRUE'
-    mat = superimposition_matrix(v1, v2, scale=True)
+    return superimposition_matrix(v1, v2, scale=True)
 
-    params = Parameters()
-    params.add('c10', mat[1][0], vary=True)
-    params.add('c01', mat[0][1], vary=True)
-    params.add('c20', mat[2][0], vary=True)
-    params.add('c02', mat[0][2], vary=True)
-    params.add('c12', mat[1][2], vary=True)
-    params.add('c21', mat[2][1], vary=True)
-
-    fit_result = minimize(resid_rotmatrix, params, args=(mat, v1, v2))
-    mat = params2rotmatrix(params, mat)
-    return mat, v1, v2
 
 def make_uscope_rotation(instdb,
                          offline_inst='IDE_Microscope',
                          offline_xyz=('13IDE:m1.VAL', '13IDE:m2.VAL', '13IDE:m3.VAL'),
                          online_inst='SampleStage',
-                         online_xyz=('13XRM:m4.VAL', '13XRM:m5.VAL', '13XRM:m3.VAL')):
+                         online_xyz=('13XRM:m6.VAL', '13XRM:m9.VAL', '13XRM:m4.VAL')):
     """
     Calculate and store the rotation maxtrix needed to convert
     positions from the GSECARS offline microscope (OSCAR)
@@ -139,7 +125,7 @@ def make_uscope_rotation(instdb,
     pos_us = read_xyz(instdb, offline_inst, offline_xyz)
     pos_ss = read_xyz(instdb, online_inst, online_xyz)
     # calculate the rotation matrix
-    mat_us2ss, v1, v2 = calc_rotmatrix(pos_us, pos_ss)
+    mat_us2ss = calc_rotmatrix(pos_us, pos_ss)
     if mat_us2ss is None:
         return
     #endif
@@ -148,17 +134,17 @@ def make_uscope_rotation(instdb,
 
     uname = uscope.name.replace(' ', '_')
     sname = sample.name.replace(' ', '_')
-    conf_us2ss = "CoordTrans:%s:%s" % (uname, sname)
+    conf_us2ss = f"CoordTrans:{uname}:{sname}"
 
-    us2ss = dict(source=offline_xyz, dest=online_xyz,
-                 rotmat=mat_us2ss.tolist())
+    us2ss = {'source': offline_xyz, 'dest': online_xyz,
+             'rotmat': mat_us2ss.tolist()}
     instdb.set_config(conf_us2ss, json.dumps(us2ss))
 
     # calculate the rotation matrix going the other way
-    mat_ss2us, v1, v2 = calc_rotmatrix(pos_ss, pos_us)
-    conf_ss2us = "CoordTrans:%s:%s" % (sname, uname)
-    ss2us = dict(source=online_xyz, dest=offline_xyz,
-                 rotmat=mat_ss2us.tolist())
+    mat_ss2us = calc_rotmatrix(pos_ss, pos_us)
+    conf_ss2us = f"CoordTrans:{sname}:{uname}"
+    ss2us = {'source': online_xyz, 'dest': offline_xyz,
+             'rotmat': mat_ss2us.tolist()}
     instdb.set_config(conf_ss2us, json.dumps(ss2us))
 
 ######################
