@@ -294,9 +294,8 @@ class InstrumentPanel(wx.Panel):
         self.refresh_position_list()
 
     def refresh_position_list(self, **kws):
-        new_list = [p.name for p in self.db.get_positions(self.instname)]
+        new_list = self.db.get_positions(self.instname)
         old_list = self.pos_list.GetItems()
-        # print("REF POS LIST ", self.instname, len(new_list), len(old_list))
         try:
             if old_list != new_list:
                 self.pos_list.Clear()

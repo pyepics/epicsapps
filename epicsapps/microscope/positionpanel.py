@@ -48,9 +48,9 @@ def read_xyz(instdb, name, xyz_stages):
     returns dictionary of PositionName: (x, y, z)
     """
     out = {}
-    for row in instdb.get_positions(name, reverse=True):
-        vals =  instdb.get_position_values(row.name, name)
-        out[row.name]  = [vals[pos] for pos in xyz_stages]
+    for posname in instdb.get_positions(name, reverse=True):
+        vals =  instdb.get_position_values(posname, name)
+        out[posnme]  = [vals[pos] for pos in xyz_stages]
     return out
 
 def calc_rotmatrix(d1, d2):
@@ -242,9 +242,7 @@ class PositionModel(dv.DataViewIndexListModel):
 
     def read_data(self):
         self.data = []
-        poslist = self.instdb.get_positions(self.instname, reverse=True)
-        for pos in poslist:
-            posname = pos.name
+        for posname in self.instdb.get_positions(self.instname, reverse=True):
             erase = True
             if posname in self.posvals:
                 erase = self.posvals[posname]
@@ -431,10 +429,10 @@ class TransferPositionsDialog(wx.Frame):
         self.build_dialog()
 
     def build_dialog(self):
-        positions  = self.instdb.get_positionlist(self.offline, reverse=True)
+        posnames  = self.instdb.get_positions(self.offline, reverse=True)
         panel = scrolled.ScrolledPanel(self)
         self.checkboxes = {}
-        sizer = wx.GridBagSizer(len(positions)+5, 4)
+        sizer = wx.GridBagSizer(2, 2)
         sizer.SetVGap(2)
         sizer.SetHGap(3)
         bkws = dict(size=(95, -1))
@@ -475,17 +473,16 @@ class TransferPositionsDialog(wx.Frame):
         irow += 1
         sizer.Add(wx.StaticLine(panel, size=(500, 2)), (irow, 0), (1, 4),  LEFT_CEN, 2)
 
-        for ip, pname in enumerate(positions):
+        for ip, pname in enumerate(posnames):
             cbox = self.checkboxes[pname] = wx.CheckBox(panel, -1, "")
             cbox.SetValue(True)
-
             if ip % 2 == 0:
                 irow += 1
                 icol = 0
             else:
                 icol = 2
-            sizer.Add(SimpleText(panel, "  %s  "%pname), (irow, icol),   (1, 1),  LEFT_CEN, 2)
-            sizer.Add(cbox,                              (irow, icol+1), (1, 1),  LEFT_CEN, 2)
+            sizer.Add(SimpleText(panel, f" {pname} "), (irow, icol),   (1, 1),  LEFT_CEN, 2)
+            sizer.Add(cbox,                            (irow, icol+1), (1, 1),  LEFT_CEN, 2)
         irow += 1
         sizer.Add(wx.StaticLine(panel, size=(500, 2)), (irow, 0), (1, 4),  LEFT_CEN, 2)
 
@@ -547,8 +544,7 @@ class TransferPositionsDialog(wx.Frame):
             pred = np.dot(rotmat, vals)
             os.environ['KMP_DUPLICATE_LIB_OK'] = 'FALSE'
 
-            poslist = [r.name for r in idb.get_positions(self.instname,
-                                                         reverse=True)]
+            poslist = idb.get_positions(self.instname, reverse=True)
             saved_temp = None
 
             if len(poslist) < 1 and self.parent is not None:
@@ -926,10 +922,8 @@ class PositionPanel(wx.Panel):
             return
         positions = {}
         iname = self.instrument
-        posnames =  self.instdb.get_positionlist(iname, reverse=True)
-        self.posnames = posnames
-        # self.instdb.make_pvmap()
-        for pname in posnames:
+        self.posnames = self.instdb.get_position(iname, reverse=True)
+        for pname in self.posnames:
             thispos = self.instdb.get_position(pname, iname)
             image = ''
             notes = {}

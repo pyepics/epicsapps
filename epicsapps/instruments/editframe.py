@@ -461,7 +461,7 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
 
 
         inst = db.get_instrument(page.instname)
-        posnames = [p.name for p in db.get_positions(page.instname)]
+        posnames = db.get_positions(page.instname)
 
         ALL_EXP  = wx.ALL|wx.EXPAND
         LEFT_CEN = wx.ALIGN_LEFT|wx.ALIGN_CENTER_VERTICAL

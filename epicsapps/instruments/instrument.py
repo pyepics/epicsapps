@@ -293,14 +293,6 @@ class InstrumentDB(SimpleDB):
             self.update('position', where={'name': pos.name},
                         name=newname)
 
-    def get_positions(self, instrument, reverse=False):
-        """return list of positions for an instrument
-        """
-        inst = self.get_instrument(instrument)
-        out = self.get_rows('position', where={'instrument_id': inst.id})
-        if reverse:
-            out.reverse()
-        return out
 
     def get_position(self, name, instrument=None):
         """return position from name and instrument
@@ -311,8 +303,8 @@ class InstrumentDB(SimpleDB):
         return self.get_rows('position', where=where,
                              limit_one=True, none_if_empty=True)
 
-    def get_positionlist(self, instname, reverse=False):
-        """return list of position names for an instrument
+    def get_positions(self, instname, reverse=False):
+        """return list of position *names* for an instrument
         """
         inst = self.get_instrument(instname)
         rows = self.get_rows('position', where={'instrument_id': inst.id},
@@ -321,6 +313,10 @@ class InstrumentDB(SimpleDB):
         if reverse:
             out.reverse()
         return out
+
+    def get_positionlist(self, instname, reverse=False):
+        """back compat for get_positions()"""
+        return self.get_positions(instname, reverse=reverse)
 
 
     def add_instrument(self, name, pvs=None, **kws):
@@ -407,8 +403,8 @@ class InstrumentDB(SimpleDB):
         if inst is None:
             raise InstrumentDBException('Save Postion needs valid instrument')
 
-        for pos in self.get_positions(instname):
-            self.remove_position(pos.name, inst.name)
+        for posname in self.get_positions(instname):
+            self.remove_position(posname, inst.name)
 
         self.delete_rows('position',      {'instrument_id': inst.id})
         self.delete_rows('instrument_pv', {'instrument_id': inst.id})
