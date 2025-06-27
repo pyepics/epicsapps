@@ -10,12 +10,10 @@ from .utils import get_pvdesc, normalize_pvname
 from .textfile import read_textfile
 from .griddata import DataTableGrid, DictFrame
 
-HAS_WXPYTHON = False
-get_icon = SelectWorkdir = GUIColors = MoveToDialog = None
-try:
-    import wx
-    from .wxutils import get_icon, SelectWorkdir, GUIColors
-    from .moveto_dialog import MoveToDialog
-    HAS_WXPYTHON = True
-except ImportError:
-    pass
+HAS_WXPYTHON = True
+import wx
+from .wxutils import get_icon, SelectWorkdir, GUIColors
+from .moveto_dialog import MoveToDialog
+
+from .passwords import (hash_password, test_password,
+                       PasswordCheckDialog, PasswordSetDialog)
