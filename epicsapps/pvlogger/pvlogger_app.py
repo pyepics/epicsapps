@@ -38,7 +38,7 @@ from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem,
 from wxmplot.colors import hexcolor
 from pyshortcuts import debugtimer, uname
 
-from epicsapps.utils import get_pvtypes, get_pvdesc, normalize_pvname
+from epicsapps.utils import get_pvdesc, normalize_pvname
 from epicsapps.stripchart import StripChartFrame
 
 from pyshortcuts import isotime
