@@ -10,10 +10,9 @@ from wxutils import pack, Popup, Button, SimpleText
 
 from ..utils import  GUIColors, get_pvdesc, normalize_pvname
 
-ALL_EXP  = wx.ALL|wx.EXPAND
+from .utils import MOTOR_FIELDS
 
-MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '_able.VAL',
-                '.HLS', '.LLS', '.SPMG', '.DESC')
+ALL_EXP  = wx.ALL|wx.EXPAND
 
 class RenameDialog(wx.Dialog):
     """Rename a Position"""
