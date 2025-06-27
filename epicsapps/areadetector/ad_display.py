@@ -285,8 +285,7 @@ class ADFrame(wx.Frame):
 
         self.instdb = InstrumentDB(self.scandb)
         try:
-            poslist = self.instdb.get_positionlist(self.scandb_instname)
-            self.scandb_choices = poslist
+            self.scandb_choices = self.instdb.get_position(self.scandb_instname)
         except:
             pass
 
@@ -539,7 +538,7 @@ class ADFrame(wx.Frame):
         outfile = FileSave(self, 'Save areadDetector Config File',
                            wildcard=YAML_WILDCARD,
                            default_file='ad_display.yaml')
-        if outfile is not None:        
+        if outfile is not None:
             fname = self.configfile.write(fname=outfile, config=self.config)
         print("wrote %s" % outfile)
 
