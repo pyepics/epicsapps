@@ -5,14 +5,18 @@ import wx
 import wx.lib.filebrowsebutton as filebrowse
 
 
-from ..utils import normalize_pvname, get_pvdesc
+from ..utils import (normalize_pvname, get_pvdesc,
+                    hash_password, test_password,
+                    PasswordCheckDialog, PasswordSetDialog)
+
 
 from wxutils import (GridPanel, BitmapButton, FloatCtrl, FloatSpin,
-                     FloatSpinWithPin, get_icon, SimpleText, Choice, YesNo,
-                     SetTip, Check, Button, HLine, OkCancel, LCEN, RCEN,
+                     FloatSpinWithPin, get_icon, SimpleText, TextCtrl, Choice,
+                     YesNo, SetTip, Check, Button, HLine, OkCancel, LCEN, RCEN,
                      pack)
 
 FileBrowser = filebrowse.FileBrowseButtonWithHistory
+
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 EIN_WILDCARD = 'Epics Instrument Files (*.ein)|*.ein|All files (*.*)|*.*'
@@ -20,10 +24,6 @@ EIN_WILDCARD = 'Epics Instrument Files (*.ein)|*.ein|All files (*.*)|*.*'
 
 MOTOR_FIELDS = ('.SET', '.LLM', '.HLM',  '.LVIO', '.TWV', '.TWR', '.TWF',
                 '_able.VAL', '.HLS', '.LLS', '.SPMG', '.DESC', '.STOP', '.RBV')
-
-def get_pvtypes(pvobj, instrument=None):
-    print("USE InstrumentDB.get_pvtypes")
-
 
 def dumpsql(dbname, fname=None):
     """ dump SQL statements for an sqlite db"""
