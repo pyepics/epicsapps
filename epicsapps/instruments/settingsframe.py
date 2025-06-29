@@ -1,7 +1,9 @@
+import time
+
 import wx
 import wx.lib.scrolledpanel as scrolled
 
-from wxutils import (pack, SimpleText, Button)
+from wxutils import (pack, SimpleText, Button, FloatSpin, Popup)
 
 from .utils import GUIColors, set_font_with_children
 
@@ -23,7 +25,7 @@ class SettingsFrame(wx.Frame) :
         titlefont.PointSize += 2
         titlefont.SetWeight(wx.BOLD)
 
-        sizer = wx.GridBagSizer(4, 4)
+        sizer = wx.GridBagSizer(2, 2)
         panel = wx.Panel(self)
         self.colors = GUIColors()
 
@@ -44,33 +46,79 @@ class SettingsFrame(wx.Frame) :
         sizer.Add(self.v_erase, (1, 1), (1, 1), labstyle,  5)
         sizer.Add(self.v_owrite,(1, 2), (1, 1), labstyle,  5)
 
-        sizer.Add(wx.StaticLine(panel, size=(400, 2), style=wx.LI_HORIZONTAL),
+        sizer.Add(wx.StaticLine(panel, size=(450, 2), style=wx.LI_HORIZONTAL),
                   (2, 0), (1, 5), 3)
+
+        irow = 3
+        title = SimpleText(panel, 'Administrator Settings:',    font=titlefont,
+                           minsize=(130, -1),
+                           colour=self.colors.title, style=tstyle)
+
+        sizer.Add(title,    (irow, 0), (1, 3), labstyle|wx.GROW|wx.ALL, 5)
+
+        admin_timeout = float(db.get_info('admin_timeout', '10'))
+        admin_expires = round((self.parent.admin_expires - time.time())/60.0)
+        admin_pass = db.get_info('admin_password', '')
+
+        mode_msg = 'No Password Set'
+        mode = 'user'
+        if len(admin_pass) > 32:
+            mode_msg = f'Yes, expires in {admin_expires:d} minutes'
+            mode = 'admin'
+        irow += 1
+        label = SimpleText(panel, 'Administrator Mode: ', style=labstyle)
+        modev = SimpleText(panel, mode_msg, style=labstyle)
+        leave_admin = Button(panel, 'Leave Now',  size=(150, -1),
+                                 action=self.OnExitAdmin)
+        no_admin = Button(panel, 'Remove Administrator Password',  size=(225, -1),
+                                 action=self.OnNoAdminPass)
+
+        sizer.Add(label,  (irow, 0), (1, 1), labstyle|wx.GROW|wx.ALL, 5)
+        sizer.Add(modev,  (irow, 1), (1, 1), labstyle|wx.GROW|wx.ALL, 5)
+        sizer.Add(leave_admin,  (irow, 2), (1, 1), labstyle|wx.GROW|wx.ALL, 5)
+
+        irow += 1
+        self.admin_timeout = FloatSpin(panel, value=admin_timeout, digits=0, increment=1,
+                                       min_val=1, max_val=10080, size=(125, -1))
+
+        label = SimpleText(panel, 'Password Timeout (minutes):')
+        sizer.Add(label,               (irow, 0), (1, 1), labstyle|wx.GROW|wx.ALL, 5)
+        sizer.Add(self.admin_timeout,  (irow, 1), (1, 1), labstyle|wx.GROW|wx.ALL, 5)
+
+        irow += 1
+        sizer.Add(no_admin,  (irow, 0), (1, 2), labstyle|wx.GROW|wx.ALL, 5)
+
+        irow += 1
+        sizer.Add(wx.StaticLine(panel, size=(450, 2), style=wx.LI_HORIZONTAL),
+                  (irow, 0), (1, 5), 3)
 
         title = SimpleText(panel, 'Epics Database Connection:',
                            font=titlefont,
                            colour=self.colors.title, style=tstyle)
 
         label = SimpleText(panel, 'DB Prefix:')
-        self.epics_prefix = wx.TextCtrl(panel, -1, value='', size=(160, -1))
+        self.epics_prefix = wx.TextCtrl(panel, -1, value='', size=(150, -1))
         self.epics_use    = wx.CheckBox(panel, -1, 'Use Epics Db')
 
         self.epics_use.SetValue(1==int(self.db.get_info('epics_use', default=0)))
         self.epics_prefix.SetValue(self.db.get_info('epics_prefix', default=''))
+        irow += 1
+        sizer.Add(title,             (irow, 0), (1, 3), labstyle|wx.GROW|wx.ALL, 5)
+        irow += 1
+        sizer.Add(self.epics_use,    (irow, 0), (1, 1), labstyle|wx.GROW|wx.ALL, 5)
+        irow += 1
+        sizer.Add(label,             (irow, 0), (1, 1), labstyle|wx.ALL, 5)
+        sizer.Add(self.epics_prefix, (irow, 1), (1, 2), labstyle|wx.GROW|wx.ALL, 5)
 
-        sizer.Add(title,             (3, 0), (1, 3), labstyle|wx.GROW|wx.ALL, 5)
-        sizer.Add(self.epics_use,    (4, 0), (1, 1), labstyle|wx.GROW|wx.ALL, 5)
-        sizer.Add(label,             (5, 0), (1, 1), labstyle|wx.ALL, 5)
-        sizer.Add(self.epics_prefix, (5, 1), (1, 2), labstyle|wx.GROW|wx.ALL, 5)
-
-        sizer.Add(wx.StaticLine(panel, size=(400, 2), style=wx.LI_HORIZONTAL),
-                  (6, 0), (1, 5), 3)
+        irow += 1
+        sizer.Add(wx.StaticLine(panel, size=(450, 2), style=wx.LI_HORIZONTAL),
+                  (irow, 0), (1, 5), 3)
 
         btn_ok     = Button(panel, 'OK',     size=(70, -1), action=self.OnOK)
         btn_cancel = Button(panel, 'Cancel', size=(70, -1), action=self.OnCancel)
-
-        sizer.Add(btn_ok,     (7, 0), (1, 1), labstyle|wx.ALL,  5)
-        sizer.Add(btn_cancel, (7, 1), (1, 1), labstyle|wx.ALL,  5)
+        irow += 1
+        sizer.Add(btn_ok,     (irow, 0), (1, 1), labstyle|wx.ALL,  5)
+        sizer.Add(btn_cancel, (irow, 1), (1, 1), labstyle|wx.ALL,  5)
 
         set_font_with_children(self, font)
 
@@ -79,8 +127,23 @@ class SettingsFrame(wx.Frame) :
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1, wx.GROW|wx.ALL, 1)
         pack(self, mainsizer)
+        self.SetSize((550, 400))
         self.Show()
         self.Raise()
+
+    def OnExitAdmin(self, event=None):
+        if wx.ID_YES == Popup(self,
+                      "Leave Adminstrator Mode now?",
+                      "Leave Administrator Mode?", style=wx.YES_NO):
+            self.parent.leave_admin_mode()
+            self.OnOK()
+
+    def OnNoAdminPass(self, event=None):
+        if wx.ID_YES == Popup(self,
+                      "Delete Adminstrator Password?",
+                      "Delete Administrator Password?", style=wx.YES_NO):
+            self.db.set_info('admin_password',  '')
+            self.parent.admin_pass = ''
 
     def OnOK(self, event=None):
         yesno = {True: 1, False: 0}
@@ -88,6 +151,11 @@ class SettingsFrame(wx.Frame) :
         self.db.set_info('verify_erase',     yesno[self.v_erase.IsChecked()])
         self.db.set_info('verify_overwrite', yesno[self.v_owrite.IsChecked()])
         self.db.set_info('epics_use',        yesno[self.epics_use.IsChecked()])
+
+        new_timeout = float(self.admin_timeout.GetValue())
+        old_timeout = float(self.db.get_info('admin_timeout',  '10.0'))
+        self.db.set_info('admin_timeout',   str(new_timeout))
+        self.parent.admin_expires += 60*(new_timeout - old_timeout)
 
         epics_prefix = str(self.epics_prefix.GetValue()).strip()
         if self.epics_use.IsChecked() and epics_prefix is not None:
