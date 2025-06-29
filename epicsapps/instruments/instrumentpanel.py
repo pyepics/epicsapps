@@ -281,13 +281,15 @@ class InstrumentPanel(wx.Panel):
         self.redraw_leftpanel()
 
     def onPanelExposed(self, updates=False, **kws):
-        # called when notebook is selected
-        if updates:
-            self.refresh_position_list()
-            self.pos_timer.Start(1000)
-        else:
-            self.pos_timer.Stop()
+        # called when notebook is selected or de-selected
+        self.pos_timer.Stop()
         self.put_timer.Stop()
+        if updates:
+            try:
+                self.refresh_position_list()
+                self.pos_timer.Start(1000)
+            except:
+                pass
 
     def onPositionTimer(self, evt=None):
         self.refresh_position_list()
