@@ -103,24 +103,25 @@ def password_rules(pwtest, minlen=8, lowercase=1, uppercase=1, digits=1, special
 
 class PasswordCheckDialog(wx.Dialog):
     """Check Password"""
-    def __init__(self, parent=None, pwhash='_'):
+    def __init__(self, parent=None, pwhash='_', msg='Enter Password'):
         self.pwhash = pwhash
         self.valid = False
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(650, 350),
-                           title='Check Password')
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(425, 200),
+                           title=msg)
 
         panel = GridPanel(self, itemstyle=wx.ALIGN_LEFT)
 
         panel.Add(SimpleText(panel, ' Enter Password:'), dcol=1, newrow=True)
         self.pwtext = TextCtrl(panel, '', style=wx.TE_PASSWORD,
-                               size=(175, -1), act_on_losefocus=False,
+                               size=(200, -1), act_on_losefocus=False,
                                action=self.onCheck)
-        test = Button(panel, label='Check ', size=(175, -1), action=self.onCheck)
-        panel.Add(self.pwtext, dcol=1, newrow=False)
-        panel.Add(test, dcol=1, newrow=True)
         self.msg = SimpleText(panel, '', size=(200, -1))
+        test = Button(panel, label='Check Now', size=(175, -1), action=self.onCheck)
+
+        panel.Add(self.pwtext, newrow=False)
+        panel.Add(test,        newrow=True)
         panel.Add(self.msg, dcol=2, newrow=False)
-        panel.Add(HLine(panel, size=(300, -1)), dcol=2, newrow=True)
+        panel.Add(HLine(panel, size=(400, -1)), dcol=2, newrow=True)
 
         btnsizer = wx.StdDialogButtonSizer()
         btnsizer.AddButton(wx.Button(panel, wx.ID_OK))
@@ -129,13 +130,15 @@ class PasswordCheckDialog(wx.Dialog):
 
         panel.Add(btnsizer, dcol=2, newrow=True)
         panel.pack()
+        self.pwtext.SetFocus()
+
 
     def onCheck(self, event=None):
         self.valid = test_password(self.pwtext.GetValue(), self.pwhash)
         if not self.valid:
             self.msg.SetLabel('password incorrect')
         else:
-            self.msg.SetLabel('password matches')
+            self.msg.SetLabel('password correct')
 
     def GetResponse(self, newname=None):
         self.Raise()
