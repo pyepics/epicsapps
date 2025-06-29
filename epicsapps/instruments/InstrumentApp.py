@@ -25,7 +25,9 @@ from .epics_server import EpicsInstrumentServer
 
 from .pvconnector import EpicsPVList
 
-from ..utils import get_icon, debugtimer
+from ..utils import (get_icon, debugtimer, PasswordSetDialog, PasswordCheckDialog,
+                     hash_password, test_password)
+
 
 FNB_STYLE = flat_nb.FNB_NO_X_BUTTON|flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS
 FNB_STYLE |= flat_nb.FNB_DROPDOWN_TABS_LIST|flat_nb.FNB_NO_NAV_BUTTONS
@@ -73,6 +75,13 @@ class InstrumentFrame(wx.Frame):
         if self.db is None:
             return
         dt.add('db connected')
+
+        self.admin_pass = self.db.get_info('admin_password', '')
+        if len(self.admin_pass) < 32:
+            self.admin_pass = ''
+        self.admin_expires = 0.0
+        self.admin_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onAdminTimer, self.admin_timer)
 
         self.colors = GUIColors()
         self.create_Statusbar()
@@ -185,13 +194,42 @@ class InstrumentFrame(wx.Frame):
         except Exception:
             pass
 
-        # self.Refresh()
+    def validate_admin(self):
+        """returns True if administrator password is not set or the
+           administrator password has been entered recently ('admin_timeout'),
+           prompting to check password if needed.
+        """
+        if len(self.admin_pass) < 32:
+            return True
+
+        if time.time() < self.admin_expires:
+            return True
+
+        dlg = PasswordCheckDialog(self, pwhash=self.admin_pass,
+                                  msg='Enter Administrator Password')
+        res = dlg.GetResponse()
+        if res:
+            self.admin_expires = time.time() + 60*float(self.db.get_info('admin_timeout', '10.0'))
+            self.admin_timer.Start(1000)
+        return res
+
+    def leave_admin_mode(self):
+        """leave adminstrator mode, removing instruments that are admin only"""
+        self.admin_expires = time.time() - 60
+        self.admin_timer.Stop()
+        for i in range(self.nb.GetPageCount()):
+            page = self.nb.GetPage(i)
+            inst = self.db.get_instrument(page.instname)
+            if inst.admin_only:
+                self.nb.DeletePage(i)
+
 
     def create_nbpages(self):
         self.initializing = True
         # print("InstApp Create NB")
         if self.nb.GetPageCount() > 0:
             self.nb.DeleteAllPages()
+
         for row in self.db.get_all_instruments():
             if row.show is None:
                 self.db.update('instrument',
@@ -200,13 +238,19 @@ class InstrumentFrame(wx.Frame):
             else:
                 show = int(row.show)
             if show:
-                self.add_instrument_page(row.name)
-
+                if row.admin_only:
+                    show = self.validate_admin()
+                if show:
+                    self.add_instrument_page(row.name)
         self.initializing = False
         self.init_stime = time.time()
         self.init_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onInitTimer, self.init_timer)
         self.init_timer.Start(2000)
+
+    def onAdminTimer(self, evt=None):
+        if time.time() > self.admin_expires:
+            self.leave_admin_mode()
 
     def onInitTimer(self, evt=None):
         # print(f"init timer done {time.time()- self.init_stime:.3f}")
@@ -218,13 +262,15 @@ class InstrumentFrame(wx.Frame):
                 wx.CallAfter(callback, {'updates': True})
 
     def add_instrument_page(self, instname):
-        panel = InstrumentPanel(self, instname, db=self.db,
-                                size=(925, -1),
-                                pvlist = self.pvlist,
-                                writer = self.write_message)
-
-        self.panels[instname] = panel
-        self.nb.AddPage(panel, instname, True)
+        inst = self.db.get_instrument(instname)
+        show = self.validate_admin() if inst.admin_only else True
+        if show:
+            panel = InstrumentPanel(self, instname, db=self.db,
+                                    size=(925, -1),
+                                    pvlist = self.pvlist,
+                                    writer = self.write_message)
+            self.panels[instname] = panel
+            self.nb.AddPage(panel, instname, True)
 
     def onNBClosing(self, event=None):
         current_page = self.nb.GetCurrentPage()
@@ -233,17 +279,22 @@ class InstrumentFrame(wx.Frame):
             callback(updates=False)
 
     def onNBChanged(self, event=None):
-        pages = [self.nb.GetPage(i) for i in range(self.nb.GetPageCount())]
         current_page = self.nb.GetCurrentPage()
+        inst = self.db.get_instrument(current_page.instname)
+        show = self.validate_admin() if inst.admin_only else True
 
-        for page in pages:
-            callback = getattr(page, 'onPanelExposed', None)
-            if callable(callback) and not self.initializing:
-                callback(updates=False)
+        pages = {}
+        for i in range(self.nb.GetPageCount()):
+            pages[self.nb.GetPageText(i)] = i
 
-        callback = getattr(current_page, 'onPanelExposed', None)
-        if callable(callback) and not self.initializing:
-            callback(updates=True)
+        if show:
+            for i in range(self.nb.GetPageCount()):
+                page = self.nb.GetPage(i)
+                callback = getattr(page, 'onPanelExposed', None)
+                if callable(callback) and not self.initializing:
+                    callback(updates=(page==current_page))
+        else:
+            wx.CallAfter(self.nb.DeletePage, pages[current_page.instname])
 
     def connect_pvs(self, instname, wait_time=0.10):
         """connect to PVs for an instrument.."""
@@ -266,7 +317,7 @@ class InstrumentFrame(wx.Frame):
         file_menu.AppendSeparator()
 
         MenuItem(self, file_menu,
-                 "E&xit", "Terminate the program",
+                 "E&xit", "Close the program",
                  action=self.onClose)
 
         MenuItem(self, inst_menu,
@@ -297,8 +348,6 @@ class InstrumentFrame(wx.Frame):
                  "Permanently Remove Current Instrument",
                  action=self.onRemoveInstrument)
 
-
-
         MenuItem(self, opts_menu, "&Select Instruments to Show",
                  "Change Which Instruments are Shown",
                  action=self.onSelectInstruments)
@@ -306,6 +355,10 @@ class InstrumentFrame(wx.Frame):
         MenuItem(self, opts_menu, "&General Settings",
                  "Change Settings for GUI behavior, Epics Connection",
                  action=self.onSettings)
+
+        MenuItem(self, opts_menu, "Set Administrator Password",
+                 "Set a Password to restrict access to selected Instruments",
+                 action=self.onSetAdminPassword)
 
         MenuItem(self, help_menu,
                  'About', "More information about this program",
@@ -416,8 +469,9 @@ class InstrumentFrame(wx.Frame):
 
     def onEditInstrument(self, event=None):
         "edit the current instrument"
-        instname = self.nb.GetCurrentPage().instname
-        EditInstrumentFrame(parent=self, db=self.db, instname=instname)
+        if self.validate_admin():
+            instname = self.nb.GetCurrentPage().instname
+            EditInstrumentFrame(parent=self, db=self.db, instname=instname)
 
     def onEnterPosition(self, event=None):
         "enter a new position for the current instrument"
@@ -431,6 +485,8 @@ class InstrumentFrame(wx.Frame):
     def onRemoveInstrument(self, event=None):
         current_page = self.nb.GetCurrentPage()
         instname = current_page.instname
+        if not self.validate_admin():
+            return
 
         msg = f"Permanently Remove Instrument '{instname}'?\nThis cannot be undone!"
         ret = Popup(self, msg, 'Remove Instrument',
@@ -446,31 +502,38 @@ class InstrumentFrame(wx.Frame):
 
         self.nb.DeletePage(pages[instname])
         self.db.remove_instrument(instname)
-        # pages = {}
-        # for i in range(self.nb.GetPageCount()):
-        #    pages[self.nb.GetPageText(i)] = i
-        #print("Pages ", pages)
-
-        # self.nb.DeletePage(pages[instname])
 
     def onSettings(self, event=None):
         try:
             self.settings_frame.Raise()
         except:
-            self.settting_frame = SettingsFrame(parent=self, db=self.db)
+            if self.validate_admin():
+                self.settting_frame = SettingsFrame(parent=self, db=self.db)
+
+    def onSetAdminPassword(self, event=None):
+        admin_pass = self.admin_pass
+        if len(admin_pass) < 40:
+            admin_pass = ''
+        dlg = PasswordSetDialog(current_hash=admin_pass,
+                        msg='Set Administrator Password')
+        result = dlg.GetResponse()
+        if len(result) > 32:
+            self.admin_pass = result
+            self.db.set_info('admin_password', result)
 
     def onSelectInstruments(self, event=None):
         try:
             self.instsel_frame.Raise()
         except:
-            self.instsel_frame = InstSelectionFrame(parent=self, db=self.db)
+            if self.validate_admin():
+                self.instsel_frame = InstSelectionFrame(parent=self, db=self.db)
 
     def onAbout(self, event=None):
         # First we create and fill the info object
         info = wx.adv.AboutDialogInfo()
         info.Name = "Epics Instruments"
         info.Version = "0.5"
-        info.Copyright = "2019, Matt Newville, University of Chicago"
+        info.Copyright = "2025, Matt Newville, University of Chicago"
         info.Description = """
         Epics Instruments is an application to manage Epics PVs.
         An Instrument is defined as a collection of Epics PV.
@@ -501,8 +564,9 @@ class InstrumentFrame(wx.Frame):
                            default_file=self.dbname)
 
         # save current tab/instrument mapping
+        curr_conn = self.db.conndict
         fulldbname = os.path.abspath(self.dbname)
-
+        print("onSave ", fulldbname, self.dbname, outfile)
         if outfile not in (None, self.dbname, fulldbname):
             self.db.close()
             try:
@@ -516,8 +580,9 @@ class InstrumentFrame(wx.Frame):
                 self.configfile.write(config=self.config)
             except:
                 pass
-
-            self.db = InstrumentDB(outfile)
+            print(" WRITE OUT FILE ", type(outfile), outfile, curr_conn)
+            curr_conn['dbname'] = outfile
+            self.db = InstrumentDB(**curr_conn)
 
             # set current tabs to the new db
 
@@ -559,6 +624,9 @@ class InstrumentFrame(wx.Frame):
                            show=show, display_order=display_order)
 
         self.db.set_hostpid(clear=True)
+        self.admin_timer.Stop()
+        self.init_timer.Stop()
+
         time.sleep(0.1)
         for name, pv in self.pvlist.pvs.items():
             try:
@@ -567,8 +635,8 @@ class InstrumentFrame(wx.Frame):
             except:
                 pass
         time.sleep(0.10)
+
         self.pvlist.etimer.Stop()
-        # self.server_timer.Stop()
         if self.epics_server is not None:
             self.epics_server.Shutdown()
         time.sleep(0.10)
