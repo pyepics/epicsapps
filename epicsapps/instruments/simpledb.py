@@ -5,6 +5,7 @@ Simple database interface using SQLAlchemy 2.0
 
 import os
 import logging
+import atexit
 from datetime import datetime
 
 from sqlalchemy import MetaData, create_engine, and_
@@ -64,22 +65,26 @@ def isSimpleDB(dbname, required_tables=('info',)):
 
     All DBs must have  an 'info' table with columns 'key' and 'value'
     """
-
+    valid = False
     try:
         engine  = create_engine('sqlite:///%s' % dbname)
         metadata = MetaData()
-        metadata.reflect(bind=engine)
+        with engine.connect() as conn:
+            metadata.reflect(conn)
+        valid = 'info' in metadata.tables
+        if valid:
+            for tab_name in required_tables:
+                valid = valid and tab_name in metadata.tables
+            info_keys = metadata.tables['info'].columns.keys()
+            for colname in ('key', 'value'):
+                valid = valid and colname in info_keys
+
     except:
         return False
+    finally:
+        if engine is not None:
+            engine.dispose()
 
-    valid = 'info' in metadata.tables
-    if valid:
-        for tab_name in required_tables:
-            valid = valid and tab_name in metadata.tables
-
-        info_keys = metadata.tables['info'].columns.keys()
-        for colname in ('key', 'value'):
-            valid = valid and colname in info_keys
     return valid
 
 class SimpleDB(object):
@@ -136,6 +141,7 @@ class SimpleDB(object):
             server = 'sqlite'
             connect_str = f'/{dbname}'
             connect_args = {'check_same_thread': False}
+            atexit.register(self.close)
 
         if dialect is None:
             connect_str = f'{server}://{connect_str}'
@@ -161,6 +167,7 @@ class SimpleDB(object):
 
     def close(self):
         "close session"
+        self.engine.dispose()
         with Session(self.engine) as session, session.begin():
             session.flush()
 
