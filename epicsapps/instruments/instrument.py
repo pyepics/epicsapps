@@ -17,9 +17,9 @@ from datetime import datetime
 from sqlalchemy import Row, text
 from .utils import backup_versions, normalize_pvname, MOTOR_FIELDS
 from .creator import make_newdb
-from .passwords import hash_password, test_password
 from .simpledb import (SimpleDB, isSimpleDB, get_credentials, isotime)
 from . import upgrades
+from ..utils import hash_password, test_password
 
 
 def isInstrumentDB(dbname):
@@ -177,7 +177,7 @@ class InstrumentDB(SimpleDB):
 
     def get_all_instruments(self):
         """return instrument list"""
-        return self.get_rows('instrument')
+        return self.get_rows('instrument', order_by='display_order')
 
     def get_instrument(self, name):
         """return instrument by name
