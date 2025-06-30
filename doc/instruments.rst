@@ -99,23 +99,30 @@ tried).   See :ref:`pg_instruments` for more information.
 Setting and Using and an Adminstrator Password
 ------------------------------------------------
 
-It may be desirable to limit user access to some Instruments.  That is, a
-beamline scientist may want to have access to Instruments that control
-upstream optics or detector configurations but not have users changing
-moving these without supervision.  For this need, an Adminstrator
-Password can be set for each Instruments file.  To do this, use the
-``Option->Set Administrator Password`` menu which will bring up a
-dialog to set and re-set a password.
+It may be desirable to limit user access to some Instruments.  That
+is, a beamline scientist may want to define Instruments that control
+upstream optics or detector configurations that are useful for setting
+up an experiment, but not allow users to change these without
+supervision. On the hand, there may be Instruments defined that the
+user is expected to use.
 
+
+For this need, an Adminstrator Password can be set for each
+Instruments file.  To do this, use the ``Option->Set Administrator
+Password`` menu which will bring up a dialog to set or reset a
+password.
 
 .. image:: images/Inst_SetPassword.png
     :width: 50%
 
-
-The password must be fairly strong (8 or more characters, at least 1 upper case
-letter, 1 lower case letter, 1 digit, and 1 special character). The password
-will be encrypted using standard hashing methods and saved in the Instruments
-file.
+The password must be fairly strong (8 or more characters,
+at least 1 upper case letter, 1 lower case letter, 1 digit, and 1
+special character). The password will be encrypted using standard
+hashing methods and the encrypted string saved in the Instruments
+file.  While this possword may be protecting equipment but not
+sensitive information, the encrypted string is saved in a readable
+file.  It is recommended to not re-use a password that is used for
+more important information.
 
 When a adminstrator password is set, the user of the application will
 be challenged for this password to do any of the following tasks:
@@ -126,11 +133,11 @@ be challenged for this password to do any of the following tasks:
   * edit or access any Instrument that is marked as `admin only`.
   * change the password.
 
-When a user does go into "Admin Mode", there is a time-out for staying
-in that mode.  By default, this is 15 minutes, but it can be
-changed in the configuration window.   When this time elapses, any
-Instrument that is currently shown but is marked as `admin only` will
-be removed from the display.
+When a user goes into "Admin Mode", there is a time-out for staying in
+that mode.  By default, this is 15 minutes, but it can be changed in
+the configuration window.  When this time elapses, any Instrument that
+is currently shown but is marked as `admin only` will be removed from
+the display.
 
 This timeout can be set from ``Options->General Settings``:
 
