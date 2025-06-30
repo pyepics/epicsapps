@@ -226,7 +226,6 @@ class InstrumentFrame(wx.Frame):
 
     def create_nbpages(self):
         self.initializing = True
-        # print("InstApp Create NB")
         if self.nb.GetPageCount() > 0:
             self.nb.DeleteAllPages()
 
@@ -449,6 +448,8 @@ class InstrumentFrame(wx.Frame):
 
     def onAddInstrument(self, event=None):
         "add a new, empty instrument and start adding PVs"
+        if not self.validate_admin():
+            return
         newname = basename = 'New Instrument'
         inst = self.db.get_instrument(newname)
         count = 1
