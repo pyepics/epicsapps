@@ -56,7 +56,7 @@ def test_password(password, pwhash):
 __LOWER = 'abcdefghijklmnopqrstuvwxyz'
 __UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 __DIGITS = '0123456789'
-__SPECIAL = ';~,`!%$$&^?*#:"/|(){}[]<>\'\\'
+__SPECIAL = ';~,`@!%$$&^?*#:"/|(){}[]<>\'\\'
 
 def password_rules(pwtest, minlen=8, lowercase=1, uppercase=1, digits=1, special=1,
                    invalid=''):
@@ -185,7 +185,7 @@ class PasswordSetDialog(wx.Dialog):
         self.pwhash = ''
         self.rules = rules
 
-        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(650, 350),
+        wx.Dialog.__init__(self, parent, wx.ID_ANY, size=(450, 375),
                            title=msg)
 
         panel = GridPanel(self, ncols=5, nrows=6, pad=3,
@@ -220,6 +220,16 @@ class PasswordSetDialog(wx.Dialog):
         btnsizer.Realize()
 
         panel.Add(btnsizer, dcol=2, newrow=True)
+        panel.Add(SimpleText(panel, ' Password Rules:'), dcol=3, newrow=True)
+        for attr, label in (('minlen', 'Minimum Length'),
+                            ('lowercase', 'Lower Case'),
+                            ('uppercase', 'Upper Case'),
+                            ('digits', 'Digits'),
+                            ('special', 'Special Characters')):
+            s = f"{rules[attr]} characters"
+            panel.Add(SimpleText(panel, f"  {label}", style=wx.ALIGN_LEFT), dcol=1, newrow=True)        
+            panel.Add(SimpleText(panel, s, style=wx.ALIGN_LEFT), dcol=2)
+       
         panel.pack()
 
     def onCheck(self, event=None):
@@ -229,7 +239,7 @@ class PasswordSetDialog(wx.Dialog):
         else:
             curr_valid = True
         if not curr_valid:
-            self.msg.SetLabel("Current Password is invalid")
+            self.msg.SetLabel("Current Password is not invalid")
             return False
         pw1 = self.pw1.GetValue()
         valid, reason = password_rules(pw1, **self.rules)
