@@ -56,7 +56,7 @@ class SettingsFrame(wx.Frame) :
 
         sizer.Add(title,    (irow, 0), (1, 3), labstyle|wx.GROW|wx.ALL, 5)
 
-        admin_timeout = float(db.get_info('admin_timeout', '10'))
+        admin_timeout = float(db.get_info('admin_timeout', '15'))
         admin_expires = round((self.parent.admin_expires - time.time())/60.0)
         admin_pass = db.get_info('admin_password', '')
 
@@ -153,7 +153,7 @@ class SettingsFrame(wx.Frame) :
         self.db.set_info('epics_use',        yesno[self.epics_use.IsChecked()])
 
         new_timeout = float(self.admin_timeout.GetValue())
-        old_timeout = float(self.db.get_info('admin_timeout',  '10.0'))
+        old_timeout = float(self.db.get_info('admin_timeout',  '15.0'))
         self.db.set_info('admin_timeout',   str(new_timeout))
         self.parent.admin_expires += 60*(new_timeout - old_timeout)
 
