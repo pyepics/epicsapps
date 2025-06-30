@@ -922,7 +922,7 @@ class PositionPanel(wx.Panel):
             return
         positions = {}
         iname = self.instrument
-        self.posnames = self.instdb.get_position(iname, reverse=True)
+        self.posnames = self.instdb.get_positions(iname, reverse=True)
         for pname in self.posnames:
             thispos = self.instdb.get_position(pname, iname)
             image = ''
