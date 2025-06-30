@@ -19,7 +19,7 @@ Running  Stripchart
 ~~~~~~~~~~~~~~~~~~~~~~
 
 If `epicsapps -m` is run after installation, a folder called Epics Apps
-should be placed on your desktop which as a shortcut labeled StripChart which
+should be placed on your desktop which has a shortcut labeled StripChart which
 can be used to launch the Stripchart application.  From a command line
 terminal, you can also use::
 

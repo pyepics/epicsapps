@@ -13,22 +13,24 @@ Epics Instruments is a GUI application (using wxPython) that lets any user:
   * Save Positions for any Instrument by name.
   * Restore Positions for any Instrument by name.
   * Remember Settings for all definitions into a single file that can be loaded later.
-  * Multiple Users can be using multiple instrument files at any one time.
+  * Multiple Users can be using multiple instrument files simultaneously.
+  * An administrator password can be set and each Instrument be
+    optionally "admin only", to allow both "expert mode" and "user mode".
 
 It was originally written to replace and organize the multitude of similar MEDM
 screens that appear at many workstations using Epics.
 
 
 Running Epics Instruments
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------
 
-To run Epics Instruments, use::
+If `epicsapps -m` is run after installation, a folder called Epics
+Apps should be placed on your desktop which has a shortcut labeled
+Instruments with a piano keyboard icon that can be used to launch the
+Instruments application.  From a command line terminal, you can also
+use::
 
    epicsapps instruments
-
-or click on the icon.
-
-A small window to select an Epics Instrument File, like this
 
 .. image:: images/Inst_Startup.png
     :width: 80%
@@ -68,22 +70,63 @@ Editing an Exisiting Instrument
 
 
 The Instrument File
-~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------
 
-All the information for definitions of your Instruments and their Positions
-are saved in a single file -- the Instruments file, with a default
-extension of '.ein' (Epics INstruments).   You can use many different
-Instrument Files for different domains of use.
+By default all the information for definitions of your Instruments and
+their Positions are saved in a single file -- the Instruments file.
+This is an SQLite database file, though it uses the default extension
+of '.ein' (Epics INstruments).
 
-The Instrument File is an SQLite database file, and can be browsed and
-manipulated with external tools.  Of course, this can be a very efficient
-way of corrupting the data, so do this with caution.  A further note of
-caution is to avoid having a single Instrument file open by multiple
-applications -- this can also cause corruption.  The Instrument files can
-be moved around and copied without problems.
+You can copy, save, and use as many of Instrument Files as you like --
+you might want to have one for different stations or modes of
+operations.  Since the Instrument File is an SQLite database file, and
+can be browsed and manipulated with external tools such as the
+`sqlite3` command-line program. SQLite files can only be used safely
+by one application at a time, and can become corrupted if written to
+my multiple processes.  Keep a backup, and avoid having a single
+Instrument file open by multiple applications.
+
+If you are interested in using Epics Instruments from multiple
+applications, Postgresql can be used in place of SQLite.  (Mysql or
+other database servers could probably be supported, but have not been
+tried).   See :ref:`pg_instruments` for more information.
+
+
+Setting and Using and an Adminstrator Password
+------------------------------------------------
+
+It may be desirable limit user access to some Instruments.  That is, a
+beamline scientist may want to have access to Instruments that control
+upstream optics or detector configurations but not have users changing
+moving these without supervision.  For this need, an Adminstrator
+Password can be set for each Instruments file.  To do this, use the
+``Option->Set Administrator Password`` menu which will bring up a
+dialog to set and re-set a password.  The password must be fairly
+strong (8 or more characters, at least 1 upper case letter, 1 lower
+case letter, 1 digit, and 1 special character). The password will be
+encrypted using standard hashing methods and saved in the Instruments
+file.
+
+When a adminstrator password is set, the user of the application will
+be challenged for this password to do any of the following tasks:
+
+  * edit the configuration settings.
+  * change what Instruments are displayed.
+  * create an Instrument.
+  * edit or access any Instrument that is marked as `admin_only`.
+  * change the password.
+
+When a user does go into "Admin Mode", there is a time-out for staying
+in that mode.  By default, this is 15 minutes, but it can be
+configured.
+
+
+
+
+
 
 Accessing Instruments and Positions with Epics
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------------------------------
 
 You may want to be able to access Instrument and Positions from outside the
 Instruments application.  For example, you may want to define an Instrument for
@@ -176,11 +219,14 @@ From pyepics, you could also do a move with::
 
 
 
-Using PostgresQL and epicsscan
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+.. _pg_instruments:
+
+Using PostgresQL and the EpicsScan Datatbase
+------------------------------------------------------------
 
 
-If you are using the EpicsScan application for data collection, you can also
+If you want to have
+are using the EpicsScan application for data collection, you can also
 use its Postgres database as an Epics Instruments database.  This requires a
 bit more setup, but allows mulitple client programs to access and use the
 Instruments at the same time.

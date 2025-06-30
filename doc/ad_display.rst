@@ -7,7 +7,7 @@ Area Detector Display
 AreaDetector Display is a GUI Application for viewing images from an Epics
 areaDetector. This provides a simple set of controls for viewing the image from
 an areaDetector.  If `epicsapps -m` is run after installation, a folder called
-Epics Apps should be placed on your desktop which as a shortcut labeled
+Epics Apps should be placed on your desktop which has a shortcut labeled
 areaDetecor_Viewer which can be used to launch the application.  From a command
 line terminal, you can also use::
 
