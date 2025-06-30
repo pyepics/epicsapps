@@ -9,23 +9,24 @@ Epics Instruments
 Epics Instruments is a GUI application (using wxPython) that lets any user:
 
   * Organize PVs into Instruments: a named collection of PVs
-  * Manage Instruments with Notebook or tabbed interface.
+  * Manage multiple Instruments with Notebook or tabbed interface.
   * Save Positions for any Instrument by name.
   * Restore Positions for any Instrument by name.
-  * Remember Settings for all definitions into a single file that can be loaded later.
-  * Multiple Users can be using multiple instrument files simultaneously.
-  * An administrator password can be set and each Instrument be
-    optionally "admin only", to allow both "expert mode" and "user mode".
+  * Saves all information into a single databases file that can be loaded later.
+  * An administrator password can be set to allow both "expert mode"
+    and "user mode".  Each Instrument can be optionally made "admin
+    only" or available in "user mode".
 
-It was originally written to replace and organize the multitude of similar MEDM
-screens that appear at many workstations using Epics.
+The Instruments application was originally written to replace and
+organize the multitude of similar MEDM screens that appear at many
+workstations using Epics.
 
 
 Running Epics Instruments
 -----------------------------
 
-If `epicsapps -m` is run after installation, a folder called Epics
-Apps should be placed on your desktop which has a shortcut labeled
+If `epicsapps -m` is run after installation, a folder called ``Epics
+Apps`` will be created on your desktop which has a shortcut labeled
 Instruments with a piano keyboard icon that can be used to launch the
 Instruments application.  From a command line terminal, you can also
 use::
@@ -35,17 +36,20 @@ use::
 .. image:: images/Inst_Startup.png
     :width: 80%
 
-If this is your first time using the application, choose a name, and hit return
-to start a new Instrument File.  The next time you run Epics Instruments, it
-should remember which files you have recently used, and present you with a
-drop-down list of Instrument Files.  Since all the definitions, positions, and
-settings are saved in a single file, restoring this file will recall the
-earlier session of instrument definitions and saved positions.
+If this is your first time using the application, choose a name for
+your Instruments database, and hit return to create a new Instrument
+File.  The next time you run Epics Instruments, it will remember
+which files you have recently used, and present you with a drop-down
+list of Instrument Files.  Since all the definitions, positions, and
+settings are saved in a single file, restoring this file will recall
+the earlier session of instrument definitions and saved positions.
 
-An Epics **Instrument** is a collection of PVs.  Each Instrument will also
-have a collection of **Positions**, which are just the locations of all the
-PVs in the instrument at the time the Position was saved.  Like a PV, each
-Instrument and each Position for an Instrument has a unique name.
+The Instruments database file can contain multiple Instruments.  Each
+**Instrument** is a collection of Epics PVs.  Each Instrument will
+also have a collection of **Positions**, which are just the locations
+of all the PVs in the Instrument at the time the Position was saved.
+Like a PV, each Instrument and each Position for an Instrument has a
+unique name.
 
 
 Defining a New Instrument
@@ -72,7 +76,7 @@ Editing an Exisiting Instrument
 The Instrument File
 -----------------------
 
-By default all the information for definitions of your Instruments and
+All the information for definitions of your Instruments and
 their Positions are saved in a single file -- the Instruments file.
 This is an SQLite database file, though it uses the default extension
 of '.ein' (Epics INstruments).
@@ -95,7 +99,7 @@ tried).   See :ref:`pg_instruments` for more information.
 Setting and Using and an Adminstrator Password
 ------------------------------------------------
 
-It may be desirable limit user access to some Instruments.  That is, a
+It may be desirable to limit user access to some Instruments.  That is, a
 beamline scientist may want to have access to Instruments that control
 upstream optics or detector configurations but not have users changing
 moving these without supervision.  For this need, an Adminstrator
