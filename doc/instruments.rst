@@ -113,16 +113,23 @@ be challenged for this password to do any of the following tasks:
   * edit the configuration settings.
   * change what Instruments are displayed.
   * create an Instrument.
-  * edit or access any Instrument that is marked as `admin_only`.
+  * edit or access any Instrument that is marked as `admin only`.
   * change the password.
 
 When a user does go into "Admin Mode", there is a time-out for staying
 in that mode.  By default, this is 15 minutes, but it can be
-configured.
+changed in the configuration window.   When this time elapses, any
+Instrument that is currently shown but is marked as `admin only` will
+be removed from the display.
 
+This timeout can be set from ``Options->General Settings``:
 
+.. image:: images/Inst_Conf.png
+    :width: 60%
 
-
+From this screen you can also leave Administrator Mode immediately or
+completely remove the Adminstrtator password so that no Adminsitrator
+Mode will be enabled.
 
 
 Accessing Instruments and Positions with Epics
@@ -141,16 +148,10 @@ into an Epics IOC with a command like::
     dbLoadRecords("PyInstrument.db","P=13XRM:, Q=Inst")
 
 
-From the Instruments app, you can go to the Options->General Settings menu, to
-see a screen like
-
-.. image:: images/Inst_Conf.png
-    :width: 60%
-
-
-Checking the "Use Epics Db" box and entering the Prefix defined with the
-`dbLoadRecords` command will then enable the Instruments program to respond to
-Channel Access requests to move Instruments to Positions.
+From the ``Options->General Settings`` menu (see above), you can
+check the "Use Epics Db" box and entering the Prefix defined with the
+`dbLoadRecords` command will then enable the Instruments program to
+respond to Channel Access requests to move Instruments to Positions.
 
 Using the `PyInstrument.adl`_ display file and an MEDM command like::
 
