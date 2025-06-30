@@ -517,14 +517,17 @@ class InstrumentFrame(wx.Frame):
             admin_pass = ''
         dlg = PasswordSetDialog(current_hash=admin_pass,
                         msg='Set Administrator Password',
-                        rules={'minlen': 8, 'lowecase': 1, 'uppercase': 1,
+                        rules={'minlen': 8, 'lowercase': 1, 'uppercase': 0,
                                 'special': 1, 'digits': 1})
 
         result = dlg.GetResponse()
         if len(result) > 32:
             self.admin_pass = result
             self.db.set_info('admin_password', result)
-
+            self.write_message('Admin Password set')
+        else:
+            self.write_message('Admin Password not set')
+            
     def onSelectInstruments(self, event=None):
         try:
             self.instsel_frame.Raise()
