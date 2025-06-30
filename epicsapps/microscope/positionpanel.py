@@ -50,7 +50,7 @@ def read_xyz(instdb, name, xyz_stages):
     out = {}
     for posname in instdb.get_positions(name, reverse=True):
         vals =  instdb.get_position_values(posname, name)
-        out[posnme]  = [vals[pos] for pos in xyz_stages]
+        out[posname]  = [vals[pos] for pos in xyz_stages]
     return out
 
 def calc_rotmatrix(d1, d2):
