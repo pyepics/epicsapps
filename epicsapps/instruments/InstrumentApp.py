@@ -209,7 +209,7 @@ class InstrumentFrame(wx.Frame):
                                   msg='Enter Administrator Password')
         res = dlg.GetResponse()
         if res:
-            self.admin_expires = time.time() + 60*float(self.db.get_info('admin_timeout', '10.0'))
+            self.admin_expires = time.time() + 60*float(self.db.get_info('admin_timeout', '15.0'))
             self.admin_timer.Start(1000)
         return res
 
@@ -516,7 +516,10 @@ class InstrumentFrame(wx.Frame):
         if len(admin_pass) < 40:
             admin_pass = ''
         dlg = PasswordSetDialog(current_hash=admin_pass,
-                        msg='Set Administrator Password')
+                        msg='Set Administrator Password',
+                        rules={'minlen': 8, 'lowecase': 1, 'uppercase': 1,
+                                'special': 1, 'digits': 1})
+
         result = dlg.GetResponse()
         if len(result) > 32:
             self.admin_pass = result
