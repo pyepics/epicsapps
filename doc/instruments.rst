@@ -105,10 +105,16 @@ upstream optics or detector configurations but not have users changing
 moving these without supervision.  For this need, an Adminstrator
 Password can be set for each Instruments file.  To do this, use the
 ``Option->Set Administrator Password`` menu which will bring up a
-dialog to set and re-set a password.  The password must be fairly
-strong (8 or more characters, at least 1 upper case letter, 1 lower
-case letter, 1 digit, and 1 special character). The password will be
-encrypted using standard hashing methods and saved in the Instruments
+dialog to set and re-set a password.
+
+
+.. image:: images/Inst_SetPassword.png
+    :width: 50%
+
+
+The password must be fairly strong (8 or more characters, at least 1 upper case
+letter, 1 lower case letter, 1 digit, and 1 special character). The password
+will be encrypted using standard hashing methods and saved in the Instruments
 file.
 
 When a adminstrator password is set, the user of the application will
