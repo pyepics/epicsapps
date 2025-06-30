@@ -50,7 +50,7 @@ def read_xyz(instdb, name, xyz_stages):
     out = {}
     for posname in instdb.get_positions(name, reverse=True):
         vals =  instdb.get_position_values(posname, name)
-        out[posname]  = [vals[pos] for pos in xyz_stages]
+        out[posname]  = [float(vals[pos]) for pos in xyz_stages]
     return out
 
 def calc_rotmatrix(d1, d2):
@@ -66,7 +66,6 @@ def calc_rotmatrix(d1, d2):
     if len(labels) < 6:
         print( """Error: need at least 6 saved positions in common to calculate rotation matrix""")
         return None, None, None
-
     # find mean and stddev of position differences
     xdiff, ydiff, zdiff = [], [], []
     for lab in labels:
@@ -89,7 +88,7 @@ def calc_rotmatrix(d1, d2):
             else:
                 print("skip outlier point ", lab, p1, p2)
         d1, d2 = u1, u2
-    labels = list(d1.keys)
+
     print("Calculate Rotation Matrix with Positions:", labels)
     v1 = np.ones((4, len(labels)))
     v2 = np.ones((4, len(labels)))
