@@ -88,7 +88,7 @@ $prefix/bin/conda list
 echo "##Installing xraylarch and epicsapps from PyPI"  | tee -a $logfile
 echo "#> $prefix/bin/pip install \"$larchurl\""| tee -a $logfile
 $prefix/bin/pip install "$larchurl" | tee -a $logfile
-echo "#> $prefix/bin/pip install epicsapps epicsscan"| tee -a $logfile
+echo "#> $prefix/bin/pip install epicsapps"| tee -a $logfile
 $prefix/bin/pip install "epicsapps" | tee -a $logfile
 
 ## create desktop shortcuts

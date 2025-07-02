@@ -1,24 +1,44 @@
+.. _GetEpicsApps.sh:   https://raw.githubusercontent.com/pyepics/epicsapps/master/installers/GetEpicsApps.sh
+.. _GetEpicsApps.bat:   https://raw.githubusercontent.com/pyepics/epicsapps/master/installers/GetEpicsApps.bat
+
+
 Installation and Getting Started
 ====================================
 
 
-The latest version of the `epicsapps` package is |release|,  which can be installed with::
+Installing Epics Apps
+---------------------------
+
+The latest version of the `epicsapps` package is |release|. For
+existing Python installations, this can be installed with::
 
      pip install epicsapps
 
+or upgraded with::
 
-Many of the Epics Applications provide GUI forms and displays using wxPython.
+     pip install --upgrade epicsapps
 
-For Windows and macOS X, all dependencies can be reliably installed
-with the `pip` command above, including Python using Anaconda Python.
+To install a full installation of Python with EpicsApps, download
+`GetEpicsApps.bat`_ for Windows or `GetEpicsApps.sh`_ for Linux and
+MacOS and run that script.  This will install a full Anaconda Python
+environment in a folder named ``C:\Users\<YourName>\epicsapps`` or
+``C:\Users\<YourName>\AppData\Local\epicsapps`` on Windows or in a
+folder called ``epicsapps`` in you Home Folder on Linux or macOS, and
+will also put folder called ``Epics Apps`` on your desktop with links
+to the GUI Applications.
 
-On Linux, PyPI does not have a binary package for wxPython for Linux,
-so `pip install` may try to build wxPython from source.  This requires
-a large number of development packages on Linux, and rarely works
-without some effort.  On the other hand, there are conda packages for
-wxPython from the `conda-forge` channel.  In addition, some
-system-provided Python packaging also include wxPython with its
-packaging tools.q
+
+For installation into an existing Python environment, all dependencies
+can be reliably installed with the `pip` command above on Windows and
+macOS.
+
+On Linux, however, PyPI does not have a binary package for wxPython
+for Linux, so `pip install` may try to build wxPython from source.
+This requires a large number of development packages on Linux, and
+rarely works without some effort.  On the other hand, there are conda
+packages for wxPython from the `conda-forge` channel.  In addition,
+some system-provided Python packaging also include wxPython with its
+packaging tools.
 
 Using Anaconda Python is recommended and common for many scientific
 applications, and is common at many facilities using Epics.
@@ -33,6 +53,7 @@ and then::
 
 
 This approach will work on all systems, and is recommended on Linux.
+
 
 
 Getting Started
