@@ -18,42 +18,54 @@ or upgraded with::
 
      pip install --upgrade epicsapps
 
-To install a full installation of Python with EpicsApps, download
-`GetEpicsApps.bat`_ for Windows or `GetEpicsApps.sh`_ for Linux and
-MacOS and run that script.  This will install a full Anaconda Python
-environment in a folder named ``C:\Users\<YourName>\epicsapps`` or
-``C:\Users\<YourName>\AppData\Local\epicsapps`` on Windows or in a
-folder called ``epicsapps`` in you Home Folder on Linux or macOS, and
-will also put folder called ``Epics Apps`` on your desktop with links
-to the GUI Applications.
 
+For installation into an existing Python environment,
 
-For installation into an existing Python environment, all dependencies
-can be reliably installed with the `pip` command above on Windows and
-macOS.
+This ``pip`` command will all the required packages needed on Windows
+and macOS.
 
-On Linux, however, PyPI does not have a binary package for wxPython
-for Linux, so `pip install` may try to build wxPython from source.
-This requires a large number of development packages on Linux, and
-rarely works without some effort.  On the other hand, there are conda
-packages for wxPython from the `conda-forge` channel.  In addition,
-some system-provided Python packaging also include wxPython with its
-packaging tools.
+On Linux, however, the ``pip install`` command will not have a binary
+package for wxPython, and may try to build wxPython from source.  This
+requires a large number of development packages on Linux, and rarely
+works without some effort.
 
-Using Anaconda Python is recommended and common for many scientific
-applications, and is common at many facilities using Epics.
-If using Anaconda Python, you can first do::
+There are conda packages for wxPython from the `conda-forge` channel.
+Since using Anaconda Python provides many othed common scientific
+pacakges, and is common at many facilities using Epics.  If using
+Anaconda Python, you can first do::
 
     conda install -c conda-forge wxpython
-
 
 and then::
 
     pip install epicsapps
 
-
 This approach will work on all systems, and is recommended on Linux.
 
+Installation Scripts
+---------------------------
+
+
+**Table of EpicsApps Install scripts**
+
+  +---------------------+------------------------+
+  | Operating System    | Installer Script       |
+  +=====================+========================+
+  | Windows             | `GetEpicsApps.bat`_    |
+  +---------------------+------------------------+
+  | macOS or Linux      | `GetEpicsApps.sh`_     |
+  +---------------------+------------------------+
+
+
+To install a full standalone installation of Python with EpicsApps,
+download `GetEpicsApps.bat`_ for Windows or `GetEpicsApps.sh`_ for
+Linux and MacOS and run that script.  This will install a full
+Anaconda Python environment in a folder named
+``C:\Users\<YourName>\epicsapps`` or
+``C:\Users\<YourName>\AppData\Local\epicsapps`` on Windows or in a
+folder called ``epicsapps`` in you Home Folder on Linux or macOS, and
+will also put folder called ``Epics Apps`` on your desktop with links
+to the GUI Applications.
 
 
 Getting Started
@@ -76,12 +88,12 @@ where `options` can be
 
 and `appname` can be one of
 
+* `stripchart`              PV Stripchart
 * `adviewer`     [filename] Area Detector Viewer
 * `instruments`  [filename] Epics Instruments
-* `microscope`   [filename] Sample Microscope Viewer
 * `pvlogger`     [filename] PV Logger data collection
 * `pvlogview`               PV Logger data Viewer
-* `stripchart`              PV Stripchart
+* `microscope`   [filename] Sample Microscope Viewer
 
 
 and `filename` is an optional configuration YAML file.
