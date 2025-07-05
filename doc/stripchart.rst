@@ -44,6 +44,10 @@ Once a PV connects, it will be added to the drop-down menus for each of the 4
 available traces.  Colors, Y-ranges, and descriptions (used for the Y-axis
 labels) can be altered at any time and will be refleced in the live plot.  To
 save these settings for future sessions, press "Save PV Settings" in the upper right.
+While only 4 PVs can be displayed at one time, StripChart can be
+recording more than that and you can change which PVs are displayed
+and in which order.
+
 
 The time range (which is time from the present) can be adjusted on the
 right-hand side, just above the plot.  You can select time units of seconds,
@@ -84,10 +88,25 @@ saved descriptions, ranges, etc), and might look like this::
 Here, for each PV, the name, description, whether to you Log-scale, minimum
 value, and maximum value are written.
 
-
 When StripChart is closed, it will save its configuration to `stripchart.yaml`
 in the current working folder, making a backup if needed.  That way, when you
 restart StripChart, you can pick up with a previous set of monitored PVs.
+
+
+
+Long-Running processes and memory use
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+StripChart records and keeps all changes in values for each PV it is
+monitoring.  In fact, it saves the time (as a 64-bit float) and value
+(which will typically also be a 64-bit float) for each event for each
+monitored PV.  To prevent too much memory usage, StripChart limits the
+total number of events it keeps for each PV to 8 million samples.
+When that number is exceeded some of the oldest data is removed.  For
+PVs that change constantly at 10 Hz, this limits the historical values
+to a history to about 9.5 days. If you are looking to record data for
+longer than that, consider using :ref:`pvlogger`.
+
 
 
 .. _stripchart_timezone:
