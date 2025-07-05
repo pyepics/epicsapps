@@ -51,13 +51,13 @@ PLOT_COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')
 
 # Each recorded value uses 2 doubles (time, value)
-# With NMAX_DEFAULT of 2**22, 4M, each PV will use up to
-# (2**22)*2*8 bytes of data == 64 MB.
+# With NMAX_DEFAULT of 2**23, 8M, each PV will use up to
+# (2**23)*2*8 bytes of data == 128 MB.
 #
-# For events at 10 Hz, 2**22 values will hold
-# 116.5 hours or 4 days, 20.5 hourse worth of data.
-NMAX_DEFAULT = 2**22
-NTRIM_DEFAULT =NMAX_DEFAULT/64
+# For events at 10 Hz, 2**23 values will hold
+# 233 hours or 9 days, 17  hours worth of data.
+NMAX_DEFAULT = 2**23
+NTRIM_DEFAULT = NMAX_DEFAULT/32
 
 
 _configtext = """
