@@ -800,11 +800,12 @@ Matt Newville <newville@cars.uchicago.edu>
         self.nb.SetSelection(1)
 
     def onSaveInst(self, value=None):
+        if value is None:
+            value = self.wids['save_inst'].GetValue().strip()
         if len(value) < 1 or (time.time() < (self.save_inst_time) + 2.0):
             return
 
         cur_insts = self.log_folder.instruments
-
         if value in cur_insts:
             ret = Popup(self, f"Overwrite Instrument '{value}'?\n",
                         'Verify Overwrite',
