@@ -289,6 +289,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.pvs_connected = 'unknown'
         self.last_time_start = 0
         self.last_time_stop = 0
+        self.save_inst_time = 0.0
         self.create_frame()
 
     def create_frame(self):
@@ -496,7 +497,7 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['instruments'] = Choice(panel, action=self.onSelectInst, **opts)
 
         wids['save_inst'] = TextCtrl(panel, '', action=self.onSaveInst,
-                                     size=(350, -1))
+                                     size=(350, -1), act_on_losefocus=False)
 
         for i in range(4):
             wids[f'pv{i+1}'] = Choice(panel, **opts)
@@ -798,28 +799,47 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.nb.SetSelection(1)
 
-    def onSaveInst(self, event=None):
-        iname = self.wids['save_inst'].GetValue()
+    def onSaveInst(self, value=None):
+        if len(value) < 1 or (time.time() < (self.save_inst_time) + 2.0):
+            return
+
         cur_insts = self.log_folder.instruments
+
+        if value in cur_insts:
+            ret = Popup(self, f"Overwrite Instrument '{value}'?\n",
+                        'Verify Overwrite',
+                        style=wx.YES_NO|wx.ICON_QUESTION)
+            if ret != wx.ID_YES:
+                return
+
         pvnames  = []
         for i in range(4):
             pvdesc = self.wids[f'pv{i+1}'].GetStringSelection()
             if pvdesc == 'None':
                 continue
-
             pvnames.append(self.pvmap[pvdesc])
+        if len(pvnames) < 1:
+            return
 
-        self.log_folder.instruments[iname] = pvnames
+        cur_insts[value] = pvnames
 
-        update_choice(self.wids['instruments'], list(self.log_folder.instruments))
+        update_choice(self.wids['instruments'], list(cur_insts.keys()))
         ifile = Path(self.log_folder.folder, '_PVLOG_instruments.txt').absolute()
         with open(ifile, 'w', encoding='utf-8') as fh:
             yaml.safe_dump(self.log_folder.instruments, fh,
                            default_flow_style=False, sort_keys=False)
 
+        self.save_inst_time = int(time.time())
+        time.sleep(0.05)
+        wx.CallAfter(self.wids['save_inst'].SetValue, '')
+
+
     def onSelectInstPVs(self, event=None):
         iname = self.wids['instruments'].GetStringSelection()
         self.pvlist.select_none()
+        for i in range(4):
+            self.wids[f'pv{i+1}'].SetStringSelection('None')
+
         sel = []
         for name in self.log_folder.instruments[iname]:
             desc = self.pvmap_r.get(name, None)
