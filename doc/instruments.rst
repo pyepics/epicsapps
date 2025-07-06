@@ -55,23 +55,49 @@ unique name.
 Defining a New Instrument
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-To define a new Instrument, select **Create New Instrument** from the
-Instruments Menu.  A screen will appear in which you can name the
-instrument and the PVs that belong to the Instrument.
+To define a new Instrument, select ``Create New Instrument`` from the
+``Instruments`` Menu.  A screen will appear in which you can name the
+instrument and the PVs that belong to it
 
-If you add a few PVs and click OK, the PVs will connect, and you will see a
-screen something like this
+.. image:: images/Inst_Create.png
+    :width: 55%
 
-.. image:: images/InstMain_Stage.png
+when you have added the PVs you want click the ``Done`` button.  The
+PVs will connect, and you will see a screen something like this
+
+.. image:: images/Inst_FirstPos.png
     :width: 95%
+
+
+For PVs that are motor ``.VAL`` positions, you get a row for each
+motor to move it around.  For other PVs, you will simply get an Entry
+box to see its current value and be able to change it.
+
+At any time, you can save the "current position" by typing a name in
+the ``Save Position`` box and hit return.  It will then appear in the
+Position List on the right-hand side of the display.   From this list,
+you can highlight any saved Position and hit the ``Go To`` button
+which will bring up a dialog window like this:
+
+.. image:: images/Inst_GoTo.png
+    :width: 95%
+
+to move all or a selected subset of the PVs to that saved Position.
 
 
 Editing an Exisiting Instrument
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+
+To change the definition of an instrument, use the ``Current
+Instrument: Edit`` option from the ``Instruments`` menu.
+
 .. image:: images/Inst_Edit.png
     :width: 50%
 
+There are also dialogs from the ``Instruments`` menu to allow you to
+erase many positions at once or add a position that is not the current
+position of the Instrument.
 
 The Instrument File
 -----------------------
