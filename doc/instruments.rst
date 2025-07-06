@@ -80,7 +80,7 @@ you can highlight any saved Position and hit the ``Go To`` button
 which will bring up a dialog window like this:
 
 .. image:: images/Inst_GoTo.png
-    :width: 95%
+    :width: 75%
 
 to move all or a selected subset of the PVs to that saved Position.
 

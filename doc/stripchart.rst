@@ -74,6 +74,7 @@ read PVs from a configuration file using File Menu->"Read Configuration". When
 you choose to read a configuration file, this will bring up a dialog like this:
 
 .. image:: images/stripchart_pvselect.png
+    :width: 75%
 
 where you can select which of these PVs to import.
 
