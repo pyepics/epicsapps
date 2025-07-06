@@ -191,7 +191,7 @@ class InstSelectionFrame(wx.Frame) :
         titlefont.SetWeight(wx.BOLD)
 
         sizer = wx.GridBagSizer(5, 5)
-        panel = scrolled.ScrolledPanel(self, size=(700, 750),
+        panel = scrolled.ScrolledPanel(self, size=(475, 350),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
         # title row
         self.colors = GUIColors()
@@ -220,7 +220,7 @@ class InstSelectionFrame(wx.Frame) :
                 irow += 1
 
         irow += 1
-        sizer.Add(wx.StaticLine(panel, size=(200, -1), style=wx.LI_HORIZONTAL),
+        sizer.Add(wx.StaticLine(panel, size=(450, -1), style=wx.LI_HORIZONTAL),
                   (irow, 0), (1, 5), wx.ALIGN_CENTER|wx.GROW|wx.ALL, 5)
 
         btn_ok     = Button(panel, 'OK',     size=(70, -1), action=self.OnOK)
@@ -236,9 +236,13 @@ class InstSelectionFrame(wx.Frame) :
         panel.SetupScrolling()
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1, wx.GROW|wx.ALL, 1)
-
-        self.SetMinSize((750, 450))
         pack(self, mainsizer)
+
+        wc, hc = self.GetSize()
+        wb, hb = self.GetBestSize()
+        w = max(wb, wc, 500)
+        h = max(hb, hc, 300)
+        self.SetSize((25*int((w + 20)/25.), 25*int((h + 20)/25.)))
         self.Show()
         self.Raise()
 

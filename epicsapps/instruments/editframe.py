@@ -104,7 +104,7 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
         sizer.Add(SimpleText(panel, 'Position:'),       (ir, 1), (1, 1), LSTY, 2)
 
         ir += 1
-        sizer.Add(wx.StaticLine(panel, size=(195, -1), style=wx.LI_HORIZONTAL),
+        sizer.Add(wx.StaticLine(panel, size=(450, -1), style=wx.LI_HORIZONTAL),
                   (ir, 0), (1, 3), CEN, 2)
 
         self.positions = {}
@@ -116,7 +116,7 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
             self.positions[pvname] = val
             ir += 1
 
-        sizer.Add(wx.StaticLine(panel, size=(195, -1), style=wx.LI_HORIZONTAL),
+        sizer.Add(wx.StaticLine(panel, size=(450, -1), style=wx.LI_HORIZONTAL),
                   (ir, 0), (1, 3), CEN, 2)
 
         btn_panel = wx.Panel(panel, size=(75, -1))
@@ -133,11 +133,17 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
         sizer.Add(btn_panel,  (ir, 0), (1, 3), CEN, 2)
         ir += 1
 
-        sizer.Add(wx.StaticLine(panel, size=(195, -1), style=wx.LI_HORIZONTAL),
+        sizer.Add(wx.StaticLine(panel, size=(450, -1), style=wx.LI_HORIZONTAL),
                   (ir, 0), (1, 3), CEN, 2)
 
         pack(panel, sizer)
         panel.SetupScrolling()
+
+        wc, hc = self.GetSize()
+        wb, hb = self.GetBestSize()
+        w = max(wb, wc, 450)
+        h = max(hb, hc, 600)
+        self.SetSize((25*int((w + 20)/25.), 25*int((h + 20)/25.)))
         self.Layout()
         self.Show()
         self.Raise()
@@ -178,7 +184,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                           style=style, pos=pos)
         self.Handle_FocusEvents()
 
-        panel = scrolled.ScrolledPanel(self, size=(580, 650),
+        panel = scrolled.ScrolledPanel(self, size=(500, 600),
                                        style=wx.GROW|wx.TAB_TRAVERSAL, name='p1')
 
         self.colors = GUIColors()
@@ -222,7 +228,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         sizer.Add(label,            (1, 0), (1, 1), LSTY, 2)
         sizer.Add(self.admin_only,  (1, 1), (1, 1), LSTY, 2)
 
-        sizer.Add(wx.StaticLine(panel, size=(195, -1), style=wx.LI_HORIZONTAL),
+        sizer.Add(wx.StaticLine(panel, size=(450, -1), style=wx.LI_HORIZONTAL),
                   (2, 0), (1, 4), CEN, 2)
 
         irow = 3
@@ -261,7 +267,7 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                 sizer.Add(del_pv,   (irow, 2), (1, 1), RSTY,  3)
 
             irow += 1
-            sizer.Add(wx.StaticLine(panel, size=(150, -1),
+            sizer.Add(wx.StaticLine(panel, size=(450, -1),
                                     style=wx.LI_HORIZONTAL),
                       (irow, 0), (1, 3), CEN, 0)
             irow += 1
@@ -301,10 +307,10 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         pack(btn_panel, btn_sizer)
 
         irow += 1
-        sizer.Add(wx.StaticLine(panel, size=(150, -1), style=wx.LI_HORIZONTAL),
+        sizer.Add(wx.StaticLine(panel, size=(450, -1), style=wx.LI_HORIZONTAL),
                   (irow, 0), (1, 3), CEN, 2)
         sizer.Add(btn_panel, (irow+1, 1), (1, 2), CEN, 2)
-        sizer.Add(wx.StaticLine(panel, size=(150, -1), style=wx.LI_HORIZONTAL),
+        sizer.Add(wx.StaticLine(panel, size=(450, -1), style=wx.LI_HORIZONTAL),
                   (irow+2, 0), (1, 3), CEN, 2)
 
         set_font_with_children(self, font)
@@ -314,7 +320,11 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         mainsizer = wx.BoxSizer(wx.VERTICAL)
         mainsizer.Add(panel, 1, wx.ALL)
         pack(self, mainsizer)
-        self.SetSize((650, 800))
+        wc, hc = self.GetSize()
+        wb, hb = self.GetBestSize()
+        w = max(wb, wc, 500)
+        h = max(hb, hc, 650)
+        self.SetSize((25*int((w + 20)/25.), 25*int((h + 20)/25.)))
         self.Layout()
         self.Show()
         self.Raise()
@@ -521,7 +531,12 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
         mainsizer.Add(panel, 1,  ALL_EXP|wx.GROW|wx.ALIGN_LEFT, 1)
         pack(self, mainsizer)
 
-        self.SetMinSize((700, 550))
+        wc, hc = self.GetSize()
+        wb, hb = self.GetBestSize()
+        w = max(wb, wc, 500)
+        h = max(hb, hc, 400)
+        self.SetSize((25*int((w + 20)/25.), 25*int((h + 20)/25.)))
+        # self.SetMinSize((700, 550))
         self.Raise()
         self.Show()
 
