@@ -471,8 +471,10 @@ class InstrumentFrame(wx.Frame):
     def onEditInstrument(self, event=None):
         "edit the current instrument"
         if self.validate_admin():
+            with_admin_only = len(self.admin_pass) > 32
             instname = self.nb.GetCurrentPage().instname
-            EditInstrumentFrame(parent=self, db=self.db, instname=instname)
+            EditInstrumentFrame(parent=self, db=self.db,
+                                instname=instname, with_admin_only=with_admin_only)
 
     def onEnterPosition(self, event=None):
         "enter a new position for the current instrument"
@@ -527,7 +529,7 @@ class InstrumentFrame(wx.Frame):
             self.write_message('Admin Password set')
         else:
             self.write_message('Admin Password not set')
-            
+
     def onSelectInstruments(self, event=None):
         try:
             self.instsel_frame.Raise()

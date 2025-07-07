@@ -170,7 +170,7 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
 class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
     """ Edit / Add Instrument"""
     def __init__(self, parent=None, pos=(-1, -1),
-                 instname=None, db=None):
+                 instname=None, db=None, with_admin_only=True):
 
         self.parent = parent
         self.db = db
@@ -220,23 +220,28 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
 
         sizer.Add(label,      (0, 0), (1, 1), LSTY, 2)
         sizer.Add(self.name,  (0, 1), (1, 2), LSTY, 2)
+        irow = 1
 
-        self.admin_only  = wx.CheckBox(panel, -1, 'Administrator Only')
-        label  = SimpleText(panel, 'Access: ',
-                            minsize=(150, -1), style=LSTY)
+        self.admin_only = None
+        if with_admin_only:
+            self.admin_only  = wx.CheckBox(panel, -1, 'Administrator Only')
+            label  = SimpleText(panel, 'Access: ',
+                                minsize=(150, -1), style=LSTY)
 
-        sizer.Add(label,            (1, 0), (1, 1), LSTY, 2)
-        sizer.Add(self.admin_only,  (1, 1), (1, 1), LSTY, 2)
+            sizer.Add(label,            (irow, 0), (1, 1), LSTY, 2)
+            sizer.Add(self.admin_only,  (irow, 1), (1, 1), LSTY, 2)
+            irow += 1
 
         sizer.Add(wx.StaticLine(panel, size=(450, -1), style=wx.LI_HORIZONTAL),
-                  (2, 0), (1, 4), CEN, 2)
+                  (irow, 0), (1, 4), CEN, 2)
 
-        irow = 3
+        irow += 1
         self.curpvs, self.newpvs = [], {}
         if instname is not None:
             inst = self.db.get_instrument(instname)
             self.name.SetValue(instname)
-            self.admin_only.SetValue(1==int(inst.admin_only))
+            if self.admin_only is not None:
+                self.admin_only.SetValue(1==int(inst.admin_only))
             sizer.Add(SimpleText(panel, 'Current PVs', font=titlefont,
                                  colour=self.colors.title, style=LSTY),
                       (irow, 0), (1, 1), LSTY, 2)
@@ -395,7 +400,9 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
                 self.parent.nb.SetPageText(page, newname)
 
         # set admin_only
-        admin_only = '1' if self.admin_only.IsChecked() else '0'
+        admin_only = '0'
+        if self.admin_only is not None:
+            admin_only = '1' if self.admin_only.IsChecked() else '0'
         db.update('instrument', where={'name': instname}, admin_only=admin_only)
 
         # make sure newpvs from dictionary are inserted in order
