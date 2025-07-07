@@ -19,13 +19,8 @@ from wxmplot.colors import hexcolor
 from .logfile import TZONE
 
 DVSTYLE = dv.DV_SINGLE|dv.DV_VERT_RULES|dv.DV_ROW_LINES
-
-
-FNB_STYLE = flat_nb.FNB_NO_X_BUTTON
-FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
-
+FNB_STYLE = flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 PLOT_COLORS = ('#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')
-
 PlotWindowChoices = [f'Window {i+1}' for i in range(10)]
 
 def dtformat(ts):
