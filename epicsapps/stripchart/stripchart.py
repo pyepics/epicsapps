@@ -730,9 +730,10 @@ Matt Newville <newville@cars.uchicago.edu>
 
             dat_t  = [i[0] for i in self.pvdata[pvname]]
             dat_y  = [i[1] for i in self.pvdata[pvname]]
-            if dat_t[-1] < (tnow - 15.): # value has not update for 15 seconds
-                dat_t.append(tnow)
-                dat_y.append(dat_y[-1])
+            if dat_t[-1] < (tnow - 30.): # value has not update for 30 second
+                self.pvdata[pvname].append([tnow, dat_y[-1]])
+                dat_t  = [i[0] for i in self.pvdata[pvname]]
+                dat_y  = [i[1] for i in self.pvdata[pvname]]
 
             if len(dat_t)  < 2:
                 continue
@@ -761,10 +762,10 @@ Matt Newville <newville@cars.uchicago.edu>
             tspan = tnow - tmin
             tmin = (tmin - tspan*0.02)
             tmax = (tnow + tspan*0.02)
-            if len(ydat) < 3:
-                use_update = False
+            use_update = pvname in self.plotted_pvs.values()
             xmin = tmin/86400.0
             xmax = tmax/86400.0
+            # print(" I ", pvname, pvname in self.plotted_pvs.values(), len(tdat), len(ydat), use_update)
             if use_update: #  and not self.force_replot:
                 try:
                     ppan.update_line(yaxes-1, tdat, ydat, draw=False, yaxes=yaxes)
@@ -792,7 +793,6 @@ Matt Newville <newville@cars.uchicago.edu>
         self.plotpanel.canvas.draw()
         self.force_replot = False
         self.needs_refresh = False
-
         return
 
 class StripChartApp(wx.App):
