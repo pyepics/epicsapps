@@ -11,7 +11,7 @@
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     
-    <script src="_static/documentation_options.js?v=9986cd63"></script>
+    <script src="_static/documentation_options.js?v=3dfe497a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -54,23 +54,28 @@
             
   <section id="installation-and-getting-started">
 <h1>Installation and Getting Started<a class="headerlink" href="#installation-and-getting-started" title="Link to this heading">¶</a></h1>
-<p>The latest version of the <cite>epicsapps</cite> package is 2025.1.4,  which can be installed with:</p>
+<section id="installing-epics-apps">
+<h2>Installing Epics Apps<a class="headerlink" href="#installing-epics-apps" title="Link to this heading">¶</a></h2>
+<p>The latest version of the <cite>epicsapps</cite> package is 2025.1.5. For
+existing Python installations, this can be installed with:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">epicsapps</span>
 </pre></div>
 </div>
-<p>Many of the Epics Applications provide GUI forms and displays using wxPython.</p>
-<p>For Windows and macOS X, all dependencies can be reliably installed
-with the <cite>pip</cite> command above, including Python using Anaconda Python.</p>
-<p>On Linux, PyPI does not have a binary package for wxPython for Linux,
-so <cite>pip install</cite> may try to build wxPython from source.  This requires
-a large number of development packages on Linux, and rarely works
-without some effort.  On the other hand, there are conda packages for
-wxPython from the <cite>conda-forge</cite> channel.  In addition, some
-system-provided Python packaging also include wxPython with its
-packaging tools.q</p>
-<p>Using Anaconda Python is recommended and common for many scientific
-applications, and is common at many facilities using Epics.
-If using Anaconda Python, you can first do:</p>
+<p>or upgraded with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">upgrade</span> <span class="n">epicsapps</span>
+</pre></div>
+</div>
+<p>For installation into an existing Python environment,</p>
+<p>This <code class="docutils literal notranslate"><span class="pre">pip</span></code> command will all the required packages needed on Windows
+and macOS.</p>
+<p>On Linux, however, the <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span></code> command will not have a binary
+package for wxPython, and may try to build wxPython from source.  This
+requires a large number of development packages on Linux, and rarely
+works without some effort.</p>
+<p>There are conda packages for wxPython from the <cite>conda-forge</cite> channel.
+Since using Anaconda Python provides many othed common scientific
+pacakges, and is common at many facilities using Epics.  If using
+Anaconda Python, you can first do:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="n">wxpython</span>
 </pre></div>
 </div>
@@ -79,6 +84,37 @@ If using Anaconda Python, you can first do:</p>
 </pre></div>
 </div>
 <p>This approach will work on all systems, and is recommended on Linux.</p>
+</section>
+<section id="installation-scripts">
+<h2>Installation Scripts<a class="headerlink" href="#installation-scripts" title="Link to this heading">¶</a></h2>
+<p><strong>Table of EpicsApps Install scripts</strong></p>
+<blockquote>
+<div><table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Operating System</p></th>
+<th class="head"><p>Installer Script</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Windows</p></td>
+<td><p><a class="reference external" href="https://raw.githubusercontent.com/pyepics/epicsapps/master/installers/GetEpicsApps.bat">GetEpicsApps.bat</a></p></td>
+</tr>
+<tr class="row-odd"><td><p>macOS or Linux</p></td>
+<td><p><a class="reference external" href="https://raw.githubusercontent.com/pyepics/epicsapps/master/installers/GetEpicsApps.sh">GetEpicsApps.sh</a></p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+<p>To install a full standalone installation of Python with EpicsApps,
+download <a class="reference external" href="https://raw.githubusercontent.com/pyepics/epicsapps/master/installers/GetEpicsApps.bat">GetEpicsApps.bat</a> for Windows or <a class="reference external" href="https://raw.githubusercontent.com/pyepics/epicsapps/master/installers/GetEpicsApps.sh">GetEpicsApps.sh</a> for
+Linux and MacOS and run that script.  This will install a full
+Anaconda Python environment in a folder named
+<code class="docutils literal notranslate"><span class="pre">C:\Users\&lt;YourName&gt;\epicsapps</span></code> or
+<code class="docutils literal notranslate"><span class="pre">C:\Users\&lt;YourName&gt;\AppData\Local\epicsapps</span></code> on Windows or in a
+folder called <code class="docutils literal notranslate"><span class="pre">epicsapps</span></code> in you Home Folder on Linux or macOS, and
+will also put folder called <code class="docutils literal notranslate"><span class="pre">Epics</span> <span class="pre">Apps</span></code> on your desktop with links
+to the GUI Applications.</p>
+</section>
 <section id="getting-started">
 <h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">¶</a></h2>
 <p>Installing the epicsapps package will install a command-line script <cite>epicsapps</cite>
@@ -97,12 +133,12 @@ as:</p>
 </ul>
 <p>and <cite>appname</cite> can be one of</p>
 <ul class="simple">
+<li><p><cite>stripchart</cite>              PV Stripchart</p></li>
 <li><p><cite>adviewer</cite>     [filename] Area Detector Viewer</p></li>
 <li><p><cite>instruments</cite>  [filename] Epics Instruments</p></li>
-<li><p><cite>microscope</cite>   [filename] Sample Microscope Viewer</p></li>
 <li><p><cite>pvlogger</cite>     [filename] PV Logger data collection</p></li>
 <li><p><cite>pvlogview</cite>               PV Logger data Viewer</p></li>
-<li><p><cite>stripchart</cite>              PV Stripchart</p></li>
+<li><p><cite>microscope</cite>   [filename] Sample Microscope Viewer</p></li>
 </ul>
 <p>and <cite>filename</cite> is an optional configuration YAML file.</p>
 </section>
@@ -128,6 +164,8 @@ the main GUI applications.</p>
     <h3><a href="index.html">Table of Contents</a></h3>
     <ul>
 <li><a class="reference internal" href="#">Installation and Getting Started</a><ul>
+<li><a class="reference internal" href="#installing-epics-apps">Installing Epics Apps</a></li>
+<li><a class="reference internal" href="#installation-scripts">Installation Scripts</a></li>
 <li><a class="reference internal" href="#getting-started">Getting Started</a></li>
 <li><a class="reference internal" href="#creating-desktop-shortcuts">Creating Desktop Shortcuts</a></li>
 </ul>

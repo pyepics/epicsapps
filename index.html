@@ -11,7 +11,7 @@
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     
-    <script src="_static/documentation_options.js?v=9986cd63"></script>
+    <script src="_static/documentation_options.js?v=3dfe497a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -52,23 +52,23 @@
 <h1>Epics Applications with PyEpics<a class="headerlink" href="#epics-applications-with-pyepics" title="Link to this heading">¶</a></h1>
 <p>EpicsApps is a collection of Epics Applications written in Python,
 using the <a class="reference external" href="https://pyepics.github.io/pyepics">pyepics</a> library for interacting with Epics devices
-through Channel Access.  Many of the applications are Graphical User
+through Channel Access.  Mot of the applications are Graphical User
 Interface programs built with <a class="reference external" href="https://www.wxpython.org/">wxPython</a>.</p>
 <p>While a part of the goal for this project is to demonstrate how one
 can build complex programs with <a class="reference external" href="https://pyepics.github.io/pyepics">pyepics</a>, the applications here are
 intended to be useful to beamline scientists and users at facilities
 such as synchrotrons that use the Epics control system.</p>
-<p>The main applications included in EpicsApps are</p>
+<p>The main applications included in EpicsApps are:</p>
 <blockquote>
 <div><ul class="simple">
 <li><p><a class="reference internal" href="stripchart.html#stripchart"><span class="std std-ref">Strip Chart Display</span></a>: A GUI application to show a live, real-time
 plot of the recent values for a set of PV values.  Time ranges and
 ranges for Y values can be changed, and data can be saved to plain
 text files.</p></li>
-<li><p><a class="reference internal" href="ad_display.html#ad-viewer"><span class="std std-ref">Area Detector Display</span></a>: A GUI application to view live images and
-control the data collection for an Epics Area Detector.  Standard
+<li><p><a class="reference internal" href="ad_display.html#ad-viewer"><span class="std std-ref">Area Detector Display</span></a>: A GUI application to view live images and have basic
+control of data collection for an Epics Area Detector.  The standard
 controls allow starting and stopping acquistion, changing image
-mode, exposure time, and frame rate, and more controls can be be
+mode, exposure time, and frame rate. More controls can be be
 added using a simple configuration file. The user can change the
 color table, contrast level, and orientation of the image, and
 use a Zoom Box to enhance portions of the image.</p></li>
@@ -77,12 +77,12 @@ them into user-defined “Instruments”.  Each Instrument can have
 any number of PVs included.  For each Instrument, positions can be
 saved by named, and then restored using that named position.</p></li>
 <li><p><a class="reference internal" href="pvlogger.html#pvlogger"><span class="std std-ref">PV Logger</span></a>: A pair of applications to collect and view time
-seriese of “metadata” PVs.  Run from a command-line with a
+seriese of “metadata” PVs.  When run from a command-line with a
 configuration file listing PVs to save, this will save data for
-PVs into plain text files in a folder named <cite>pvlog</cite>.  Run as a GUI
-Application during or after acquisition, this application can read
-data from that folder and plot data as time-series for reviewing
-changes in these meta-data PVs.</p></li>
+PVs into plain text files in a folder named <cite>pvlog</cite>.  When run as
+a GUI Application during or after acquisition, this application
+can read data from a <cite>pvlog</cite> folder and plot data as time-series
+for reviewing changes in these meta-data PVs.</p></li>
 <li><p><a class="reference internal" href="ionchamber.html#ionchamber"><span class="std std-ref">Converting Ion Chamber readings to flux</span></a>: A non-GUI application to read Ion Chamber
 voltages and amplifier setting, compute X-ray fluxes, and write
 these back to Epics PVs.</p></li>
@@ -91,6 +91,8 @@ these back to Epics PVs.</p></li>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="installation.html">Installation and Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installing-epics-apps">Installing Epics Apps</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#installation-scripts">Installation Scripts</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#getting-started">Getting Started</a></li>
 <li class="toctree-l2"><a class="reference internal" href="installation.html#creating-desktop-shortcuts">Creating Desktop Shortcuts</a></li>
 </ul>
@@ -99,6 +101,7 @@ these back to Epics PVs.</p></li>
 <li class="toctree-l2"><a class="reference internal" href="stripchart.html#running-stripchart">Running  Stripchart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="stripchart.html#usage">Usage</a></li>
 <li class="toctree-l2"><a class="reference internal" href="stripchart.html#reading-pvs-from-previous-sessions">Reading PVs from previous sessions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="stripchart.html#long-running-processes-and-memory-use">Long-Running processes and memory use</a></li>
 <li class="toctree-l2"><a class="reference internal" href="stripchart.html#a-note-on-time-zones">A note on Time Zones</a></li>
 </ul>
 </li>
@@ -108,11 +111,10 @@ these back to Epics PVs.</p></li>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="instruments.html">Epics Instruments</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="instruments.html#running-epics-instruments">Running Epics Instruments</a></li>
-<li class="toctree-l2"><a class="reference internal" href="instruments.html#defining-a-new-instrument">Defining a New Instrument</a></li>
-<li class="toctree-l2"><a class="reference internal" href="instruments.html#editing-an-exisiting-instrument">Editing an Exisiting Instrument</a></li>
 <li class="toctree-l2"><a class="reference internal" href="instruments.html#the-instrument-file">The Instrument File</a></li>
+<li class="toctree-l2"><a class="reference internal" href="instruments.html#setting-and-using-and-an-adminstrator-password">Setting and Using and an Adminstrator Password</a></li>
 <li class="toctree-l2"><a class="reference internal" href="instruments.html#accessing-instruments-and-positions-with-epics">Accessing Instruments and Positions with Epics</a></li>
-<li class="toctree-l2"><a class="reference internal" href="instruments.html#using-postgresql-and-epicsscan">Using PostgresQL and epicsscan</a></li>
+<li class="toctree-l2"><a class="reference internal" href="instruments.html#using-postgresql-and-the-epicsscan-datatbase">Using PostgresQL and the EpicsScan Datatbase</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="pvlogger.html">PV Logger</a><ul>
@@ -149,7 +151,7 @@ these back to Epics PVs.</p></li>
 <p>
 
 <h3>EpicsApps</h3>
-Current version: 2025.1.4 <br>
+Current version: 2025.1.5 <br>
 Install: &nbsp; pip install epicsapps<br>
 Develop: &nbsp; <a href="https://github.com/pyepics/epicsapps/">github.com</a>
   <div role="note" aria-label="source link">

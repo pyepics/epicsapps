@@ -11,7 +11,7 @@
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     
-    <script src="_static/documentation_options.js?v=9986cd63"></script>
+    <script src="_static/documentation_options.js?v=3dfe497a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -58,63 +58,140 @@
 <blockquote>
 <div><ul class="simple">
 <li><p>Organize PVs into Instruments: a named collection of PVs</p></li>
-<li><p>Manage Instruments with Notebook or tabbed interface.</p></li>
+<li><p>Manage multiple Instruments with Notebook or tabbed interface.</p></li>
 <li><p>Save Positions for any Instrument by name.</p></li>
 <li><p>Restore Positions for any Instrument by name.</p></li>
-<li><p>Remember Settings for all definitions into a single file that can be loaded later.</p></li>
-<li><p>Multiple Users can be using multiple instrument files at any one time.</p></li>
+<li><p>Saves all information into a single databases file that can be loaded later.</p></li>
+<li><p>An administrator password can be set to allow both “expert mode”
+and “user mode”.  Each Instrument can be optionally made “admin
+only” or available in “user mode”.</p></li>
 </ul>
 </div></blockquote>
-<p>It was originally written to replace and organize the multitude of similar MEDM
-screens that appear at many workstations using Epics.</p>
+<p>The Instruments application was originally written to replace and
+organize the multitude of similar MEDM screens that appear at many
+workstations using Epics.</p>
 <section id="running-epics-instruments">
 <h2>Running Epics Instruments<a class="headerlink" href="#running-epics-instruments" title="Link to this heading">¶</a></h2>
-<p>To run Epics Instruments, use:</p>
+<p>If <cite>epicsapps -m</cite> is run after installation, a folder called <code class="docutils literal notranslate"><span class="pre">Epics</span>
+<span class="pre">Apps</span></code> will be created on your desktop which has a shortcut labeled
+Instruments with a piano keyboard icon that can be used to launch the
+Instruments application.  From a command line terminal, you can also
+use:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">epicsapps</span> <span class="n">instruments</span>
 </pre></div>
 </div>
-<p>or click on the icon.</p>
-<p>A small window to select an Epics Instrument File, like this</p>
 <a class="reference internal image-reference" href="_images/Inst_Startup.png"><img alt="_images/Inst_Startup.png" src="_images/Inst_Startup.png" style="width: 80%;" />
 </a>
-<p>If this is your first time using the application, choose a name, and hit return
-to start a new Instrument File.  The next time you run Epics Instruments, it
-should remember which files you have recently used, and present you with a
-drop-down list of Instrument Files.  Since all the definitions, positions, and
-settings are saved in a single file, restoring this file will recall the
-earlier session of instrument definitions and saved positions.</p>
-<p>An Epics <strong>Instrument</strong> is a collection of PVs.  Each Instrument will also
-have a collection of <strong>Positions</strong>, which are just the locations of all the
-PVs in the instrument at the time the Position was saved.  Like a PV, each
-Instrument and each Position for an Instrument has a unique name.</p>
-</section>
+<p>If this is your first time using the application, choose a name for
+your Instruments database, and hit return to create a new Instrument
+File.  The next time you run Epics Instruments, it will remember
+which files you have recently used, and present you with a drop-down
+list of Instrument Files.  Since all the definitions, positions, and
+settings are saved in a single file, restoring this file will recall
+the earlier session of instrument definitions and saved positions.</p>
+<p>The Instruments database file can contain multiple Instruments.  Each
+<strong>Instrument</strong> is a collection of Epics PVs.  Each Instrument will
+also have a collection of <strong>Positions</strong>, which are just the locations
+of all the PVs in the Instrument at the time the Position was saved.
+Like a PV, each Instrument and each Position for an Instrument has a
+unique name.</p>
 <section id="defining-a-new-instrument">
-<h2>Defining a New Instrument<a class="headerlink" href="#defining-a-new-instrument" title="Link to this heading">¶</a></h2>
-<p>To define a new Instrument, select <strong>Create New Instrument</strong> from the
-Instruments Menu.  A screen will appear in which you can name the
-instrument and the PVs that belong to the Instrument.</p>
-<p>If you add a few PVs and click OK, the PVs will connect, and you will see a
-screen something like this</p>
-<a class="reference internal image-reference" href="_images/InstMain_Stage.png"><img alt="_images/InstMain_Stage.png" src="_images/InstMain_Stage.png" style="width: 95%;" />
+<h3>Defining a New Instrument<a class="headerlink" href="#defining-a-new-instrument" title="Link to this heading">¶</a></h3>
+<p>To define a new Instrument, select <code class="docutils literal notranslate"><span class="pre">Create</span> <span class="pre">New</span> <span class="pre">Instrument</span></code> from the
+<code class="docutils literal notranslate"><span class="pre">Instruments</span></code> Menu.  A screen will appear in which you can name the
+instrument and the PVs that belong to it</p>
+<a class="reference internal image-reference" href="_images/Inst_Create.png"><img alt="_images/Inst_Create.png" src="_images/Inst_Create.png" style="width: 55%;" />
 </a>
+<p>when you have added the PVs you want click the <code class="docutils literal notranslate"><span class="pre">Done</span></code> button.  The
+PVs will connect, and you will see a screen something like this</p>
+<a class="reference internal image-reference" href="_images/Inst_FirstPos.png"><img alt="_images/Inst_FirstPos.png" src="_images/Inst_FirstPos.png" style="width: 95%;" />
+</a>
+<p>For PVs that are motor <code class="docutils literal notranslate"><span class="pre">.VAL</span></code> positions, you get a row for each
+motor to move it around.  For other PVs, you will simply get an Entry
+box to see its current value and be able to change it.</p>
+<p>At any time, you can save the “current position” by typing a name in
+the <code class="docutils literal notranslate"><span class="pre">Save</span> <span class="pre">Position</span></code> box and hit return.  It will then appear in the
+Position List on the right-hand side of the display.   From this list,
+you can highlight any saved Position and hit the <code class="docutils literal notranslate"><span class="pre">Go</span> <span class="pre">To</span></code> button
+which will bring up a dialog window like this:</p>
+<a class="reference internal image-reference" href="_images/Inst_GoTo.png"><img alt="_images/Inst_GoTo.png" src="_images/Inst_GoTo.png" style="width: 75%;" />
+</a>
+<p>to move all or a selected subset of the PVs to that saved Position.</p>
 </section>
 <section id="editing-an-exisiting-instrument">
-<h2>Editing an Exisiting Instrument<a class="headerlink" href="#editing-an-exisiting-instrument" title="Link to this heading">¶</a></h2>
+<h3>Editing an Exisiting Instrument<a class="headerlink" href="#editing-an-exisiting-instrument" title="Link to this heading">¶</a></h3>
+<p>To change the definition of an instrument, use the <code class="docutils literal notranslate"><span class="pre">Current</span>
+<span class="pre">Instrument:</span> <span class="pre">Edit</span></code> option from the <code class="docutils literal notranslate"><span class="pre">Instruments</span></code> menu.</p>
 <a class="reference internal image-reference" href="_images/Inst_Edit.png"><img alt="_images/Inst_Edit.png" src="_images/Inst_Edit.png" style="width: 50%;" />
 </a>
+<p>There are also dialogs from the <code class="docutils literal notranslate"><span class="pre">Instruments</span></code> menu to allow you to
+erase many positions at once or add a position that is not the current
+position of the Instrument.</p>
+</section>
 </section>
 <section id="the-instrument-file">
 <h2>The Instrument File<a class="headerlink" href="#the-instrument-file" title="Link to this heading">¶</a></h2>
-<p>All the information for definitions of your Instruments and their Positions
-are saved in a single file – the Instruments file, with a default
-extension of ‘.ein’ (Epics INstruments).   You can use many different
-Instrument Files for different domains of use.</p>
-<p>The Instrument File is an SQLite database file, and can be browsed and
-manipulated with external tools.  Of course, this can be a very efficient
-way of corrupting the data, so do this with caution.  A further note of
-caution is to avoid having a single Instrument file open by multiple
-applications – this can also cause corruption.  The Instrument files can
-be moved around and copied without problems.</p>
+<p>All the information for definitions of your Instruments and
+their Positions are saved in a single file – the Instruments file.
+This is an SQLite database file, though it uses the default extension
+of ‘.ein’ (Epics INstruments).</p>
+<p>You can copy, save, and use as many of Instrument Files as you like –
+you might want to have one for different stations or modes of
+operations.  Since the Instrument File is an SQLite database file, and
+can be browsed and manipulated with external tools such as the
+<cite>sqlite3</cite> command-line program. SQLite files can only be used safely
+by one application at a time, and can become corrupted if written to
+my multiple processes.  Keep a backup, and avoid having a single
+Instrument file open by multiple applications.</p>
+<p>If you are interested in using Epics Instruments from multiple
+applications, Postgresql can be used in place of SQLite.  (Mysql or
+other database servers could probably be supported, but have not been
+tried).   See <a class="reference internal" href="#pg-instruments"><span class="std std-ref">Using PostgresQL and the EpicsScan Datatbase</span></a> for more information.</p>
+</section>
+<section id="setting-and-using-and-an-adminstrator-password">
+<h2>Setting and Using and an Adminstrator Password<a class="headerlink" href="#setting-and-using-and-an-adminstrator-password" title="Link to this heading">¶</a></h2>
+<p>It may be desirable to limit user access to some Instruments.  That
+is, a beamline scientist may want to define Instruments that control
+upstream optics or detector configurations that are useful for setting
+up an experiment, but not allow users to change these without
+supervision. On the hand, there may be Instruments defined that the
+user is expected to use.</p>
+<p>For this need, an Adminstrator Password can be set for each
+Instruments file.  To do this, use the <code class="docutils literal notranslate"><span class="pre">Option-&gt;Set</span> <span class="pre">Administrator</span>
+<span class="pre">Password</span></code> menu which will bring up a dialog to set or reset a
+password.</p>
+<a class="reference internal image-reference" href="_images/Inst_SetPassword.png"><img alt="_images/Inst_SetPassword.png" src="_images/Inst_SetPassword.png" style="width: 50%;" />
+</a>
+<p>The password must be fairly strong (8 or more characters,
+at least 1 upper case letter, 1 lower case letter, 1 digit, and 1
+special character). The password will be encrypted using standard
+hashing methods and the encrypted string saved in the Instruments
+file.  While this possword may be protecting equipment but not
+sensitive information, the encrypted string is saved in a readable
+file.  It is recommended to not re-use a password that is used for
+more important information.</p>
+<p>When a adminstrator password is set, the user of the application will
+be challenged for this password to do any of the following tasks:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>edit the configuration settings.</p></li>
+<li><p>change what Instruments are displayed.</p></li>
+<li><p>create an Instrument.</p></li>
+<li><p>edit or access any Instrument that is marked as <cite>admin only</cite>.</p></li>
+<li><p>change the password.</p></li>
+</ul>
+</div></blockquote>
+<p>When a user goes into “Admin Mode”, there is a time-out for staying in
+that mode.  By default, this is 15 minutes, but it can be changed in
+the configuration window.  When this time elapses, any Instrument that
+is currently shown but is marked as <cite>admin only</cite> will be removed from
+the display.</p>
+<p>This timeout can be set from <code class="docutils literal notranslate"><span class="pre">Options-&gt;General</span> <span class="pre">Settings</span></code>:</p>
+<a class="reference internal image-reference" href="_images/Inst_Conf.png"><img alt="_images/Inst_Conf.png" src="_images/Inst_Conf.png" style="width: 60%;" />
+</a>
+<p>From this screen you can also leave Administrator Mode immediately or
+completely remove the Adminstrtator password so that no Adminsitrator
+Mode will be enabled.</p>
 </section>
 <section id="accessing-instruments-and-positions-with-epics">
 <h2>Accessing Instruments and Positions with Epics<a class="headerlink" href="#accessing-instruments-and-positions-with-epics" title="Link to this heading">¶</a></h2>
@@ -129,13 +206,10 @@ into an Epics IOC with a command like:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">dbLoadRecords</span><span class="p">(</span><span class="s2">&quot;PyInstrument.db&quot;</span><span class="p">,</span><span class="s2">&quot;P=13XRM:, Q=Inst&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>From the Instruments app, you can go to the Options-&gt;General Settings menu, to
-see a screen like</p>
-<a class="reference internal image-reference" href="_images/Inst_Conf.png"><img alt="_images/Inst_Conf.png" src="_images/Inst_Conf.png" style="width: 60%;" />
-</a>
-<p>Checking the “Use Epics Db” box and entering the Prefix defined with the
-<cite>dbLoadRecords</cite> command will then enable the Instruments program to respond to
-Channel Access requests to move Instruments to Positions.</p>
+<p>From the <code class="docutils literal notranslate"><span class="pre">Options-&gt;General</span> <span class="pre">Settings</span></code> menu (see above), you can
+check the “Use Epics Db” box and entering the Prefix defined with the
+<cite>dbLoadRecords</cite> command will then enable the Instruments program to
+respond to Channel Access requests to move Instruments to Positions.</p>
 <p>Using the <a class="reference external" href="https://raw.githubusercontent.com/pyepics/epicsapps/refs/heads/master/examples/instruments/epics_client/PyInstrument.adl">PyInstrument.adl</a> display file and an MEDM command like:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">medm</span> <span class="o">-</span><span class="n">x</span> <span class="o">-</span><span class="n">macro</span> <span class="s2">&quot;P=13XRM:,Q=Inst&quot;</span> <span class="o">/</span><span class="n">home</span><span class="o">/</span><span class="n">epics</span><span class="o">/</span><span class="n">adl</span><span class="o">/</span><span class="nb">all</span><span class="o">/</span><span class="n">PyInstruments</span><span class="o">.</span><span class="n">adl</span>
 </pre></div>
@@ -205,9 +279,10 @@ interface to Epics Instruments.</p>
 </pre></div>
 </div>
 </section>
-<section id="using-postgresql-and-epicsscan">
-<h2>Using PostgresQL and epicsscan<a class="headerlink" href="#using-postgresql-and-epicsscan" title="Link to this heading">¶</a></h2>
-<p>If you are using the EpicsScan application for data collection, you can also
+<section id="using-postgresql-and-the-epicsscan-datatbase">
+<span id="pg-instruments"></span><h2>Using PostgresQL and the EpicsScan Datatbase<a class="headerlink" href="#using-postgresql-and-the-epicsscan-datatbase" title="Link to this heading">¶</a></h2>
+<p>If you want to have
+are using the EpicsScan application for data collection, you can also
 use its Postgres database as an Epics Instruments database.  This requires a
 bit more setup, but allows mulitple client programs to access and use the
 Instruments at the same time.</p>
@@ -225,12 +300,15 @@ Instruments at the same time.</p>
     <h3><a href="index.html">Table of Contents</a></h3>
     <ul>
 <li><a class="reference internal" href="#">Epics Instruments</a><ul>
-<li><a class="reference internal" href="#running-epics-instruments">Running Epics Instruments</a></li>
+<li><a class="reference internal" href="#running-epics-instruments">Running Epics Instruments</a><ul>
 <li><a class="reference internal" href="#defining-a-new-instrument">Defining a New Instrument</a></li>
 <li><a class="reference internal" href="#editing-an-exisiting-instrument">Editing an Exisiting Instrument</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#the-instrument-file">The Instrument File</a></li>
+<li><a class="reference internal" href="#setting-and-using-and-an-adminstrator-password">Setting and Using and an Adminstrator Password</a></li>
 <li><a class="reference internal" href="#accessing-instruments-and-positions-with-epics">Accessing Instruments and Positions with Epics</a></li>
-<li><a class="reference internal" href="#using-postgresql-and-epicsscan">Using PostgresQL and epicsscan</a></li>
+<li><a class="reference internal" href="#using-postgresql-and-the-epicsscan-datatbase">Using PostgresQL and the EpicsScan Datatbase</a></li>
 </ul>
 </li>
 </ul>

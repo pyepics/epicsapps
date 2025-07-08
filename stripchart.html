@@ -11,7 +11,7 @@
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     
-    <script src="_static/documentation_options.js?v=9986cd63"></script>
+    <script src="_static/documentation_options.js?v=3dfe497a"></script>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
@@ -66,25 +66,29 @@ plain text files.</p>
 <section id="running-stripchart">
 <h2>Running  Stripchart<a class="headerlink" href="#running-stripchart" title="Link to this heading">¶</a></h2>
 <p>If <cite>epicsapps -m</cite> is run after installation, a folder called Epics Apps
-should be placed on your desktop which as a shortcut labeled StripChart which
+should be placed on your desktop which has a shortcut labeled StripChart which
 can be used to launch the Stripchart application.  From a command line
 terminal, you can also use:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">epicsapps</span> <span class="n">stripchart</span>
 </pre></div>
 </div>
-<p>On startip, you will be prompted for a Working Directory, where a configuration
-file <cite>stripchart.yaml</cite> may be found, and where any images or data files you
-save will be written.</p>
-<p>A sample display would look like this:</p>
-<img alt="_images/stripchart.png" src="_images/stripchart.png" />
-</section>
+<p>On startip, you will be prompted for a Working Directory. If a
+configuration file <cite>stripchart.yaml</cite> is found there, you will be
+prompted for whether you want to use the PVs listed there.  This
+working folder will also be used as the default folder for and images
+or data files you save, and will also be searched.  A StripChart display
+will look like this:</p>
+<div  class="sphinx-contrib-video-container align-left"><video controls="True" muted="True" preload="auto" width="85%"><source src="_images/stripchart.mp4" type="video/mp4">stripchart example display</video></div></section>
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
 <p>To use StripChart, you can add PVs to be monitored in the upper left entry.
 Once a PV connects, it will be added to the drop-down menus for each of the 4
 available traces.  Colors, Y-ranges, and descriptions (used for the Y-axis
 labels) can be altered at any time and will be refleced in the live plot.  To
-save these settings for future sessions, press “Save PV Settings” in the upper right.</p>
+save these settings for future sessions, press “Save PV Settings” in the upper right.
+While only 4 PVs can be displayed at one time, StripChart can be
+recording more than that and you can change which PVs are displayed
+and in which order.</p>
 <p>The time range (which is time from the present) can be adjusted on the
 right-hand side, just above the plot.  You can select time units of seconds,
 minutes, or hours, and the value displayed will be adjusted.</p>
@@ -103,7 +107,8 @@ plot window, Control-C will also copy the PNG image to the clipboard.</p>
 it will be read, and you can select PVs from that file to use.  You can also
 read PVs from a configuration file using File Menu-&gt;”Read Configuration”. When
 you choose to read a configuration file, this will bring up a dialog like this:</p>
-<img alt="_images/stripchart_pvselect.png" src="_images/stripchart_pvselect.png" />
+<a class="reference internal image-reference" href="_images/stripchart_pvselect.png"><img alt="_images/stripchart_pvselect.png" src="_images/stripchart_pvselect.png" style="width: 75%;" />
+</a>
 <p>where you can select which of these PVs to import.</p>
 <p>This configuration file will include a list of the PVs (and
 saved descriptions, ranges, etc), and might look like this:</p>
@@ -118,6 +123,18 @@ value, and maximum value are written.</p>
 <p>When StripChart is closed, it will save its configuration to <cite>stripchart.yaml</cite>
 in the current working folder, making a backup if needed.  That way, when you
 restart StripChart, you can pick up with a previous set of monitored PVs.</p>
+</section>
+<section id="long-running-processes-and-memory-use">
+<h2>Long-Running processes and memory use<a class="headerlink" href="#long-running-processes-and-memory-use" title="Link to this heading">¶</a></h2>
+<p>StripChart records and keeps all changes in values for each PV it is
+monitoring.  In fact, it saves the time (as a 64-bit float) and value
+(which will typically also be a 64-bit float) for each event for each
+monitored PV.  To prevent too much memory usage, StripChart limits the
+total number of events it keeps for each PV to 8 million samples.
+When that number is exceeded some of the oldest data is removed.  For
+PVs that change constantly at 10 Hz, this limits the historical values
+to a history to about 9.5 days. If you are looking to record data for
+longer than that, consider using <a class="reference internal" href="pvlogger.html#pvlogger"><span class="std std-ref">PV Logger</span></a>.</p>
 </section>
 <section id="a-note-on-time-zones">
 <span id="stripchart-timezone"></span><h2>A note on Time Zones<a class="headerlink" href="#a-note-on-time-zones" title="Link to this heading">¶</a></h2>
@@ -148,6 +165,7 @@ displayed correctly.</p>
 <li><a class="reference internal" href="#running-stripchart">Running  Stripchart</a></li>
 <li><a class="reference internal" href="#usage">Usage</a></li>
 <li><a class="reference internal" href="#reading-pvs-from-previous-sessions">Reading PVs from previous sessions</a></li>
+<li><a class="reference internal" href="#long-running-processes-and-memory-use">Long-Running processes and memory use</a></li>
 <li><a class="reference internal" href="#a-note-on-time-zones">A note on Time Zones</a></li>
 </ul>
 </li>
