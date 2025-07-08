@@ -745,7 +745,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
             tdat = np.array(dat_t)
             ydat = np.array(dat_y)
-            mask = where(tdat > tmin)
+            mask = where(tdat > (tmin-10))
             tdat = tdat[mask]/86400.0 # convert to mpldates
             ydat = ydat[mask]
 
