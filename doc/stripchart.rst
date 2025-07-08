@@ -33,7 +33,10 @@ save will be written.
 
 A sample display would look like this:
 
-.. image:: images/stripchart.png
+.. video:: images/stripchart.mp4
+   :width: 85%
+   :alt: stripchart example display
+   :muted:
 
 
 Usage
