@@ -26,12 +26,12 @@ terminal, you can also use::
     epicsapps stripchart
 
 
-On startip, you will be prompted for a Working Directory, where a configuration
-file `stripchart.yaml` may be found, and where any images or data files you
-save will be written.
-
-
-A sample display would look like this:
+On startip, you will be prompted for a Working Directory. If a
+configuration file `stripchart.yaml` is found there, you will be
+prompted for whether you want to use the PVs listed there.  This
+working folder will also be used as the default folder for and images
+or data files you save, and will also be searched.  A StripChart display
+will look like this:
 
 .. video:: images/stripchart.mp4
    :width: 85%
