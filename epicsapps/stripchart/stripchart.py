@@ -259,8 +259,8 @@ Matt Newville <newville@cars.uchicago.edu>
         label = SimpleText(p1, ' Add PV:')
         self.pvname = TextCtrl(p1, '', size=(250, -1), action=self.onPVname)
         self.pvmsg = SimpleText(p1, '  ',  minsize=(75, -1), style=LSTY|wx.EXPAND)
-        self.save_pvconf  = wx.Button(p1, label='Save PV Options',  size=(200, 30))
-        self.save_pvconf.Bind(wx.EVT_BUTTON, self.onSavePVSettings)
+        self.save_pvconf  = Button(p1, label='Save PV Options',  size=(200, 30),
+                                   action=self.onSavePVSettings)
         s1 = wx.BoxSizer(wx.HORIZONTAL)
 
         s1.Add(label,       0,  wx.ALIGN_LEFT|wx.ALIGN_CENTER, 10)
@@ -505,12 +505,10 @@ Matt Newville <newville@cars.uchicago.edu>
             timestamp = time.time()
         self.pvdata[pvname].append((timestamp, value))
         self.needs_refresh = True
-        # may need to trim pvdata
         if len(self.pvdata[pvname]) > self.nmax:
             self.pvdata[pvname] = self.pvdata[pvname][self.ntrim:]
 
     def onPVchoice(self, event=None, row=0, **kws):
-        self.needs_refresh = True
         pvname = self.wids[f'pv{row}'].GetStringSelection()
         if pvname in self.pv_opts:
             desc, uselog, ymin, ymax = self.pv_opts[pvname]
@@ -522,6 +520,13 @@ Matt Newville <newville@cars.uchicago.edu>
             self.wids[f'uselog{row}'].SetSelection(uselog)
             self.wids[f'ymin{row}'].SetValue(f"{ymin}")
             self.wids[f'ymax{row}'].SetValue(f"{ymax}")
+        else:
+            self.wids[f'desc{row}'].SetValue('')
+            self.wids[f'uselog{row}'].SetSelection(0)
+            self.wids[f'ymin{row}'].SetValue('')
+            self.wids[f'ymax{row}'].SetValue('')
+        self.needs_refresh = True
+        self.force_replot = True
 
 
     def onSavePVSettings(self, event=None):
@@ -540,7 +545,7 @@ Matt Newville <newville@cars.uchicago.edu>
             if ymax in (None, 'None'):
                 ymax = ''
             self.pv_opts[pvname] = (desc, uselog, ymin, ymax)
-
+        
     def onPVcolor(self, event=None, row=None, **kws):
         self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
                                             trace=row)
@@ -766,7 +771,7 @@ Matt Newville <newville@cars.uchicago.edu>
             xmin = tmin/86400.0
             xmax = tmax/86400.0
             # print(" I ", pvname, pvname in self.plotted_pvs.values(), len(tdat), len(ydat), use_update)
-            if use_update: #  and not self.force_replot:
+            if use_update and not self.force_replot:
                 try:
                     ppan.update_line(yaxes-1, tdat, ydat, draw=False, yaxes=yaxes)
                     ppan.set_xylims((xmin, xmax, ymin, ymax), yaxes=yaxes)
@@ -780,7 +785,6 @@ Matt Newville <newville@cars.uchicago.edu>
                         'drawstyle': 'steps-post',
                         'delay_draw': True, 'yaxes_tracecolor': True,
                         'use_dates': True, 'timezone': TZONE}
-
                 opts[ylabel] = desc
                 opts[logscale] = uselog and min(ydat) > 0
                 plot = ppan.plot if yaxes==1 else ppan.oplot
