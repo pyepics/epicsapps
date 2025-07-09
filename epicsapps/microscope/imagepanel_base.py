@@ -446,7 +446,7 @@ LEFT = wx.ALIGN_LEFT|wx.EXPAND
 class ConfPanel_Base(wx.Panel):
     def __init__(self, parent,  calibrations=None, calib_cb=None,
                  center_cb=None, image_panel=None, xhair_cb=None,
-                 lamp=None,  size=(325, 250), **kws):
+                 lamp=None, size=(325, 250), **kws):
 
         self.calibrations = calibrations
         self.calib_cb = calib_cb
@@ -527,7 +527,7 @@ class ConfPanel_Base(wx.Panel):
 
 class ZoomPanel(wx.Panel):
     def __init__(self, parent, imgsize=200, size=(400, 400),
-                 sharpness_label=None, **kws):
+                 sharpness_label=None, projection_cb=None, **kws):
         super(ZoomPanel, self).__init__(parent, size=size)
         self.sharpness_label = sharpness_label
 
@@ -537,6 +537,10 @@ class ZoomPanel(wx.Panel):
         self.SetBackgroundStyle(wx.BG_STYLE_PAINT)
         self.SetSize(size)
         self.data = None
+        self.xproj = None
+        self.yproj = None
+        self.projection_cb = projection_cb
+        self.projection_last = 0.0
         self.scale = 1.0
         self.xcen = self.ycen = self.x = self.y = 0
         self.Bind(wx.EVT_PAINT, self.onPaint)
@@ -565,6 +569,10 @@ class ZoomPanel(wx.Panel):
 
         data = data[hmin:hmax, wmin:wmax, :]
         dshape = data.shape
+        # print("ZoomPanel ", data.shape)
+        self.xproj = data.sum(axis=2).sum(axis=0)
+        self.yproj = data.sum(axis=2).sum(axis=1)
+
         if len(dshape) == 3:
             hs, ws, nc = data.shape
         else:
@@ -597,3 +605,6 @@ class ZoomPanel(wx.Panel):
                 self.sharpness = new_sharp
             self.sharpness = 0.135*new_sharp + 0.865*self.sharpness # basic smoothing
             self.sharpness_label.SetLabel(f"{self.sharpness:.1f}")
+        if self.projection_cb is not None and time.time() > (self.projection_last+0.1):
+            self.projection_last = time.time()
+            self.projection_cb()

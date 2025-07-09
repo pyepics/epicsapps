@@ -24,7 +24,7 @@ from epics.wx import EpicsFunction
 
 from epics.wx.utils import (add_menu, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
-from wxutils import (GridPanel, OkCancel, FloatSpin, NumericCombo,
+from wxutils import (GridPanel, OkCancel, FloatSpin, NumericCombo, MenuItem,
                      Button, SimpleText, FileSave, FileOpen, pack, Popup)
 
 from pyshortcuts import fix_filename
@@ -167,6 +167,8 @@ class MicroscopeFrame(wx.Frame):
         self.yplot = None
         self.vcap_thread = None
         self.imagelog = None
+        self.show_projections = None
+        self.proj_plotframe = None
         self.imgpanel.Start()
 
     def create_frame(self, size=(1500, 750), orientation='landscape'):
@@ -255,6 +257,7 @@ class MicroscopeFrame(wx.Frame):
         self.imgpanel.zoompanel = ZoomPanel(zpanel, imgsize=150,
                                             size=(275, 275),
                                             sharpness_label=zsharp,
+                                            projection_cb=self.update_projection,
                                             **opts)
 
         zsizer = wx.GridBagSizer(2, 2)
@@ -316,6 +319,63 @@ class MicroscopeFrame(wx.Frame):
         self.Bind(wx.EVT_TIMER, self.onInitTimer, self.init_timer)
         self.init_timer.Start(1000)
 
+    def onShowProjections(self, event=None):
+        choice = None
+        if event is not None:
+             choice = self.projection_menus.get(event.GetId(), None)
+        self.show_projections = choice
+        # print(f"onShow Projections {choice=}")
+        # print(self.projection_menus, event.GetId())
+        if choice is None and self.proj_plotframe is not None:
+            self.proj_plotframe.Destroy()
+            self.proj_plotframe = None
+            print("Cleared projection plotframe")
+        else:
+            shown = False
+            if self.proj_plotframe is not None:
+                try:
+                    self.proj_plotframe.Raise()
+                    shown = True
+                except:
+                    pass
+            if not shown:
+                print('creating new plotframe')                
+                self.proj_plotframe = pf = PlotFrame(self)
+                self.proj_new = True
+                try:
+                    xpos, ypos = self.GetPosition()
+                    xsiz, ysiz = self.GetSize()
+                    pf.SetPosition((xpos+xsiz+34, ypos))
+                    pf.Raise()
+                except:
+                    pass
+
+    def update_projection(self):
+        if self.show_projections is None:
+            return
+        popts = {'ylabel': 'Intensity', 'linewidth': 3}        
+        if self.show_projections == 'x':
+            ydat = self.imgpanel.zoompanel.xproj
+            popts['title'] = 'x projection'            
+        else:
+            ydat = self.imgpanel.zoompanel.yproj
+            popts['title'] = 'y projection'
+        pf = self.proj_plotframe
+        if ydat is None or pf is None:
+            self.show_projections = None
+            return
+        xdat = np.arange(len(ydat))
+        try:
+            if self.proj_new:
+                self.proj_new = False
+                pf.plot(xdat, ydat, **popts)
+            else:
+                pf.update_line(0, xdat, ydat, update_limits=True, draw=True)
+            pf.Show()
+        except:
+            self.show_projections = None
+        
+        
     def onZoomSize(self, event=None):
         cal = min(10, abs(self.cam_calibx))
         self.imgpanel.zoompanel.imgsize = int(self.zoomsize.GetValue()/cal)
@@ -410,14 +470,24 @@ class MicroscopeFrame(wx.Frame):
         add_menu(self, fmenu, label="&Save Config", text="Save Configuration",
                  action = self.onSaveConfig)
 
-        add_menu(self, fmenu, label="Capture Video",
-                 text="Capture Video",
-                 action = self.onCaptureVideo)
+        # add_menu(self, fmenu, label="Capture Video",
+        #          text="Capture Video",
+        #         action = self.onCaptureVideo)
 
         add_menu(self, fmenu, label="Build Composite",
                  text="Build Composite",
                  action = self.onBuildCompositeEvent)
 
+        m1 = MenuItem(self, fmenu, "ZoomBox: No Projections",
+                      "Show no projections for ZoomBox",
+                      self.onShowProjections, kind=wx.ITEM_RADIO)
+        m2 = MenuItem(self, fmenu, "ZoomBox: X Projection",
+                      "Show X projections for ZoomBox",
+                      self.onShowProjections, kind=wx.ITEM_RADIO)        
+        m3 = MenuItem(self, fmenu, "ZoomBox: Y Projection",
+                      "Show Y projections for ZoomBox",
+                      self.onShowProjections, kind=wx.ITEM_RADIO)
+        self.projection_menus = {m1.GetId(): None, m2.GetId(): 'x', m3.GetId(): 'y'}
         add_menu(self, fmenu, label="Select &Working Directory\tCtrl+W",
                  text="change Working Folder",
                  action = self.onChangeWorkdir)
@@ -486,7 +556,8 @@ class MicroscopeFrame(wx.Frame):
             mitem = omenu.Append(mid, label, label, wx.ITEM_CHECK)
             if show > 0 :
                 mitem.Check()
-            self.Bind(wx.EVT_MENU, partial(self.onShowHide, name=name, panel=panel), mitem)
+            self.Bind(wx.EVT_MENU, partial(self.onShowHide, name=name,
+                                           panel=panel), mitem)
 
         mbar.Append(fmenu, '&File')
         mbar.Append(omenu, '&Options')
