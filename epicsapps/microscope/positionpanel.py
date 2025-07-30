@@ -657,7 +657,7 @@ class PositionPanel(wx.Panel):
             if ret != wx.ID_YES:
                 return
 
-        imgfile = '%s.jpg' % time.strftime('%b%d_%H%M%S')
+        imgfile = '%s_micro.jpg' % time.strftime('%b%d_%H%M%S')
         imgfile = os.path.join(self.viewer.imgdir, imgfile)
         tmp_pos = self.viewer.ctrlpanel.read_position()
         # print("Read position ", tmp_pos)
@@ -684,6 +684,7 @@ class PositionPanel(wx.Panel):
                                           'notes':  notes}
         self.instdb.save_position(name, self.instrument, tmp_pos,
                                   notes=notes, image=fullpath)
+        self.instdb.set_info('sample_position', name)
         self.get_positions_from_db()
         if (self.viewer.pvlog_pos is not None and
             self.viewer.pvlog_pos.connected):
@@ -799,6 +800,7 @@ class PositionPanel(wx.Panel):
                 pv_data[pvname] = data[1]
             DoMove(pv_data)
 
+        self.instdb.set_info('sample_position', name)
         self.viewer.write_message('moved to %s' % posname)
 
     def onErase(self, event=None, posname=None, query=True):
@@ -987,6 +989,7 @@ class PositionPanel(wx.Panel):
             try:
                 self.instdb.save_position(name, self.instrument, tmp_pos,
                                           notes=json.dumps(notes))
+                self.instdb.set_info('sample_position', name)
             except:
                 print( 'Could not save position ', name, tmp_pos)
         self.set_positions(self.positions)
