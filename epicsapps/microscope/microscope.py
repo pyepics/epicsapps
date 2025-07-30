@@ -238,13 +238,13 @@ class MicroscopeFrame(wx.Frame):
                                    calib_cb=self.onSetCalibration, **opts)
 
         zpanel = wx.Panel(ppanel)
-        
+
         self.aex_button = Button(zpanel, "Auto Exposure",
                                  action=self.onAutoExposure, size=(150, -1))
         self.af_button = Button(zpanel, "AutoFocus",
                                 action=self.onAutoFocus, size=(150, -1))
         self.af_message = wx.StaticText(zpanel, label="", size=(200,-1))
-        
+
         zlab1 = wx.StaticText(zpanel, label='ZoomBox size (\u03bCm):',
                               size=(150, -1), style=txtstyle)
         zlab2 = wx.StaticText(zpanel, label='Sharpness:',
@@ -293,7 +293,7 @@ class MicroscopeFrame(wx.Frame):
             zpanel.SetSize((50, 50))
             msizer = wx.GridBagSizer(3, 3)
             msizer.Add(self.ctrlpanel, (0, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-          
+
             msizer.Add(self.confpanel, (1, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
             msizer.Add(zpanel,         (1, 1), (1, 1), ALL_EXP, 1)
             pack(ppanel, msizer)
@@ -301,7 +301,7 @@ class MicroscopeFrame(wx.Frame):
             sizer.Add(self.imgpanel,  (0, 0), (1, 1), ALL_EXP|wx.GROW)
             sizer.Add(self.pospanel,  (0, 1), (1, 1), ALL_EXP|wx.GROW)
             sizer.Add(ppanel,         (1, 0), (2, 1), ALL_EXP|wx.GROW)
-   
+
             pack(self, sizer)
 
         self.imgpanel.confpanel = self.confpanel
@@ -759,53 +759,42 @@ class MicroscopeFrame(wx.Frame):
             self.write_message('saved image to %s' % fname)
         return imgdata
 
-    def write_htmllog(self, name=None, thispos=None):
-        img_folder = self.imgdir
-        imgfile = Path(img_folder, Path(thispos['image']).name).as_posix()
-
-        txt = ["<hr>", "<table><tr><td><a href='{imgfile:s}'> <img src='{imgfile:s}' width=350></a></td>"]
-
+    def write_htmllog(self, name=None, thispos):
+        folder = self.imgdir
+        imgfile = Path(thispos['image']).name
+        tstamp = thispos['timestamp']
+        txt = ["<hr>", "<table><tr><td>",
+               f"    <a href='{folder}/{imgfile:s}'> <img src='{folder}{imgfile:s}' width=350></a></td>"
+               ]
         img2file = ''
         if len(thispos.get('image2', '')) > 0:
-            junk, img2file = os.path.split(thispos['image2'])
-            img2file = os.path.join(img_folder, img2file)
-
-            txt.append("<td><a href='{img2file:s}'> <img src='{img2file:s}' width=350></a></td>")
-        txt.append("<td><table><tr><td>Position:</td><td>{position:s}</td><td>{tstamp:s}</td></tr>")
-        txt.append("<tr><td>Motor Name</td><td>PV Name</td><td>Value</td></tr>")
-
-
-        pos_fmt ="    <tr><td> %s </td><td> %s </td><td>   %f</td></tr>"
+            img2file = Path(thispos['image2']).name
+            txt.append(f"    <td><a href='{folder}/{img2file:s}'> <img src='{{folder}/img2file:s}' width=350></a></td>")
+        txt.append("    <td><table>")
+        for desc, name, value in (('Position', name, ''),
+                                  ('Command',  'Microscope', ''),
+                                  ('Date/Time',  tstamp, ''),
+                                  ('Motor', 'PV Name', 'Value')):
+            txt.append(f"          <tr><td>{desc}:    </td><td>{name:s}</td><td>{value}</td></tr>")
         for pvname, value in thispos['position'].items():
             desc = self.stages.get(pvname).get('desc', pvname)
-            txt.append(pos_fmt % (desc, pvname, value))
+            txt.append(f"          <tr><td> {desc} </td><td> {pvname} </td><td> {value:f}</td></tr>")
 
-        txt.append("</table></td></tr></table>")
-        txt.append("")
+        txt.extend(["       </table></td></tr></table>", ""])
         txt = '\n'.join(txt)
-        tstamp = thispos['timestamp']
         with open(self.htmllog, 'a') as fout:
-            fout.write(txt.format(imgfile=imgfile, img2file=img2file, position=name,
-                              tstamp=tstamp))
+            fout.write(txt)
 
-        self.imagelog = Path(self.imgdir, '_Images.log')
+        self.imagelog = Path(self.imgdir, '_Images.tsv')
         if not self.imagelog.exists():
+            title = '\t '.join(['PositionName', 'Command', 'DateTime', 'MicroImage', 'MacroImage'])
             with open(self.imagelog, 'a') as fh:
-                fh.write('# Image logs\n#')
+                fh.write(f'Image Log\n{title}\n')
 
         # plain log file in folder
-        delim = '|'
-        if delim in name:
-            for dx in ('~', '*', '-', '@', '+', '!', '?', '$', '%',
-                       '^', '&', '=', '~~', '**', '--', '@@', '++',
-                       '~!', '??', '$$', '%%', '^^', '&&', '=='):
-                if dx not in name:
-                    delim = dx
-                    break
-
-        txt = f"{delim}: {name:s} {delim} {tstamp:s} {delim} {imgfile} {delim} {img2file} {delim}"
+        txt = '\t '.join([name, 'Microscope', tstamp, imgfile, img2file])
         with open(self.imagelog, 'a') as fh:
-            fh.write(f"{txt}\n")
+            fh.write(f'{txt}\n')
 
     def read_imagelog(self):
         if self.imagelog is None:
@@ -831,10 +820,9 @@ class MicroscopeFrame(wx.Frame):
             images[name] = imgfile, img2file, tstamp
         return images
 
-
     def save_videocam(self):
         t0 = time.time()
-        imgfile = '%s_hutch.jpg' % time.strftime('%b%d_%H%M%S')
+        imgfile = '%s_macro.jpg' % time.strftime('%b%d_%H%M%S')
         self.video_fullpath = os.path.join(os.getcwd(), self.imgdir, imgfile)
         if self.videocam is not None:
             if self.vcap_thread is not None:
@@ -946,7 +934,7 @@ class MicroscopeFrame(wx.Frame):
         for i, s in enumerate((128, 64, 32, 16, 8, 4, 2)):
             report(f'AutoFocus: refining focus ({i+1}/7)')
             score1 = get_score(best_step+sign*s)
-            # print("Focus ", i, best_step+sign*s, score1, best_score)            
+            # print("Focus ", i, best_step+sign*s, score1, best_score)
             if score1 > best_score:
                 best_score = score1
                 best_step = best_step+sign*s
