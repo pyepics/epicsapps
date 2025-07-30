@@ -27,7 +27,7 @@ from epics.wx.utils import (add_menu, LTEXT, CEN, LCEN, RCEN, RIGHT)
 from wxutils import (GridPanel, OkCancel, FloatSpin, NumericCombo, MenuItem,
                      Button, SimpleText, FileSave, FileOpen, pack, Popup)
 
-from pyshortcuts import fix_filename
+from pyshortcuts import fix_filename, isotime
 
 from .configfile import MicroscopeConfig, CONFFILE, get_default_configfile
 from .icons import icons
@@ -339,7 +339,7 @@ class MicroscopeFrame(wx.Frame):
                 except:
                     pass
             if not shown:
-                print('creating new plotframe')                
+                print('creating new plotframe')
                 self.proj_plotframe = pf = PlotFrame(self)
                 self.proj_new = True
                 try:
@@ -353,10 +353,10 @@ class MicroscopeFrame(wx.Frame):
     def update_projection(self):
         if self.show_projections is None:
             return
-        popts = {'ylabel': 'Intensity', 'linewidth': 3}        
+        popts = {'ylabel': 'Intensity', 'linewidth': 3}
         if self.show_projections == 'x':
             ydat = self.imgpanel.zoompanel.xproj
-            popts['title'] = 'x projection'            
+            popts['title'] = 'x projection'
         else:
             ydat = self.imgpanel.zoompanel.yproj
             popts['title'] = 'y projection'
@@ -374,8 +374,8 @@ class MicroscopeFrame(wx.Frame):
             pf.Show()
         except:
             self.show_projections = None
-        
-        
+
+
     def onZoomSize(self, event=None):
         cal = min(10, abs(self.cam_calibx))
         self.imgpanel.zoompanel.imgsize = int(self.zoomsize.GetValue()/cal)
@@ -483,7 +483,7 @@ class MicroscopeFrame(wx.Frame):
                       self.onShowProjections, kind=wx.ITEM_RADIO)
         m2 = MenuItem(self, fmenu, "ZoomBox: X Projection",
                       "Show X projections for ZoomBox",
-                      self.onShowProjections, kind=wx.ITEM_RADIO)        
+                      self.onShowProjections, kind=wx.ITEM_RADIO)
         m3 = MenuItem(self, fmenu, "ZoomBox: Y Projection",
                       "Show Y projections for ZoomBox",
                       self.onShowProjections, kind=wx.ITEM_RADIO)
@@ -762,7 +762,7 @@ class MicroscopeFrame(wx.Frame):
     def write_htmllog(self, name=None, thispos):
         folder = self.imgdir
         imgfile = Path(thispos['image']).name
-        tstamp = thispos['timestamp']
+        tstamp = isotime()
         txt = ["<hr>", "<table><tr><td>",
                f"    <a href='{folder}/{imgfile:s}'> <img src='{folder}{imgfile:s}' width=350></a></td>"
                ]
