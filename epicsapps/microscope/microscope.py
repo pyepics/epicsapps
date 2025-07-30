@@ -787,12 +787,12 @@ class MicroscopeFrame(wx.Frame):
 
         self.imagelog = Path(self.imgdir, '_Images.tsv')
         if not self.imagelog.exists():
-            title = '\t '.join(['PositionName', 'Command', 'DateTime', 'MicroImage', 'MacroImage'])
+            title = '\t '.join(['DateTime', 'MicroImage', 'MacroImage', 'PositionName', 'Command'])
             with open(self.imagelog, 'a') as fh:
                 fh.write(f'Image Log\n{title}\n')
 
         # plain log file in folder
-        txt = '\t '.join([name, 'Microscope', tstamp, imgfile, img2file])
+        txt = '\t '.join([tstamp, imgfile, img2file, name, 'Microscope'])
         with open(self.imagelog, 'a') as fh:
             fh.write(f'{txt}\n')
 
