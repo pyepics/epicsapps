@@ -759,17 +759,17 @@ class MicroscopeFrame(wx.Frame):
             self.write_message('saved image to %s' % fname)
         return imgdata
 
-    def write_htmllog(self, name=None, thispos):
+    def write_htmllog(self, name=None, thispos=None):
         folder = self.imgdir
         imgfile = Path(thispos['image']).name
         tstamp = isotime()
         txt = ["<hr>", "<table><tr><td>",
-               f"    <a href='{folder}/{imgfile:s}'> <img src='{folder}{imgfile:s}' width=350></a></td>"
+               f"    <a href='{folder}/{imgfile:s}'> <img src='{folder}/{imgfile:s}' width=350></a></td>"
                ]
         img2file = ''
         if len(thispos.get('image2', '')) > 0:
             img2file = Path(thispos['image2']).name
-            txt.append(f"    <td><a href='{folder}/{img2file:s}'> <img src='{{folder}/img2file:s}' width=350></a></td>")
+            txt.append(f"    <td><a href='{folder}/{img2file:s}'> <img src='{folder}/{img2file:s}' width=350></a></td>")
         txt.append("    <td><table>")
         for desc, name, value in (('Position', name, ''),
                                   ('Command',  'Microscope', ''),
