@@ -7,7 +7,6 @@ import os
 import atexit
 import traceback
 import uuid
-import random
 from time import time, sleep
 from collections import deque
 from pathlib import Path
@@ -19,14 +18,13 @@ from pyshortcuts import fix_filename, new_filename, isotime, gformat
 
 from epics import get_pv, PV
 from epics import ca
+
+from .configfile import PVLoggerConfig
+from ..instruments import InstrumentDB
+from ..utils import normalize_pvname
+
 ca.WITH_CA_MESSAGES = True
 ca.initialize_libca()
-
-from ..instruments import InstrumentDB
-
-from ..utils import normalize_pvname
-from .configfile import PVLoggerConfig
-
 
 STOP_FILE = '_PVLOG_stop.txt'
 TIMESTAMP_FILE = '_PVLOG_timestamp.txt'
@@ -106,7 +104,8 @@ class LoggedPV():
         self.fpath = Path(new_filename(fix_filename(logname)))
         self.filename = self.fpath.as_posix()
         self.timestamp = 0.0
-        self.end_timestamp = -1
+        self.start_timestamp = None
+        self.end_timestamp = None
         self.value = None
         self.char_value = None
         self.data = deque()
@@ -148,7 +147,7 @@ class LoggedPV():
 
         try:
             self.mdel = float(self.mdel)
-        except:
+        except ValueError:
             self.mdel = None
 
     def set_desc(self, desc, descpv):
@@ -180,7 +179,7 @@ class LoggedPV():
         if self.value is not None and self.mdel is not None:
             try:
                 skip = (abs(value - self.value) < self.mdel)
-            except:
+            except ValueError, TypeError:
                 skip = False
         if isinstance(skip, np.ndarray):
             skip = any(skip)
@@ -250,7 +249,7 @@ class LoggedPV():
                 if self.pv.nelm == 1 and 'double' in self.pv.type:
                     try:
                         xval = gformat(val, length=16)
-                    except:
+                    except ValueError, TypeError:
                         pass
                 elif ('enum' in self.pv.type or
                       'int' in self.pv.type or
@@ -271,8 +270,10 @@ class PVLogger():
 """
     def __init__(self, configfile=None, prompt=None):
         self.pvs = {}
-        self.end_date = None
+        self.end_datestring = None
+        self.start_datestring = None
         self.end_timestamp = None
+        self.start_timestamp = None
         self.exc = None
         if configfile is not None:
             self.read_configfile(configfile)
@@ -297,19 +298,18 @@ class PVLogger():
         pvlog_folder.mkdir(mode=0o755, parents=False, exist_ok=True)
         os.chdir(pvlog_folder)
 
-        # defualt end time is 1 month from now
-        month =  (datetime.now() + timedelta(days=30))
-        end_date = month.isoformat(timespec='seconds', sep=' ')
-        end_tstamp = month.timestamp()
+        # default start time is right now
+        now =  datetime.now()
+        start_datestring = now.isoformat(timespec='seconds', sep=' ')
+        self.start_datestring = self.config.get('start_datetime', start_datestring)
+        self.start_timestamp = dateparser.parse(self.start_datestring).timestamp()
 
-        self.end_date = self.config.get('end_datetime', end_date)
+        # default end time is 1 week from now
+        month =  (now + timedelta(days=7))
+        end_datestring = month.isoformat(timespec='seconds', sep=' ')
+        self.end_datestring = self.config.get('end_datetime', end_datestring)
+        self.end_timestamp = dateparser.parse(self.end_datestring).timestamp()
 
-        try:
-            dt = dateparser.parse(self.end_date)
-            end_tstamp = dt.timestamp()
-        except:
-            pass
-        self.end_timestamp = end_tstamp
 
     def connect_pvs(self):
         """
@@ -367,7 +367,8 @@ class PVLogger():
         sleep(0.05)
         out = {'datadir': self.datadir.as_posix(),
                'folder': self.folder.as_posix(),
-               'end_datetime': self.end_date,
+               'start_datetime': self.start_datestring,
+               'end_datetime': self.end_datestring,
                'instruments': inst_map,
                'motors': [],
                'pvs': []}
@@ -445,30 +446,28 @@ class PVLogger():
                 if len(newdat) > 0:
                     self.config[section].extend(newdat)
 
-            end_date = rconfig.config.get('end_datetime', None)
-            if end_date is not None:
+            end_datestring = rconfig.config.get('end_datetime', None)
+            if end_datestring is not None:
                 try:
-                    dt = dateparser.parse(end_date)
-                    end_tstamp = dt.timestamp()
-                    self.end_date = dt.isoformt(timespec='sec', sep=' ')
-                    self.end_timestamp = end_tstamp
-                except:
+                    dt = dateparser.parse(end_datestring)
+                    self.end_datestring = dt.isoformt(timespec='sec', sep=' ')
+                    self.end_timestamp = dt.timestamp()
+                except ValueError, TypeError:
                     pass
 
             self.connect_pvs()
 
             try:
                 reqfile.unlink(missing_ok=True)
-            except:
+            except OSError:
                 pass
 
     def look_for_exit_signal(self):
         """
         look for whether data collection should stop.
         There are two ways to specify stopping:
-
            a) a file named _PVLOG_stop.txt written to the folder will stop collection
-           b) if the end_datet specified in the configuration is exceeded
+           b) if the end_datetime specified in the configuration is exceeded
         """
         exit_request = ((self.end_timestamp > 65536) and
                         (time() > self.end_timestamp))
@@ -477,7 +476,7 @@ class PVLogger():
             exit_request = True
             try:
                 stopfile.unlink(missing_ok=True)
-            except:
+            except OSError:
                 pass
         if not check_pvlog_timestamp():
             with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
@@ -511,6 +510,21 @@ class PVLogger():
 
     def run(self):
         """run, collecting data until the exit signal is given"""
+
+        # make sure we have some PVs
+        if self.start_timestamp is None:
+            raise ValueError('must read a configuration  before running PVLogger')
+
+        # wait until start time is reached
+        dtnow =  datetime.now()
+        while dtnow < self.start_timestamp:
+            wait_time = (self.start_timestamp-dtnow).total_seconds()
+            try:
+                time.sleep(max(3600, min(0.1, 0.9*wait_time)))
+            except KeyboardInterrupt:
+                return
+            dtnow =  datetime.now()
+
         self.connect_pvs()
         atexit.register(self.on_exit)
 
@@ -524,16 +538,16 @@ class PVLogger():
             except KeyboardInterrupt:
                 self.exc = sys.exception()
                 break
-            except:
+            except Exception:
                 self.exc = sys.exception()
             try:
                 for pv in self.pvs.values():
                     try:
                         if len(pv.data) > 0:
                             pv.write_data()
-                    except:
+                    except Exception:
                         messages.append(f"{isotime()}: error writing data for {pv}")
-            except:
+            except Exception:
                 self.exc = sys.exception()
 
             if now > last_update + UPDATETIME:
@@ -543,13 +557,13 @@ class PVLogger():
                         messages.append(f"{isotime()}: got exit signal")
                         self.finish()
                         break
-                except:
+                except Exception:
                     self.exc = sys.exception()
                     messages.append(f"{isotime()}: error saving timestamps/looking for exit")
                 try:
                     self.look_for_new_pvs()
                     last_update = now
-                except:
+                except Exception:
                     self.exc = sys.exception()
                     messages.append(f"{isotime()}: error looking for new pvs")
 
@@ -562,7 +576,7 @@ class PVLogger():
                     with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
                         fh.write("\n".join(messages))
                     last_logtime = now
-            except:
+            except Exception:
                 self.exc = sys.exception()
 
         with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
