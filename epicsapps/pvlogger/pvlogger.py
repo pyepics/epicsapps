@@ -145,10 +145,11 @@ class LoggedPV():
                     elif self.mdel in (None, 'None', '<auto>'):
                         self.mdel = mdelpv.get()
 
-        try:
-            self.mdel = float(self.mdel)
-        except ValueError:
-            self.mdel = None
+        if self.mdel not in (None, 'None'):
+            try:
+                self.mdel = float(self.mdel)
+            except (ValueError, TypeError):
+                self.mdel = None
 
     def set_desc(self, desc, descpv):
         "set description"
@@ -516,14 +517,15 @@ class PVLogger():
             raise ValueError('must read a configuration  before running PVLogger')
 
         # wait until start time is reached
-        dtnow =  datetime.now()
-        while dtnow < self.start_timestamp:
-            wait_time = (self.start_timestamp-dtnow).total_seconds()
+        tnow =  datetime.now().timestamp()
+        print(f"wait: {tnow=}, {self.start_timestamp=}")
+        while tnow < self.start_timestamp:
+            wait_time = (self.start_timestamp-tnow)
             try:
-                time.sleep(max(3600, min(0.1, 0.9*wait_time)))
+                time.sleep(max(1800, min(0.1, 0.9*wait_time)))
             except KeyboardInterrupt:
                 return
-            dtnow =  datetime.now()
+            dtnow =  datetime.now().timestamp()
 
         self.connect_pvs()
         atexit.register(self.on_exit)
