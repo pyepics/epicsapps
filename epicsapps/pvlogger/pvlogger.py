@@ -179,7 +179,7 @@ class LoggedPV():
         if self.value is not None and self.mdel is not None:
             try:
                 skip = (abs(value - self.value) < self.mdel)
-            except ValueError, TypeError:
+            except (ValueError, TypeError):
                 skip = False
         if isinstance(skip, np.ndarray):
             skip = any(skip)
@@ -249,7 +249,7 @@ class LoggedPV():
                 if self.pv.nelm == 1 and 'double' in self.pv.type:
                     try:
                         xval = gformat(val, length=16)
-                    except ValueError, TypeError:
+                    except (ValueError, TypeError):
                         pass
                 elif ('enum' in self.pv.type or
                       'int' in self.pv.type or
@@ -452,7 +452,7 @@ class PVLogger():
                     dt = dateparser.parse(end_datestring)
                     self.end_datestring = dt.isoformt(timespec='sec', sep=' ')
                     self.end_timestamp = dt.timestamp()
-                except ValueError, TypeError:
+                except (ValueError, TypeError):
                     pass
 
             self.connect_pvs()
