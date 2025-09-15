@@ -46,11 +46,13 @@ def get_machineid_process():
     """return (matimhine_id, process_id)"""
     return hex(uuid.getnode())[2:], os.getpid()
 
-def get_instruments(instrument_names=None):
+def get_instruments(instrument_names=None, escan_credentials=None):
     """look up Epics Instruments, return dict of name:pvlist"""
-    escan_cred = os.environ.get('ESCAN_CREDENTIALS', '')
+    if escan_credentials is None:
+        escan_credentials = os.environ.get('ESCAN_CREDENTIALS', None)
     insts = {}
-    if len(escan_cred) > 0:
+    if escan_credentials not in (None, 'None', ''):
+        os.environ['ESCAN_CREDENTIALS'] = escan_credentials
         inst_db = InstrumentDB()
         for row in inst_db.get_all_instruments():
             iname = row.name
@@ -269,12 +271,13 @@ class PVLogger():
     about_msg =  """Epics PV Logger, CLI
  Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, configfile=None, prompt=None):
+    def __init__(self, configfile=None, prompt=None, escan_credentials=None):
         self.pvs = {}
         self.end_datestring = None
         self.start_datestring = None
         self.end_timestamp = None
         self.start_timestamp = None
+        self.escan_credentials = escan_credentials
         self.exc = None
         if configfile is not None:
             self.read_configfile(configfile)
@@ -295,6 +298,10 @@ class PVLogger():
             lfile = Path(pvlog_folder, '_PVLOG_filelist.txt')
             if tfile.exists() and cfile.exists() and lfile.exists():
                 raise ValueError(f"PVLOG folder '{pvlog_folder}' appears to be in use")
+
+        escan_cred = self.config.get('escan_credentials', None)
+        if self.escan_credentials is None and escan_cred is not None:
+            self.escan_credentials = escan_cred
 
         pvlog_folder.mkdir(mode=0o755, parents=False, exist_ok=True)
         os.chdir(pvlog_folder)
@@ -338,7 +345,9 @@ class PVLogger():
                 _pvdesc.append(desc)
                 _pvmdel.append(mdel)
         inst_names = self.config.get('instruments', [])
-        escan_cred = os.environ.get('ESCAN_CREDENTIALS', '')
+        escan_cred = os.environ.get('ESCAN_CREDENTIALS', self.escan_credentials)
+        if escan_cred is None:
+            escan_cred = ''
         inst_map = {}
         if len(inst_names) > 0 and len(escan_cred) > 0:
             inst_db = InstrumentDB()
