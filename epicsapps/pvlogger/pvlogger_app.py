@@ -618,7 +618,11 @@ Matt Newville <newville@cars.uchicago.edu>
         return self.show_subframe(name, PlotFrame, **opts)
 
     def onCheckPVs(self, event=None):
-        instruments = get_instruments()
+
+        escan_cred = None
+        if self.run_config is not None:
+            escan_cred = self.run_config.get('escan_credentials', None)
+        instruments = get_instruments(escan_credentials=escan_cred)
         pvs = {}
         for row in self.wids['pv_model'].data:
             name, desc, mdel, use = row
@@ -779,8 +783,9 @@ Matt Newville <newville@cars.uchicago.edu>
         self.wids['data_folder'].SetValue(wdir.absolute().as_posix())
 
         insts = self.run_config.get('instruments', [])
-        self.wids['inst_model'].set_data(get_instruments(), insts)
-
+        escan_cred = self.run_config.get('escan_credentials', None)
+        all_insts = get_instruments(escan_credentials=escan_cred)
+        self.wids['inst_model'].set_data(all_insts, insts)
         pvlist = []
         for pvline in self.run_config.get('pvs', []):
             name = pvline.strip()
