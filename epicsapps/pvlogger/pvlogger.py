@@ -21,7 +21,7 @@ from epics import ca
 
 from .configfile import PVLoggerConfig
 from ..instruments import InstrumentDB
-from ..utils import normalize_pvname
+from ..utils import normalize_pvname, normalize_path
 
 ca.WITH_CA_MESSAGES = True
 ca.initialize_libca()
@@ -51,8 +51,8 @@ def get_instruments(instrument_names=None, escan_credentials=None):
     if escan_credentials is None:
         escan_credentials = os.environ.get('ESCAN_CREDENTIALS', None)
     insts = {}
-    if escan_credentials not in (None, 'None', ''):
-        os.environ['ESCAN_CREDENTIALS'] = escan_credentials
+    if escan_credentials not in (None, ''):
+        os.environ['ESCAN_CREDENTIALS'] = normalize_path(escan_credentials)
         inst_db = InstrumentDB()
         for row in inst_db.get_all_instruments():
             iname = row.name
@@ -348,6 +348,8 @@ class PVLogger():
         escan_cred = os.environ.get('ESCAN_CREDENTIALS', self.escan_credentials)
         if escan_cred is None:
             escan_cred = ''
+        else:
+            os.environ['ESCAN_CREDENTIALS'] = normalize_path(escan_cred)
         inst_map = {}
         if len(inst_names) > 0 and len(escan_cred) > 0:
             inst_db = InstrumentDB()
