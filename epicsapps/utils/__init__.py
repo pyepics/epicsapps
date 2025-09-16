@@ -7,7 +7,7 @@ from .configfile import (ConfigFile, get_configfolder,
                          read_recents_file, write_recents_file)
 
 from .utils import get_pvdesc, normalize_pvname
-from .textfile import read_textfile
+from .textfile import read_textfile, unixpath, normalize_path
 from .griddata import DataTableGrid, DictFrame
 
 HAS_WXPYTHON = True
