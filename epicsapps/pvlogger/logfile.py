@@ -311,11 +311,12 @@ class PVLogFolder:
                words.extend(['<auto>', '<auto>'])
             pvname = words[0]
             logfile = logfiles[pvname]
-            mod_time = os.stat(logfile).st_mtime
-            self.pvs[pvname] = PVLogFile(pvname, logfile=logfile,
-                                         mod_time=mod_time,
-                                         description=words[1],
-                                         monitor_delta=words[2])
+            if Path(logfile).exists():
+                mod_time = os.stat(logfile).st_mtime
+                self.pvs[pvname] = PVLogFile(pvname, logfile=logfile,
+                                             mod_time=mod_time,
+                                             description=words[1],
+                                             monitor_delta=words[2])
 
         self.motors = conf['motors']
         # look for extra instrumens, as added during/after collection
