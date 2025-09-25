@@ -13,6 +13,8 @@ from epics.wx import EpicsFunction
 
 from functools import partial
 
+from transformations import superimposition_matrix
+
 from wxutils import (SimpleText, FloatCtrl, MenuItem, Popup, pack,
                      Button, GUIColors, FRAMESTYLE, LEFT, CEN)
 DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE
@@ -28,8 +30,6 @@ def add_button(parent, label, size=(-1, -1), action=None):
 from ..instruments import InstrumentDB
 
 from ..utils import MoveToDialog, normalize_pvname, get_pvdesc
-
-from .transformations import superimposition_matrix
 from .imageframe import ImageDisplayFrame
 
 ALL_EXP  = wx.ALL|wx.EXPAND
