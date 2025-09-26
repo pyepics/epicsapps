@@ -533,7 +533,7 @@ class PVLogger():
         while tnow < self.start_timestamp:
             wait_time = (self.start_timestamp-tnow)
             try:
-                time.sleep(max(1800, min(0.1, 0.9*wait_time)))
+               sleep(max(1800, min(0.1, 0.9*wait_time)))
             except KeyboardInterrupt:
                 return
             dtnow =  datetime.now().timestamp()
