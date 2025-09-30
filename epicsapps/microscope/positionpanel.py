@@ -800,7 +800,8 @@ class PositionPanel(wx.Panel):
                 pv_data[pvname] = data[1]
             DoMove(pv_data)
 
-        self.instdb.set_info('sample_position', name)
+        # print("SET SAMPLE POSITION ", posname, name)
+        self.instdb.set_info('sample_position', posname)
         self.viewer.write_message('moved to %s' % posname)
 
     def onErase(self, event=None, posname=None, query=True):
