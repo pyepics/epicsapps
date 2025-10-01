@@ -271,7 +271,7 @@ class PVLogger():
     about_msg =  """Epics PV Logger, CLI
  Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, configfile=None, prompt=None, escan_credentials=None):
+    def __init__(self, configfile, prompt=None, escan_credentials=None):
         self.pvs = {}
         self.end_datestring = None
         self.start_datestring = None
@@ -279,32 +279,17 @@ class PVLogger():
         self.start_timestamp = None
         self.escan_credentials = escan_credentials
         self.exc = None
-        if configfile is not None:
-            self.read_configfile(configfile)
+        self.configfile = configfile
+        if configfile is not None and Path(conffile).exists():
+            self.read_configfile()
 
-    def read_configfile(self, configfile):
-        self.cfile = PVLoggerConfig(configfile)
-        self.config = self.cfile.config
+    def read_configfile(self):
+        self.config = PVLoggerConfig(self.configfile).config
 
-        self.folder = Path(self.config.get('folder', 'pvlog'))
         self.datadir = self.config.get('datadir', '')
         if len(self.datadir) < 1 or self.datadir == '.':
             self.datadir = os.getcwd()
-        self.datadir = Path(self.datadir)
-        pvlog_folder = Path(self.datadir, self.folder).absolute()
-        if pvlog_folder.exists():
-            tfile = Path(pvlog_folder, TIMESTAMP_FILE)
-            cfile = Path(pvlog_folder, '_PVLOG.yaml')
-            lfile = Path(pvlog_folder, '_PVLOG_filelist.txt')
-            if tfile.exists() and cfile.exists() and lfile.exists():
-                raise ValueError(f"PVLOG folder '{pvlog_folder}' appears to be in use")
-
-        escan_cred = self.config.get('escan_credentials', None)
-        if self.escan_credentials is None and escan_cred is not None:
-            self.escan_credentials = escan_cred
-
-        pvlog_folder.mkdir(mode=0o755, parents=False, exist_ok=True)
-        os.chdir(pvlog_folder)
+        self.folder = Path(self.config.get('folder', 'pvlog'))
 
         # default start time is right now
         now =  datetime.now()
@@ -318,6 +303,22 @@ class PVLogger():
         self.end_datestring = self.config.get('end_datetime', end_datestring)
         self.end_timestamp = dateparser.parse(self.end_datestring).timestamp()
 
+        escan_cred = self.config.get('escan_credentials', None)
+        if self.escan_credentials is None and escan_cred is not None:
+            self.escan_credentials = escan_cred
+
+    def make_pvlog_folder(self, chdir=True):
+        self.datadir = Path(self.datadir)
+        pvlog_folder = Path(self.datadir, self.folder).absolute()
+        pvlog_folder.mkdir(mode=0o755, parents=False, exist_ok=True)
+
+        tfile = Path(pvlog_folder, TIMESTAMP_FILE)
+        cfile = Path(pvlog_folder, '_PVLOG.yaml')
+        lfile = Path(pvlog_folder, '_PVLOG_filelist.txt')
+        if tfile.exists() and cfile.exists() and lfile.exists():
+            raise ValueError(f"PVLOG folder '{pvlog_folder}' appears to be in use")
+        if chdir:
+            os.chdir(pvlog_folder)
 
     def connect_pvs(self):
         """
@@ -528,10 +529,9 @@ class PVLogger():
             raise ValueError('must read a configuration  before running PVLogger')
 
         # wait until start time is reached
-        tnow =  datetime.now().timestamp()
-        start_datestr = datetime.fromtimestamp(self.start_timestamp).isoformat(timespec='seconds', sep=' ')
-        print(f"waiting until start time:  {start_datestr}")
+        tnow = tlast = datetime.now().timestamp()
         while tnow < self.start_timestamp:
+            print(f"waiting until start time: {self.start_datestring}")
             sleep_time = min(7200, max(0.25, 0.75*(self.start_timestamp-tnow)))
             print(f" .. will start in {(self.start_timestamp-tnow):.1f} seconds")
             try:
@@ -539,8 +539,14 @@ class PVLogger():
             except KeyboardInterrupt:
                 return
             tnow =  datetime.now().timestamp()
-        print("Done waiting, starting!")
+            if tnow > tlast + 900:
+                tlast = tnow
+                self.read_configfile()
 
+        if tnow > tlast + 2.0:
+            self.read_configfile()
+
+        self.make_pvlog_folder(chdir=True)
         self.connect_pvs()
         atexit.register(self.on_exit)
 
