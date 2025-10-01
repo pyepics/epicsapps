@@ -280,7 +280,7 @@ class PVLogger():
         self.escan_credentials = escan_credentials
         self.exc = None
         self.configfile = configfile
-        if configfile is not None and Path(conffile).exists():
+        if configfile is not None and Path(configfile).exists():
             self.read_configfile()
 
     def read_configfile(self):
