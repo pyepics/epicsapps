@@ -309,9 +309,11 @@ Matt Newville <newville@cars.uchicago.edu>
         # left panel
         ltop = wx.Panel(lpanel)
         sel_none = Button(ltop, 'Clear Selections', size=(250, 30), action=self.onSelNone)
+        use_sel  = Button(ltop, 'Use Selected', size=(250, 30), action=self.onUseSelected)
 
-        ltsizer = wx.BoxSizer(wx.HORIZONTAL)
+        ltsizer = wx.BoxSizer(wx.VERTICAL)
         ltsizer.Add(sel_none, 1, LEFT|wx.GROW, 1)
+        ltsizer.Add(use_sel,  1, LEFT|wx.GROW, 1)
         pack(ltop, ltsizer)
 
         self.pvlist = FileCheckList(lpanel, main=self,
@@ -370,7 +372,7 @@ Matt Newville <newville@cars.uchicago.edu>
         btn_start = Button(panel, 'Start Collection', size=(200, -1),
                            action=self.onStartCollection)
         btn_more  = Button(panel, 'Add More PV Rows', size=(200, -1),
-                           action=self.onMorePVs)
+                           action=self.onMorePVRows)
 
         wids['end_date'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
                                                   style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
@@ -485,10 +487,10 @@ Matt Newville <newville@cars.uchicago.edu>
                                    action=self.onPlotLiveSel,
                                    size=(175, -1))
 
-        wids['use_sel'] = Button(panel, ' Use Selected PVs ',
-                                 action=self.onUseSelected, **opts)
-        wids['clear_sel'] = Button(panel, ' Clear PVs 2, 3, 4 ',
-                                   action=self.onClearSelected, **opts)
+        #wids['use_sel'] = Button(panel, ' Use Selected PVs ',
+        #                         action=self.onUseSelected, **opts)
+        # wids['clear_sel'] = Button(panel, ' Clear All',
+        #                            action=self.onClearSelected, **opts)
 
         wids['use_inst'] = Button(panel, 'Select These PVs ',
                                   action=self.onSelectInstPVs, **opts)
@@ -540,9 +542,9 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(' Select PVs: '), dcol=1, newrow=True)
-        panel.Add(wids['use_sel'], dcol=1)
-        panel.Add(wids['clear_sel'], dcol=1)
+        # panel.Add(slabel(' Select PVs: '), dcol=1, newrow=True)
+        # panel.Add(wids['use_sel'], dcol=1)
+        # panel.Add(wids['clear_sel'], dcol=1)
 
         panel.Add(slabel(' PV 1: '), dcol=1, newrow=True)
         panel.Add(wids['pv1'], dcol=2)
@@ -726,18 +728,22 @@ Matt Newville <newville@cars.uchicago.edu>
         print(f"Starting Collection with {fname}")
 
 
-    def onMorePVs(self, event=None):
+    def onMorePVRows(self, event=None):
         self.wids['pv_model'].add_rows(n=3)
 
     def onUseSelected(self, event=None):
+        for i in range(3):
+            w = f'pv{2+i}'
+            self.wids[w].SetStringSelection('None')
+
         sel_pvs = self.pvlist.GetCheckedStrings()[:4]
         for i, pvn in enumerate(sel_pvs):
             w = f'pv{i+1}'
             self.wids[w].SetStringSelection(pvn)
 
     def onClearSelected(self, event=None):
-        for i in range(3):
-            w = f'pv{2+i}'
+        for i in range(4):
+            w = f'pv{1+i}'
             self.wids[w].SetStringSelection('None')
 
     def onSelectInst(self, event=None):
@@ -776,7 +782,10 @@ Matt Newville <newville@cars.uchicago.edu>
         self.wids['config_file'].SetLabel(path.as_posix())
         self.config_file = path.as_posix()
         cfile = PVLoggerConfig(path)
+        # print("READ CONF ", path, cfile)
         self.run_config = cfile.config
+        # print("READ CONF ",self.run_config)
+
         wdir = Path(self.run_config.get('datair', '.'))
         folder = Path(self.run_config.get('folder', 'pvlog'))
 
@@ -856,6 +865,10 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def onSelNone(self, event=None):
         self.pvlist.select_none()
+        for i in range(4):
+            w = f'pv{1+i}'
+            self.wids[w].SetStringSelection('None')
+
 
     def onSelAll(self, event=None):
         self.pvlist.select_all()
