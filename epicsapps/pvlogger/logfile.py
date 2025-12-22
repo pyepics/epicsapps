@@ -19,6 +19,8 @@ import numpy as np
 from pyshortcuts import debugtimer
 
 from ..utils.textfile import read_textfile
+from ..utils.math import index_of
+
 from .pvlogger import TIMESTAMP_FILE, motor_fields
 
 TINY = 1.e-7
@@ -98,6 +100,46 @@ class PVLogFile:
         """parse text to data"""
         self.data = parse_logfile(self.text, self.logfile)
         self.has_motor_events = False
+
+
+    def read(self):
+        """read, parse and fully populate data from logfile"""
+        if self.text is None:
+            self.read_log_text(parse=True)
+        if self.data is None:
+            self.parse()
+
+    def values_at(self, timestamp_list, as_string=True):
+        """get values at a list of timestamps,
+        either as strings (default) or as native type
+        return list of valuees
+
+        Arguments:
+           timestamp_list (list):  list of timestamps or datetimes
+           as_string (bool):       whether to return strings or native values [True]
+
+        Returns:
+           list of values at each timestamp provided
+        """
+        self.read()
+        if isinstance(timestamp_list, (int, float)):
+            ts = [timestamp_list]
+        else:
+            ts = [t for t in timestamp_list]
+
+        dat_ts = np.array(self.data.timestamps)
+        values = []
+        for t in ts:
+            if isinstance(t, datetime):
+                t = t.timestamp()
+            i = index_of(dat_ts, t)
+            if as_string:
+                values.append(self.data.char_values[i])
+            else:
+                values.append(self.data.values[i])
+        return values
+
+
 
     def get_datetimes(self):
         """set datetimes to list of datetimes"""
@@ -495,7 +537,8 @@ class PVLogFolder:
         pv.mod_time = os.stat(pv.logfile).st_mtime
         if pvname in self.motors:
             self.read_motor_events(pvname)
-        return pv.data
+        return pv
+
 
     def read_motor_events(self, motorname):
         """read Motor Events for motor PVs
