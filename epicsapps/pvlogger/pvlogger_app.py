@@ -62,7 +62,7 @@ PVLOG_FOLDER = 'pvlog'
 CONFIG_FILE = 'pvlog.yaml'
 ICON_FILE = 'logging.ico'
 FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
-PlotWindowChoices = [f'Window {i+1}' for i in range(10)]
+PlotWindowChoices = [f'{i+1}' for i in range(10)]
 PLOT_COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')
 
@@ -475,22 +475,18 @@ Matt Newville <newville@cars.uchicago.edu>
         self.last_plot_type = 'one'
         opts = {'size': (175, -1)}
         wids['plotone'] = Button(panel, 'Show PV 1 ', action=self.onPlotOne, **opts)
-        wids['plotsel'] = Button(panel, 'Show PV 1 to 4', action=self.onPlotSel, **opts)
+        wids['plotsel'] = Button(panel, 'Show PVs 1 to 4', action=self.onPlotSel, **opts)
 
-        wids['plot_win']  = Choice(panel, choices=PlotWindowChoices, **opts)
+        wids['plot_win']  = Choice(panel, choices=PlotWindowChoices, size=(75, -1))
         wids['plot_win'].SetStringSelection('1')
         wids['plotlive_one'] = Button(panel, 'LivePlot PV 1',
                                    action=self.onPlotLiveOne,
                                    size=(175, -1))
 
-        wids['plotlive_sel'] = Button(panel, 'LivePlot PV 1 to 4',
+        wids['plotlive_sel'] = Button(panel, 'LivePlot PVs 1 to 4',
                                    action=self.onPlotLiveSel,
                                    size=(175, -1))
 
-        #wids['use_sel'] = Button(panel, ' Use Selected PVs ',
-        #                         action=self.onUseSelected, **opts)
-        # wids['clear_sel'] = Button(panel, ' Clear All',
-        #                            action=self.onClearSelected, **opts)
 
         wids['use_inst'] = Button(panel, 'Select These PVs ',
                                   action=self.onSelectInstPVs, **opts)
@@ -499,7 +495,7 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['instruments'] = Choice(panel, action=self.onSelectInst, **opts)
 
         wids['save_inst'] = TextCtrl(panel, '', action=self.onSaveInst,
-                                     size=(350, -1), act_on_losefocus=False)
+                                     size=(250, -1), act_on_losefocus=False)
 
         for i in range(4):
             wids[f'pv{i+1}'] = Choice(panel, **opts)
@@ -537,7 +533,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel.Add(slabel(' Instruments: '), dcol=1, newrow=True)
         panel.Add(wids['instruments'], dcol=2)
-        panel.Add(wids['use_inst'], dcol=1)
+        panel.Add(wids['use_inst'], dcol=2)
 
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
@@ -560,20 +556,22 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['col4'])
 
         panel.Add((5, 5))
-        panel.Add(slabel(' Save as Instrument: '), dcol=1, newrow=True)
-        panel.Add(wids['save_inst'], dcol=3)
         panel.Add(slabel(' Plot/Show Table: '), dcol=1, newrow=True)
         panel.Add(wids['plotone'], dcol=1)
         panel.Add(wids['plotsel'], dcol=1)
-        panel.Add(slabel(' Plot Window: '), dcol=1, newrow=True)
+        panel.Add(slabel(' Window:', wid=75))
         panel.Add(wids['plot_win'])
-        panel.Add((5, 5))
+
+        panel.Add(slabel(' Save PVs as Instrument: '), dcol=1, newrow=True)
+        panel.Add(wids['save_inst'], dcol=2)
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
         panel.Add(slabel(' Live Plots: '), dcol=1, newrow=True)
         panel.Add(wids['plotlive_one'])
         panel.Add(wids['plotlive_sel'])
         panel.Add((5, 5))
+
+
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
         panel.Add(slabel(' View Event Table for Selected PVs: ', wid=400),
@@ -615,7 +613,9 @@ Matt Newville <newville@cars.uchicago.edu>
             self.subframes[name].Raise()
         return self.subframes[name]
 
-    def show_plotwin(self, name, **opts):
+    def show_plotwin(self, **opts):
+        wid = self.wids['plot_win'].GetStringSelection()
+        name = f'Window {wid}'
         opts['title'] = f'Epics PV Logger Plot {name}'
         return self.show_subframe(name, PlotFrame, **opts)
 
@@ -969,8 +969,7 @@ Matt Newville <newville@cars.uchicago.edu>
                                title=f'Epics PV Logger Table')
             self.subframes['pvtable'].add_pvpage(data, pvdesc)
         if data.is_numeric:
-            wname = self.wids['plot_win'].GetStringSelection()
-            pwin = self.show_plotwin(wname)
+            pwin = self.show_plotwin()
 
             col   = self.wids['col1'].GetColour()
             hcol = hexcolor(col)
@@ -990,8 +989,7 @@ Matt Newville <newville@cars.uchicago.edu>
             pwin.Raise()
 
     def onPlotSel(self, event=None):
-        wname = self.wids['plot_win'].GetStringSelection()
-        pframe = self.show_plotwin(wname)
+        pframe = self.show_plotwin()
         yaxes = 0
         tmin = None
         tmax = None
@@ -1135,6 +1133,7 @@ is not a valid PV Logger Data Folder""",
 
     def onReadDataFile(self, pvname=None, npvs=None, nproc=1, tstart=None, **kws):
         message = ''
+        print("on ReadDataFile ", pvname, npvs)
         if pvname is not None:
             message = f"Read data for '{pvname}'"
         if npvs is not None:
@@ -1192,8 +1191,7 @@ is not a valid PV Logger Data Folder""",
         self.force_redraw  = True
 
     def get_plotpanel(self):
-        wname = self.wids['plot_win'].GetStringSelection()
-        pframe = self.show_plotwin(wname)
+        pframe = self.show_plotwin()
         return pframe.panel
 
     def onPVshow(self, event=None, row=0):
@@ -1226,10 +1224,10 @@ is not a valid PV Logger Data Folder""",
 
     def write_message(self, s, panel=0):
         """write a message to the Status Bar"""
-        try:
-            self.SetStatusText(s, panel)
-        except:
-            pass
+        # try:
+        self.SetStatusText(s, panel)
+        #except:
+        #    pass
 
 
     def onAbout(self, event=None):
