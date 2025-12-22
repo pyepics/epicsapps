@@ -394,7 +394,7 @@ class PVLogFolder:
 
         npvs = len(pvlist)
         if self.on_read is not None:
-            self.on_read(pvname='Reading PVs', npvs=npvs, nproc=nproc)
+            self.on_read(pvname='', npvs=npvs, nproc=nproc)
 
         # now run up to nproc processes to parse the text files
         def start_next_process(pvlist):
@@ -495,6 +495,7 @@ class PVLogFolder:
         pv.mod_time = os.stat(pv.logfile).st_mtime
         if pvname in self.motors:
             self.read_motor_events(pvname)
+        return pv.data
 
     def read_motor_events(self, motorname):
         """read Motor Events for motor PVs
