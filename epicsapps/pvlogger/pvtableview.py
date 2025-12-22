@@ -152,9 +152,7 @@ class PVTablePanel(wx.Panel) :
         plotwin = self.choose_pwin.GetStringSelection()
         color = hexcolor(self.btn_color.GetColour())
 
-        if plotwin not in self.parent.subframes:
-            plotwin = 'Window 1'
-        pwin = self.parent.show_plotwin(plotwin)
+        pwin = self.parent.show_plotwin()
 
         pdat = self.pvlogdata
         for i, row in enumerate(self.model.data):
