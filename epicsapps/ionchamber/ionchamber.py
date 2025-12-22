@@ -7,7 +7,6 @@ Uses xraydb routine for actual calculation
 '''
 import time
 import os
-import json
 from datetime import datetime
 import numpy as np
 from scipy.interpolate import CubicSpline
@@ -17,16 +16,9 @@ from epics import Device, caget, get_pv
 from xraydb import get_xraydb, get_material, chemparse, ionchamber_fluxes
 from xraydb.utils import elam_spline, QCHARGE
 
+from ..utils.math import index_of, js2array
+
 SUNITS = {'pA/V': 1.e-12, 'nA/V': 1.e-9, 'uA/V': 1.e-6, 'mA/V': 1.e-3}
-
-def index_of(array, value):
-    if value < min(array):
-        return 0
-    return max(np.where(array<=value)[0])
-
-def js2array(x):
-    return np.array(json.loads(x))
-
 
 class IonChamberDevice(Device):
     """Epics Device for Ion Chamber, used in flux calculations
