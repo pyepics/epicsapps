@@ -16,7 +16,7 @@ import pytz
 from multiprocessing import Process, Queue, Pool
 from matplotlib.dates import date2num
 import numpy as np
-from pyshortcuts import debugtimer
+from pyshortcuts import debugtimer, gformat, isotime
 
 from ..utils.textfile import read_textfile
 from ..utils.math import index_of
@@ -109,36 +109,39 @@ class PVLogFile:
         if self.data is None:
             self.parse()
 
-    def values_at(self, timestamp_list, as_string=True):
+    def values_at(self, timestamp_list, as_string=None):
         """get values at a list of timestamps,
         either as strings (default) or as native type
         return list of valuees
 
         Arguments:
            timestamp_list (list):  list of timestamps or datetimes
-           as_string (bool):       whether to return strings or native values [True]
+           as_string (bool or None): whether to return strings or native values [None]
 
+        Notes:
+           with as_string=None, string values will be used for strings, enums,
+           char waveforms (byte arrays), and ints, while formatting will be done
+           with gformat for floats.
         Returns:
            list of values at each timestamp provided
         """
         self.read()
+        if as_string is None:
+            as_string = 'double' not in self.data.attrs.get('type', 'time_char')
+
         if isinstance(timestamp_list, (int, float)):
             ts = [timestamp_list]
         else:
             ts = [t for t in timestamp_list]
-
-        dat_ts = np.array(self.data.timestamps)
-        values = []
-        for t in ts:
-            if isinstance(t, datetime):
-                t = t.timestamp()
-            i = index_of(dat_ts, t)
-            if as_string:
-                values.append(self.data.char_values[i])
-            else:
-                values.append(self.data.values[i])
+        ts = np.array(ts)
+        d_ts = np.array(self.data.timestamps)
+        d_id = np.arange(len(self.data.timestamps))
+        t_id = [int(t) for t in np.interp(ts, d_ts, d_id, left=0, right=0)]
+        if as_string:
+            values = [self.data.char_values[i] for i in t_id]
+        else:
+            values = [gformat(self.data.values[i]) for i in t_id]
         return values
-
 
 
     def get_datetimes(self):
