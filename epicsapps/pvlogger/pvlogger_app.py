@@ -959,8 +959,8 @@ Matt Newville <newville@cars.uchicago.edu>
 
 
         fname = FileSave(self, f'Export {len(pvdescs)} PVs to Time CSV File',
-                         wildcard='CSV files (*.csv)|*.csv|All files (*.*)|*.*',
-                         default_file='PVlogger_data.csv')
+                         wildcard='CSV files (*.csv)|*.csv|Tab-Separted files (*.tsv)|*.tsv|All files (*.*)|*.*',
+                         default_file='PVlogger_data.tsv')
         if fname is None:
             return
 

@@ -82,10 +82,11 @@ checked PVs.  The right-hand portion has 2 Notebook Tabs, labelled
 "View Log Folder" and "Collect Data" -- we'll discuss the "View Log
 Folder" tab here and the "Collect Data" tab in the next section.
 
-The "View Log Folder" Panel allows you to select what edata to
+The "View Log Folder" Panel allows you to select which data to
 visualize. The folder being read is If Epics Instruments were used in
 the data collection, you can select these and then press "Select these
-PVs" to check each of the PVs in that Instrument.
+PVs" to check each of the PVs in that Instrument.  This panel is
+broken into several sections.
 
 The central portion of the panel shows up to 4 PVs to be
 displayed. Each of these has a Dropdown list will all the PV
@@ -107,9 +108,14 @@ Plots".  When used at the beamline or from a computer that can connect
 to the live beamline PVs, clicking on the "Live Plot for PV 1" will
 show the corresponding PV in a live :ref:`stripchart` application.
 
-Finally, below the "Live Plot" section, there are Date and Time
+Below the "Live Plot" section, there are Date and Time
 entries to view Event Data.  We'll return to this in the next section
 :ref:`pvlogger_event_data`.
+
+Finally, below the Event section, there is a section for exporting
+data for several PVs to a single tab-separated file at a fixed time
+interval. We'll return to this in the next section
+:ref:`pvlogger_exporting_data`.
 
 As an example plot of one PV, with "Storage Ring Current (mA)" as PV
 1, clicking the "Show PV 1" button will show:
@@ -183,6 +189,22 @@ so that selected events can be placed on a plot, you can also use the
 date and time entries at the bottom of the main viewing panel to create a
 single table showing all events for a set of PVs for a selected time
 range.
+
+
+.. _pvlogger_exporting_data:
+
+
+Exporting Data to Tab-separated Files
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Ths bottom section of the main "PV Logger View" panel allows you to
+export for selected PVs to a tab-separated (TSV) file.  These data
+will be recorded at a fixed and uniform time period, say every 15
+seconds or every 2 minutes, as selected from the form on the window.
+Note that values exported in this way may have several repeated
+values, even if the actual value did not change.  On the other hand,
+if a PV changes frequently, not all changes in data values will be
+recoded in these exported files.
 
 
 
