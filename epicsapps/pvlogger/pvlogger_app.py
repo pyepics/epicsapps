@@ -9,7 +9,7 @@ from threading import Thread
 from pathlib import Path
 from subprocess import Popen
 
-from numpy import array, where
+from numpy import array, where, arange
 from functools import partial
 from collections import namedtuple
 from datetime import datetime, timedelta
@@ -65,6 +65,10 @@ FILECHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_'
 PlotWindowChoices = [f'{i+1}' for i in range(10)]
 PLOT_COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')
+
+EXPORT_TIME_UNITS = ('seconds', 'minutes')
+EXPORT_TIME_STEPS = ('1', '2', '5', '10', '15', '30', '60')
+
 
 
 STY  = wx.GROW|wx.ALL
@@ -517,8 +521,19 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['evt_time2'].SetTime(9, 0, 0)
 
         wids['evt_button'] = Button(panel, 'Show Events for Selected PVs',
-                                   action=self.onShowSelectedEvents,
-                                   size=(300, -1))
+                                   action=self.onShowSelectedEvents,   size=(300, -1))
+
+        wids['exp_date1'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
+                                                  style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
+        wids['exp_time1'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
+        wids['exp_date1'].SetValue(wx.DateTime.Now() - wx.DateSpan.Week())
+        wids['exp_time1'].SetTime(9, 0, 0)
+
+        wids['exp_button'] = Button(panel, 'Export Values for Selected PVs',
+                                   action=self.onExportValues, size=(300, -1))
+
+        wids['exp_tstep'] = Choice(panel, choices=EXPORT_TIME_STEPS, default=1, size=(125, -1))
+        wids['exp_tunits'] = Choice(panel, choices=EXPORT_TIME_UNITS, default=1, size=(125, -1))
 
         def slabel(txt, wid=175):
             return wx.StaticText(panel, label=txt, size=(wid, -1))
@@ -570,8 +585,6 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['plotlive_one'])
         panel.Add(wids['plotlive_sel'])
         panel.Add((5, 5))
-
-
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
         panel.Add(slabel(' View Event Table for Selected PVs: ', wid=400),
@@ -585,6 +598,19 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['evt_time2'])
         panel.Add(slabel(' Show Table: '), dcol=1, newrow=True)
         panel.Add(wids['evt_button'], dcol=2)
+        panel.Add((5, 5))
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
+        panel.Add((5, 5))
+        panel.Add(slabel(' Export Values for Selected PVs at Fixed Time Steps: ', wid=400),
+                      dcol=3, newrow=True)
+        panel.Add(slabel(' Start Date/Time: '), dcol=1, newrow=True)
+        panel.Add(wids['exp_date1'])
+        panel.Add(wids['exp_time1'])
+        panel.Add(slabel(' Time Step: '), dcol=1, newrow=True)
+        panel.Add(wids['exp_tstep'])
+        panel.Add(wids['exp_tunits'])
+        panel.Add(slabel(' Export Data: '), dcol=1, newrow=True)
+        panel.Add(wids['exp_button'], dcol=2)
 
         panel.pack()
         return panel
@@ -914,6 +940,70 @@ Matt Newville <newville@cars.uchicago.edu>
             self.log_folder.read_motor_events(pvname)
         return pvlog.data
 
+    def onExportValues(self, event=None):
+        ddate1 = self.wids['exp_date1'].GetValue()
+        dtime1 = self.wids['exp_time1'].GetValue()
+        step = self.wids['exp_tstep'].GetStringSelection()
+        units = self.wids['exp_tunits'].GetStringSelection()
+
+        dt1 = datetime(ddate1.GetYear(), 1+ddate1.GetMonth(), ddate1.GetDay(),
+                        dtime1.GetHour(), dtime1.GetMinute(), 0)
+        ts0 = dt1.timestamp()
+        tstep = int(step)
+        if units == 'minutes':
+            tstep *= 60
+        pvdescs = [p for p in self.pvlist.GetCheckedStrings()]
+        if len(pvdescs) < 1:
+            return
+        self.export_datasets = None
+
+
+        fname = FileSave(self, f'Export {len(pvdescs)} PVs to Time CSV File',
+                         wildcard='CSV files (*.csv)|*.csv|All files (*.*)|*.*',
+                         default_file='PVlogger_data.csv')
+        if fname is None:
+            return
+
+        datasets, times = self.extract_time_data(ts0=ts0, tstep=tstep, pvdescs=pvdescs)
+
+        head0 = ['# Date/Time', 'Timestamp']
+        head1 = ['# Date/Time', 'Timestamp']
+        for pvname, dat in datasets.items():
+            head0.append(dat[0])
+            head1.append(pvname)
+        buff = ['\t '.join(head0),  '\t '.join(head1)]
+        for i, ts in enumerate(times):
+            row = [isotime(ts), f"{ts:.1f}"]
+            for dat in datasets.values():
+                row.append(dat[i+1])
+            buff.append('\t '.join(row))
+        buff.append('')
+        with open(fname, 'w') as fh:
+            fh.write('\n'.join(buff))
+        self.write_message(f'exported data for {len(pvdescs)} to {fname}}', panel=1)
+
+    def extract_time_data(self, ts0=None, tstep=60, pvdescs=None):
+        if ts0 == 0:
+            ts0 = time.time()-86400.
+        if pvdescs is None:
+            return
+        max_ts = 0
+        datasets = {}
+        for pvdesc in pvdescs:
+            pvname = self.pvmap[pvdesc]
+            dat = self.get_pvdata(pvname)
+            datasets[pvname] = [pvdesc]
+            if dat is None:
+                dat = self.get_pvdata(pvname)
+            max_ts = max(max_ts, dat.timestamps[-1])
+
+        ts = arange(ts0, max_ts+2*tstep, tstep)
+        for pvname, dat in datasets.items():
+            vals = self.log_folder.pvs[pvname].values_at(ts)
+            datasets[pvname].extend(vals)
+        return datasets, ts
+
+
 
     def onShowSelectedEvents(self, event=None):
         ddate1 = self.wids['evt_date1'].GetValue()
@@ -1133,7 +1223,6 @@ is not a valid PV Logger Data Folder""",
 
     def onReadDataFile(self, pvname=None, npvs=None, nproc=1, tstart=None, **kws):
         message = ''
-        print("on ReadDataFile ", pvname, npvs)
         if pvname is not None:
             message = f"Read data for '{pvname}'"
         if npvs is not None:
@@ -1156,6 +1245,8 @@ is not a valid PV Logger Data Folder""",
                 wt.SetDay(dt.day)
                 self.wids['evt_date1'].SetValue(wt)
                 self.wids['evt_time1'].SetTime(dt.hour, dt.minute, 0)
+                self.wids['exp_date1'].SetValue(wt)
+                self.wids['exp_time1'].SetTime(dt.hour, dt.minute, 0)
 
         if self.log_folder.time_stop is not None:
             if abs(self.last_time_stop - self.log_folder.time_stop) > 2:
