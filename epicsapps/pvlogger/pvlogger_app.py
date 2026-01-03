@@ -980,7 +980,7 @@ Matt Newville <newville@cars.uchicago.edu>
         buff.append('')
         with open(fname, 'w') as fh:
             fh.write('\n'.join(buff))
-        self.write_message(f'exported data for {len(pvdescs)} to {fname}}', panel=1)
+        self.write_message(f'exported data for {len(pvdescs)} to {fname}', panel=1)
 
     def extract_time_data(self, ts0=None, tstep=60, pvdescs=None):
         if ts0 == 0:
