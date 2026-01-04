@@ -13,7 +13,7 @@ from .math import index_of, js2array
 
 HAS_WXPYTHON = True
 import wx
-from .wxutils import get_icon, SelectWorkdir, GUIColors
+from .wxutils import get_icon, fit_frame, SelectWorkdir, GUIColors
 from .moveto_dialog import MoveToDialog
 
 from .passwords import (hash_password, test_password,

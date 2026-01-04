@@ -3,6 +3,7 @@ wxPython utils
 """
 import os
 import wx
+from wxutils import pack
 
 def get_icon(iconname):
     topdir, _s = os.path.split(__file__)
@@ -34,3 +35,12 @@ class GUIColors(object):
         self.nb_activetext = wx.Colour(80,10,10)
         self.title  = wx.Colour(80,10,10)
         self.pvname = wx.Colour(10,10,80)
+
+def fit_frame(frame, panel):
+    sizer = wx.BoxSizer(wx.VERTICAL)
+    sizer.Add(panel, 1, wx.ALIGN_LEFT|wx.GROW, 5)
+    pack(frame, sizer)
+    frame.Fit()
+    w0, h0 = frame.GetSize()
+    w1, h1 = frame.GetBestSize()
+    frame.SetSize((max(w0, w1)+10, max(h0, h1)+10))
