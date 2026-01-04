@@ -36,12 +36,10 @@ from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem,
                      FileCheckList, LEFT, RIGHT, pack)
 
 from wxmplot.colors import hexcolor
-from pyshortcuts import debugtimer, uname
+from pyshortcuts import debugtimer, uname, isotime
 
 from epicsapps.utils import get_pvdesc, normalize_pvname
 from epicsapps.stripchart import StripChartFrame
-
-from pyshortcuts import isotime
 
 from .configfile import PVLoggerConfig
 from .logfile import read_logfolder, TZONE
@@ -50,7 +48,7 @@ from .plotter import PlotFrame
 from .pvtableview import PVTableFrame
 from .eventtableview import EventTableFrame
 
-from ..utils import (SelectWorkdir, get_icon, get_configfolder,
+from ..utils import (SelectWorkdir, get_icon, fit_frame, get_configfolder,
                      get_default_configfile, load_yaml, read_recents_file,
                      write_recents_file)
 
@@ -208,7 +206,6 @@ class PVDataModel(dv.DataViewIndexListModel):
         self.RowAppended()
 
 
-
 class PVsConnectedDialog(wx.Dialog):
     def __init__(self, parent, pvdict, **kws):
         self.parent = parent
@@ -264,6 +261,129 @@ class PVsConnectedDialog(wx.Dialog):
     def onDone(self, event=None):
         self.Destroy()
 
+class ExportFrame(wx.Frame):
+    def __init__(self, parent=None):
+        self.parent = parent
+        wx.Frame.__init__(self, None, -1, 'Export Data for Selected PVs',
+                          style=FRAME_STYLE, size=(400, 450))
+
+        panel = GridPanel(self, ncols=4, nrows=5, pad=3, itemstyle=LEFT)
+
+        btn_quit = Button(panel, 'Done', size=(200, 30), action=self.onQuit)
+
+        panel.pack()
+
+    def onQuit(self, event=None):
+        self.Destroy()
+
+
+class EventDialogFrame(wx.Frame):
+    def __init__(self, parent,  **kws):
+        self.parent = parent
+        self.last_time_start = 0
+        self.last_time_stop = 0
+        wids = self.wids = {}
+
+        wx.Frame.__init__(self, parent, -1, 'View Event Data for Selected PVs',
+                          style=FRAME_STYLE, size=(400, 450))
+
+        panel = GridPanel(self, ncols=4, nrows=5, pad=3, itemstyle=LEFT)
+
+        wids['date1'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
+                                                  style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
+        wids['time1'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
+        wids['date1'].SetValue(wx.DateTime.Now() - wx.DateSpan.Week())
+        wids['time1'].SetTime(9, 0, 0)
+
+        wids['date2'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
+                                                  style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
+        wids['time2'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
+        wids['date2'].SetValue(wx.DateTime.Now() )
+        wids['time2'].SetTime(9, 0, 0)
+
+        wids['show'] = Button(panel, 'Show Events for Selected PVs',
+                                   action=self.onShowSelectedEvents,   size=(300, -1))
+        wids['quit']  = Button(panel, 'Done', size=(200, 30), action=self.onQuit)
+
+
+        def slabel(txt, size=(175, -1)):
+            return wx.StaticText(panel, label=txt, size=size)
+
+        panel.Add(slabel(' View Event Table for Selected PVs: ', size=(350, -1)),
+                      dcol=3)
+
+        panel.Add(slabel(' Start Date/Time: '), dcol=1, newrow=True)
+        panel.Add(wids['date1'])
+        panel.Add(wids['time1'])
+        panel.Add(slabel(' Stop Date/Time: '), dcol=1, newrow=True)
+        panel.Add(wids['date2'])
+        panel.Add(wids['time2'])
+        panel.Add(slabel(' Show Event Table: '), dcol=1, newrow=True)
+        panel.Add(wids['show'], dcol=2)
+        panel.Add((5, 5))
+        panel.Add(wids['quit'], dcol=2, newrow=True)
+        panel.Add((10, 10))
+        panel.pack()
+
+        fit_frame(self, panel)
+
+        self.Show()
+        self.Raise()
+        wx.CallAfter(self.set_event_times)
+
+    def set_event_times(self):
+        log_folder = self.parent.log_folder
+        if log_folder.time_start is not None:
+            if abs(self.last_time_start - log_folder.time_start) > 2:
+                t0  = self.last_time_start = log_folder.time_start
+                dt = datetime.fromtimestamp(t0)
+                dt = dt - timedelta(days=1)
+                wt = wx.DateTime.Now()
+                wt.SetYear(dt.year)
+                wt.SetMonth(dt.month-1)
+                wt.SetDay(dt.day)
+                self.wids['date1'].SetValue(wt)
+                self.wids['time1'].SetTime(dt.hour, dt.minute, 0)
+                self.wids['date1'].SetValue(wt)
+                self.wids['time1'].SetTime(dt.hour, dt.minute, 0)
+
+        if log_folder.time_stop is not None:
+            if abs(self.last_time_stop - log_folder.time_stop) > 2:
+                t0  = self.last_time_stop = log_folder.time_stop
+                dt = datetime.fromtimestamp(t0)
+                dt = dt + timedelta(minutes=1)
+                wt = wx.DateTime.Now()
+                wt.SetYear(dt.year)
+                wt.SetMonth(dt.month-1)
+                wt.SetDay(dt.day)
+                self.wids['date2'].SetValue(wt)
+                self.wids['time2'].SetTime(dt.hour, dt.minute, 0)
+
+
+    def onQuit(self, event=None):
+        self.Destroy()
+
+    def onShowSelectedEvents(self, event=None):
+        ddate1 = self.wids['date1'].GetValue()
+        dtime1 = self.wids['time1'].GetValue()
+        ddate2 = self.wids['date2'].GetValue()
+        dtime2 = self.wids['time2'].GetValue()
+        dt1 = datetime(ddate1.GetYear(), 1+ddate1.GetMonth(), ddate1.GetDay(),
+                        dtime1.GetHour(), dtime1.GetMinute(), 0)
+        dt2 = datetime(ddate2.GetYear(), 1+ddate2.GetMonth(), ddate2.GetDay(),
+                           dtime2.GetHour(), dtime2.GetMinute(), 0)
+        dt1 = dt1 - timedelta(days=1)
+        dt2 = dt2 + timedelta(minutes=1)
+        event_data = {}
+        for pvdesc in self.parent.pvlist.GetCheckedStrings():
+            pvname = self.parent.pvmap[pvdesc]
+            data = self.parent.get_pvdata(pvname)
+            if data is None:
+                data = self.parent.get_pvdata(pvname)
+            event_data[pvdesc] = data
+        self.parent.show_subframe('event_table', EventTableFrame)
+        self.parent.subframes['event_table'].set_data(event_data, dt1, dt2)
+
 
 class PVLoggerFrame(wx.Frame):
     default_colors = ((0, 0, 0), (0, 0, 255), (255, 0, 0),
@@ -274,7 +394,6 @@ Matt Newville <newville@cars.uchicago.edu>
 """
 
     def __init__(self, configfile=None):
-
         self.parent = None
         wx.Frame.__init__(self, None, -1, 'Epics PV Logger',
                           style=FRAME_STYLE, size=(1100, 650))
@@ -291,8 +410,6 @@ Matt Newville <newville@cars.uchicago.edu>
         self.parse_thread = None
         self.live_pvs = {}
         self.pvs_connected = 'unknown'
-        self.last_time_start = 0
-        self.last_time_stop = 0
         self.save_inst_time = 0.0
         self.create_frame()
 
@@ -331,8 +448,8 @@ Matt Newville <newville@cars.uchicago.edu>
         self.wids = {}
 
         self.nb = flatnotebook(rpanel, {}, style=FNB_STYLE)
-        self.nb.AddPage(self.make_view_panel(), ' View Log Folder', True)
-        self.nb.AddPage(self.make_run_panel(),  ' Collect Data ', True)
+        self.nb.AddPage(self.make_view_panel(), ' View Data from Log Folder ', True)
+        self.nb.AddPage(self.make_run_panel(),  ' Configure Data Collection ', True)
         self.nb.SetSelection(0)
 
         try:
@@ -467,6 +584,9 @@ Matt Newville <newville@cars.uchicago.edu>
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
 
+        def slabel(txt, size=(175, -1)):
+            return wx.StaticText(panel, label=txt, size=size)
+
         wids = self.wids
         title = SimpleText(panel, ' PV Logger Viewer', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
@@ -508,20 +628,20 @@ Matt Newville <newville@cars.uchicago.edu>
             wids[f'col{i+1}'].Bind(csel.EVT_COLOURSELECT,
                                    partial(self.onPVcolor, row=i+1))
 
-        wids['evt_date1'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
-                                                  style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
-        wids['evt_time1'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
-        wids['evt_date1'].SetValue(wx.DateTime.Now() - wx.DateSpan.Week())
-        wids['evt_time1'].SetTime(9, 0, 0)
-
-        wids['evt_date2'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
-                                                  style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
-        wids['evt_time2'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
-        wids['evt_date2'].SetValue(wx.DateTime.Now() )
-        wids['evt_time2'].SetTime(9, 0, 0)
-
-        wids['evt_button'] = Button(panel, 'Show Events for Selected PVs',
-                                   action=self.onShowSelectedEvents,   size=(300, -1))
+#         wids['evt_date1'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
+#                                                   style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
+#         wids['evt_time1'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
+#         wids['evt_date1'].SetValue(wx.DateTime.Now() - wx.DateSpan.Week())
+#         wids['evt_time1'].SetTime(9, 0, 0)
+#
+#         wids['evt_date2'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
+#                                                   style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
+#         wids['evt_time2'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
+#         wids['evt_date2'].SetValue(wx.DateTime.Now() )
+#         wids['evt_time2'].SetTime(9, 0, 0)
+#
+#         wids['evt_button'] = Button(panel, 'Show Events for Selected PVs',
+#                                    action=self.onShowSelectedEvents,   size=(300, -1))
 
         wids['exp_date1'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
                                                   style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
@@ -534,9 +654,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
         wids['exp_tstep'] = Choice(panel, choices=EXPORT_TIME_STEPS, default=1, size=(125, -1))
         wids['exp_tunits'] = Choice(panel, choices=EXPORT_TIME_UNITS, default=1, size=(125, -1))
-
-        def slabel(txt, wid=175):
-            return wx.StaticText(panel, label=txt, size=(wid, -1))
 
         panel.Add((5, 5))
         panel.Add(title, style=LEFT, dcol=6, newrow=True)
@@ -574,7 +691,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(slabel(' Plot/Show Table: '), dcol=1, newrow=True)
         panel.Add(wids['plotone'], dcol=1)
         panel.Add(wids['plotsel'], dcol=1)
-        panel.Add(slabel(' Window:', wid=75))
+        panel.Add(slabel(' Window:', size=(75, -1)))
         panel.Add(wids['plot_win'])
 
         panel.Add(slabel(' Save PVs as Instrument: '), dcol=1, newrow=True)
@@ -587,21 +704,21 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(' View Event Table for Selected PVs: ', wid=400),
-                      dcol=3, newrow=True)
-
-        panel.Add(slabel(' Start Date/Time: '), dcol=1, newrow=True)
-        panel.Add(wids['evt_date1'])
-        panel.Add(wids['evt_time1'])
-        panel.Add(slabel(' Stop Date/Time: '), dcol=1, newrow=True)
-        panel.Add(wids['evt_date2'])
-        panel.Add(wids['evt_time2'])
-        panel.Add(slabel(' Show Table: '), dcol=1, newrow=True)
-        panel.Add(wids['evt_button'], dcol=2)
-        panel.Add((5, 5))
+#         panel.Add(slabel(' View Event Table for Selected PVs: ', size=(400, -1)),
+#                       dcol=3, newrow=True)
+#
+#         panel.Add(slabel(' Start Date/Time: '), dcol=1, newrow=True)
+#         panel.Add(wids['evt_date1'])
+#         panel.Add(wids['evt_time1'])
+#         panel.Add(slabel(' Stop Date/Time: '), dcol=1, newrow=True)
+#         panel.Add(wids['evt_date2'])
+#         panel.Add(wids['evt_time2'])
+#         panel.Add(slabel(' Show Table: '), dcol=1, newrow=True)
+#         panel.Add(wids['evt_button'], dcol=2)
+#         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(' Export Values for Selected PVs at Fixed Time Steps: ', wid=400),
+        panel.Add(slabel(' Export Values for Selected PVs at Fixed Time Steps: ', size=(400, -1)),
                       dcol=3, newrow=True)
         panel.Add(slabel(' Start Date/Time: '), dcol=1, newrow=True)
         panel.Add(wids['exp_date1'])
@@ -645,8 +762,16 @@ Matt Newville <newville@cars.uchicago.edu>
         opts['title'] = f'Epics PV Logger Plot {name}'
         return self.show_subframe(name, PlotFrame, **opts)
 
-    def onCheckPVs(self, event=None):
 
+    def onShowEventFrame(self, event=None):
+        self.show_subframe('event_frame', EventDialogFrame, viewer=self)
+        self.subframes['event_frame'].set_event_times()
+
+    def onShowExportFrame(self, event=None):
+        self.show_subframe('export_frame', ExportFrame, viewer=self)
+
+
+    def onCheckPVs(self, event=None):
         escan_cred = None
         if self.run_config is not None:
             escan_cred = self.run_config.get('escan_credentials', None)
@@ -919,6 +1044,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.wids['plotlive_one'].Enable(enable_live)
         self.wids['plotlive_sel'].Enable(enable_live)
+        wx.CallAfter(self.set_event_times)
 
 
     def get_pvdata(self, pvname):
@@ -1004,7 +1130,6 @@ Matt Newville <newville@cars.uchicago.edu>
         return datasets, ts
 
 
-
     def onShowSelectedEvents(self, event=None):
         ddate1 = self.wids['evt_date1'].GetValue()
         dtime1 = self.wids['evt_time1'].GetValue()
@@ -1025,6 +1150,7 @@ Matt Newville <newville@cars.uchicago.edu>
             event_data[pvdesc] = data
         self.show_subframe('event_table', EventTableFrame)
         self.subframes['event_table'].set_data(event_data, dt1, dt2)
+
 
     def onPlotLiveOne(self, event):
         liveplot = self.show_subframe('pvlive', StripChartFrame)
@@ -1138,6 +1264,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def build_menus(self):
         mdata = wx.Menu()
+        mextra = wx.Menu()
         mcollect = wx.Menu()
         MenuItem(self, mdata, "&Open PVLogger Folder\tCtrl+O",
                  "Open PVLogger Folder", self.onLoadFolder)
@@ -1149,6 +1276,15 @@ Matt Newville <newville@cars.uchicago.edu>
         MenuItem(self, mdata, "E&xit\tCtrl+X", "Exit PVLogger", self.onExit)
         self.Bind(wx.EVT_CLOSE, self.onExit)
 
+        MenuItem(self, mextra, "View Event Table",
+                 "View Connection Events (and Extra Motor Values) for Selected PVs",
+                 self.onShowEventFrame)
+
+        mextra.AppendSeparator()
+        MenuItem(self, mextra, "Export Data",
+                 "Export Data for Selected PVs at fixed time interval",
+                 self.onShowExportFrame)
+
         MenuItem(self, mcollect, "&Read Configuration File\tCtrl+R",
                  "Read PVLogger Configuration File for Data Collection",
                  self.onReadConfigFile)
@@ -1158,8 +1294,9 @@ Matt Newville <newville@cars.uchicago.edu>
                  self.onSaveConfigFile)
 
         mbar = wx.MenuBar()
-        mbar.Append(mdata, "File")
-        mbar.Append(mcollect, "Collection")
+        mbar.Append(mdata,    "File")
+        mbar.Append(mextra,   "View Options")
+        mbar.Append(mcollect, "Data Collection")
         self.SetMenuBar(mbar)
 
     def onWxInspect(self, event=None):
@@ -1234,31 +1371,11 @@ is not a valid PV Logger Data Folder""",
         wx.CallAfter(self.set_event_times)
 
     def set_event_times(self):
-        if self.log_folder.time_start is not None:
-            if abs(self.last_time_start - self.log_folder.time_start) > 2:
-                t0  = self.last_time_start = self.log_folder.time_start
-                dt = datetime.fromtimestamp(t0)
-                dt = dt - timedelta(days=1)
-                wt = wx.DateTime.Now()
-                wt.SetYear(dt.year)
-                wt.SetMonth(dt.month-1)
-                wt.SetDay(dt.day)
-                self.wids['evt_date1'].SetValue(wt)
-                self.wids['evt_time1'].SetTime(dt.hour, dt.minute, 0)
-                self.wids['exp_date1'].SetValue(wt)
-                self.wids['exp_time1'].SetTime(dt.hour, dt.minute, 0)
-
-        if self.log_folder.time_stop is not None:
-            if abs(self.last_time_stop - self.log_folder.time_stop) > 2:
-                t0  = self.last_time_stop = self.log_folder.time_stop
-                dt = datetime.fromtimestamp(t0)
-                dt = dt + timedelta(minutes=1)
-                wt = wx.DateTime.Now()
-                wt.SetYear(dt.year)
-                wt.SetMonth(dt.month-1)
-                wt.SetDay(dt.day)
-                self.wids['evt_date2'].SetValue(wt)
-                self.wids['evt_time2'].SetTime(dt.hour, dt.minute, 0)
+        f = self.subframes.get('event_frame', None)
+        try:
+            f.set_event_times()
+        except:
+            pass
 
     def read_folder(self):
         self.write_message(f'reading folder data....')
