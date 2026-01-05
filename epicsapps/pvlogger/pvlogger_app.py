@@ -88,7 +88,6 @@ FNB_STYLE = flat_nb.FNB_NO_X_BUTTON
 FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 
 
-
 PLOTOPTS = {'use_dates': True, 'show_legend': True,
             'xlabel': 'time', 'linewidth': 2.5,
             'marker': '+', 'markersize': 2.5,
@@ -324,7 +323,7 @@ class ExportFrame(wx.Frame):
             if abs(self.last_time_start - log_folder.time_start) > 2:
                 t0  = self.last_time_start = log_folder.time_start
                 dt = datetime.fromtimestamp(t0)
-                dt = dt - timedelta(days=1)
+                dt = dt - timedelta(minutes=5)
                 wt = wx.DateTime.Now()
                 wt.SetYear(dt.year)
                 wt.SetMonth(dt.month-1)
@@ -338,7 +337,7 @@ class ExportFrame(wx.Frame):
             if abs(self.last_time_stop - log_folder.time_stop) > 2:
                 t0  = self.last_time_stop = log_folder.time_stop
                 dt = datetime.fromtimestamp(t0)
-                dt = dt + timedelta(minutes=1)
+                dt = dt + timedelta(minutes=5)
                 wt = wx.DateTime.Now()
                 wt.SetYear(dt.year)
                 wt.SetMonth(dt.month-1)
@@ -469,7 +468,7 @@ class EventDialogFrame(wx.Frame):
             if abs(self.last_time_start - log_folder.time_start) > 2:
                 t0  = self.last_time_start = log_folder.time_start
                 dt = datetime.fromtimestamp(t0)
-                dt = dt - timedelta(days=1)
+                dt = dt - timedelta(minutes=5)
                 wt = wx.DateTime.Now()
                 wt.SetYear(dt.year)
                 wt.SetMonth(dt.month-1)
@@ -483,7 +482,7 @@ class EventDialogFrame(wx.Frame):
             if abs(self.last_time_stop - log_folder.time_stop) > 2:
                 t0  = self.last_time_stop = log_folder.time_stop
                 dt = datetime.fromtimestamp(t0)
-                dt = dt + timedelta(minutes=1)
+                dt = dt + timedelta(minutes=5)
                 wt = wx.DateTime.Now()
                 wt.SetYear(dt.year)
                 wt.SetMonth(dt.month-1)
@@ -504,8 +503,8 @@ class EventDialogFrame(wx.Frame):
                         dtime1.GetHour(), dtime1.GetMinute(), 0)
         dt2 = datetime(ddate2.GetYear(), 1+ddate2.GetMonth(), ddate2.GetDay(),
                            dtime2.GetHour(), dtime2.GetMinute(), 0)
-        dt1 = dt1 - timedelta(days=1)
-        dt2 = dt2 + timedelta(minutes=1)
+        dt1 = dt1 - timedelta(minutes=5)
+        dt2 = dt2 + timedelta(minutes=5)
         event_data = {}
         for pvdesc in self.parent.pvlist.GetCheckedStrings():
             pvname = self.parent.pvmap[pvdesc]
