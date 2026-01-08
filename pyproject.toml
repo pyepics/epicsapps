@@ -16,7 +16,7 @@ include = ["epicsapps", "epicsapps.areadetector",
 [project]
 name = "epicsapps"
 dynamic = ["version"]
-requires-python = ">= 3.9"
+requires-python = ">= 3.10"
 description = "A collection of applications using PyEpics"
 readme = "README.md"
 authors = [
@@ -28,11 +28,11 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     ]
 
 dependencies = ['pyepics',
@@ -70,6 +70,6 @@ Tracker = "https://github.com/pyepics/epicsapps/issues"
 
 [project.optional-dependencies]
 dev = ["build", "twine"]
-doc = ["Sphinx", "sphinx-copybutton", "sphinxcontrib-video"]
+doc = ["Sphinx", "sphinx-copybutton", "sphinxcontrib-video", "numpydoc"]
 test = ["pytest", "pytest-cov", "coverage"]
 all = ["epicsapps[dev, doc, test]"]
