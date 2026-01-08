@@ -224,7 +224,32 @@ selected from the form.  Note that values exported in this way may
 have several repeated values, even if the actual value did not change.
 On the other hand, if a PV changes frequently, not all changes in
 values will be recoded in these exported files.  Still, this can be a
-very useful way to move the data to other applications.
+very useful way to move the data to other applications.  A typical output
+file, including both Enumeration and Float PVs, will look like this::
+
+    # Date/Time    Timestamp       ID-E Shutter    Storage Ring Current    ID Energy, ID-E         ID Power, ID-E
+    # Date/Time  Timestamp       13IDA:eps_mbbi27.VAL    S:SRcurrentAI.VAL       S13ID:USID:EnergyM.VAL  S13ID:USID:TotalPowerM.VAL
+    2025-12-16 08:00:00  1765893600.0    Closed   129.904765      2.46108019      4.22418949
+    2025-12-16 08:15:00  1765894500.0    Closed   130.005564      2.46108019      4.22759120
+    2025-12-16 08:30:00  1765895400.0    Closed   130.180338      2.46108019      4.23327366
+    2025-12-16 08:45:00  1765896300.0    Closed   130.080762      2.46108019      4.23046556
+    2025-12-16 09:00:00  1765897200.0    Closed   130.184964      2.46108019      4.23386889
+    2025-12-16 09:15:00  1765898100.0    Closed   129.994104      8.94971323      3.23200022
+    2025-12-16 09:30:00  1765899000.0    Open     129.926539      8.94971323      3.23013551
+    2025-12-16 09:45:00  1765899900.0    Open     130.112397      10.1960759      2.66695878
+    2025-12-16 10:00:00  1765900800.0    Open     130.185984      7.16552758      0.56907716
+    2025-12-16 10:15:00  1765901700.0    Open     130.133898      7.46838784      0.49427512
+    2025-12-16 10:30:00  1765902600.0    Open     129.946302      7.36580181      0.51928621
+    2025-12-16 10:45:00  1765903500.0    Closed   129.989217      7.16656804      0.56922001
+    2025-12-16 11:00:00  1765904400.0    Open     129.963720      7.16656804      0.56920806
+    2025-12-16 11:15:00  1765905300.0    Open     129.977218      9.87252235      2.79740639
+    2025-12-16 11:30:00  1765906200.0    Open     130.022803      9.87252235      2.79841232
+    2025-12-16 11:45:00  1765907100.0    Open     129.916406      9.87252235      2.79589308
+    2025-12-16 12:00:00  1765908000.0    Open     129.977910      6.59007573      0.73187327
+    2025-12-16 12:15:00  1765908900.0    Open     130.219565      6.45314336      0.77698677
+    2025-12-16 12:30:00  1765909800.0    Open     129.971957      6.80136466      0.66950371
+    2025-12-16 12:45:00  1765910700.0    Open     129.908361      6.63644814      0.71800965
+    2025-12-16 13:00:00  1765911600.0    Open     130.005708      6.50784063      0.75745519
 
 
 Collecting PVLogger Data
