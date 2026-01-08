@@ -224,8 +224,10 @@ selected from the form.  Note that values exported in this way may
 have several repeated values, even if the actual value did not change.
 On the other hand, if a PV changes frequently, not all changes in
 values will be recoded in these exported files.  Still, this can be a
-very useful way to move the data to other applications.  A typical output
-file, including both Enumeration and Float PVs, will look like this::
+very useful way to move the data to other applications.
+
+A typical output file including both Enumeration and Float PVs, will look like
+this::
 
     # Date/Time    Timestamp       ID-E Shutter    Storage Ring Current    ID Energy, ID-E         ID Power, ID-E
     # Date/Time  Timestamp       13IDA:eps_mbbi27.VAL    S:SRcurrentAI.VAL       S13ID:USID:EnergyM.VAL  S13ID:USID:TotalPowerM.VAL
@@ -250,6 +252,10 @@ file, including both Enumeration and Float PVs, will look like this::
     2025-12-16 12:30:00  1765909800.0    Open     129.971957      6.80136466      0.66950371
     2025-12-16 12:45:00  1765910700.0    Open     129.908361      6.63644814      0.71800965
     2025-12-16 13:00:00  1765911600.0    Open     130.005708      6.50784063      0.75745519
+
+These output files can be immediately opened in a spread sheet application such
+as Excel.  Note that the time is recorded both with an ISO-standard string and
+the Unix timestamp in seconds since 1970.
 
 
 Collecting PVLogger Data

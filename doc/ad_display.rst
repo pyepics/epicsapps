@@ -27,21 +27,30 @@ an areaDetector would then bring up an image like this:
 
 By default there are buttons to start and stop acquisition, and controls for
 the Trigger Mode, number of images, exposure time, and a few messages about
-acquisition.   It is a basic but useable interface for collecting images with
-the detector.
+acquisition.  It is a basic interface but usable for collecting images with the
+detector.
 
 For the image display, the color lookup table can changed to a handful of
-supplied colortables (taken from matplotlib), and reversing that table is
-allowed.  Contrast levels can be set using a percentage value to clip the
-intensity range. A value of `1` will set the displayed intensity range to be
-from the 1%% to 99%% intensity level of the image data.  This can be a very
-useful option for many areaDetectors either with bad pixels or high dynamic
-range, as the full scale image is often unusable.  The "Options" menu will
-allow to flip and rotate the image.
+supplied colortables (taken from matplotlib), and the table can be reversed.
+The "Options" menu will allow to flip and rotate the image.
 
-The display shows a "thumbnail image" in the lower left, with an ajustable
-size, in pixels.  At startup, this is centered on the image, but clicking the
-mouse on the image will center that portion of the image in the Zoom box.
+
+Contrast levels can be set using a percentage value to clip the intensity
+range. A value of `1` will set the displayed intensity range to go from 0 to 1
+so that 1% of the pixels with the lowest intensities will have a value of 0,
+and 1% of the pixels with the highest intensities will have a value of 1.  That
+is the brightest 1% of pixels will be set to the maximum intensity, regardless
+of the actual value for these pixels. This can be a very useful option for many
+images from area detectors that have a very small number of very bright pixels
+either because there are bad pixels or an extremely high dynamic range.  For
+these, an image that uses as the full scale image is often unusable, and
+finding suitable levels can be time-consuming.  Using a percent-level for
+contrast can be very convenient for such images.
+
+The display shows a "Zoomed image" in the lower left, with an ajustable size,
+in pixels to magnify a portion of the image.  At startup, this is centered on
+the image, but clicking the mouse on the image will center that magnified
+portion of the image in the Zoom box.
 
 Using a configuration file
 ------------------------------
@@ -111,3 +120,5 @@ Each item in the `epics_controls` list has values of
 Finally, if an Epics ScanDB data is setup with `Instruments` and a postgresql
 database, saved positions from one or more instruments can be included in the
 display, for example to move a camera or shutter into saved positions.
+
+..  LocalWords:  areaDetector
