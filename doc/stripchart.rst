@@ -26,7 +26,7 @@ terminal, you can also use::
     epicsapps stripchart
 
 
-On startip, you will be prompted for a Working Directory. If a
+On startup, you will be prompted for a Working Directory. If a
 configuration file `stripchart.yaml` is found there, you will be
 prompted for whether you want to use the PVs listed there.  This
 working folder will also be used as the default folder for and images
