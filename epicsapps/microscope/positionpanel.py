@@ -904,7 +904,7 @@ class PositionPanel(wx.Panel):
 
         self.pos_list.Clear()
         self.positions = positions
-        for name, val in self.positions.items():
+        for name in self.positions:
             self.pos_list.Append(name)
         if cur_sel in self.positions:
             self.pos_list.SetStringSelection(cur_sel)
@@ -929,9 +929,9 @@ class PositionPanel(wx.Panel):
             thispos = self.instdb.get_position(pname, iname)
             image = ''
             notes = {}
-            if thispos.modify_time is None:
-                thispos.modify_time = datatime.isoformat(datetime.now(), sep=' ')
-
+            mtime = datetime.now()
+            if thispos.modify_time is not None:
+                mtime = thispos.modify_time
             if thispos.image is not None:
                 image = thispos.image
             if thispos.notes is not None:
@@ -939,8 +939,8 @@ class PositionPanel(wx.Panel):
             pdat = {}
             for name, val in self.instdb.get_position_values(pname, iname).items():
                 pdat[name] =  val
-            positions[pname] = dict(position=pdat, image=image, notes=notes)
-        # print(positions)
+            positions[pname] = {'position': pdat, 'image': image,
+                                'notes': notes, 'modify_time': mtime}
         self.set_positions(positions)
 
     def SavePositions(self, fname):
