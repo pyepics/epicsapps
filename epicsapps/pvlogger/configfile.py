@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from ..utils import ConfigFile, load_yaml, get_default_configfile
+from ..utils import ConfigFile, load_yaml
 
 # default pvlogger configuration
 _configtext = """

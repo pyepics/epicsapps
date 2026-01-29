@@ -3,7 +3,6 @@
   read log file column file
 """
 import os
-import sys
 import random
 import time
 import tomli
@@ -13,13 +12,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from dateutil import parser as dateparser
 import pytz
-from multiprocessing import Process, Queue, Pool
-from matplotlib.dates import date2num
+from multiprocessing import Process, Queue
 import numpy as np
-from pyshortcuts import debugtimer, gformat, isotime
+from pyshortcuts import debugtimer, gformat
 
 from ..utils.textfile import read_textfile
-from ..utils.math import index_of
 
 from .pvlogger import TIMESTAMP_FILE, motor_fields
 
@@ -175,12 +172,10 @@ def read_logfile(filename):
         raise OSError("File '%s' too big for read_ascii()" % filename)
     text = read_textfile(filename)
     lines = text.split('\n')
-    ncol = None
     return parse_logfile(lines, filename)
 
 def parse_logfile(textlines, filename):
     dt = debugtimer()
-    section = 'HEADER'
     times = []
     vals = []
     cvals = []
@@ -375,7 +370,7 @@ class PVLogFolder:
         self.instruments = conf['instruments']
 
         # determine start and stop time
-        start_time, stop_time = 0, 0
+        stop_time = 0
         tstamp_file = Path(self.folder, TIMESTAMP_FILE)
         if tstamp_file.exists():
             with open(tstamp_file, 'r', encoding='utf-8') as fh:
@@ -521,7 +516,7 @@ class PVLogFolder:
 
         if parse_data is True, the data will be parsed
         """
-        for pvname, pv in self.pvs[pvname].items():
+        for pvname, pv in self.pvs.items():
             mtime = os.stat(pv.logfile).st_mtime
             if mtime > pv.mod_time:
                 pv.text = read_textfile(pv.logfile).split('\n')
@@ -529,7 +524,7 @@ class PVLogFolder:
                 pv.data = None
                 if parse_data:
                     pv.data = parse_logfile(pv.text, pv.logfile)
-        return new
+        return
 
     def read_logfile(self, pvname):
         """read logfile, save file timestamp"""
