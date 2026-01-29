@@ -370,7 +370,7 @@ class PVLogFolder:
         self.instruments = conf['instruments']
 
         # determine start and stop time
-        stop_time = 0
+        start_time, stop_time = 0
         tstamp_file = Path(self.folder, TIMESTAMP_FILE)
         if tstamp_file.exists():
             with open(tstamp_file, 'r', encoding='utf-8') as fh:
