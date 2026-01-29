@@ -61,7 +61,7 @@ PLOT_COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
 EXPORT_TIME_UNITS = ('seconds', 'minutes')
 EXPORT_TIME_STEPS = ('1', '2', '5', '10', '15', '30', '60')
 
-TSV_WILDCARD = 'CSV files (*.csv)|*.csv|Tab-Separted files (*.tsv)|*.tsv|All files (*.*)|*.*'
+TSV_WILDCARD = 'Tab-Separted files (*.tsv)|*.tsv|All files (*.*)|*.*'
 YAML_WILDCARD = 'PVLogger Config Files (*.yaml)|*.yaml|All files (*.*)|*.*'
 
 STY  = wx.GROW|wx.ALL
@@ -366,7 +366,7 @@ class ExportFrame(wx.Frame):
         self.export_datasets = None
 
         fname = fix_filename(pvdescs[0] + '.tsv')
-        fname = FileSave(self, f'Export {len(pvdescs)} PVs to Time CSV File',
+        fname = FileSave(self, f'Export {len(pvdescs)} PVs to Time TSV File',
                          wildcard=TSV_WILDCARD, default_file=fname)
         if fname is None:
             return
