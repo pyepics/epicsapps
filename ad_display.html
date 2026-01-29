@@ -11,9 +11,9 @@
     <link rel="stylesheet" type="text/css" href="_static/bizstyle.css?v=5283bb3d" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     
-    <script src="_static/documentation_options.js?v=3dfe497a"></script>
-    <script src="_static/doctools.js?v=9bcbadda"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/documentation_options.js?v=b916904f"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
     <script src="_static/bizstyle.js"></script>
@@ -72,19 +72,26 @@ an areaDetector would then bring up an image like this:</p>
 <img alt="_images/AD_Display_Basic.png" src="_images/AD_Display_Basic.png" />
 <p>By default there are buttons to start and stop acquisition, and controls for
 the Trigger Mode, number of images, exposure time, and a few messages about
-acquisition.   It is a basic but useable interface for collecting images with
-the detector.</p>
+acquisition.  It is a basic interface but usable for collecting images with the
+detector.</p>
 <p>For the image display, the color lookup table can changed to a handful of
-supplied colortables (taken from matplotlib), and reversing that table is
-allowed.  Contrast levels can be set using a percentage value to clip the
-intensity range. A value of <cite>1</cite> will set the displayed intensity range to be
-from the 1%% to 99%% intensity level of the image data.  This can be a very
-useful option for many areaDetectors either with bad pixels or high dynamic
-range, as the full scale image is often unusable.  The “Options” menu will
-allow to flip and rotate the image.</p>
-<p>The display shows a “thumbnail image” in the lower left, with an ajustable
-size, in pixels.  At startup, this is centered on the image, but clicking the
-mouse on the image will center that portion of the image in the Zoom box.</p>
+supplied colortables (taken from matplotlib), and the table can be reversed.
+The “Options” menu will allow to flip and rotate the image.</p>
+<p>Contrast levels can be set using a percentage value to clip the intensity
+range. A value of <cite>1</cite> will set the displayed intensity range to go from 0 to 1
+so that 1% of the pixels with the lowest intensities will have a value of 0,
+and 1% of the pixels with the highest intensities will have a value of 1.  That
+is the brightest 1% of pixels will be set to the maximum intensity, regardless
+of the actual value for these pixels. This can be a very useful option for many
+images from area detectors that have a very small number of very bright pixels
+either because there are bad pixels or an extremely high dynamic range.  For
+these, an image that uses as the full scale image is often unusable, and
+finding suitable levels can be time-consuming.  Using a percent-level for
+contrast can be very convenient for such images.</p>
+<p>The display shows a “Zoomed image” in the lower left, with an ajustable size,
+in pixels to magnify a portion of the image.  At startup, this is centered on
+the image, but clicking the mouse on the image will center that magnified
+portion of the image in the Zoom box.</p>
 <section id="using-a-configuration-file">
 <h2>Using a configuration file<a class="headerlink" href="#using-a-configuration-file" title="Link to this heading">¶</a></h2>
 <p>A configuration file can be saved from the File menu.  This file can be edited
@@ -218,7 +225,7 @@ display, for example to move a camera or shutter into saved positions.</p>
     </div>
     <div class="footer" role="contentinfo">
     &#169; Copyright 2025, Matthew Newville, The University of Chicago.
-      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.2.3.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.1.0.
     </div>
   </body>
 </html>

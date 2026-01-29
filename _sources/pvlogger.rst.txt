@@ -7,7 +7,7 @@ PV Logger
 ====================================
 
 The Epics PV Logger collects timeseries of a set of PVs into plain
-text data files in a folder, and displays these data back for
+text data files in a folder, and displays these data for
 exploratory analysis.  This is intended for a modest number of PVs
 that are not the primary data being collected during an experiment,
 for a limited time.  The typical use-case could be expressed as
@@ -18,26 +18,28 @@ For such experiments, it is often useful to collect values like
 Storage Ring Current, room temperature, positions and temperature of
 beamline optics and components, and detector settings from existing
 Epics PVs.  This sort of *metadata* cold be put into every data
-fil. While some metadata surely belongs in each data file, items like
-temperature of an upstream mirror or values of beam position monitors
-are really not metadata about the individual data file.  And, while
-there are several larger systems for archiving and retrieving PV
-variables for the whole facility or beamline, these are often meant to
-be facility-wide systems, and not about individual experiments.  Such
-systems may not be easily available after the experiment or away
-from the beamline.
+file. While some metadata surely belongs in particular data files,
+items like temperature of an upstream mirror or values of beam
+position monitors are really not metadata about the individual scan or
+set of images.  And, while there are several larger systems for
+archiving and retrieving PV variables for the whole facility or
+beamline, these are often meant to be facility-wide systems, and not
+about individual experiments.  Importantly, such systems may not be
+easily available after the experiment or away from the beamline, and
+finding data about a selected group of instruments for one experiment
+may not be easily discovered in such larger databases.
 
-We found that metadata stored in data file headers or large databases
-oten makes it hard to investigate how values changed over the course
-of an experiment.  Sometimes, it would be nice to browse and compare a
-few Time Series plots for a handful of PVs and to compare those with
-timestamps of the primary data files.
+We have found that metadata stored in data file headers or large
+databases often makes it hard to investigate how values changed over
+the course of an experiment. That is it would sometimes be convenient
+to browse and compare a few Time Series plots for a handful of PVs and
+to compare those with timestamps of the primary data files.
 
 The PVLogger application aims to fill this gap and is designed to
-collect the meta-data for a particular experiment in a way that can be
-easily digested and investigated during and after the experiment has
-ended. Another way of looking at it is that it expands the
-:ref:`stripchart` application to collect and view many PVs and
+collect the metad-data for a particular experiment in a way that can
+be easily digested and investigated during and long after the
+experiment has ended. Another way of looking at it is that it expands
+the :ref:`stripchart` application to collect and view many PVs and
 preserve and organize the data for future use.
 
 The PVLogger application has two mode of operation: *collecting data*
@@ -53,7 +55,8 @@ data.  Finally, the PVLogger application can be used to read, modify,
 and save existing configuration files, listing which PVs to log, and
 can start the data collection process.
 
-If date and times seem to shown with the wrong timezone, see :ref:`stripchart_timezone`.
+Note: if date and times seem to shown with the wrong timezone, see
+:ref:`stripchart_timezone`.
 
 
 
@@ -68,7 +71,6 @@ of logs in the `Epics Apps` folder, or from the command line with::
 
        epicsapps pvlogview
 
-
 Opening an existing folder will give a main window display like:
 
 .. image:: images/pvlogger_mainview.png
@@ -76,16 +78,18 @@ Opening an existing folder will give a main window display like:
 The Left-hand column will show the list of of PVs that were logged
 into the folder.  The names shown will generally be the "description"
 saved for the PV, sometimes with the PV name if the description is not
-unique. Each has a Check Box that you can use to select many PVs at
-once.  The "Clear Selections" button in the upper left will clear all
-checked PVs.  The right-hand portion has 2 Notebook Tabs, labelled
-"View Log Folder" and "Collect Data" -- we'll discuss the "View Log
-Folder" tab here and the "Collect Data" tab in the next section.
+unique. Each PV shown has a Check Box that can be use to select many
+PVs at once.  The "Clear Selections" button in the upper left will
+clear all selected PVs.  The right-hand portion has 2 Notebook Tabs,
+labelled "View Log Folder" and "Collect Data" -- we'll discuss the
+"View Log Folder" tab here and the "Collect Data" tab in the next
+section.
 
-The "View Log Folder" Panel allows you to select what edata to
-visualize. The folder being read is If Epics Instruments were used in
-the data collection, you can select these and then press "Select these
-PVs" to check each of the PVs in that Instrument.
+The "View Log Folder" Panel allows you to select which data to
+investigate and visualize. The folder being read is shown at the top
+of this panel.  If Epics Instruments have been used in the data
+collection, you can select these and then press "Select these PVs" to
+check each of the PVs in that Instrument.
 
 The central portion of the panel shows up to 4 PVs to be
 displayed. Each of these has a Dropdown list will all the PV
@@ -100,16 +104,17 @@ Below the list of PVs are buttons for what to display.  The "Show PV
 For most PVs, the data will be numerical, and the "Show" buttons will
 display a graph of the time dependence of the PV(s).  Up to 10 Plot
 windows can be used, and you can select which to use for any display
-by selecting "Window 1" through "Window 10".
+by selecting Window 1 through 10.
 
 Below the buttons to plot the logged values, are buttons for "Live
 Plots".  When used at the beamline or from a computer that can connect
 to the live beamline PVs, clicking on the "Live Plot for PV 1" will
 show the corresponding PV in a live :ref:`stripchart` application.
 
-Finally, below the "Live Plot" section, there are Date and Time
-entries to view Event Data.  We'll return to this in the next section
-:ref:`pvlogger_event_data`.
+Two Menu Selections from the "Viewer Options" menu will allow you
+to view "Event Data" and to "Export Data" for several PVs to a
+table-like spreadsheet file.  We'll return to these in the sections
+:ref:`pvlogger_event_data` and :ref:`pvlogger_exporting_data` below.
 
 As an example plot of one PV, with "Storage Ring Current (mA)" as PV
 1, clicking the "Show PV 1" button will show:
@@ -143,20 +148,23 @@ For all plots, there is good interactivity including
 
 For more details, see `wxmplot`_.
 
-.. _pvlogger_event_data:
 
-Event Data: viewing non-numerica data
+.. _pvlogger_nonnumeric_data:
+
+Viewing Non-Numerical and Event Data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Some data is not numerical but text, and so not easily plotted. To be
 clear, PVs with enumerated or multi-bit binary values can be plotted,
-as shown above.  For PV values that is changing strings (or long
-character waveforms) as for file names or recorded commands, PVLogger
-will show a table of values with timestamps:
+as shown above.  For PV values that are text (stings or long character
+waveforms) such as file names, PVLogger will show a table of values
+with timestamps:
 
 .. image:: images/pvlogger_table.png
 
-Reading the history of values can be useful. Selecting a few of these
+Reading this history of values can be useful. But it is even more
+useful to compare the times when these values change with other data,
+either numerical or non-numerical data.  Selecting a few of these
 recorded "Events" and pressing the "Show Selected" Button will put
 vertical lines (of the selected color) on the plot window at the times
 of those values, looking like:
@@ -171,19 +179,83 @@ event will be shown at the top, with the previous selected events
 below that.  Clicking the "Clear Events" button on the plot window
 will clear the table.
 
+For PVs that are Epics Motors several fields besides the main Drive
+Value (see :ref:`pvlogger_motor_data`) will be logged.  These other
+values are not expected to change very often, and so will be displayed
+as Events for the Motor Drive PV in the Event Table.
 
-For PVs that are Epics Motors several fields besides the main Drive Value (see
-:ref:`pvlogger_motor_data`) will be logged.  These other values are
-not expected to change very often, and so will be displayed are Events
-for the Motor Drive PV.
 
+.. _pvlogger_event_data:
 
-In addition to showing showing Events for each PV in a single table
+Viewing Event Data Table
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+In addition to showing showing Events for each PV in its own table
 so that selected events can be placed on a plot, you can also use the
-date and time entries at the bottom of the main viewing panel to create a
-single table showing all events for a set of PVs for a selected time
-range.
+"Viewer Options->Event Data Table" menu to get a single table with the
+"Event Data" for a set of Selected PVs.  The Menu will bring up a form
+that looks like this:
 
+.. image:: images/pvlogger_event_form.png
+
+from which you can select time ranges, and then create a table like
+this:
+
+.. image:: images/pvlogger_event_table.png
+
+which will show the events (including connection events and changes to
+extra Motor fields) for the selected PVs.
+
+
+.. _pvlogger_exporting_data:
+
+Exporting Data to Tab-separated Files
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can export data for several selected PVs to a tab-separated (TSV) file.
+Using "Viewer Options->Export Data" menu will bring up a form like
+
+.. image:: images/pvlogger_export_form.png
+
+
+The data for all of the selected PVs will be recorded at a fixed and
+uniform time period, say every 30 seconds or every 10 minutes, as
+selected from the form.  Note that values exported in this way may
+have several repeated values, even if the actual value did not change.
+On the other hand, if a PV changes frequently, not all changes in
+values will be recoded in these exported files.  Still, this can be a
+very useful way to move the data to other applications.
+
+A typical output file including both Enumeration and Float PVs, will look like
+this::
+
+    # Date/Time    Timestamp       ID-E Shutter    Storage Ring Current    ID Energy, ID-E         ID Power, ID-E
+    # Date/Time  Timestamp       13IDA:eps_mbbi27.VAL    S:SRcurrentAI.VAL       S13ID:USID:EnergyM.VAL  S13ID:USID:TotalPowerM.VAL
+    2025-12-16 08:00:00  1765893600.0    Closed   129.904765      2.46108019      4.22418949
+    2025-12-16 08:15:00  1765894500.0    Closed   130.005564      2.46108019      4.22759120
+    2025-12-16 08:30:00  1765895400.0    Closed   130.180338      2.46108019      4.23327366
+    2025-12-16 08:45:00  1765896300.0    Closed   130.080762      2.46108019      4.23046556
+    2025-12-16 09:00:00  1765897200.0    Closed   130.184964      2.46108019      4.23386889
+    2025-12-16 09:15:00  1765898100.0    Closed   129.994104      8.94971323      3.23200022
+    2025-12-16 09:30:00  1765899000.0    Open     129.926539      8.94971323      3.23013551
+    2025-12-16 09:45:00  1765899900.0    Open     130.112397      10.1960759      2.66695878
+    2025-12-16 10:00:00  1765900800.0    Open     130.185984      7.16552758      0.56907716
+    2025-12-16 10:15:00  1765901700.0    Open     130.133898      7.46838784      0.49427512
+    2025-12-16 10:30:00  1765902600.0    Open     129.946302      7.36580181      0.51928621
+    2025-12-16 10:45:00  1765903500.0    Closed   129.989217      7.16656804      0.56922001
+    2025-12-16 11:00:00  1765904400.0    Open     129.963720      7.16656804      0.56920806
+    2025-12-16 11:15:00  1765905300.0    Open     129.977218      9.87252235      2.79740639
+    2025-12-16 11:30:00  1765906200.0    Open     130.022803      9.87252235      2.79841232
+    2025-12-16 11:45:00  1765907100.0    Open     129.916406      9.87252235      2.79589308
+    2025-12-16 12:00:00  1765908000.0    Open     129.977910      6.59007573      0.73187327
+    2025-12-16 12:15:00  1765908900.0    Open     130.219565      6.45314336      0.77698677
+    2025-12-16 12:30:00  1765909800.0    Open     129.971957      6.80136466      0.66950371
+    2025-12-16 12:45:00  1765910700.0    Open     129.908361      6.63644814      0.71800965
+    2025-12-16 13:00:00  1765911600.0    Open     130.005708      6.50784063      0.75745519
+
+These output files can be immediately opened in a spread sheet application such
+as Excel.  Note that the time is recorded both with an ISO-standard string and
+the Unix timestamp in seconds since 1970.
 
 
 Collecting PVLogger Data
@@ -268,7 +340,7 @@ be recorded.  This value is absolute, not relative, and it is
 referenced to the last reported value so that slow cumulative changes
 are seen, just with fewer intermediate values.
 
-If explictly set (not `<auto>`), PVLogger will try to set the `.MDEL`
+If explicitly set (not `<auto>`), PVLogger will try to set the `.MDEL`
 field of the record. This will limit the number of events sent for
 this PV from the CA server to only those that exceed the last reported
 value by this amount.  If the `.MDEL` field cannot be set (perhaps due
@@ -306,8 +378,8 @@ Using Epics Instruments
 
 If using :ref:`instruments` with a PostgresQL database, and if the
 environmental variable `ESCAN_CREDENTIALS` is set, then any of the
-existing Instruments in the database can be loggged simply by giving
-its name in the `instrumenst` setting of the configuration file.
+existing Instruments in the database can be logged simply by giving
+its name in the `instruments` setting of the configuration file.
 Setting this will log all of the PVs defined for that Instrument.
 
 
@@ -411,7 +483,7 @@ text.
    1739385277.397   178.41167158919   178.4
    1739385278.397   178.62177039127   178.6
 
-with a header showing information anbout the PV and logging, and then
+with a header showing information about the PV and logging, and then
 columns of timestamp (seconds since 1970 as a double precision float,
 to millisecond precision), value, and the string representation of the
 value (here, formatted with the PVs precision).
