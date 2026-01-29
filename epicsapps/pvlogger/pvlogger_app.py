@@ -9,11 +9,10 @@ from threading import Thread
 from pathlib import Path
 from subprocess import Popen
 
-from numpy import array, where, arange
+from numpy import arange
 from functools import partial
-from collections import namedtuple
 from datetime import datetime, timedelta
-from matplotlib.dates import date2num
+
 import yaml
 
 import wx
@@ -25,21 +24,18 @@ import wx.lib.agw.flatnotebook as flat_nb
 import wx.lib.mixins.inspection
 import wx.lib.filebrowsebutton as filebrowse
 
-FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
-
 from epics import get_pv
 
+
+
 from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem,
-                     OkCancel, Popup, FileOpen, SavedParameterDialog,
-                     Font, FloatSpin, HLine, GUIColors, COLORS,
-                     Button, flatnotebook, Choice, FileSave,
-                     FileCheckList, LEFT, RIGHT, pack)
+                     OkCancel, Popup, Font, HLine, COLORS, Button,
+                     flatnotebook, Choice, FileSave, FileCheckList,
+                     LEFT, pack)
 
-from wxmplot.colors import hexcolor
-from pyshortcuts import debugtimer, uname, isotime, fix_filename
-
-from epicsapps.utils import get_pvdesc, normalize_pvname
+from pyshortcuts import uname, isotime, fix_filename
 from epicsapps.stripchart import StripChartFrame
+from wxmplot.colors import hexcolor
 
 from .configfile import PVLoggerConfig
 from .logfile import read_logfolder, TZONE
@@ -48,13 +44,11 @@ from .plotter import PlotFrame
 from .pvtableview import PVTableFrame
 from .eventtableview import EventTableFrame
 
-from ..utils import (SelectWorkdir, get_icon, fit_frame, get_configfolder,
-                     get_default_configfile, load_yaml, read_recents_file,
-                     write_recents_file)
-
+from ..utils import get_icon, fit_frame
 from .pvlogger import get_instruments
 
 DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE
+FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
 PVLOG_FOLDER = 'pvlog'
 CONFIG_FILE = 'pvlog.yaml'
@@ -136,9 +130,9 @@ class InstrumentDataModel(dv.DataViewIndexListModel):
     def SetValueByRow(self, value, row, col):
         name, npvs, use = self.data[row]
         if col == 2:
-            val = bool(value)
+            value = bool(value)
         else:
-            val = str(value)
+            value = str(value)
         self.data[row][col] = value
         return True
 
@@ -184,9 +178,9 @@ class PVDataModel(dv.DataViewIndexListModel):
     def SetValueByRow(self, value, row, col):
         name, desc, detlta, use = self.data[row]
         if col == 3:
-            val = bool(value)
+            value = bool(value)
         else:
-            val = str(value)
+            value = str(value)
         self.data[row][col] = value
         return True
 
@@ -601,12 +595,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.Raise()
 
     def make_live_panel(self):
-        wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
-
-        title = SimpleText(panel, ' View Live PVs ', font=Font(FONTSIZE+2),
-                           size=(550, -1),  colour=COLORS['title'], style=LEFT)
-
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.pack()
         return panel
@@ -1021,7 +1010,6 @@ Matt Newville <newville@cars.uchicago.edu>
         # print("READ CONF ",self.run_config)
 
         wdir = Path(self.run_config.get('datair', '.'))
-        folder = Path(self.run_config.get('folder', 'pvlog'))
 
         self.wids['data_folder'].SetValue(wdir.absolute().as_posix())
 
@@ -1114,10 +1102,7 @@ Matt Newville <newville@cars.uchicago.edu>
         pvlog = self.log_folder.pvs.get(pvname, None)
         if pvlog is None:
             print("cannot show PV ", pvname)
-        else:
-            data = self.get_pvdata(pvname)
 
-        #
         enable_live = self.pvs_connected in ('unknown', True)
         if enable_live:
             if pvname not in self.live_pvs:
@@ -1179,7 +1164,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         if not data.is_numeric or len(data.events) > 0:
             self.show_subframe('pvtable', PVTableFrame,
-                               title=f'Epics PV Logger Table')
+                               title='Epics PV Logger Table')
             self.subframes['pvtable'].add_pvpage(data, pvdesc)
         if data.is_numeric:
             pwin = self.show_plotwin()
@@ -1218,7 +1203,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
             if not data.is_numeric or len(data.events) > 0:
                 self.show_subframe('pvtable', PVTableFrame,
-                            title=f'Epics PV Logger Table')
+                            title='Epics PV Logger Table')
                 self.subframes['pvtable'].add_pvpage(data, pvdesc)
             if data.is_numeric:
                 yaxes += 1
@@ -1313,7 +1298,6 @@ Matt Newville <newville@cars.uchicago.edu>
             return
         self.nb.SetSelection(0)
         self.pvlist.Clear()
-        folder = None
         try:
             folder = read_logfolder(path)
         except ValueError:
@@ -1376,7 +1360,7 @@ is not a valid PV Logger Data Folder""",
                 pass
 
     def read_folder(self):
-        self.write_message(f'reading folder data....')
+        self.write_message('reading folder data....')
         self.log_folder.read_all_logs_text()
         self.write_message('ready')
         self.write_message(' ', panel=1)

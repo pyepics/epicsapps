@@ -1,28 +1,12 @@
-import sys
-import time
 from datetime import datetime
 
 import wx
 import wx.lib.scrolledpanel as scrolled
-import wx.lib.agw.flatnotebook as flat_nb
-import wx.lib.colourselect as csel
 import wx.dataview as dv
 
-from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
-                     FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     HLine, GUIColors, COLORS, Button, flatnotebook,
-                     Choice, FileSave, FileCheckList, LEFT, RIGHT, pack,
-                     FRAMESTYLE, LEFT)
-
-from wxmplot.colors import hexcolor
-
-from .logfile import TZONE
+from wxutils import (LEFT, pack, FRAMESTYLE)
 
 DVSTYLE = dv.DV_SINGLE|dv.DV_VERT_RULES|dv.DV_ROW_LINES
-
-
-FNB_STYLE = flat_nb.FNB_NO_X_BUTTON
-FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 
 COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
           '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')

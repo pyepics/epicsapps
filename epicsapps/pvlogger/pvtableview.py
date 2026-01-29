@@ -1,5 +1,3 @@
-import sys
-import time
 from datetime import datetime
 
 import wx
@@ -8,15 +6,11 @@ import wx.lib.agw.flatnotebook as flat_nb
 import wx.lib.colourselect as csel
 import wx.dataview as dv
 
-from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
-                     FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     HLine, GUIColors, COLORS, Button, flatnotebook,
-                     Choice, FileSave, FileCheckList, LEFT, RIGHT, pack,
-                     FRAMESTYLE, LEFT)
+from wxutils import (GridPanel, SimpleText, HLine, Button,
+                     flatnotebook, Choice, pack, FRAMESTYLE, LEFT)
 
 from wxmplot.colors import hexcolor
 
-from .logfile import TZONE
 
 DVSTYLE = dv.DV_SINGLE|dv.DV_VERT_RULES|dv.DV_ROW_LINES
 FNB_STYLE = flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
@@ -62,7 +56,7 @@ class PVLogDataModel(dv.DataViewIndexListModel):
         self.Reset(len(self.data))
 
     def GetColumnType(self, col):
-        return "bool" if cal == 0 else "string"
+        return "bool" if col == 0 else "string"
 
     def GetValueByRow(self, row, col):
         return self.data[row][col]
@@ -149,9 +143,7 @@ class PVTablePanel(wx.Panel) :
         pack(self, mainsizer)
 
     def onShowSelected(self, event=None):
-        plotwin = self.choose_pwin.GetStringSelection()
         color = hexcolor(self.btn_color.GetColour())
-
         pwin = self.parent.show_plotwin()
 
         pdat = self.pvlogdata

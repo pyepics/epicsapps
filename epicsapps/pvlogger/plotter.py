@@ -8,7 +8,6 @@ import numpy as np
 from functools import partial
 
 import wx
-import wx.dataview as dv
 
 from matplotlib import dates
 
@@ -33,7 +32,8 @@ class DatePlotPanel(PlotPanel):
         """ formatter for date x-data. primitive, and probably needs
         improvement, following matplotlib's date methods.
         """
-        if x < 1: x = 1
+        if x < 1:
+            x = 1
         span = self.axes.xaxis.get_view_interval()
         tmin = max(1.0, span[0])
         tmax = max(2.0, span[1])
@@ -148,11 +148,6 @@ Matt Newville <newville@cars.uchicago.edu>"""
         if self.panel is not None:
             self.panel.set_xylims(limits, axes=axes)
 
-    def clear(self):
-        """clear plot """
-        if self.panel is not None:
-            self.panel.clear()
-
     def unzoom_all(self, event=None):
         """zoom out full data range """
         if self.panel is not None:
@@ -160,7 +155,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def unzoom(self, event=None):
         """zoom out 1 level, or to full data range """
-        if self.panel is not None: self.panel.unzoom(event=event)
+        if self.panel is not None:
+            self.panel.unzoom(event=event)
 
     def set_title(self, s):
         "set plot title"
@@ -169,12 +165,14 @@ Matt Newville <newville@cars.uchicago.edu>"""
 
     def set_xlabel(self, s):
         "set plot xlabel"
-        if self.panel is not None: self.panel.set_xlabel(s)
+        if self.panel is not None:
+            self.panel.set_xlabel(s)
         self.panel.canvas.draw()
 
     def set_ylabel(self, s):
         "set plot xlabel"
-        if self.panel is not None: self.panel.set_ylabel(s)
+        if self.panel is not None:
+            self.panel.set_ylabel(s)
         self.panel.canvas.draw()
 
     def save_figure(self,event=None, transparent=False, dpi=600):
@@ -184,7 +182,8 @@ Matt Newville <newville@cars.uchicago.edu>"""
                                    transparent=transparent, dpi=dpi)
 
     def configure(self,event=None):
-        if self.panel is not None: self.panel.configure(event=event)
+        if self.panel is not None:
+            self.panel.configure(event=event)
 
     ####
     ## create GUI
@@ -557,8 +556,9 @@ Matt Newville <newville@cars.uchicago.edu>"""
         self.panel.canvas.draw()
 
     def clear(self):
-        "clear plot"
-        self.panel.clear()
+        """clear plot """
+        if self.panel is not None:
+            self.panel.clear()
 
     def reset_config(self):
         self.panel.reset_config()
@@ -618,11 +618,9 @@ Matt Newville <newville@cars.uchicago.edu>"""
             return
         if not self.event_table.HasSelection():
             return
-        item = self.event_table.GetSelectedRow()
-        en = self.events[item]
 
         if self.highlight_events is not None:
             self.highlight_events.remove()
 
-        print("would hightlight event ", item)
+        # print("would hightlight event ", item)
         self.draw()
