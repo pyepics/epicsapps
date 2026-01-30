@@ -891,11 +891,22 @@ class MicroscopeFrame(wx.Frame):
 
         zstage = self.ctrlpanel.motors['z']._pvs['VAL']
         start_pos = zstage.get()
+        t_score = []
+        t_std   = []
+        t_pos   = []
         def get_score(pos):
             zpos = start_pos + pos * 0.001
             zstage.put(zpos, wait=True)
-            time.sleep(0.5)
-            return self.imgpanel.sharpness()
+            t_pos.append(zpos)
+            time.sleep(0.2)
+            sharp = []
+            for i in range(5):
+                time.sleep(0.1)
+                sharp.append(self.imgpanel.sharpness())
+            sharp = np.array(sharp)
+            t_score.append(sharp.mean())
+            t_std.append(sharp.std())
+            return sharp.mean()
 
         # step 1: take up to 12 steps of 200 microns
         # while score is still improving
@@ -923,7 +934,7 @@ class MicroscopeFrame(wx.Frame):
                 i=i+1
                 test_pos = sign*step*(i+1)
                 score = get_score(test_pos)
-                # print("Focus ", test_pos, score, best_score)
+                # print(f"FocusA {test_pos=}, {score=:.1f}, {best_score=:.1f}")
                 if score > best_score:
                     best_score = score
                     best_step = test_pos
@@ -933,19 +944,24 @@ class MicroscopeFrame(wx.Frame):
         zstage.put(start_pos + best_step * 0.001, wait=True)
         for i, s in enumerate((128, 64, 32, 16, 8, 4, 2)):
             report(f'AutoFocus: refining focus ({i+1}/7)')
-            score1 = get_score(best_step+sign*s)
-            # print("Focus ", i, best_step+sign*s, score1, best_score)
+            tval = best_step+sign*s
+            score1 = get_score(tval)
+            # print(f"FocusB {i=} {tval=} {score1=:.1f} {best_score=:.1f} ")
             if score1 > best_score:
                 best_score = score1
-                best_step = best_step+sign*s
+                best_step = tval
             else:
-                score2 = get_score(best_step-sign*s)
+                tval = best_step - sign*s
+                score2 = get_score(tval)
                 if score2 > best_score:
                     best_score = score2
-                    best_step = best_step-sign*s
+                    best_step = tval
                     sign = -sign
         zstage.put(start_pos + best_step * 0.001, wait=True)
         report('AutoFocus: done. ')
+        # for z, score, std in zip(t_pos, t_score, t_std):
+        #     print(f"{z:.4f}  {score:.2f}  {std:.2f}")
+            
         try:
             self.imgpanel.SetExposureGain(expdat)
         except:
