@@ -746,7 +746,7 @@ class MicroscopeFrame(wx.Frame):
         fout = open(self.htmllog, 'w')
         fout.write(self.html_header)
         fout.close()
-        self.imagelog = Path(self.imgdir, '_Images.log')
+        self.imagelog = Path(self.imgdir, '_Images.tsv')
         with open(self.imagelog, 'a') as fh:
             fh.write('# Image logs\n######\n')
 
@@ -771,11 +771,11 @@ class MicroscopeFrame(wx.Frame):
             img2file = Path(thispos['image2']).name
             txt.append(f"    <td><a href='{folder}/{img2file:s}'> <img src='{folder}/{img2file:s}' width=350></a></td>")
         txt.append("    <td><table>")
-        for desc, name, value in (('Position', name, ''),
-                                  ('Command',  'Microscope', ''),
-                                  ('Date/Time',  tstamp, ''),
-                                  ('Motor', 'PV Name', 'Value')):
-            txt.append(f"          <tr><td>{desc}:    </td><td>{name:s}</td><td>{value}</td></tr>")
+        for _desc, _name, _value in (('Position', name, ''),
+                                     ('Command',  'Microscope', ''),
+                                     ('Date/Time',  tstamp, ''),
+                                     ('Motor', 'PV Name', 'Value')):
+            txt.append(f"          <tr><td>{_desc}:   </td><td>{_name:s}</td><td>{_value}</td></tr>")
         for pvname, value in thispos['position'].items():
             desc = self.stages.get(pvname).get('desc', pvname)
             txt.append(f"          <tr><td> {desc} </td><td> {pvname} </td><td> {value:f}</td></tr>")
@@ -789,7 +789,7 @@ class MicroscopeFrame(wx.Frame):
         if not self.imagelog.exists():
             title = '\t '.join(['DateTime', 'MicroImage', 'MacroImage', 'PositionName', 'Command'])
             with open(self.imagelog, 'a') as fh:
-                fh.write(f'Image Log\n{title}\n')
+                fh.write(f'# Image Log\n{title}\n')
 
         # plain log file in folder
         txt = '\t '.join([tstamp, imgfile, img2file, name, 'Microscope'])
@@ -798,7 +798,7 @@ class MicroscopeFrame(wx.Frame):
 
     def read_imagelog(self):
         if self.imagelog is None:
-            self.imagelog = Path(self.imgdir, '_Images.log')
+            self.imagelog = Path(self.imgdir, '_Images.tsv')
             if not self.imagelog.exists():
                 with open(self.imagelog, 'a') as fh:
                     fh.write('# Image logs\n#')
@@ -806,17 +806,15 @@ class MicroscopeFrame(wx.Frame):
         with open(self.imagelog, 'r') as fh:
             lines = fh.readlines()
         for line in lines:
-            if line.startswith('#'):
+            if line.startswith('#') or line.startswith('Image Log'):
                 continue
-            parts = line.split(':', maxsplit=1)
+            parts = line.split('\t')
             delim = parts[0].strip()
             words = [w.strip() for w in parts[1].split(delim)]
-            name = words[0]
-            tstamp = words[1]
-            imgfile = words[2]
-            img2file = None
-            if len(words) > 2:
-                img2file = words[3]
+            tstamp = words[0]
+            imgfile = words[1]
+            img2file = words[2]
+            name = words[3]
             images[name] = imgfile, img2file, tstamp
         return images
 
@@ -961,7 +959,7 @@ class MicroscopeFrame(wx.Frame):
         report('AutoFocus: done. ')
         # for z, score, std in zip(t_pos, t_score, t_std):
         #     print(f"{z:.4f}  {score:.2f}  {std:.2f}")
-            
+
         try:
             self.imgpanel.SetExposureGain(expdat)
         except:
