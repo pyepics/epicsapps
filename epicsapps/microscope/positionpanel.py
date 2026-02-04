@@ -30,7 +30,7 @@ def add_button(parent, label, size=(-1, -1), action=None):
 from ..instruments import InstrumentDB
 
 from ..utils import MoveToDialog, normalize_pvname, get_pvdesc
-from .imageframe import ImageDisplayFrame
+from .imageframe import ImageDisplayFrame, PhotoFrame
 
 ALL_EXP  = wx.ALL|wx.EXPAND
 CEN_ALL  = wx.ALIGN_CENTER_HORIZONTAL|wx.ALIGN_CENTER_VERTICAL
@@ -711,22 +711,20 @@ class PositionPanel(wx.Panel):
         imfile = None
         imagelist = self.viewer.read_imagelog()
         if posname in imagelist:
-            imfile, imfile1, tstamp = imagelist[posname]
+            imfile, imfile2, tstamp = imagelist[posname]
 
         # imfile = Path(self.viewer.imgdir, imfile).as_posix()
         if imfile is None:
-            print('no image file found for position ', posname)
+            print('no image file available for position ', posname)
             return
 
         try:
             self.image_display.Raise()
-            self.image_display.Show()
         except:
-            self.image_display = ImageDisplayFrame()
+            self.image_display = PhotoFrame()
             self.image_display.Raise()
-            self.image_display.Show()
-
-        self.image_display.showfile(imfile, title=posname)
+        fname = Path(self.viewer.imgdir, imfile).absolute().as_posix()
+        self.image_display.showfile(fname, title=posname)
 
 
     @EpicsFunction
