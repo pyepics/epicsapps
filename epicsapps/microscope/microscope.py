@@ -803,19 +803,21 @@ class MicroscopeFrame(wx.Frame):
                 with open(self.imagelog, 'a') as fh:
                     fh.write('# Image logs\n#')
         images = {}
+        print("READ IMAGE LOG ", self.imgdir)
         with open(self.imagelog, 'r') as fh:
             lines = fh.readlines()
         for line in lines:
             if line.startswith('#') or line.startswith('Image Log'):
                 continue
-            parts = line.split('\t')
-            delim = parts[0].strip()
-            words = [w.strip() for w in parts[1].split(delim)]
-            tstamp = words[0]
-            imgfile = words[1]
-            img2file = words[2]
-            name = words[3]
-            images[name] = imgfile, img2file, tstamp
+            words = [w.strip() for w in line.split('\t')]
+            try:
+                tstamp = words[0]
+                imgfile = words[1]
+                img2file = words[2]
+                name = words[3]
+                images[name] = imgfile, img2file, tstamp
+            except:
+                pass
         return images
 
     def save_videocam(self):
