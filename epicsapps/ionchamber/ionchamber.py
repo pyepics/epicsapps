@@ -47,7 +47,7 @@ class IonChamber:
     ionc = IonChamber(prefix='XX:IONC:', sleeptime=0.5)
     ionc.run()
     """
-    def __init__(self, prefix='13XRM:IC0:'):
+    def __init__(self, prefix='13XRM:IC0'):
         self.ic = IonChamberDevice(prefix=prefix)
 
         xdb = get_xraydb()
@@ -187,7 +187,7 @@ class IonChamber:
             print("Epics Put failed", flush=True)
         return flux_in, flux_out
 
-    def run(self, sleep_time=0.5, report_time=300):
+    def run(self, sleep_time=0.25, report_time=300):
         last_message = time.time() - 5*report_time
         while True:
             try:
