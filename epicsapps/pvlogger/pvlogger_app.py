@@ -805,7 +805,7 @@ Matt Newville <newville@cars.uchicago.edu>
         return panel
 
     def build_statusbar(self):
-        sbar = self.CreateStatusBar(2, wx.CAPTION)
+        sbar = self.statusbar = self.CreateStatusBar(2, wx.CAPTION)
         sfont = sbar.GetFont()
         sfont.SetWeight(wx.BOLD)
         sfont.SetPointSize(10)
@@ -1337,11 +1337,11 @@ is not a valid PV Logger Data Folder""",
         update_choice(self.wids['pv4'], pvnames)
 
         self.write_message(f'reading data for {len(self.log_folder.pvs)} PVs', panel=1)
-        wx.CallAfter(self.read_folder)
+        self.read_folder()
 
     def onReadDataFile(self, pvname=None, npvs=None, nproc=1, tstart=None, **kws):
-        message = ''
-        if pvname is not None:
+        message = 'Reading data '
+        if pvname not in ('', None):
             message = f"Read data for '{pvname}'"
         if npvs is not None:
             message = f"{message}, {npvs} remaining ({nproc} processes)"
@@ -1349,6 +1349,8 @@ is not a valid PV Logger Data Folder""",
                 message = "Read complete"
         if len(message) > 0:
             self.write_message(message, panel=1)
+
+        wx.CallAfter(self.statusbar.Refresh)
         wx.CallAfter(self.set_event_times)
 
     def set_event_times(self):
@@ -1414,11 +1416,7 @@ is not a valid PV Logger Data Folder""",
 
     def write_message(self, s, panel=0):
         """write a message to the Status Bar"""
-        # try:
         self.SetStatusText(s, panel)
-        #except:
-        #    pass
-
 
     def onAbout(self, event=None):
         dlg = wx.MessageDialog(self, self.about_msg,
