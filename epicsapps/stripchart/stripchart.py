@@ -22,9 +22,9 @@ import wx.lib.colourselect  as csel
 from epics import get_pv
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 
-from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
+from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     FloatCtrl, Choice, YesNo, TextCtrl, pack,
+                     FloatCtrl, Choice, YesNo, pack,
                      Check, LEFT, HLine, Button)
 
 from wxmplot.plotpanel import PlotPanel
@@ -51,14 +51,13 @@ PLOT_COLORS = ('#1f77b4', '#d62728', '#2ca02c', '#ff7f0e', '#9467bd',
                '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf')
 
 # Each recorded value uses 2 doubles (time, value)
-# With NMAX_DEFAULT of 2**23, 8M, each PV will use up to
-# (2**23)*2*8 bytes of data == 128 MB.
+# With NMAX_DEFAULT of 2**22, each PV will use up to
+# (2**22)*2*8 bytes of data == 64 MB.
 #
-# For events at 10 Hz, 2**23 values will hold
-# 233 hours or 9 days, 17  hours worth of data.
-NMAX_DEFAULT = 2**23
-NTRIM_DEFAULT = NMAX_DEFAULT/32
-
+# For events at 10 Hz:
+# 2**22 values would hold 116 hours or 4 days, 20 hours worth of data.
+# 2**20 values would hold  29 hours worth of data.
+NMAX_DEFAULT = 2**22
 
 _configtext = """
 ##   pvname, pvdesc, use_log, ymin, ymax
@@ -176,7 +175,7 @@ Also, these key bindings can be used
     about_msg =  """Epics PV Strip Chart  version 0.1
 Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, parent=None, configfile=None, prompt=False, nmax=None, ntrim=None):
+    def __init__(self, parent=None, configfile=None, prompt=False, nmax=2**20, ntrim=None):
         self.pvdata = {}
         self.pvs = {}
         self.pv_opts = {}
@@ -189,12 +188,12 @@ Matt Newville <newville@cars.uchicago.edu>
         self.force_replot = False
         self.paused = False
         self.nmax = nmax
-        self.ntrim = ntrim
         if self.nmax is None:
-            self.nmax = NMAX_DEFAULT
+            self.nmax = min(NMAX_DEFAULT, nmax)
+        self.ntrim = ntrim
         if self.ntrim is None:
-            self.ntrim = NTRIM_DEFAULT
-        self.timelabel = 'seconds'
+            self.ntrim = self.nmax/32
+        self.timelabel = 'minutes'
 
         self.create_frame(parent)
 
@@ -250,12 +249,10 @@ Matt Newville <newville@cars.uchicago.edu>
         pvpanel = self.build_pvpanel()
         self.build_btnpanel()
         self.build_menus()
-        self.SetBackgroundColour(wx.Colour(*BGCOL))
 
         mainsizer = wx.BoxSizer(wx.VERTICAL)
 
         p1 = wx.Panel(self)
-        p1.SetBackgroundColour(wx.Colour(*BGCOL))
         label = SimpleText(p1, ' Add PV:')
         self.pvname = TextCtrl(p1, '', size=(250, -1), action=self.onPVname)
         self.pvmsg = SimpleText(p1, '  ',  minsize=(75, -1), style=LSTY|wx.EXPAND)
@@ -351,7 +348,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def build_btnpanel(self):
         panel = self.btnpanel = wx.Panel(self, )
-        panel.SetBackgroundColour(wx.Colour(*BGCOL))
 
         btnsizer = wx.BoxSizer(wx.HORIZONTAL)
         self.pause_btn  = wx.Button(panel, label='Pause',  size=(100, 30))
@@ -366,7 +362,7 @@ Matt Newville <newville@cars.uchicago.edu>
                                   action=self.onTimeChoice)
 
         self.time_choice.SetStringSelection(self.timelabel)
-        self.time_ctrl  = FloatCtrl(panel, value=60.0, precision=1,
+        self.time_ctrl  = FloatCtrl(panel, value=5.0, precision=1,
                                     size=(90, -1), action=self.onDisplayTimeVal)
         time_label = SimpleText(panel, '    Time Range: ',  minsize=(85, -1),
                                 style=LSTY)
@@ -545,7 +541,7 @@ Matt Newville <newville@cars.uchicago.edu>
             if ymax in (None, 'None'):
                 ymax = ''
             self.pv_opts[pvname] = (desc, uselog, ymin, ymax)
-        
+
     def onPVcolor(self, event=None, row=None, **kws):
         self.plotpanel.conf.set_trace_color(hexcolor(event.GetValue()),
                                             trace=row)
