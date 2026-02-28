@@ -495,8 +495,8 @@ class PVLogFolder:
 
                 if verbose and len(pvlist) > 0:
                     npend, nstart = 0, 0
-                    for pvname in pvlist:
-                        stat = pdata[pvname]['status']
+                    for pvn in pvlist:
+                        stat = pdata[pvn]['status']
                         if stat.startswith('pend'):
                             npend +=1
                         elif stat.startswith('start'):
