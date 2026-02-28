@@ -85,7 +85,7 @@ FNB_STYLE |= flat_nb.FNB_SMART_TABS|flat_nb.FNB_NO_NAV_BUTTONS
 PLOTOPTS = {'use_dates': True, 'show_legend': True,
             'xlabel': 'time', 'linewidth': 2.5,
             'marker': '+', 'markersize': 2.5,
-            'theme': '<auto>',
+            'theme': 'auto',
             'fullbox': False,
             'drawstyle': 'steps-post',
              'yaxes_tracecolor': True,
