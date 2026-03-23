@@ -28,7 +28,7 @@ from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem, OkCancel, Popup,
                      Check, LEFT, HLine, Button)
 
 from wxmplot.plotpanel import PlotPanel
-from wxmplot.colors import hexcolor
+from wxmplot.colors import hexcolor, use_darkdetect
 
 from ..utils import SelectWorkdir, get_icon, ConfigFile, load_yaml
 
@@ -801,6 +801,7 @@ class StripChartApp(wx.App):
         self.prompt = prompt
         self.debug = debug
         wx.App.__init__(self, **kws)
+        use_darkdetect()
 
     def createApp(self):
         self.frame = StripChartFrame()

@@ -26,6 +26,7 @@ from epics.wx.utils import (add_menu, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from wxutils import (GridPanel, OkCancel, FloatSpin, NumericCombo, MenuItem,
                      Button, SimpleText, FileSave, FileOpen, pack, Popup)
+from wxutils.colorts import use_darkdetect
 
 from pyshortcuts import fix_filename, isotime
 
@@ -1221,6 +1222,7 @@ class MicroscopeApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         self.prompt = prompt
         self.debug = debug
         wx.App.__init__(self, **kws)
+        use_darkdetect()
 
     def createApp(self):
         self.frame = MicroscopeFrame(configfile=self.configfile,

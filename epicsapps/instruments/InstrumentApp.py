@@ -11,6 +11,7 @@ import wx.lib.mixins.inspection
 import wx.adv
 
 from wxutils import FileSave, FileOpen, Popup, pack, MenuItem
+from wxutils.colors import use_darkdetect
 
 from .configfile import InstrumentConfig, CONFFILE, get_default_configfile
 from .instrument import isInstrumentDB, InstrumentDB
@@ -658,6 +659,7 @@ class EpicsInstrumentApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         self.prompt = prompt
         self.configfile = configfile
         wx.App.__init__(self)
+        use_darkdetect()
 
     def OnInit(self):
 

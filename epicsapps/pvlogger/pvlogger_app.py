@@ -35,7 +35,7 @@ from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem,
 
 from pyshortcuts import uname, isotime, fix_filename
 from epicsapps.stripchart import StripChartFrame
-from wxmplot.colors import hexcolor
+from wxmplot.colors import hexcolor, use_darkdetect
 
 from .configfile import PVLoggerConfig
 from .logfile import read_logfolder, TZONE
@@ -1451,6 +1451,7 @@ class PVLoggerApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         self.prompt = prompt
         self.with_inspect = with_inspect
         wx.App.__init__(self, **kws)
+        use_darkdetect()
 
     def createApp(self):
         self.frame = PVLoggerFrame()

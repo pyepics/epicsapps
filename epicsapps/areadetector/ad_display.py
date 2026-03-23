@@ -36,6 +36,8 @@ from wxutils import (GridPanel, SimpleText, MenuItem, OkCancel, Popup,
                      FileOpen, FileSave, SavedParameterDialog, Font, FloatSpin,
                      Button, Choice, TextCtrl, HLine)
 
+from wxutils.colors import use_darkdetect
+
 try:
     from epicsscan.scandb import ScanDB, InstrumentDB
 except ImportError:
@@ -702,6 +704,7 @@ class areaDetectorApp(wx.App, wx.lib.mixins.inspection.InspectionMixin):
         self.configfile = configfile
         self.prompt = prompt
         wx.App.__init__(self, **kws)
+        use_darkdetect()
 
     def createApp(self):
         frame = ADFrame(configfile=self.configfile, prompt=self.prompt)
