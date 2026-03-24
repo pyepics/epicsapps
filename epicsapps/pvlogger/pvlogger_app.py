@@ -32,10 +32,11 @@ from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem,
                      OkCancel, Popup, Font, HLine, COLORS, Button,
                      flatnotebook, Choice, FileSave, FileCheckList,
                      LEFT, pack)
+from wxutils.colors import use_darkdetect
 
 from pyshortcuts import uname, isotime, fix_filename
 from epicsapps.stripchart import StripChartFrame
-from wxmplot.colors import hexcolor, use_darkdetect
+from wxmplot.colors import hexcolor
 
 from .configfile import PVLoggerConfig
 from .logfile import read_logfolder, TZONE

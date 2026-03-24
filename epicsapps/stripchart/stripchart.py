@@ -26,9 +26,11 @@ from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem, OkCancel, Popup,
                      FileOpen, SavedParameterDialog, Font, FloatSpin,
                      FloatCtrl, Choice, YesNo, pack,
                      Check, LEFT, HLine, Button)
+from wxutils.colors import use_darkdetect
 
 from wxmplot.plotpanel import PlotPanel
-from wxmplot.colors import hexcolor, use_darkdetect
+from wxmplot.colors import hexcolor
+
 
 from ..utils import SelectWorkdir, get_icon, ConfigFile, load_yaml
 
