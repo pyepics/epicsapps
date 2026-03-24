@@ -531,9 +531,12 @@ class PVLogger():
         # wait until start time is reached
         tnow = tlast = datetime.now().timestamp()
         while tnow < self.start_timestamp:
-            print(f"waiting until start time: {self.start_datestring}")
-            sleep_time = min(7200, max(0.25, 0.75*(self.start_timestamp-tnow)))
-            print(f" .. will start in {(self.start_timestamp-tnow):.1f} seconds")
+            print(f"waiting until start time: {self.start_datestring}", flush=True)
+            sleep_time = min(3600, max(0.25, 0.75*(self.start_timestamp-tnow)))
+            if sleep_time < 120:
+                print(f"   sleep for {(sleep_time):.1f} seconds", flush=True)
+            else:
+                print(f"   sleep for {(sleep_time/60):.0f} minutes", flush=True)
             try:
                sleep(sleep_time)
             except KeyboardInterrupt:
