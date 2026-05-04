@@ -27,7 +27,6 @@ import wx.lib.filebrowsebutton as filebrowse
 from epics import get_pv
 
 
-
 from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem,
                      OkCancel, Popup, Font, HLine, COLORS, Button,
                      flatnotebook, Choice, FileSave, FileCheckList,
@@ -1349,7 +1348,7 @@ is not a valid PV Logger Data Folder""",
             if npvs == 0:
                 message = "Read complete"
         if len(message) > 0:
-            self.write_message(message, panel=1)
+            wx.CallAfter(partial(self.write_message, message, panel=1))
 
         wx.CallAfter(self.statusbar.Refresh)
         wx.CallAfter(self.set_event_times)
