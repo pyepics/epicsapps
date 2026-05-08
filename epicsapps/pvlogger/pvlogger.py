@@ -277,6 +277,7 @@ class PVLogger():
         self.start_datestring = None
         self.end_timestamp = None
         self.start_timestamp = None
+        self.configread_timestamp = None
         self.escan_credentials = escan_credentials
         self.exc = None
         self.configfile = configfile
@@ -293,16 +294,19 @@ class PVLogger():
 
         # default start time is right now
         now =  datetime.now()
-        start_datestring = now.isoformat(timespec='seconds', sep=' ')
-        self.start_datestring = self.config.get('start_datetime', start_datestring)
+        self.configread_timestamp = now.timestamp()
+
+        self.start_datestring = self.config.get('start_datetime',
+                                                now.isoformat(timespec='seconds', sep=' '))
         self.start_timestamp = dateparser.parse(self.start_datestring).timestamp()
 
         # default end time is 1 week from now
-        month =  (now + timedelta(days=7))
-        end_datestring = month.isoformat(timespec='seconds', sep=' ')
-        self.end_datestring = self.config.get('end_datetime', end_datestring)
+        nextweek =  (now + timedelta(days=7))
+        self.end_datestring = self.config.get('end_datetime',
+                                              nextweek.isoformat(timespec='seconds', sep=' '))
         self.end_timestamp = dateparser.parse(self.end_datestring).timestamp()
 
+        # look for escan credentials
         escan_cred = self.config.get('escan_credentials', None)
         if self.escan_credentials is None and escan_cred is not None:
             self.escan_credentials = escan_cred
@@ -525,14 +529,15 @@ class PVLogger():
         """run, collecting data until the exit signal is given"""
 
         # make sure we have some PVs
-        if self.start_timestamp is None:
-            raise ValueError('must read a configuration  before running PVLogger')
+        if self.start_timestamp is None or self.configread_timestamp is None:
+            self.read_configfile()
+            sleep(SLEEPTIME)
 
         # wait until start time is reached
-        tnow = tlast = datetime.now().timestamp()
+        tnow = datetime.now().timestamp()
         while tnow < self.start_timestamp:
             print(f"waiting until start time: {self.start_datestring}", flush=True)
-            sleep_time = min(3600, max(0.25, 0.75*(self.start_timestamp-tnow)))
+            sleep_time = min(600, max(5.0, 0.5*(self.start_timestamp-tnow)))
             if sleep_time < 120:
                 print(f"   sleep for {(sleep_time):.1f} seconds", flush=True)
             else:
@@ -542,11 +547,12 @@ class PVLogger():
             except KeyboardInterrupt:
                 return
             tnow =  datetime.now().timestamp()
-            if tnow > tlast + 900:
-                tlast = tnow
+            # do we need to re-read config file (in case start time changed!)
+            if tnow > self.configread_timestamp + 600:
                 self.read_configfile()
 
-        if tnow > tlast + 2.0:
+        # we're done waiting, but may want to re-read config file
+        if tnow > self.configread_timestamp + 5.0:
             self.read_configfile()
 
         self.make_pvlog_folder(chdir=True)
@@ -555,9 +561,9 @@ class PVLogger():
 
         last_update = 0
         last_logtime = 0
+        messages = []
         while True:
             try:
-                messages = []
                 sleep(SLEEPTIME)
                 now = time()
             except KeyboardInterrupt:
@@ -565,6 +571,7 @@ class PVLogger():
                 break
             except Exception:
                 self.exc = sys.exception()
+                messages.append(f"{isotime()}: unkknwn error in mainloop {self.exc}")
             try:
                 for pv in self.pvs.values():
                     try:
@@ -579,7 +586,6 @@ class PVLogger():
                 try:
                     save_pvlog_timestamp()
                     if self.look_for_exit_signal():
-                        messages.append(f"{isotime()}: got exit signal")
                         self.finish()
                         break
                 except Exception:
@@ -601,8 +607,10 @@ class PVLogger():
                     with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
                         fh.write("\n".join(messages))
                     last_logtime = now
+                    messages = []
             except Exception:
                 self.exc = sys.exception()
+                messages.append(f"{isotime()}: error while writing run log file")
 
         with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
             fh.write(f"{isotime()}: collection done.\n")
