@@ -432,8 +432,7 @@ class EventDialogFrame(wx.Frame):
         wids['show'] = Button(panel, ' Show Events for Selected PVs ',
                                    action=self.onShowSelectedEvents,   size=(300, -1))
 
-        panel.Add(slabel(panel, ' View Event Table for Selected PVs: ', size=(350, -1)),
-                      dcol=3)
+        panel.Add(slabel(panel, ' View Event Table for Selected PVs: ', width=350), dcol=3)
 
         panel.Add(slabel(panel, ' Start Date/Time: '), dcol=1, newrow=True)
         panel.Add(wids['date1'])
@@ -453,6 +452,8 @@ class EventDialogFrame(wx.Frame):
 
     def set_event_times(self):
         log_folder = self.parent.log_folder
+        if log_folder is None:
+            return
         if log_folder.time_start is not None:
             if abs(self.last_time_start - log_folder.time_start) > 2:
                 t0  = self.last_time_start = log_folder.time_start
@@ -737,8 +738,6 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['plotlive_sel'] = Button(panel, 'LivePlot PVs 1 to 4',
                                    action=self.onPlotLiveSel, **opts)
 
-        # wids['use_inst'] = Button(panel, 'Select These PVs ',
-        # action=self.onSelectInstPVs, **opts)
         opts['size'] = (275, -1)
         opts['choices'] = []
         wids['instruments'] = Choice(panel, action=self.onSelectInstPVs, **opts)
@@ -788,6 +787,12 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['plot_win'])
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
+        panel.Add(slabel(panel, ' Live Plots: '), dcol=1, newrow=True)
+        panel.Add(wids['plotlive_one'])
+        panel.Add(wids['plotlive_sel'], dcol=2)
+        panel.Add((5, 5))
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
+        panel.Add((5, 5))
 
         panel.Add(slabel(panel, ' Instruments: Save Selected PVs as Named Instrument for later use: ', width=550), dcol=5, newrow=True)
         panel.Add(slabel(panel, ' Name Selected PVs: '), dcol=1, newrow=True)
@@ -795,12 +800,6 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(slabel(panel, ' Use Instrument : '), dcol=1, newrow=True)
         panel.Add(wids['instruments'], dcol=2)
         # panel.Add(wids['use_inst'], dcol=1)
-        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
-        panel.Add((5, 5))
-        panel.Add(slabel(panel, ' Live Plots: '), dcol=1, newrow=True)
-        panel.Add(wids['plotlive_one'])
-        panel.Add(wids['plotlive_sel'], dcol=2)
-        panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
 
@@ -1079,12 +1078,20 @@ Matt Newville <newville@cars.uchicago.edu>
             self.wids[f'pv{i+1}'].SetStringSelection('None')
 
         sel = []
+        imin, imax = len(self.pvmap), 0
         for name in self.log_folder.instruments[iname]:
             desc = self.pvmap_r.get(name, None)
             if desc is not None:
                 sel.append(desc)
+                idx = self.pvlist.FindString(desc)
+                imin = min(imin, idx)
+                imax = max(imax, idx)
+
+        self.pvlist.EnsureVisible(max(0, imin-1))
+        self.pvlist.EnsureVisible(min(len(self.pvmap)-1, imax+1))
         self.pvlist.SetCheckedStrings(sel)
         self.onUseSelected()
+
 
     def onSelNone(self, event=None):
         self.pvlist.select_none()
@@ -1118,6 +1125,8 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def get_pvdata(self, pvname):
         """get PVdata, caching until it changes"""
+        if self.log_folder is None:
+            return
         pvlog = self.log_folder.pvs.get(pvname, None)
         if pvlog is None:
             return None
@@ -1403,7 +1412,7 @@ is not a valid PVLogger Data Folder""",
         if pvname in self.pv_desc:
             self.pvlabels[row].SetValue(self.pv_desc[pvname])
         plotpanel = self.get_plotpanel()
-        for i in range(len(self.pvlist)+1):
+        for i in range(len(self.pvmap)+1):
             try:
                 trace = plotpanel.conf.get_mpl_line(row-1)
                 trace.set_data([], [])
