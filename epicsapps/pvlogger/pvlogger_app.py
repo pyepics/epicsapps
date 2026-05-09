@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-Epics PV Logger Application, wx
+Epics PVLogger Application, wxPython
 """
 import sys
 import os
@@ -99,6 +99,9 @@ def update_choice(wid, values, default=0):
         wid.SetStringSelection(cur)
     else:
         wid.SetSelection(default)
+
+def slabel(panel, txt, width=150):
+    return wx.StaticText(panel, label=txt, size=(width, -1))
 
 class InstrumentDataModel(dv.DataViewIndexListModel):
     def __init__(self):
@@ -284,21 +287,16 @@ class ExportFrame(wx.Frame):
         wids['export'] = Button(panel, ' Export Data for Selected PVs ',
                                    action=self.onExportData,   size=(300, -1))
 
+        panel.Add(slabel(panel, ' Export Data for Selected PVs at a fixed time period: ', width=350), dcol=3)
 
-        def slabel(txt, size=(175, -1)):
-            return wx.StaticText(panel, label=txt, size=size)
-
-        panel.Add(slabel(' Export Data for Selected PVs at a fixed time period: ', size=(350, -1)),
-                      dcol=3)
-
-        panel.Add(slabel(' Start Date/Time: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Start Date/Time: '), dcol=1, newrow=True)
         panel.Add(wids['date1'])
         panel.Add(wids['time1'])
-        panel.Add(slabel(' Stop Date/Time: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Stop Date/Time: '), dcol=1, newrow=True)
         panel.Add(wids['date2'])
         panel.Add(wids['time2'])
 
-        panel.Add(slabel(' Time Step: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Time Step: '), dcol=1, newrow=True)
         panel.Add(wids['tstep'])
         panel.Add(wids['tunits'])
         panel.Add(wids['export'], dcol=2, newrow=True)
@@ -434,16 +432,13 @@ class EventDialogFrame(wx.Frame):
         wids['show'] = Button(panel, ' Show Events for Selected PVs ',
                                    action=self.onShowSelectedEvents,   size=(300, -1))
 
-        def slabel(txt, size=(175, -1)):
-            return wx.StaticText(panel, label=txt, size=size)
-
-        panel.Add(slabel(' View Event Table for Selected PVs: ', size=(350, -1)),
+        panel.Add(slabel(panel, ' View Event Table for Selected PVs: ', size=(350, -1)),
                       dcol=3)
 
-        panel.Add(slabel(' Start Date/Time: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Start Date/Time: '), dcol=1, newrow=True)
         panel.Add(wids['date1'])
         panel.Add(wids['time1'])
-        panel.Add(slabel(' Stop Date/Time: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Stop Date/Time: '), dcol=1, newrow=True)
         panel.Add(wids['date2'])
         panel.Add(wids['time2'])
         panel.Add(wids['show'], dcol=2, newrow=True)
@@ -511,18 +506,17 @@ class EventDialogFrame(wx.Frame):
 
 
 
-
 class PVLoggerFrame(wx.Frame):
     default_colors = ((0, 0, 0), (0, 0, 255), (255, 0, 0),
                       (0, 0, 0), (255, 0, 255), (0, 125, 0))
 
-    about_msg =  """Epics PV Logger
+    about_msg =  """Epics PVLogger
 Matt Newville <newville@cars.uchicago.edu>
 """
 
     def __init__(self, configfile=None):
         self.parent = None
-        wx.Frame.__init__(self, None, -1, 'Epics PV Logger',
+        wx.Frame.__init__(self, None, -1, 'Epics PVLogger',
                           style=FRAME_STYLE, size=(1100, 650))
 
         self.plot_windows = []
@@ -576,7 +570,8 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.nb = flatnotebook(rpanel, {}, style=FNB_STYLE)
         self.nb.AddPage(self.make_view_panel(), ' View Data from Log Folder ', True)
-        self.nb.AddPage(self.make_run_panel(),  ' Configure Data Collection ', True)
+        self.nb.AddPage(self.make_curr_panel(), ' Current Data Collection ', True)
+        self.nb.AddPage(self.make_conf_panel(), ' Edit Configuration File ', True)
         self.nb.SetSelection(0)
 
         try:
@@ -587,26 +582,43 @@ Matt Newville <newville@cars.uchicago.edu>
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add((5, 5), 0, LEFT, 3)
         sizer.Add(self.nb, 0, LEFT, 3)
-        sizer.Add((5, 5), 0, LEFT, 3)
+        # sizer.Add((5, 5), 0, LEFT, 3)
         pack(rpanel, sizer)
         rpanel.SetupScrolling()
 
         splitter.SplitVertically(lpanel, rpanel, 1)
         self.Raise()
 
-    def make_live_panel(self):
+    def make_conf_panel(self):
+        """edit config file"""
+        wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
+
+        title = SimpleText(panel, ' Configure PVLogger Collection', font=Font(FONTSIZE+2),
+                           size=(550, -1),  colour=COLORS['title'], style=LEFT)
+
+        wids['conf_work_folder'] = SimpleText(panel, ' <no working folder selected> ',
+                                         font=Font(FONTSIZE+1),
+                                         size=(500, -1), style=LEFT)
+        panel.Add(title, dcol=6, newrow=True)
+        panel.Add(wids['conf_work_folder'], dcol=6, newrow=True)
+
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.pack()
         return panel
 
-
-    def make_run_panel(self):
+    def make_curr_panel(self):
+        """modify current collection"""
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
 
-        title = SimpleText(panel, ' PV Logger Collection', font=Font(FONTSIZE+2),
+        title = SimpleText(panel, ' Configure Current PVLogger Collection', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
+
+
+        wids['curr_work_folder'] = SimpleText(panel, ' <no working folder selected> ',
+                                         font=Font(FONTSIZE+1),
+                                         size=(550, -1), style=LEFT)
 
         btn_data = Button(panel, 'Browse', size=(125, -1), style=wx.ALIGN_LEFT,
                           action=self.onSelectDataFolder)
@@ -668,19 +680,16 @@ Matt Newville <newville@cars.uchicago.edu>
             col.Sortable = False
             col.Alignment = wx.ALIGN_LEFT
 
-        def slabel(txt, size=(175, -1)):
-            return wx.StaticText(panel, label=txt, size=size)
-
         panel.Add((5, 5))
         panel.Add(title, style=LEFT, dcol=5, newrow=True)
-        panel.Add(slabel(' Config File: ', size=(150, -1)), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Config File: ', width=150), dcol=1, newrow=True)
         panel.Add(wids['config_file'], dcol=3)
         panel.Add((5, 5))
-        panel.Add(slabel(' Data Folder: ', size=(150, -1)), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Data Folder: ', width=150), dcol=1, newrow=True)
         panel.Add(wids['data_folder'], dcol=2)
         panel.Add(btn_data, dcol=1, newrow=False)
         panel.Add((5, 5))
-        panel.Add(slabel(' End Date&Time: ', size=(150, -1)), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' End Date&Time: ', width=150), dcol=1, newrow=True)
         panel.Add(wids['end_date'])
         panel.Add(wids['end_time'])
 
@@ -690,12 +699,12 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(' PVs to Log: ', size=(200, -1)), dcol=3, newrow=True)
+        panel.Add(slabel(panel, ' PVs to Log: ', width=200), dcol=3, newrow=True)
         panel.Add(wids['pv_table'], dcol=5, newrow=True)
         panel.Add((5, 5))
         panel.Add(btn_more, dcol=3, newrow=True)
 
-        panel.Add(slabel(' Instruments to Log: ', size=(200, -1)), dcol=3, newrow=True)
+        panel.Add(slabel(panel, ' Instruments to Log: ', width=200), dcol=3, newrow=True)
         panel.Add(wids['inst_table'], dcol=6, newrow=True)
 
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
@@ -706,42 +715,37 @@ Matt Newville <newville@cars.uchicago.edu>
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
 
-        def slabel(txt, size=(175, -1)):
-            return wx.StaticText(panel, label=txt, size=size)
 
         wids = self.wids
-        title = SimpleText(panel, ' PV Logger Viewer', font=Font(FONTSIZE+2),
+        title = SimpleText(panel, ' PVLogger Viewer', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
 
-        wids['work_folder'] = SimpleText(panel, ' <no working folder selected> ',
+        wids['view_work_folder'] = SimpleText(panel, ' <no working folder selected> ',
                                          font=Font(FONTSIZE+1),
                                          size=(550, -1), style=LEFT)
 
 
         self.last_plot_type = 'one'
-        opts = {'size': (175, -1)}
+        opts = {'size': (150, -1)}
         wids['plotone'] = Button(panel, 'Show PV 1 ', action=self.onPlotOne, **opts)
         wids['plotsel'] = Button(panel, 'Show PVs 1 to 4', action=self.onPlotSel, **opts)
 
         wids['plot_win']  = Choice(panel, choices=PlotWindowChoices, size=(75, -1))
         wids['plot_win'].SetStringSelection('1')
         wids['plotlive_one'] = Button(panel, 'LivePlot PV 1',
-                                   action=self.onPlotLiveOne,
-                                   size=(175, -1))
-
+                                   action=self.onPlotLiveOne, **opts)
         wids['plotlive_sel'] = Button(panel, 'LivePlot PVs 1 to 4',
-                                   action=self.onPlotLiveSel,
-                                   size=(175, -1))
+                                   action=self.onPlotLiveSel, **opts)
 
-
-        wids['use_inst'] = Button(panel, 'Select These PVs ',
-                                  action=self.onSelectInstPVs, **opts)
-        opts['size'] = (350, -1)
+        # wids['use_inst'] = Button(panel, 'Select These PVs ',
+        # action=self.onSelectInstPVs, **opts)
+        opts['size'] = (275, -1)
         opts['choices'] = []
-        wids['instruments'] = Choice(panel, action=self.onSelectInst, **opts)
+        wids['instruments'] = Choice(panel, action=self.onSelectInstPVs, **opts)
 
         wids['save_inst'] = TextCtrl(panel, '', action=self.onSaveInst,
                                      size=(250, -1), act_on_losefocus=False)
+
 
         for i in range(4):
             wids[f'pv{i+1}'] = Choice(panel, **opts)
@@ -753,50 +757,49 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel.Add((5, 5))
         panel.Add(title, style=LEFT, dcol=6, newrow=True)
-        panel.Add(slabel(' Folder: '), dcol=1, newrow=True)
-        panel.Add(wids['work_folder'], dcol=6)
+        panel.Add(slabel(panel, ' Folder: '), dcol=1, newrow=True)
+        panel.Add(wids['view_work_folder'], dcol=6)
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
 
-        panel.Add(slabel(' Instruments: '), dcol=1, newrow=True)
-        panel.Add(wids['instruments'], dcol=2)
-        panel.Add(wids['use_inst'], dcol=2)
-
-        panel.Add((5, 5))
-        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
-        panel.Add((5, 5))
-        # panel.Add(slabel(' Select PVs: '), dcol=1, newrow=True)
+        # panel.Add(slabel(panel, ' Select PVs: '), dcol=1, newrow=True)
         # panel.Add(wids['use_sel'], dcol=1)
         # panel.Add(wids['clear_sel'], dcol=1)
 
-        panel.Add(slabel(' PV 1: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' PV 1: '), dcol=1, newrow=True)
         panel.Add(wids['pv1'], dcol=2)
         panel.Add(wids['col1'])
-        panel.Add(slabel(' PV 2: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' PV 2: '), dcol=1, newrow=True)
         panel.Add(wids['pv2'], dcol=2)
         panel.Add(wids['col2'])
-        panel.Add(slabel(' PV 3: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' PV 3: '), dcol=1, newrow=True)
         panel.Add(wids['pv3'], dcol=2)
         panel.Add(wids['col3'])
-        panel.Add(slabel(' PV 4: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' PV 4: '), dcol=1, newrow=True)
         panel.Add(wids['pv4'], dcol=2)
         panel.Add(wids['col4'])
 
         panel.Add((5, 5))
-        panel.Add(slabel(' Plot/Show Table: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Plot/Show Table: '), dcol=1, newrow=True)
         panel.Add(wids['plotone'], dcol=1)
-        panel.Add(wids['plotsel'], dcol=1)
-        panel.Add(slabel(' Window:', size=(75, -1)))
+        panel.Add(wids['plotsel'], dcol=2)
+        panel.Add(slabel(panel, ' Window:', width=75))
         panel.Add(wids['plot_win'])
-
-        panel.Add(slabel(' Save PVs as Instrument: '), dcol=1, newrow=True)
-        panel.Add(wids['save_inst'], dcol=2)
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(' Live Plots: '), dcol=1, newrow=True)
+
+        panel.Add(slabel(panel, ' Instruments: Save Selected PVs as Named Instrument for later use: ', width=550), dcol=5, newrow=True)
+        panel.Add(slabel(panel, ' Name Selected PVs: '), dcol=1, newrow=True)
+        panel.Add(wids['save_inst'], dcol=2)
+        panel.Add(slabel(panel, ' Use Instrument : '), dcol=1, newrow=True)
+        panel.Add(wids['instruments'], dcol=2)
+        # panel.Add(wids['use_inst'], dcol=1)
+        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
+        panel.Add((5, 5))
+        panel.Add(slabel(panel, ' Live Plots: '), dcol=1, newrow=True)
         panel.Add(wids['plotlive_one'])
-        panel.Add(wids['plotlive_sel'])
+        panel.Add(wids['plotlive_sel'], dcol=2)
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
@@ -831,7 +834,7 @@ Matt Newville <newville@cars.uchicago.edu>
     def show_plotwin(self, **opts):
         wid = self.wids['plot_win'].GetStringSelection()
         name = f'Window {wid}'
-        opts['title'] = f'Epics PV Logger Plot {name}'
+        opts['title'] = f'Epics PVLogger Plot {name}'
         return self.show_subframe(name, PlotFrame, **opts)
 
 
@@ -969,8 +972,6 @@ Matt Newville <newville@cars.uchicago.edu>
             w = f'pv{1+i}'
             self.wids[w].SetStringSelection('None')
 
-    def onSelectInst(self, event=None):
-        pass
 
     def onSelectDataFolder(self, event=None):
         if self.collect_folder is None:
@@ -1164,7 +1165,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         if not data.is_numeric or len(data.events) > 0:
             self.show_subframe('pvtable', PVTableFrame,
-                               title='Epics PV Logger Table')
+                               title='Epics PVLogger Table')
             self.subframes['pvtable'].add_pvpage(data, pvdesc)
         if data.is_numeric:
             pwin = self.show_plotwin()
@@ -1203,7 +1204,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
             if not data.is_numeric or len(data.events) > 0:
                 self.show_subframe('pvtable', PVTableFrame,
-                            title='Epics PV Logger Table')
+                            title='Epics PVLogger Table')
                 self.subframes['pvtable'].add_pvpage(data, pvdesc)
             if data.is_numeric:
                 yaxes += 1
@@ -1286,7 +1287,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def onLoadFolder(self, event=None):
         path = Path(os.curdir).absolute().as_posix()
-        dlg = wx.DirDialog(self, 'Select PV Logger Data Folder',
+        dlg = wx.DirDialog(self, 'Select PVLogger Data Folder',
                        style=wx.DD_DEFAULT_STYLE|wx.DD_CHANGE_DIR)
         dlg.SetPath(path)
         if  dlg.ShowModal() == wx.ID_OK:
@@ -1305,15 +1306,17 @@ Matt Newville <newville@cars.uchicago.edu>
         if folder is None:
             Popup(self, f"""The Folder:
     {path.as_posix()}
-is not a valid PV Logger Data Folder""",
-          "Not a valid PV Logger Data Folder")
+is not a valid PVLogger Data Folder""",
+          "Not a valid PVLogger Data Folder")
         else:
             self.use_logfolder(folder)
 
     def use_logfolder(self, folder):
         self.log_folder = folder
         self.log_folder.on_read = self.onReadDataFile
-        self.wids['work_folder'].SetLabel(folder.fullpath)
+        self.wids['view_work_folder'].SetLabel(folder.fullpath)
+        self.wids['curr_work_folder'].SetLabel(folder.fullpath)
+        self.wids['conf_work_folder'].SetLabel(folder.fullpath)
         os.chdir(folder.fullpath)
         self.pvmap = {}
         self.pvmap_r = {}
@@ -1420,13 +1423,13 @@ is not a valid PV Logger Data Folder""",
 
     def onAbout(self, event=None):
         dlg = wx.MessageDialog(self, self.about_msg,
-                               "About PV Logger",
+                               "About PVLogger",
                                wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
         dlg.Destroy()
 
     def onHelp(self, event=None):
-        dlg = wx.MessageDialog(self, self.help_msg, "PV Logger",
+        dlg = wx.MessageDialog(self, self.help_msg, "PVLogger",
                                wx.OK | wx.ICON_INFORMATION)
         dlg.ShowModal()
         dlg.Destroy()
