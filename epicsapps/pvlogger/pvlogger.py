@@ -68,6 +68,7 @@ def save_pvlog_timestamp(pvlog_folder):
     save timestamp to _PVLOG_timestamp.txt to show when logger last ran
     """
     macid, pid = get_machineid_process()
+    # print(f"SAVE PVLOG TS {pvlog_folder=}", flush=True)
     with open(Path(pvlog_folder, TIMESTAMP_FILE), 'w', encoding='utf-8') as fh:
         fh.write(f'{int(time())} {macid} {pid} 0 0 0 \n\n')
 
@@ -83,9 +84,10 @@ def check_pvlog_timestamp(pvlog_folder, timestamp_only=False):
     mid, pid = get_machineid_process()
     _ts, _mid, _pid = 0, 'none', 0
     line, words = '', []
-    if Path(pvlog_folder, TIMESTAMP_FILE).exists():
+    ts_path = Path(pvlog_folder, TIMESTAMP_FILE)
+    if ts_path.exists():
         line = ''
-        with open(pvlog_folder, TIMESTAMP_FILE, 'r', encoding='utf-8') as fh:
+        with open(ts_path, 'r', encoding='utf-8') as fh:
             line = fh.readlines()[0]
     else:
         return True
@@ -96,7 +98,7 @@ def check_pvlog_timestamp(pvlog_folder, timestamp_only=False):
         _ts = int(words[0])
         _mid = words[1]
         _pid = int(words[2])
-    recently_updated = (time() - _ts) < (2*UPDATETIME)
+    recently_updated = (time() - _ts) < (3*UPDATETIME)
     if timestamp_only:
         return recently_updated
     return (_mid == mid and _pid == pid and recently_updated)
@@ -297,6 +299,7 @@ class PVLogger():
         self.datadir = self.config.get('datadir', '.')
         if len(self.datadir) < 1 or self.datadir == '.':
             self.datadir = os.getcwd()
+        self.datadir = Path(self.datadir).absolute()
         self.folder = Path(self.config.get('folder', 'pvlog'))
         self.pvlog_folder =  Path(self.datadir, self.folder)
         # default start time is right now
@@ -355,6 +358,7 @@ class PVLogger():
                 _pvnames.append(name)
                 _pvdesc.append(desc)
                 _pvmdel.append(mdel)
+        sourcefile = self.config.get('sourcefile', None)
         inst_names = self.config.get('instruments', [])
         escan_cred = os.environ.get('ESCAN_CREDENTIALS', self.escan_credentials)
         if escan_cred is None:
@@ -391,10 +395,12 @@ class PVLogger():
         out = {'datadir': self.datadir.as_posix(),
                'folder': self.folder.as_posix(),
                'start_datetime': self.start_datestring,
-               'end_datetime': self.end_datestring,
-               'instruments': inst_map,
-               'motors': [],
-               'pvs': []}
+               'end_datetime': self.end_datestring}
+        if sourcefile is not None:
+            out['sourcefile'] = sourcefile
+        out['instruments'] = inst_map
+        out['motors'] = []
+        out['pvs'] = []
 
         for ipv, pvname in enumerate(_pvnames):
             desc = _pvdesc[ipv]
@@ -496,6 +502,7 @@ class PVLogger():
                         (time() > self.end_timestamp))
 
         stopfile = Path(self.pvlog_folder, STOP_FILE)
+        logstat = check_pvlog_timestamp(self.pvlog_folder, timestamp_only=False)
         if stopfile.exists():
             exit_request = True
             try:
@@ -521,7 +528,7 @@ class PVLogger():
         for pv in self.pvs.values():
             pv.write_data()
             pv.flush()
-        with open(Path(pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
+        with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
             fh.write(f'{isotime()}: finishing\n')
 
     def on_exit(self):
@@ -542,13 +549,19 @@ class PVLogger():
 
         # wait until start time is reached
         tnow = datetime.now().timestamp()
-        while tnow < self.start_timestamp:
-            print(f"waiting until start time: {self.start_datestring}", flush=True)
-            sleep_time = min(600, max(5.0, 0.5*(self.start_timestamp-tnow)))
-            if sleep_time < 120:
-                print(f"   sleep for {(sleep_time):.1f} seconds", flush=True)
+        waiting = True
+        while waiting:
+            sleep_time = int(min(1800., max(12, 0.8*(self.start_timestamp-tnow))))
+            if sleep_time < 15:
+                stime =  f"collection starting soon"
+                waiting = False
+            elif sleep_time < 300:
+                stime = f"sleeping for {sleep_time} seconds"
             else:
-                print(f"   sleep for {(sleep_time/60):.0f} minutes", flush=True)
+                stime = f"sleeping for {(sleep_time/60.0):.0f} minutes"
+
+            print(f"{isotime()}: start time is {self.start_datestring}, {stime}",
+                  flush=True)
             try:
                sleep(sleep_time)
             except KeyboardInterrupt:
@@ -557,6 +570,7 @@ class PVLogger():
             # do we need to re-read config file (in case start time changed!)
             if tnow > self.configread_timestamp + 600:
                 self.read_configfile()
+            waiting = waiting and (tnow < self.start_timestamp)
 
         # we're done waiting, but may want to re-read config file
         if tnow > self.configread_timestamp + 5.0:
@@ -591,15 +605,15 @@ class PVLogger():
                 self.exc = sys.exception()
 
             if now > last_update + UPDATETIME:
+                save_pvlog_timestamp(self.pvlog_folder)
                 try:
-                    save_pvlog_timestamp(self.pvlog_folder)
                     if self.look_for_exit_signal():
                         self.finish()
-                        print(f"{isotime()}: exit signal seen, finishing ")
+                        print(f"{isotime()}: exit signal seen ")
                         break
                 except Exception:
                     self.exc = sys.exception()
-                    messages.append(f"{isotime()}: error saving timestamps/looking for exit")
+                    messages.append(f"{isotime()}: error looking for exit")
                 try:
                     self.look_for_new_pvs()
                     last_update = now
