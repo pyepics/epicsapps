@@ -63,25 +63,29 @@ def get_instruments(instrument_names=None, escan_credentials=None):
                     insts[iname].append(pvname)
     return insts
 
-def save_pvlog_timestamp():
+def save_pvlog_timestamp(pvlog_folder):
     """
     save timestamp to _PVLOG_timestamp.txt to show when logger last ran
     """
     macid, pid = get_machineid_process()
-    with open(TIMESTAMP_FILE, 'w', encoding='utf-8') as fh:
+    with open(Path(pvlog_folder, TIMESTAMP_FILE), 'w', encoding='utf-8') as fh:
         fh.write(f'{int(time())} {macid} {pid} 0 0 0 \n\n')
 
-def check_pvlog_timestamp():
+def check_pvlog_timestamp(pvlog_folder, timestamp_only=False):
     """
-    read timestamp file, determine if this process is the one that
-    wrote the file, and so the controlling process
+    read timestamp file from a pvlog folder.
+
+    wdth timestamp_only = True,
+        return whether the folder as been updated recently, so probably "currently running".
+    with timestamp_only = False:
+        return if this process is the one that wrote the file, and so the controlling process
     """
     mid, pid = get_machineid_process()
     _ts, _mid, _pid = 0, 'none', 0
     line, words = '', []
-    if Path(TIMESTAMP_FILE).exists():
+    if Path(pvlog_folder, TIMESTAMP_FILE).exists():
         line = ''
-        with open(TIMESTAMP_FILE, 'r', encoding='utf-8') as fh:
+        with open(pvlog_folder, TIMESTAMP_FILE, 'r', encoding='utf-8') as fh:
             line = fh.readlines()[0]
     else:
         return True
@@ -92,7 +96,10 @@ def check_pvlog_timestamp():
         _ts = int(words[0])
         _mid = words[1]
         _pid = int(words[2])
-    return (_mid == mid and _pid == pid and (time() - _ts) < (2*UPDATETIME))
+    recently_updated = (time() - _ts) < (2*UPDATETIME)
+    if timestamp_only:
+        return recently_updated
+    return (_mid == mid and _pid == pid and recently_updated)
 
 
 class LoggedPV():
@@ -287,11 +294,11 @@ class PVLogger():
     def read_configfile(self):
         self.config = PVLoggerConfig(self.configfile).config
 
-        self.datadir = self.config.get('datadir', '')
+        self.datadir = self.config.get('datadir', '.')
         if len(self.datadir) < 1 or self.datadir == '.':
             self.datadir = os.getcwd()
         self.folder = Path(self.config.get('folder', 'pvlog'))
-
+        self.pvlog_folder =  Path(self.datadir, self.folder)
         # default start time is right now
         now =  datetime.now()
         self.configread_timestamp = now.timestamp()
@@ -312,15 +319,14 @@ class PVLogger():
             self.escan_credentials = escan_cred
 
     def make_pvlog_folder(self, chdir=True):
-        self.datadir = Path(self.datadir)
-        pvlog_folder = Path(self.datadir, self.folder).absolute()
+        pvlog_folder = self.pvlog_folder
         pvlog_folder.mkdir(mode=0o755, parents=False, exist_ok=True)
 
         tfile = Path(pvlog_folder, TIMESTAMP_FILE)
         cfile = Path(pvlog_folder, '_PVLOG.yaml')
         lfile = Path(pvlog_folder, '_PVLOG_filelist.txt')
         if tfile.exists() and cfile.exists() and lfile.exists():
-            raise ValueError(f"PVLOG folder '{pvlog_folder}' appears to be in use")
+            raise ValueError(f"PVLOG folder '{pvlog_folder.absolute()}' appears to be in use")
         if chdir:
             os.chdir(pvlog_folder)
 
@@ -412,14 +418,14 @@ class PVLogger():
                     self.add_pv(f"{prefix}{mfield}",
                                 desc=f"{lpv.desc} {mfield}",  mdel=None)
 
-        with open('_PVLOG.yaml', 'w', encoding='utf-8') as fh:
+        with open(Path(self.pvlog_folder, '_PVLOG.yaml'), 'w', encoding='utf-8') as fh:
             yaml.safe_dump(out, fh, default_flow_style=False, sort_keys=False)
 
         pfiles = ["# PV Name                                |    Log File "]
         for lpv in self.pvs.values():
             pfiles.append(f"{lpv.pvname:40s} | {lpv.filename:40s}")
         pfiles.append("")
-        with open('_PVLOG_filelist.txt', 'w', encoding='utf-8') as fh:
+        with open(Path(self.pvlog_folder, '_PVLOG_filelist.txt'), 'w', encoding='utf-8') as fh:
             fh.write('\n'.join(pfiles))
         # count connected PVs
         sleep(0.1)
@@ -428,7 +434,7 @@ class PVLogger():
         for loggedpv in self.pvs.values():
             if loggedpv.pv.connected:
                 nconn += 1
-        with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+        with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
             fh.write(f'{isotime()}: Connected to {nconn} of {ntotal} Logged PVs\n')
 
 
@@ -454,7 +460,7 @@ class PVLogger():
         """
         reqfile = Path("_PVLOG_requests.yaml")
         if reqfile.exists():
-            with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+            with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
                 fh.write(f'{isotime()}: read _PVLOG_requests.yaml\n')
 
             rconfig = PVLoggerConfig(reqfile.as_posix())
@@ -488,15 +494,16 @@ class PVLogger():
         """
         exit_request = ((self.end_timestamp > 65536) and
                         (time() > self.end_timestamp))
-        stopfile = Path(STOP_FILE)
+
+        stopfile = Path(self.pvlog_folder, STOP_FILE)
         if stopfile.exists():
             exit_request = True
             try:
                 stopfile.unlink(missing_ok=True)
             except OSError:
                 pass
-        if not check_pvlog_timestamp():
-            with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+        if not check_pvlog_timestamp(self.pvlog_folder, timestamp_only=False):
+            with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
                 macid, pid = get_machineid_process()
                 fh.write(f'{isotime()}: not logging process! mac={macid}, pid={pid}\n')
             exit_request = True
@@ -505,7 +512,7 @@ class PVLogger():
 
     def finish(self):
         """finish data collection"""
-        with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+        with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
             fh.write(f'{isotime()}: got exit signal\n')
         for pv in self.pvs.values():
             pv.pv.clear_callbacks()
@@ -514,15 +521,15 @@ class PVLogger():
         for pv in self.pvs.values():
             pv.write_data()
             pv.flush()
-        with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+        with open(Path(pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
             fh.write(f'{isotime()}: finishing\n')
 
     def on_exit(self):
-        with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+        with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
             fh.write(f'{isotime()}: exit.\n')
 
         if self.exc is not None:
-            with open(ERROR_FILE, 'a', encoding='utf-8') as fh:
+            with open(Path(self.pvlog_folder, ERROR_FILE), 'a', encoding='utf-8') as fh:
                 traceback.print_exception(self.exc, file=fh)
 
     def run(self):
@@ -568,6 +575,7 @@ class PVLogger():
                 now = time()
             except KeyboardInterrupt:
                 self.exc = sys.exception()
+                messages.append(f"{isotime()}: keyboard interrupt")
                 break
             except Exception:
                 self.exc = sys.exception()
@@ -584,9 +592,10 @@ class PVLogger():
 
             if now > last_update + UPDATETIME:
                 try:
-                    save_pvlog_timestamp()
+                    save_pvlog_timestamp(self.pvlog_folder)
                     if self.look_for_exit_signal():
                         self.finish()
+                        print(f"{isotime()}: exit signal seen, finishing ")
                         break
                 except Exception:
                     self.exc = sys.exception()
@@ -604,7 +613,7 @@ class PVLogger():
 
                 if len(messages) > 0:
                     messages.append('')
-                    with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+                    with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
                         fh.write("\n".join(messages))
                     last_logtime = now
                     messages = []
@@ -612,5 +621,5 @@ class PVLogger():
                 self.exc = sys.exception()
                 messages.append(f"{isotime()}: error while writing run log file")
 
-        with open(RUNLOG_FILE, 'a', encoding='utf-8') as fh:
+        with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
             fh.write(f"{isotime()}: collection done.\n")
