@@ -45,8 +45,7 @@ from .pvtableview import PVTableFrame
 from .eventtableview import EventTableFrame
 
 from ..utils import get_icon, fit_frame
-from .pvlogger import get_instruments
-
+from .pvlogger import get_instruments, check_pvlog_timestamp
 DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
@@ -529,6 +528,8 @@ Matt Newville <newville@cars.uchicago.edu>
         self.live_pvs = {}
         self.pvs_connected = 'unknown'
         self.save_inst_time = 0.0
+        self.collecting = False
+        self.collect_timer = None
         self.create_frame()
 
     def create_frame(self):
@@ -594,8 +595,7 @@ Matt Newville <newville@cars.uchicago.edu>
         title = SimpleText(panel, ' Configure PVLogger Collection', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
 
-        wids['conf_work_folder'] = SimpleText(panel, ' <no working folder selected> ',
-                                         font=Font(FONTSIZE+1),
+        wids['conf_work_folder'] = SimpleText(panel, ' <no working folder> ',
                                          size=(500, -1), style=LEFT)
         panel.Add(title, dcol=6, newrow=True)
         panel.Add(wids['conf_work_folder'], dcol=6, newrow=True)
@@ -609,11 +609,9 @@ Matt Newville <newville@cars.uchicago.edu>
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
 
-        title = SimpleText(panel, ' Configure Current PVLogger Collection', font=Font(FONTSIZE+2),
-                           size=(550, -1),  colour=COLORS['title'], style=LEFT)
+        wids['curr_status'] = SimpleText(panel, ' ', size=(550, -1), style=LEFT)
 
-        wids['curr_work_folder'] = SimpleText(panel, ' <no working folder selected> ',
-                                         font=Font(FONTSIZE+1),
+        wids['curr_work_folder'] = SimpleText(panel, ' <no working folder> ',
                                          size=(550, -1), style=LEFT)
 
         wids['btn_more_rows'] = Button(panel, 'Add More Rows', size=(300, -1),
@@ -631,36 +629,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
         wids['config_file'] = wx.StaticText(panel, label='', size=(550, -1))
 
-#         btn_data = Button(panel, 'Browse', size=(125, -1), style=wx.ALIGN_LEFT,
-#                           action=self.onSelectDataFolder)
-#         btn_check = Button(panel, 'Check PVs', size=(150, -1),
-#                           action=self.onCheckPVs)
-#         btn_start = Button(panel, 'Start Collection', size=(200, -1),
-#                            action=self.onStartCollection)
-
-#
-#
-#         wids['data_folder'] = wx.TextCtrl(panel, value='', size=(400, -1))
-#
-#         wids['inst_table'] = dv.DataViewCtrl(panel, style=DVSTYLE)
-#         wids['inst_table'].SetMinSize((725, 200))
-#         wids['inst_model'] = InstrumentDataModel()
-#         wids['inst_table'].AssociateModel(wids['inst_model'])
-#
-#         for icol, dat in enumerate((('Instrument Name', 325, 'text', ''),
-#                                    (' # PVs', 125, 'int', ''),
-#                                    (' Use?', 75, 'bool', False))):
-#             _title, width, mode, xval= dat
-#             kws = {'width': width}
-#             add_col = wids['inst_table'].AppendTextColumn
-#             if mode == 'bool':
-#                 add_col = wids['inst_table'].AppendToggleColumn
-#                 kws['mode'] = dv.DATAVIEW_CELL_ACTIVATABLE
-#             add_col(_title, icol, **kws)
-#             col = wids['inst_table'].Columns[icol]
-#             col.Sortable = False
-#             col.Alignment = wx.ALIGN_LEFT
-#
 
         wids['pv_table'] = dv.DataViewCtrl(panel, style=DVSTYLE)
         wids['pv_table'].SetMinSize((725, 200))
@@ -679,15 +647,15 @@ Matt Newville <newville@cars.uchicago.edu>
             col.Alignment = wx.ALIGN_LEFT
         self.wids['pv_model'].add_rows(n=4)
 
-        panel.Add((5, 5))
-        panel.Add(title, style=LEFT, dcol=5, newrow=True)
-        panel.Add(slabel(panel, ' Config File: '), dcol=1, newrow=True)
-        panel.Add(wids['config_file'], dcol=4)
-        panel.Add((5, 5))
+        panel.Add((10, 10))
+        panel.Add(slabel(panel, ' Status: '), dcol=1, newrow=True)
+        panel.Add(wids['curr_status'], dcol=4)
         panel.Add(slabel(panel, ' Data Folder: '), dcol=1, newrow=True)
         panel.Add(wids['curr_work_folder'], dcol=4)
-        # panel.Add(wids['data_folder'], dcol=2)
-        # panel.Add(btn_data, dcol=1, newrow=False)
+        panel.Add((5, 5))
+        panel.Add(slabel(panel, ' Config File: '), dcol=1, newrow=True)
+        panel.Add(wids['config_file'], dcol=4)
+
         panel.Add((5, 5))
         panel.Add(slabel(panel, ' End Date && Time: '), dcol=1, newrow=True)
         panel.Add(wids['end_date'])
@@ -719,24 +687,18 @@ Matt Newville <newville@cars.uchicago.edu>
 
 
         wids = self.wids
-        title = SimpleText(panel, ' PVLogger Viewer', font=Font(FONTSIZE+2),
-                           size=(550, -1),  colour=COLORS['title'], style=LEFT)
-
-        wids['view_work_folder'] = SimpleText(panel, ' <no working folder selected> ',
-                                         font=Font(FONTSIZE+1),
-                                         size=(550, -1), style=LEFT)
-
+        wids['view_work_folder'] = SimpleText(panel, ' <no working folder> ', size=(550, -1), style=LEFT)
 
         self.last_plot_type = 'one'
-        opts = {'size': (175, -1)}
+        opts = {'size': (170, -1)}
         wids['plotone'] = Button(panel, 'Show PV 1 ', action=self.onPlotOne, **opts)
-        wids['plotsel'] = Button(panel, 'Show PVs 1to4', action=self.onPlotSel, **opts)
+        wids['plotsel'] = Button(panel, 'Show PVs 1 to 4', action=self.onPlotSel, **opts)
 
         wids['plot_win']  = Choice(panel, choices=PlotWindowChoices, size=(75, -1))
         wids['plot_win'].SetStringSelection('1')
-        wids['plotlive_one'] = Button(panel, 'LivePlot PV 1',
+        wids['plotlive_one'] = Button(panel, 'Live PV 1',
                                    action=self.onPlotLiveOne, **opts)
-        wids['plotlive_sel'] = Button(panel, 'LivePlot PVs 1to4',
+        wids['plotlive_sel'] = Button(panel, 'Live PVs 1 to 4',
                                    action=self.onPlotLiveSel, **opts)
 
         opts['size'] = (300, -1)
@@ -755,17 +717,12 @@ Matt Newville <newville@cars.uchicago.edu>
                                    partial(self.onPVcolor, row=i+1))
 
 
-        panel.Add((5, 5))
-        panel.Add(title, style=LEFT, dcol=6, newrow=True)
-        panel.Add(slabel(panel, ' Folder: '), dcol=1, newrow=True)
+        panel.Add((10, 10))
+        panel.Add(slabel(panel, ' PVLog Folder: '), dcol=1, newrow=True)
         panel.Add(wids['view_work_folder'], dcol=6)
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-
-        # panel.Add(slabel(panel, ' Select PVs: '), dcol=1, newrow=True)
-        # panel.Add(wids['use_sel'], dcol=1)
-        # panel.Add(wids['clear_sel'], dcol=1)
 
         panel.Add(slabel(panel, ' PV 1: '), dcol=1, newrow=True)
         panel.Add(wids['pv1'], dcol=2)
@@ -781,7 +738,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['col4'])
 
         panel.Add((5, 5))
-        panel.Add(slabel(panel, ' Plot/Show Table: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Plot/Show PVs: '), dcol=1, newrow=True)
         panel.Add(wids['plotone'], dcol=1)
         panel.Add(wids['plotsel'], dcol=2)
         panel.Add(slabel(panel, ' Window:', width=100))
@@ -1152,7 +1109,7 @@ Matt Newville <newville@cars.uchicago.edu>
         return pvlog.data
 
     def onPlotLiveOne(self, event):
-        liveplot = self.show_subframe('pvlive', StripChartFrame)
+        liveplot = self.show_subframe('pvlive', StripChartFrame, prompt=False)
         pvdesc = self.wids['pv1'].GetStringSelection()
         pvname = self.pvmap[pvdesc]
         desc = self.log_folder.pvs[pvname].description
@@ -1333,6 +1290,24 @@ is not a valid PVLogger Data Folder""",
         self.wids['view_work_folder'].SetLabel(folder.fullpath)
         self.wids['curr_work_folder'].SetLabel(folder.fullpath)
         self.wids['conf_work_folder'].SetLabel(folder.fullpath)
+        print("Use Log Folder ", folder)
+
+        self.collecting = check_pvlog_timestamp(self.log_folder.fullpath,
+                                                timestamp_only=True)
+
+        for collect_wid in ('btn_more_rows', 'btn_add_collect', 'btn_end_now',
+                            'end_date', 'end_time', 'pv_table'):
+            self.wids[collect_wid].Enable(self.collecting)
+
+        if self.collecting:
+            self.collect_timer = wx.Timer(self)
+            self.Bind(wx.EVT_TIMER, self.onCollectTimer, self.collect_timer)
+            self.collect_timer.Start(900)
+            self.wids['curr_status'].SetLabel(' collection in progress')
+        else:
+            self.wids['curr_status'].SetLabel(' not collecting')
+
+
         os.chdir(folder.fullpath)
         self.pvmap = {}
         self.pvmap_r = {}
@@ -1357,6 +1332,19 @@ is not a valid PVLogger Data Folder""",
 
         self.write_message(f'reading data for {len(self.log_folder.pvs)} PVs', panel=1)
         self.read_folder()
+
+    def onCollectTimer(self, event=None):
+        self.collecting = check_pvlog_timestamp(self.log_folder.fullpath,
+                                                timestamp_only=True)
+        status_msg = f'collecting, updated: {isotime()}'
+        if not self.collecting:
+            self.collect_timer.Stop()
+            for collect_wid in ('btn_more_rows', 'btn_add_collect', 'btn_end_now',
+                                'end_date', 'end_time', 'pv_table'):
+                self.wids[collect_wid].Enable(self.collecting)
+                status_msg = 'collection stopped'
+        self.wids['curr_status'].SetLabel(status_msg)
+
 
     def onReadDataFile(self, pvname=None, npvs=None, nproc=1, tstart=None, **kws):
         message = 'Reading data '
@@ -1455,6 +1443,9 @@ is not a valid PVLogger Data Folder""",
             pv.clear_callbacks()
             pv.disconnect()
             time.sleep(0.001)
+
+        if self.collect_timer is not None:
+            self.collect_timer.Stop()
 
         for name, frame in self.subframes.items():
             try:
