@@ -158,33 +158,29 @@ class PVDataModel(dv.DataViewIndexListModel):
     def __init__(self):
         dv.DataViewIndexListModel.__init__(self, 0)
         self.data = []
-        self.ncols = 4
+        self.ncols = 3
 
     def set_data(self, pvlist):
         self.data = pvlist
         for i in range(3):
-            self.data.append(['', '<auto>', '<auto>', True])
+            self.data.append(['', '<auto>', '<auto>'])
 
         self.Reset(len(self.data))
 
     def add_rows(self, n=3):
         for i in range(n):
-            self.data.append(['', '<auto>', '<auto>', True])
+            self.data.append(['', '<auto>', '<auto>'])
         self.Reset(len(self.data))
 
     def GetColumnType(self, col):
-        return 'bool' if col == 2 else 'string'
+        return 'string'
 
     def GetValueByRow(self, row, col):
         return self.data[row][col]
 
     def SetValueByRow(self, value, row, col):
-        name, desc, detlta, use = self.data[row]
-        if col == 3:
-            value = bool(value)
-        else:
-            value = str(value)
-        self.data[row][col] = value
+        name, desc, detlta = self.data[row]
+        self.data[row][col] = str(value)
         return True
 
     def GetColumnCount(self):
@@ -616,48 +612,55 @@ Matt Newville <newville@cars.uchicago.edu>
         title = SimpleText(panel, ' Configure Current PVLogger Collection', font=Font(FONTSIZE+2),
                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
 
-
         wids['curr_work_folder'] = SimpleText(panel, ' <no working folder selected> ',
                                          font=Font(FONTSIZE+1),
                                          size=(550, -1), style=LEFT)
 
-        btn_data = Button(panel, 'Browse', size=(125, -1), style=wx.ALIGN_LEFT,
-                          action=self.onSelectDataFolder)
-        btn_check = Button(panel, 'Check PVs', size=(150, -1),
-                          action=self.onCheckPVs)
-        btn_start = Button(panel, 'Start Collection', size=(200, -1),
-                           action=self.onStartCollection)
-        btn_more  = Button(panel, 'Add More PV Rows', size=(200, -1),
-                           action=self.onMorePVRows)
+        wids['btn_more_rows'] = Button(panel, 'Add More Rows', size=(300, -1),
+                                      action=self.onMorePVRows)
+        wids['btn_add_collect'] = Button(panel, 'Start Logging these PVS', size=(350, -1),
+                                         action=self.onAddPVs)
 
         wids['end_date'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
                                                   style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
         wids['end_time'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
         wids['end_date'].SetValue(wx.DateTime.Now() + wx.DateSpan.Week())
         wids['end_time'].SetTime(9, 0, 0)
+        wids['btn_end_now'] = Button(panel, 'End Now', size=(125, -1),
+                                      action=self.onEndCollection)
 
         wids['config_file'] = wx.StaticText(panel, label='', size=(550, -1))
-        wids['data_folder'] = wx.TextCtrl(panel, value='', size=(400, -1))
 
-        wids['inst_table'] = dv.DataViewCtrl(panel, style=DVSTYLE)
-        wids['inst_table'].SetMinSize((725, 200))
-        wids['inst_model'] = InstrumentDataModel()
-        wids['inst_table'].AssociateModel(wids['inst_model'])
+#         btn_data = Button(panel, 'Browse', size=(125, -1), style=wx.ALIGN_LEFT,
+#                           action=self.onSelectDataFolder)
+#         btn_check = Button(panel, 'Check PVs', size=(150, -1),
+#                           action=self.onCheckPVs)
+#         btn_start = Button(panel, 'Start Collection', size=(200, -1),
+#                            action=self.onStartCollection)
 
-        for icol, dat in enumerate((('Instrument Name', 325, 'text', ''),
-                                   (' # PVs', 125, 'int', ''),
-                                   (' Use?', 75, 'bool', False))):
-            _title, width, mode, xval= dat
-            kws = {'width': width}
-            add_col = wids['inst_table'].AppendTextColumn
-            if mode == 'bool':
-                add_col = wids['inst_table'].AppendToggleColumn
-                kws['mode'] = dv.DATAVIEW_CELL_ACTIVATABLE
-            add_col(_title, icol, **kws)
-            col = wids['inst_table'].Columns[icol]
-            col.Sortable = False
-            col.Alignment = wx.ALIGN_LEFT
-
+#
+#
+#         wids['data_folder'] = wx.TextCtrl(panel, value='', size=(400, -1))
+#
+#         wids['inst_table'] = dv.DataViewCtrl(panel, style=DVSTYLE)
+#         wids['inst_table'].SetMinSize((725, 200))
+#         wids['inst_model'] = InstrumentDataModel()
+#         wids['inst_table'].AssociateModel(wids['inst_model'])
+#
+#         for icol, dat in enumerate((('Instrument Name', 325, 'text', ''),
+#                                    (' # PVs', 125, 'int', ''),
+#                                    (' Use?', 75, 'bool', False))):
+#             _title, width, mode, xval= dat
+#             kws = {'width': width}
+#             add_col = wids['inst_table'].AppendTextColumn
+#             if mode == 'bool':
+#                 add_col = wids['inst_table'].AppendToggleColumn
+#                 kws['mode'] = dv.DATAVIEW_CELL_ACTIVATABLE
+#             add_col(_title, icol, **kws)
+#             col = wids['inst_table'].Columns[icol]
+#             col.Sortable = False
+#             col.Alignment = wx.ALIGN_LEFT
+#
 
         wids['pv_table'] = dv.DataViewCtrl(panel, style=DVSTYLE)
         wids['pv_table'].SetMinSize((725, 200))
@@ -665,50 +668,48 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['pv_table'].AssociateModel(wids['pv_model'])
 
         for icol, dat in enumerate((('PV Name', 325, 'text', ''),
-                                   ('Description', 200, 'text', '<auto>'),
-                                   ('Delta', 80, 'text', '<auto>'),
-                                   (' Use?', 75, 'bool', False))):
+                                   ('Description', 250, 'text', '<auto>'),
+                                   ('Delta', 80, 'text', '<auto>'))):
             _title, width, mode, xval= dat
-            kws = {'width': width}
-            add_col = wids['pv_table'].AppendTextColumn
-            if mode == 'text':
-                kws['mode'] = dv.DATAVIEW_CELL_EDITABLE
-            elif mode == 'bool':
-                add_col = wids['pv_table'].AppendToggleColumn
-                kws['mode'] = dv.DATAVIEW_CELL_ACTIVATABLE
-            add_col(_title, icol, **kws)
+            kws = {'width': width,
+                   'mode': dv.DATAVIEW_CELL_EDITABLE}
+            wids['pv_table'].AppendTextColumn(_title, icol, **kws)
             col = wids['pv_table'].Columns[icol]
             col.Sortable = False
             col.Alignment = wx.ALIGN_LEFT
+        self.wids['pv_model'].add_rows(n=4)
 
         panel.Add((5, 5))
         panel.Add(title, style=LEFT, dcol=5, newrow=True)
         panel.Add(slabel(panel, ' Config File: '), dcol=1, newrow=True)
-        panel.Add(wids['config_file'], dcol=3)
+        panel.Add(wids['config_file'], dcol=4)
         panel.Add((5, 5))
         panel.Add(slabel(panel, ' Data Folder: '), dcol=1, newrow=True)
-        panel.Add(wids['data_folder'], dcol=2)
-        panel.Add(btn_data, dcol=1, newrow=False)
+        panel.Add(wids['curr_work_folder'], dcol=4)
+        # panel.Add(wids['data_folder'], dcol=2)
+        # panel.Add(btn_data, dcol=1, newrow=False)
         panel.Add((5, 5))
-        panel.Add(slabel(panel, ' End Date&Time: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' End Date && Time: '), dcol=1, newrow=True)
         panel.Add(wids['end_date'])
         panel.Add(wids['end_time'])
+        panel.Add(wids['btn_end_now'])
 
         panel.Add((5, 5))
-        panel.Add(btn_check, dcol=1, newrow=True)
-        panel.Add(btn_start, dcol=1)
-        panel.Add((5, 5))
+        # panel.Add(btn_check, dcol=1, newrow=True)
+        # panel.Add(btn_start, dcol=1)
+        # panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(panel, ' PVs to Log: ', width=300), dcol=3, newrow=True)
+        panel.Add(slabel(panel, ' PVs to Add to Collection: ', width=300), dcol=5, newrow=True)
         panel.Add(wids['pv_table'], dcol=5, newrow=True)
         panel.Add((5, 5))
-        panel.Add(btn_more, dcol=3, newrow=True)
+        panel.Add(wids['btn_more_rows'], dcol=2, newrow=True)
+        panel.Add(wids['btn_add_collect'], dcol=2, newrow=False)
 
-        panel.Add(slabel(panel, ' Instruments to Log: ', width=300), dcol=3, newrow=True)
-        panel.Add(wids['inst_table'], dcol=6, newrow=True)
+        # panel.Add(slabel(panel, ' Instruments to Log: ', width=300), dcol=3, newrow=True)
+        # panel.Add(wids['inst_table'], dcol=6, newrow=True)
 
-        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
+        # panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.pack()
         return panel
 
@@ -953,9 +954,14 @@ Matt Newville <newville@cars.uchicago.edu>
         Popen(cmd)
         print(f"Starting Collection with {fname}")
 
-
     def onMorePVRows(self, event=None):
         self.wids['pv_model'].add_rows(n=3)
+
+    def onAddPVs(self, event=None):
+        print("Add PVs from ", self.wids['pv_model'])
+
+    def onEndCollection(self, event=None):
+        print("End collection now ")
 
     def onUseSelected(self, event=None):
         for i in range(3):
