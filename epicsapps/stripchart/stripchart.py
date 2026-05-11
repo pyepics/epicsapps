@@ -177,7 +177,7 @@ Also, these key bindings can be used
     about_msg =  """Epics PV Strip Chart  version 0.1
 Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, parent=None, configfile=None, prompt=False, nmax=2**20, ntrim=None):
+    def __init__(self, parent=None, configfile=None, prompt=True, nmax=2**20, ntrim=None):
         self.pvdata = {}
         self.pvs = {}
         self.pv_opts = {}
@@ -198,10 +198,10 @@ Matt Newville <newville@cars.uchicago.edu>
         self.timelabel = 'minutes'
 
         self.create_frame(parent)
-
-        ret = SelectWorkdir(self)
         self.config = {'pvs': []}
-        self.onImportPVs(configfile)
+        if prompt:
+            ret = SelectWorkdir(self)
+            self.onImportPVs(configfile)
 
         self.timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onUpdatePlot, self.timer)
@@ -806,7 +806,7 @@ class StripChartApp(wx.App):
         use_darkdetect()
 
     def createApp(self):
-        self.frame = StripChartFrame()
+        self.frame = StripChartFrame(prompt=self.prompt)
         self.frame.Show()
         self.SetTopWindow(self.frame)
 
