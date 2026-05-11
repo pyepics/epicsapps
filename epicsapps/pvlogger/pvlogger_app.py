@@ -100,7 +100,7 @@ def update_choice(wid, values, default=0):
     else:
         wid.SetSelection(default)
 
-def slabel(panel, txt, width=150):
+def slabel(panel, txt, width=175):
     return wx.StaticText(panel, label=txt, size=(width, -1))
 
 class InstrumentDataModel(dv.DataViewIndexListModel):
@@ -683,14 +683,14 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel.Add((5, 5))
         panel.Add(title, style=LEFT, dcol=5, newrow=True)
-        panel.Add(slabel(panel, ' Config File: ', width=150), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Config File: '), dcol=1, newrow=True)
         panel.Add(wids['config_file'], dcol=3)
         panel.Add((5, 5))
-        panel.Add(slabel(panel, ' Data Folder: ', width=150), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Data Folder: '), dcol=1, newrow=True)
         panel.Add(wids['data_folder'], dcol=2)
         panel.Add(btn_data, dcol=1, newrow=False)
         panel.Add((5, 5))
-        panel.Add(slabel(panel, ' End Date&Time: ', width=150), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' End Date&Time: '), dcol=1, newrow=True)
         panel.Add(wids['end_date'])
         panel.Add(wids['end_time'])
 
@@ -700,12 +700,12 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(panel, ' PVs to Log: ', width=200), dcol=3, newrow=True)
+        panel.Add(slabel(panel, ' PVs to Log: ', width=300), dcol=3, newrow=True)
         panel.Add(wids['pv_table'], dcol=5, newrow=True)
         panel.Add((5, 5))
         panel.Add(btn_more, dcol=3, newrow=True)
 
-        panel.Add(slabel(panel, ' Instruments to Log: ', width=200), dcol=3, newrow=True)
+        panel.Add(slabel(panel, ' Instruments to Log: ', width=300), dcol=3, newrow=True)
         panel.Add(wids['inst_table'], dcol=6, newrow=True)
 
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
@@ -727,23 +727,23 @@ Matt Newville <newville@cars.uchicago.edu>
 
 
         self.last_plot_type = 'one'
-        opts = {'size': (150, -1)}
+        opts = {'size': (175, -1)}
         wids['plotone'] = Button(panel, 'Show PV 1 ', action=self.onPlotOne, **opts)
-        wids['plotsel'] = Button(panel, 'Show PVs 1 to 4', action=self.onPlotSel, **opts)
+        wids['plotsel'] = Button(panel, 'Show PVs 1to4', action=self.onPlotSel, **opts)
 
         wids['plot_win']  = Choice(panel, choices=PlotWindowChoices, size=(75, -1))
         wids['plot_win'].SetStringSelection('1')
         wids['plotlive_one'] = Button(panel, 'LivePlot PV 1',
                                    action=self.onPlotLiveOne, **opts)
-        wids['plotlive_sel'] = Button(panel, 'LivePlot PVs 1 to 4',
+        wids['plotlive_sel'] = Button(panel, 'LivePlot PVs 1to4',
                                    action=self.onPlotLiveSel, **opts)
 
-        opts['size'] = (275, -1)
+        opts['size'] = (300, -1)
         opts['choices'] = []
         wids['instruments'] = Choice(panel, action=self.onSelectInstPVs, **opts)
 
         wids['save_inst'] = TextCtrl(panel, '', action=self.onSaveInst,
-                                     size=(250, -1), act_on_losefocus=False)
+                                     act_on_losefocus=False, size=opts['size'])
 
 
         for i in range(4):
@@ -783,7 +783,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(slabel(panel, ' Plot/Show Table: '), dcol=1, newrow=True)
         panel.Add(wids['plotone'], dcol=1)
         panel.Add(wids['plotsel'], dcol=2)
-        panel.Add(slabel(panel, ' Window:', width=75))
+        panel.Add(slabel(panel, ' Window:', width=100))
         panel.Add(wids['plot_win'])
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
@@ -794,8 +794,9 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
 
-        panel.Add(slabel(panel, ' Instruments: Save Selected PVs as Named Instrument for later use: ', width=550), dcol=5, newrow=True)
-        panel.Add(slabel(panel, ' Name Selected PVs: '), dcol=1, newrow=True)
+        panel.Add(slabel(panel, ' Instruments: Save Selected PVs as an Instrument for later use: ', width=625),
+                  dcol=5, newrow=True)
+        panel.Add(slabel(panel, ' Name Selected : '), dcol=1, newrow=True)
         panel.Add(wids['save_inst'], dcol=2)
         panel.Add(slabel(panel, ' Use Instrument : '), dcol=1, newrow=True)
         panel.Add(wids['instruments'], dcol=2)
