@@ -61,7 +61,7 @@ def read_textfile(filename, size=None):
     if isinstance(filename, io.IOBase):
         text = filename.read(size)
         if filename.mode == 'rb':
-            text = deco<de(text)
+            text = decode(text)
     else:
         with open(filename, 'rb') as fh:
             text = decode(fh.read(size))
