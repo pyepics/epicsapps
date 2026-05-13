@@ -1,7 +1,6 @@
 from pyshortcuts import (debugtimer, fix_filename, new_filename,
                          fix_varname, isotime)
 
-
 from .configfile import (ConfigFile, get_configfolder,
                          get_default_configfile, load_yaml,
                          read_recents_file, write_recents_file)
