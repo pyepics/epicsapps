@@ -12,7 +12,7 @@ from subprocess import Popen
 from numpy import arange
 from functools import partial
 from datetime import datetime, timedelta
-
+from dateutil import parser as dateparser
 import yaml
 
 import wx
@@ -45,7 +45,7 @@ from .pvtableview import PVTableFrame
 from .eventtableview import EventTableFrame
 
 from ..utils import get_icon, fit_frame, get_pvdesc, get_pvmdel
-from .pvlogger import get_instruments, check_pvlog_timestamp
+from .pvlogger import get_instruments, check_pvlog_timestamp, UPDATETIME
 DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE|dv.DV_HORIZ_RULES
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
@@ -624,7 +624,9 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['end_time'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
         wids['end_date'].SetValue(wx.DateTime.Now() + wx.DateSpan.Week())
         wids['end_time'].SetTime(9, 0, 0)
-        wids['btn_end_now'] = Button(panel, 'End Now', size=(125, -1),
+        wids['btn_set_endtime'] = Button(panel, 'Update End Date and Time', size=(250, -1),
+                                      action=self.onSetEndDate)
+        wids['btn_end_now'] = Button(panel, 'End Right Now', size=(175, -1),
                                       action=self.onEndCollection)
 
         wids['config_file'] = wx.StaticText(panel, label='', size=(550, -1))
@@ -660,6 +662,8 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(slabel(panel, ' End Date && Time: '), dcol=1, newrow=True)
         panel.Add(wids['end_date'])
         panel.Add(wids['end_time'])
+        panel.Add((5, 5), newrow=True)
+        panel.Add(wids['btn_set_endtime'], dcol=3)
         panel.Add(wids['btn_end_now'])
 
         panel.Add((5, 5))
@@ -896,7 +900,6 @@ Matt Newville <newville@cars.uchicago.edu>
         parent = Path(output).parent
         wids['data_folder'].SetValue(parent.as_posix())
         os.chdir(parent)
-        # print("Set Folder to ", parent)
 
     def onStartCollection(self, event=None):
         root = Path(sys.executable).parent.as_posix()
@@ -915,25 +918,57 @@ Matt Newville <newville@cars.uchicago.edu>
         self.wids['pv_model'].add_rows(n=3)
 
     def onAddPVs(self, event=None):
-        print("Add PVs from ", self.wids['pv_model'])
+        """add PVs to running data collection"""
         def _getdata():
             pvdat = []
             for row in self.wids['pv_model'].data:
                 name, desc, mdel = row
                 if len(name) > 2:
                     thispv = get_pv(name, connect=True,
-                                    connection_timeout=2.0)
+                                    timeout=2.0)
                     if thispv.connected:
                         if desc in ('', '<auto>'):
-                            desc = get_pvdesc(name)
+                            desc = str(get_pvdesc(name))
                         if mdel in ('', '<auto>'):
-                            mdel = get_pvmdel(name)
-                    pvdat.append((name, desc, mdel))
-
+                            mdel = str(get_pvmdel(name))
+                    datline =' | '.join([name, desc, mdel])
+                    pvdat.append(datline)
+            return pvdat
         # look up PVs twice, to better ensure connections
         _getdata()
         pvdat = _getdata()
-        print("Ready to Add PVDAT: ", pvdat)
+        self.write_requests({'pvs': pvdat})
+
+    def onSetEndDate(self, event=None):
+        print("Set End Date")
+
+        ddate = self.wids['end_date'].GetValue()
+        dtime = self.wids['end_time'].GetValue()
+        dt = datetime(ddate.GetYear(), 1+ddate.GetMonth(), ddate.GetDay(),
+                      dtime.GetHour(), dtime.GetMinute(), 0)
+
+        self.write_requests({'end_datetime': dt.isoformat(sep=' ')})
+
+
+
+    def write_requests(self, data):
+        "write data to requests file")
+        req_text = yaml.dump(data})
+        outfile = Path(self.log_folder.fullpath, '_PVLOG_requests.yaml')
+        if outfile.exists():
+            print("Waiting for previous request to be processed...")
+            timeout = time.time() + UPDATETIME*1.5
+            while outfile.exists() and time.time() < timeout:
+                sleep(1.0)
+        if outfile.exists():
+            Popup(self, f"""
+Warning: The requests file in the folder
+    {Path(self.log_folder.fullpath).as_posix()}
+were not processed.  Data collection may be stopped.""",
+          "Could not request updates to data collection.")
+        else:
+            with open(outfile, 'w') as fh:
+                fh.write(req_text)
 
     def onEndCollection(self, event=None):
         print("End collection now ")
@@ -1309,6 +1344,12 @@ is not a valid PVLogger Data Folder""",
         self.wids['curr_work_folder'].SetLabel(folder.fullpath)
         self.wids['conf_work_folder'].SetLabel(folder.fullpath)
         print("Use Log Folder ", folder)
+        end_dt = folder.config.get('end_datetime', '')
+        print(f"Use Log Folder {end_dt=}")
+        if len(end_dt) > 4:
+            end_dt = dateparser.parse(end_dt)
+            wids['end_date'].SetValue(wx.DateTime(end_dt.date()))
+            wids['end_time'].SetTime(end_dt.hour, end_dt.minute, 0)
 
         self.collecting = check_pvlog_timestamp(self.log_folder.fullpath,
                                                 timestamp_only=True)
