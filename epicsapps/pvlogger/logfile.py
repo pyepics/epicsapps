@@ -343,7 +343,7 @@ class PVLogFolder:
             conf = yaml.load(ctext, Loader=yaml.Loader)
         else:
             conf = tomli.loads(ctext)
-
+        self.config = conf
         self.pvs = {}
         for pline in conf['pvs']:
             words = [a.strip() for a in pline.split('|', maxsplit=2)]
