@@ -5,7 +5,7 @@ from .configfile import (ConfigFile, get_configfolder,
                          get_default_configfile, load_yaml,
                          read_recents_file, write_recents_file)
 
-from .utils import get_pvdesc, normalize_pvname
+from .utils import get_pvdesc, get_pvmdel, normalize_pvname
 from .textfile import read_textfile, unixpath, normalize_path
 from .griddata import DataTableGrid, DictFrame
 from .math import index_of, js2array
