@@ -249,6 +249,7 @@ class InstrumentFrame(wx.Frame):
         self.init_timer.Start(2000)
 
     def onAdminTimer(self, evt=None):
+        "decide in Admin mode should be automatically exited"
         if time.time() > self.admin_expires:
             self.leave_admin_mode()
 

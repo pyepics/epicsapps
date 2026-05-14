@@ -44,9 +44,9 @@ from .plotter import PlotFrame
 from .pvtableview import PVTableFrame
 from .eventtableview import EventTableFrame
 
-from ..utils import get_icon, fit_frame
+from ..utils import get_icon, fit_frame, get_pvdesc, get_pvmdel
 from .pvlogger import get_instruments, check_pvlog_timestamp
-DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE
+DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE|dv.DV_HORIZ_RULES
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
 PVLOG_FOLDER = 'pvlog'
@@ -634,14 +634,14 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['pv_table'].SetMinSize((725, 200))
         wids['pv_model'] = PVDataModel()
         wids['pv_table'].AssociateModel(wids['pv_model'])
-
+        wids['pv_table'].EnableDropTargets((wx.DataFormat(wx.DF_TEXT),
+                                            wx.DataFormat(wx.DF_UNICODETEXT)))
         for icol, dat in enumerate((('PV Name', 325, 'text', ''),
                                    ('Description', 250, 'text', '<auto>'),
                                    ('Delta', 80, 'text', '<auto>'))):
             _title, width, mode, xval= dat
-            kws = {'width': width,
-                   'mode': dv.DATAVIEW_CELL_EDITABLE}
-            wids['pv_table'].AppendTextColumn(_title, icol, **kws)
+            wids['pv_table'].AppendTextColumn(_title, icol, width=width,
+                                              mode=dv.DATAVIEW_CELL_EDITABLE)
             col = wids['pv_table'].Columns[icol]
             col.Sortable = False
             col.Alignment = wx.ALIGN_LEFT
@@ -811,8 +811,8 @@ Matt Newville <newville@cars.uchicago.edu>
         instruments = get_instruments(escan_credentials=escan_cred)
         pvs = {}
         for row in self.wids['pv_model'].data:
-            name, desc, mdel, use = row
-            if use and len(name.strip()) > 1 and name not in pvs:
+            name, desc, mdel = row
+            if len(name.strip()) > 1 and name not in pvs:
                 pvs[name] = get_pv(name)
                 if name not in self.live_pvs:
                     self.live_pvs[name] = pvs[name]
@@ -874,8 +874,8 @@ Matt Newville <newville@cars.uchicago.edu>
 
         pvs = []
         for row in self.wids['pv_model'].data:
-            name, desc, mdel, use = row
-            if len(name.strip()) > 0 and use:
+            name, desc, mdel = row
+            if len(name.strip()) > 0:
                 pvs.append(f'{name} | {desc} | {mdel}')
 
         insts = []
@@ -916,6 +916,24 @@ Matt Newville <newville@cars.uchicago.edu>
 
     def onAddPVs(self, event=None):
         print("Add PVs from ", self.wids['pv_model'])
+        def _getdata():
+            pvdat = []
+            for row in self.wids['pv_model'].data:
+                name, desc, mdel = row
+                if len(name) > 2:
+                    thispv = get_pv(name, connect=True,
+                                    connection_timeout=2.0)
+                    if thispv.connected:
+                        if desc in ('', '<auto>'):
+                            desc = get_pvdesc(name)
+                        if mdel in ('', '<auto>'):
+                            mdel = get_pvmdel(name)
+                    pvdat.append((name, desc, mdel))
+
+        # look up PVs twice, to better ensure connections
+        _getdata()
+        pvdat = _getdata()
+        print("Ready to Add PVDAT: ", pvdat)
 
     def onEndCollection(self, event=None):
         print("End collection now ")
@@ -993,7 +1011,7 @@ Matt Newville <newville@cars.uchicago.edu>
                     desc = words[1]
                 if len(words) > 2:
                     mdel = words[2]
-                pvlist.append([name, desc, mdel, True])
+                pvlist.append([name, desc, mdel])
 
         self.wids['pv_model'].set_data( pvlist)
 

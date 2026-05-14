@@ -175,6 +175,8 @@ class IonChamber:
         current  = voltage * amp_val * amp_unit
         flux_in, flux_out = self.calc_flux(gas, energy, length, current)
         abs_percent = 100*(1.0-(flux_out/(flux_in+0.1)))
+        if flux_out < 5000:
+            flux_out = 0.0
         try:
             self.ic.put('Energy',     energy)
             self.ic.put('AbsPercent', abs_percent)
