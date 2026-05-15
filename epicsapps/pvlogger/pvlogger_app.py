@@ -619,12 +619,12 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['btn_add_collect'] = Button(panel, 'Start Logging these PVS', size=(350, -1),
                                          action=self.onAddPVs)
 
-        wids['end_date'] =  wx.adv.DatePickerCtrl(panel, size=(175, -1),
+        wids['end_date'] =  wx.adv.DatePickerCtrl(panel, size=(150, -1),
                                                   style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
-        wids['end_time'] = wx.adv.TimePickerCtrl(panel, size=(175, -1))
+        wids['end_time'] = wx.adv.TimePickerCtrl(panel, size=(150, -1))
         wids['end_date'].SetValue(wx.DateTime.Now() + wx.DateSpan.Week())
         wids['end_time'].SetTime(9, 0, 0)
-        wids['btn_set_endtime'] = Button(panel, 'Update End Date and Time', size=(250, -1),
+        wids['btn_set_endtime'] = Button(panel, 'Update End Date and Time', size=(300, -1),
                                       action=self.onSetEndDate)
         wids['btn_end_now'] = Button(panel, 'End Right Now', size=(175, -1),
                                       action=self.onEndCollection)
@@ -663,7 +663,7 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['end_date'])
         panel.Add(wids['end_time'])
         panel.Add((5, 5), newrow=True)
-        panel.Add(wids['btn_set_endtime'], dcol=3)
+        panel.Add(wids['btn_set_endtime'], dcol=2)
         panel.Add(wids['btn_end_now'])
 
         panel.Add((5, 5))
@@ -672,7 +672,7 @@ Matt Newville <newville@cars.uchicago.edu>
         # panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(panel, ' PVs to Add to Collection: ', width=300), dcol=5, newrow=True)
+        panel.Add(slabel(panel, ' PVs to Add to Collection: (WARNING: hit Return/Enter) ', width=450), dcol=5, newrow=True)
         panel.Add(wids['pv_table'], dcol=5, newrow=True)
         panel.Add((5, 5))
         panel.Add(wids['btn_more_rows'], dcol=2, newrow=True)
