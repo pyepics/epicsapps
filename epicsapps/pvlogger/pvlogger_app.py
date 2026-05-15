@@ -940,8 +940,6 @@ Matt Newville <newville@cars.uchicago.edu>
         self.write_requests({'pvs': pvdat})
 
     def onSetEndDate(self, event=None):
-        print("Set End Date")
-
         ddate = self.wids['end_date'].GetValue()
         dtime = self.wids['end_time'].GetValue()
         dt = datetime(ddate.GetYear(), 1+ddate.GetMonth(), ddate.GetDay(),
@@ -949,11 +947,9 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.write_requests({'end_datetime': dt.isoformat(sep=' ')})
 
-
-
     def write_requests(self, data):
-        "write data to requests file")
-        req_text = yaml.dump(data})
+        """write data to requests file"""
+        req_text = yaml.dump(data)
         outfile = Path(self.log_folder.fullpath, '_PVLOG_requests.yaml')
         if outfile.exists():
             print("Waiting for previous request to be processed...")
@@ -961,7 +957,7 @@ Matt Newville <newville@cars.uchicago.edu>
             while outfile.exists() and time.time() < timeout:
                 sleep(1.0)
         if outfile.exists():
-            Popup(self, f"""
+            Popup(self, f"""`<
 Warning: The requests file in the folder
     {Path(self.log_folder.fullpath).as_posix()}
 were not processed.  Data collection may be stopped.""",
