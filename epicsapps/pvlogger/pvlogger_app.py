@@ -569,8 +569,8 @@ Matt Newville <newville@cars.uchicago.edu>
 
         self.nb = flatnotebook(rpanel, {}, style=FNB_STYLE)
         self.nb.AddPage(self.make_view_panel(), ' View Data from Log Folder ', True)
-        self.nb.AddPage(self.make_curr_panel(), ' Current Data Collection ', True)
-        self.nb.AddPage(self.make_conf_panel(), ' Edit Configuration File ', True)
+        self.nb.AddPage(self.make_curr_panel(), ' Edit Current Data Collection ', True)
+        # self.nb.AddPage(self.make_conf_panel(), ' Edit Configuration File ', True)
         self.nb.SetSelection(0)
 
         try:
@@ -588,22 +588,22 @@ Matt Newville <newville@cars.uchicago.edu>
         splitter.SplitVertically(lpanel, rpanel, 1)
         self.Raise()
 
-    def make_conf_panel(self):
-        """edit config file"""
-        wids = self.wids
-        panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
-
-        title = SimpleText(panel, ' Configure PVLogger Collection', font=Font(FONTSIZE+2),
-                           size=(550, -1),  colour=COLORS['title'], style=LEFT)
-
-        wids['conf_work_folder'] = SimpleText(panel, ' <no working folder> ',
-                                         size=(500, -1), style=LEFT)
-        panel.Add(title, dcol=6, newrow=True)
-        panel.Add(wids['conf_work_folder'], dcol=6, newrow=True)
-
-        panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
-        panel.pack()
-        return panel
+#     def make_conf_panel(self):
+#         """edit config file"""
+#         wids = self.wids
+#         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
+#
+#         title = SimpleText(panel, ' Configure PVLogger Collection', font=Font(FONTSIZE+2),
+#                            size=(550, -1),  colour=COLORS['title'], style=LEFT)
+#
+#         wids['conf_work_folder'] = SimpleText(panel, ' <no working folder> ',
+#                                          size=(500, -1), style=LEFT)
+#         panel.Add(title, dcol=6, newrow=True)
+#         panel.Add(wids['conf_work_folder'], dcol=6, newrow=True)
+#
+#         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
+#         panel.pack()
+#         return panel
 
     def make_curr_panel(self):
         """modify current collection"""
