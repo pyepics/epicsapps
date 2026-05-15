@@ -45,7 +45,8 @@ from .pvtableview import PVTableFrame
 from .eventtableview import EventTableFrame
 
 from ..utils import get_icon, fit_frame, get_pvdesc, get_pvmdel
-from .pvlogger import get_instruments, check_pvlog_timestamp, UPDATETIME
+from .pvlogger import (get_instruments, check_pvlog_timestamp, UPDATETIME,
+                       REQUESTS_FILE, STOP_FILE, INSTRUMENTS_FILE)
 DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE|dv.DV_HORIZ_RULES
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
@@ -654,7 +655,6 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['curr_status'], dcol=4)
         panel.Add(slabel(panel, ' Data Folder: '), dcol=1, newrow=True)
         panel.Add(wids['curr_work_folder'], dcol=4)
-        panel.Add((5, 5))
         panel.Add(slabel(panel, ' Config File: '), dcol=1, newrow=True)
         panel.Add(wids['config_file'], dcol=4)
 
@@ -950,7 +950,7 @@ Matt Newville <newville@cars.uchicago.edu>
     def write_requests(self, data):
         """write data to requests file"""
         req_text = yaml.dump(data)
-        outfile = Path(self.log_folder.fullpath, '_PVLOG_requests.yaml')
+        outfile = Path(self.log_folder.fullpath, REQUEST_FILE)
         if outfile.exists():
             print("Waiting for previous request to be processed...")
             timeout = time.time() + UPDATETIME*1.5
@@ -967,7 +967,27 @@ were not processed.  Data collection may be stopped.""",
                 fh.write(req_text)
 
     def onEndCollection(self, event=None):
-        print("End collection now ")
+        ret = Popup(self, f"End Data Collection immediately?\n",
+                        'Verify Stopping of Data Collection',
+                        style=wx.YES_NO|wx.ICON_QUESTION)
+        if ret != wx.ID_YES:
+            outfile = Path(self.log_folder.fullpath, STOP_FILE)
+        if outfile.exists():
+            print("Waiting for previous request to be processed...")
+            timeout = time.time() + UPDATETIME*1.5
+            while outfile.exists() and time.time() < timeout:
+                sleep(1.0)
+        if outfile.exists():
+            Popup(self, f"""`<
+Warning: The requests file in the folder
+    {Path(self.log_folder.fullpath).as_posix()}
+were not processed.  Data collection may be stopped.""",
+          "Could not request updates to data collection.")
+        else:
+            with open(outfile, 'w') as fh:
+                fh.write(req_text)
+
+
 
     def onUseSelected(self, event=None):
         for i in range(3):
@@ -1074,7 +1094,7 @@ were not processed.  Data collection may be stopped.""",
         cur_insts[value] = pvnames
 
         update_choice(self.wids['instruments'], list(cur_insts.keys()))
-        ifile = Path(self.log_folder.folder, '_PVLOG_instruments.txt').absolute()
+        ifile = Path(self.log_folder.folder, INSTRUMENTS_FILE).absolute()
         with open(ifile, 'w', encoding='utf-8') as fh:
             yaml.safe_dump(self.log_folder.instruments, fh,
                            default_flow_style=False, sort_keys=False)

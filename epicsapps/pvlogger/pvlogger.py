@@ -26,10 +26,14 @@ from ..utils import normalize_pvname, normalize_path
 ca.WITH_CA_MESSAGES = True
 ca.initialize_libca()
 
+CONF_FILE = '_PVLOG.yaml'
+REQUESTS_FILE = '_PVLOG_request.yaml'
 STOP_FILE = '_PVLOG_stop.txt'
-TIMESTAMP_FILE = '_PVLOG_timestamp.txt'
 RUNLOG_FILE = '_PVLOG_runlog.txt'
 ERROR_FILE = '_PVLOG_error.txt'
+FILELIST_FILE = '_PVLOG_filelist.txt'
+TIMESTAMP_FILE = '_PVLOG_timestaamp.txt'
+INSTRUMENTS_FILE = '_PVLOG_instruments.txt'
 UPDATETIME = 15.0
 LOGTIME = 300.0
 SLEEPTIME = 0.5
@@ -326,8 +330,8 @@ class PVLogger():
         pvlog_folder.mkdir(mode=0o755, parents=False, exist_ok=True)
 
         tfile = Path(pvlog_folder, TIMESTAMP_FILE)
-        cfile = Path(pvlog_folder, '_PVLOG.yaml')
-        lfile = Path(pvlog_folder, '_PVLOG_filelist.txt')
+        cfile = Path(pvlog_folder, CONF_FILE)
+        lfile = Path(pvlog_folder, FILELIST_FILE)
         if tfile.exists() and cfile.exists() and lfile.exists():
             raise ValueError(f"PVLOG folder '{pvlog_folder.absolute()}' appears to be in use")
         if chdir:
@@ -424,14 +428,14 @@ class PVLogger():
                     self.add_pv(f"{prefix}{mfield}",
                                 desc=f"{lpv.desc} {mfield}",  mdel=None)
 
-        with open(Path(self.pvlog_folder, '_PVLOG.yaml'), 'w', encoding='utf-8') as fh:
+        with open(Path(self.pvlog_folder, CONF_FILE), 'w', encoding='utf-8') as fh:
             yaml.safe_dump(out, fh, default_flow_style=False, sort_keys=False)
 
         pfiles = ["# PV Name                                |    Log File "]
         for lpv in self.pvs.values():
             pfiles.append(f"{lpv.pvname:40s} | {lpv.filename:40s}")
         pfiles.append("")
-        with open(Path(self.pvlog_folder, '_PVLOG_filelist.txt'), 'w', encoding='utf-8') as fh:
+        with open(Path(self.pvlog_folder, FILELIST_FILE), 'w', encoding='utf-8') as fh:
             fh.write('\n'.join(pfiles))
         # count connected PVs
         sleep(0.1)
@@ -464,10 +468,10 @@ class PVLogger():
         look for a file named _PVLOG_requests.yaml and add PVs
         listed there to monitoring process
         """
-        reqfile = Path("_PVLOG_requests.yaml")
+        reqfile = Path(REQUESTS_FILE)
         if reqfile.exists():
             with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
-                fh.write(f'{isotime()}: read _PVLOG_requests.yaml\n')
+                fh.write(f'{isotime()}: read {REQUESTS_FILE}\n')
 
             rconfig = PVLoggerConfig(reqfile.as_posix())
             for section in ('pvs', 'instruments'):

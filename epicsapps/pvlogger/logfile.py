@@ -18,10 +18,11 @@ from pyshortcuts import debugtimer, gformat
 
 from ..utils.textfile import read_textfile
 
-from .pvlogger import TIMESTAMP_FILE, motor_fields
+from .pvlogger import (motor_fields, TIMESTAMP_FILE,
+                       CONF_FILE, FILESLIST_FILE, INSTRUMENTS_FILE)
 
 TINY = 1.e-7
-MAX_FILESIZE = 400*1024*1024  # 400 Mb limit
+MAX_FILESIZE = 700*1024*1024  # 700 Mb limit
 COMMENTCHARS = '#;%*!$'
 
 
@@ -317,7 +318,7 @@ class PVLogFolder:
         if not self.folder.exists():
             raise ValueError(f"'{self.folder}' - does not exist")
         # list of logfiles
-        filelist = Path(self.folder, '_PVLOG_filelist.txt').absolute()
+        filelist = Path(self.folder, FILELIST_FILE).absolute()
         if not filelist.exists():
             raise ValueError(f"'{self.folder}' is not a valid PVlog folder: no file list")
 
@@ -332,10 +333,10 @@ class PVLogFolder:
 
         # main config
         form = 'yaml'
-        cfile = Path(self.folder, '_PVLOG.yaml')
+        cfile = Path(self.folder, CONF_FILE)
         if not cfile.exists():
             form = 'toml'
-            cfile = Path(self.folder, '_PVLOG.toml')
+            cfile = Path(self.folder, CONF_FILE)
             if not cfile.exists():
                 raise ValueError(f"'{self.folder}' is not a valid PVlog folder: no config file")
         ctext = open(cfile, 'r', encoding='utf-8').read()
@@ -361,7 +362,7 @@ class PVLogFolder:
         self.motors = conf['motors']
         # look for extra instrumens, as added during/after collection
         conf['extra_instruments'] = {}
-        xin_file = Path(self.folder, '_PVLOG_instruments.txt')
+        xin_file = Path(self.folder, INSTRUMENTS_FILE)
         if xin_file.exists():
             with open(xin_file, 'r', encoding='utf-8') as fh:
                 xtext = fh.read()
