@@ -19,7 +19,7 @@ from pyshortcuts import debugtimer, gformat
 from ..utils.textfile import read_textfile
 
 from .pvlogger import (motor_fields, TIMESTAMP_FILE,
-                       CONF_FILE, FILESLIST_FILE, INSTRUMENTS_FILE)
+                       CONF_FILE, FILELIST_FILE, INSTRUMENTS_FILE)
 
 TINY = 1.e-7
 MAX_FILESIZE = 700*1024*1024  # 700 Mb limit
