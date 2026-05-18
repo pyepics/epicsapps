@@ -2,10 +2,11 @@ import os
 import sys
 import numpy
 import time
+from pathlib import Path
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
-from pyshortcuts import make_shortcut, platform
+from pyshortcuts import make_shortcut, platform, ico_ext
 from pyshortcuts.utils import get_homedir
 
 from .utils import get_configfolder, HAS_WXPYTHON
@@ -21,34 +22,39 @@ def use_mpl_wxagg():
             pass
     return False
 
-here, _ = os.path.split(__file__)
-icondir = os.path.join(here, 'icons')
-
+icondir = Path(Path(__file__).parent, 'icons').absolute()
 
 class EpicsApp:
     """
     wrapper for Epics Application
     """
-    def __init__(self, name, script, icon='epics', folder='Epics Apps', terminal=False):
+    def __init__(self, name, script, icon='epics',
+                 folder='Epics Apps', description=None,
+                 is_wxapp=True):
         self.name = name
-        self.script = "epicsapps {}".format(script)
+        self.script = script
         self.folder = folder
+        self.is_wxapp = is_wxapp
+        self.description = description or name
         icon_ext = 'ico'
         if platform == 'darwin':
             icon_ext = 'icns'
-        self.icon = "%s.%s" % (icon, icon_ext)
-        self.terminal = terminal
-        bindir = 'bin'
-        if platform == 'win':
-            bindir = 'Scripts'
-
-        self.bindir = os.path.join(sys.prefix, bindir)
+        self.icon = f"{icon}.{icon_ext}"
+        bindir = 'Scripts' if platform == 'win' else 'bin'
+        self.bindir = Path(sys.prefix, bindir).absolute()
 
     def create_shortcut(self):
-        script  = os.path.join(self.bindir, self.script)
+        eapps  = Path(self.bindir, "epicsapps").absolute().as_posix()
+        script = f"{eapps} {self.script}"
+        icon = Path(icondir, self.icon).absolute()
+        for ext in ico_ext:
+            ticon = Path(icondir, self.icon).absolute()
+            if ticon.exists():
+                icon = ticon
         make_shortcut(script, name=self.name,
-                      icon=os.path.join(icondir, self.icon),
-                      terminal=self.terminal,
+                      description=self.description,
+                      icon=icon.as_posix(),
+                      terminal=(not self.is_wxapp),
                       folder=self.folder)
 
 APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
@@ -56,6 +62,9 @@ APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('areaDetector Viewer', 'adviewer', icon='areadetector'),
         EpicsApp('StripChart',       'stripchart', icon='stripchart'),
         EpicsApp('PVLogger',         'pvlogviewer', icon='logging'),
+        EpicsApp('Jupyter Lab', 'jupyterlab', icon='jupyter',
+                  is_wxapp=False),
+
         )
 
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
@@ -92,6 +101,17 @@ def run_pvlogviewer(prompt=False):
     """PV Logger"""
     from .pvlogger import PVLoggerApp
     PVLoggerApp(prompt=prompt).MainLoop()
+
+def run_jupyterlab(prompt=False):
+    "run Jupyter Lab within the EpicsApps-installed Python"
+    app = LarchApps['Jupyter Lab']
+    app.prep_cli()
+    launcher = Path(sys.prefix, 'share', 'jupyter',
+                    'labextensions', 'jupyter_app_launcher').as_posix()
+    os.environ['JUPYTER_APP_LAUNCHER_PATH'] = launcher
+
+    from jupyterlab import labapp
+    labapp.main()
 
 
 ## main wrapper program

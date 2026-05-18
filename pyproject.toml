@@ -63,6 +63,7 @@ epicsapps = "epicsapps:run_epicsapps"
 epics_adviewer = "epicsapps:run_adviewer"
 epics_instruments = "epicsapps:run_instruments"
 epics_stripchart = "epicsapps:run_stripchart"
+epics_jupyterlab = "epicsapps:run_larch_jupyterlab"
 
 [project.urls]
 Homepage = " https://github.com/pyepics/epicsapps"
