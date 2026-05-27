@@ -26,7 +26,7 @@ from epics.wx.utils import (add_menu, LTEXT, CEN, LCEN, RCEN, RIGHT)
 
 from wxutils import (GridPanel, OkCancel, FloatSpin, NumericCombo, MenuItem,
                      Button, SimpleText, FileSave, FileOpen, pack, Popup)
-from wxutils.colorts import use_darkdetect
+from wxutils.colors import use_darkdetect
 
 from pyshortcuts import fix_filename, isotime
 
