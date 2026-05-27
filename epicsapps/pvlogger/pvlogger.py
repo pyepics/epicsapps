@@ -553,9 +553,9 @@ class PVLogger():
 
         # wait until start time is reached
         tnow = datetime.now().timestamp()
-        waiting = True
+        waiting = tnow < self.start_timestamp
         while waiting:
-            sleep_time = int(min(1800., max(12, 0.8*(self.start_timestamp-tnow))))
+            sleep_time = int(min(1800., max(2, 0.8*(self.start_timestamp-tnow))))
             if sleep_time < 15:
                 stime =  f"collection starting soon"
                 waiting = False
