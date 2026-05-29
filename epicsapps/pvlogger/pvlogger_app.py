@@ -1358,14 +1358,14 @@ is not a valid PVLogger Data Folder""",
         self.log_folder.on_read = self.onReadDataFile
         self.wids['view_work_folder'].SetLabel(folder.fullpath)
         self.wids['curr_work_folder'].SetLabel(folder.fullpath)
-        self.wids['conf_work_folder'].SetLabel(folder.fullpath)
+        # self.wids['conf_work_folder'].SetLabel(folder.fullpath)
         print("Use Log Folder ", folder)
         end_dt = folder.config.get('end_datetime', '')
         print(f"Use Log Folder {end_dt=}")
         if len(end_dt) > 4:
             end_dt = dateparser.parse(end_dt)
-            wids['end_date'].SetValue(wx.DateTime(end_dt.date()))
-            wids['end_time'].SetTime(end_dt.hour, end_dt.minute, 0)
+            self.wids['end_date'].SetValue(wx.DateTime(end_dt.date()))
+            self.wids['end_time'].SetTime(end_dt.hour, end_dt.minute, 0)
 
         self.collecting = check_pvlog_timestamp(self.log_folder.fullpath,
                                                 timestamp_only=True)
