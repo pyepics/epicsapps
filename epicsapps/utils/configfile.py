@@ -160,9 +160,14 @@ class ConfigFile(object):
             config = self.config
 
         fpath = Path(fname)
-        if fpath.suffix == '.yaml':
-            with open(fpath, 'w') as fh:
-                yaml.dump(config, fh, default_flow_style=None)
-        else:
-            with open(fpath, 'w') as fh:
-                fh.write(toml.dumps(config))
+        try:
+            if fpath.suffix == '.yaml':
+                with open(fpath, 'w') as fh:
+                    yaml.dump(config, fh, default_flow_style=None)
+            else:
+                with open(fpath, 'w') as fh:
+                    fh.write(toml.dumps(config))
+        except PermissionError:
+            print("no permission to save ", fpath)
+        except Exception:
+            print("error saving ", fpath)            
