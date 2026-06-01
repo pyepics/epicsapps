@@ -38,7 +38,6 @@ UPDATETIME = 15.0
 LOGTIME = 300.0
 SLEEPTIME = 0.5
 
-RUN_FOLDER = 'pvlog'
 motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
                 '.DIR', '_able.VAL', '.SPMG')
 
@@ -299,17 +298,12 @@ class PVLogger():
 
     def read_configfile(self):
         self.config = PVLoggerConfig(self.configfile).config
+        self.pvlog_folder = Path(self.configfile).absolute().parent
 
-        self.datadir = self.config.get('datadir', '.')
-        if len(self.datadir) < 1 or self.datadir == '.':
-            self.datadir = os.getcwd()
-        self.datadir = Path(self.datadir).absolute()
-        self.folder = Path(self.config.get('folder', 'pvlog'))
-        self.pvlog_folder =  Path(self.datadir, self.folder)
-        # default start time is right now
         now =  datetime.now()
         self.configread_timestamp = now.timestamp()
 
+        # default start time is now
         self.start_datestring = self.config.get('start_datetime',
                                                 now.isoformat(timespec='seconds', sep=' '))
         self.start_timestamp = dateparser.parse(self.start_datestring).timestamp()
@@ -319,14 +313,6 @@ class PVLogger():
         self.end_datestring = self.config.get('end_datetime',
                                               nextweek.isoformat(timespec='seconds', sep=' '))
         self.end_timestamp = dateparser.parse(self.end_datestring).timestamp()
-        # print("Read Config ")
-        # print(f'{self.configfile=}')
-        # print(f'{self.datadir=}')
-        # print(f'{self.folder=}')
-        # print(f'{self.pvlog_folder=}')
-        # print(f'{self.start_datestring=}')
-        # print(f'{self.end_datestring=}')
-
 
         # look for escan credentials
         escan_cred = self.config.get('escan_credentials', None)
@@ -404,8 +390,7 @@ class PVLogger():
                     mdelpvs[pvname] = get_pv(f"{pref}.MDEL")
 
         sleep(0.05)
-        out = {'datadir': self.datadir.as_posix(),
-               'folder': self.folder.as_posix(),
+        out = {'datadir': self.pvlog_folder.as_posix(),
                'start_datetime': self.start_datestring,
                'end_datetime': self.end_datestring}
         if sourcefile is not None:
@@ -452,8 +437,10 @@ class PVLogger():
         for loggedpv in self.pvs.values():
             if loggedpv.pv.connected:
                 nconn += 1
+        conn_msg = f'{isotime()}: Connected to {nconn} of {ntotal} Logged PVs'
         with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
-            fh.write(f'{isotime()}: Connected to {nconn} of {ntotal} Logged PVs\n')
+            fh.write(conn_msg + '\n')
+        return conn_msg
 
 
     def add_pv(self, pvname, desc=None, mdel=None, descpv=None, mdelpv=None):
@@ -563,8 +550,8 @@ class PVLogger():
         tnow = datetime.now().timestamp()
         waiting = tnow < self.start_timestamp
         while waiting:
-            sleep_time = int(min(1800., max(2, 0.8*(self.start_timestamp-tnow))))
-            if sleep_time < 15:
+            sleep_time = int(min(1800., max(1, 0.75*(self.start_timestamp-tnow))))
+            if sleep_time < 10:
                 stime =  f"collection starting soon"
                 waiting = False
             elif sleep_time < 300:
@@ -572,7 +559,7 @@ class PVLogger():
             else:
                 stime = f"sleeping for {(sleep_time/60.0):.0f} minutes"
 
-            print(f"{isotime()}: start time is {self.start_datestring}, {stime}",
+            print(f"{isotime()}: {self.configfile=}, start time is {self.start_datestring}, {stime}",
                   flush=True)
             try:
                sleep(sleep_time)
@@ -589,7 +576,9 @@ class PVLogger():
             self.read_configfile()
 
         self.make_pvlog_folder(chdir=True)
-        self.connect_pvs()
+        conn_msg = self.connect_pvs()
+        print(conn_msg, flush=True)
+
         atexit.register(self.on_exit)
 
         last_update = 0
