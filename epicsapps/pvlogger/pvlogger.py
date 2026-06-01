@@ -319,6 +319,14 @@ class PVLogger():
         self.end_datestring = self.config.get('end_datetime',
                                               nextweek.isoformat(timespec='seconds', sep=' '))
         self.end_timestamp = dateparser.parse(self.end_datestring).timestamp()
+        # print("Read Config ")
+        # print(f'{self.configfile=}')
+        # print(f'{self.datadir=}')
+        # print(f'{self.folder=}')
+        # print(f'{self.pvlog_folder=}')
+        # print(f'{self.start_datestring=}')
+        # print(f'{self.end_datestring=}')
+
 
         # look for escan credentials
         escan_cred = self.config.get('escan_credentials', None)
@@ -499,27 +507,27 @@ class PVLogger():
         """
         look for whether data collection should stop.
         There are two ways to specify stopping:
-           a) a file named _PVLOG_stop.txt written to the folder will stop collection
-           b) if the end_datetime specified in the configuration is exceeded
+           a) if the end_datetime specified in the configuration is exceeded
+           b) if a file named _PVLOG_stop.txt written to the folder will stop collection
         """
-        exit_request = ((self.end_timestamp > 65536) and
-                        (time() > self.end_timestamp))
+        if ((self.end_timestamp > 65536) and (time() > self.end_timestamp)):
+            return True
 
         stopfile = Path(self.pvlog_folder, STOP_FILE)
-        logstat = check_pvlog_timestamp(self.pvlog_folder, timestamp_only=False)
         if stopfile.exists():
-            exit_request = True
             try:
                 stopfile.unlink(missing_ok=True)
             except OSError:
                 pass
+            return True
+
         if not check_pvlog_timestamp(self.pvlog_folder, timestamp_only=False):
             with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
                 macid, pid = get_machineid_process()
                 fh.write(f'{isotime()}: not logging process! mac={macid}, pid={pid}\n')
-            exit_request = True
+            return True
 
-        return exit_request
+        return False
 
     def finish(self):
         """finish data collection"""
