@@ -27,7 +27,7 @@ ca.WITH_CA_MESSAGES = True
 ca.initialize_libca()
 
 CONF_FILE = '_PVLOG.yaml'
-REQUESTS_FILE = '_PVLOG_request.yaml'
+REQUEST_FILE = '_PVLOG_request.yaml'
 STOP_FILE = '_PVLOG_stop.txt'
 RUNLOG_FILE = '_PVLOG_runlog.txt'
 ERROR_FILE = '_PVLOG_error.txt'
@@ -463,10 +463,10 @@ class PVLogger():
         look for a file named _PVLOG_requests.yaml and add PVs
         listed there to monitoring process
         """
-        reqfile = Path(REQUESTS_FILE)
+        reqfile = Path(REQUEST_FILE)
         if reqfile.exists():
             with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
-                fh.write(f'{isotime()}: read {REQUESTS_FILE}\n')
+                fh.write(f'{isotime()}: read {REQUEST_FILE}\n')
 
             rconfig = PVLoggerConfig(reqfile.as_posix())
             for section in ('pvs', 'instruments'):

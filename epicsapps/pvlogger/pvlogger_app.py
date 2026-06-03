@@ -46,7 +46,7 @@ from .eventtableview import EventTableFrame
 
 from ..utils import get_icon, fit_frame, get_pvdesc, get_pvmdel
 from .pvlogger import (get_instruments, check_pvlog_timestamp, UPDATETIME,
-                       REQUESTS_FILE, STOP_FILE, INSTRUMENTS_FILE)
+                       REQUEST_FILE, STOP_FILE, INSTRUMENTS_FILE)
 DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE|dv.DV_HORIZ_RULES
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
