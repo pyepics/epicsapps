@@ -950,7 +950,7 @@ Matt Newville <newville@cars.uchicago.edu>
     def write_requests(self, data):
         """write data to requests file"""
         req_text = yaml.dump(data)
-        outfile = Path(self.log_folder.fullpath, REQUEST_FILE)
+        outfile = Path(self.log_folder.fullpath, REQUESTS_FILE)
         if outfile.exists():
             print("Waiting for previous request to be processed...")
             timeout = time.time() + UPDATETIME*1.5
