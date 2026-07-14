@@ -6,7 +6,15 @@ Provides a scaled font utility for wxPython controls.
 import sys
 import wx
 
-__all__ = ["scaled_font"]
+__all__ = ["scaled_font", "btn_font", "BIN_METHOD_LABELS", "UNIT_KEYS", "UNIT_LABELS"]
+
+UNIT_KEYS = ["2th_deg", "d_A", "q_A^-1"]
+UNIT_LABELS = ["2\u03b8", "d (\u212b)", "Q (\u212b\u207b\u00b9)"]
+BIN_METHOD_LABELS: tuple[tuple[str, str], ...] = (
+    ("none", "None (full resolution)"),
+    ("stride", "Stride (fastest)"),
+    ("mean", "Mean (anti-aliased)"),
+)
 
 _PT_TO_PX = {9: 10, 10: 11, 11: 12, 12: 13, 13: 14}
 _WIN_PX_ADJUST = -2
@@ -22,6 +30,7 @@ def scaled_font(
     if sys.platform == "win32":
         px = max(1, px + _WIN_PX_ADJUST)
     return wx.Font(wx.Size(0, px), family, style, weight)
+
 
 def btn_font() -> wx.Font:
     """Return the standard FlatButton font."""
