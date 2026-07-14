@@ -22,3 +22,7 @@ def scaled_font(
     if sys.platform == "win32":
         px = max(1, px + _WIN_PX_ADJUST)
     return wx.Font(wx.Size(0, px), family, style, weight)
+
+def btn_font() -> wx.Font:
+    """Return the standard FlatButton font."""
+    return scaled_font(12)
