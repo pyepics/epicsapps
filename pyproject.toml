@@ -11,6 +11,7 @@ include = ["epicsapps", "epicsapps.areadetector",
            "epicsapps.areadetector", "epicsapps.icons", "epicsapps.instruments",
            "epicsapps.ionchamber", "epicsapps.ionchamber.iocApp",
            "epicsapps.microscope", "epicsapps.pvlogger",
+           "epicsapps.pva_adviewer",
            "epicsapps.stripchart", "epicsapps.utils"]
 
 [project]
@@ -36,31 +37,37 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     ]
 
-dependencies = ['pyepics',
-             'sqlalchemy',
-             'psycopg2-binary',
-             'pyyaml',
-             'numpy',
-             'matplotlib',
-             'pytz',
-             'datetime',
-             'python-dateutil',
-             'wxpython>=4.2.1',
-             'wxmplot>=2026.1.0',
-             'wxutils>=2026.2.1',
-             'lmfit',
-             'pyshortcuts>=1.9.9',
-             'xraydb',
-             'tabulate',
-             'transformations',
-             'toml',
-             'tomli',
-             'opencv-python',
-             ]
+dependencies = [
+    'pyepics',
+    'sqlalchemy',
+    'psycopg2-binary',
+    'pyyaml',
+    'numpy',
+    'matplotlib',
+    'pytz',
+    'datetime',
+    'python-dateutil',
+    'wxpython>=4.2.1',
+    'wxmplot>=2026.1.0',
+    'wxutils>=2026.2.1',
+    'lmfit',
+    'pyshortcuts>=1.9.9',
+    'xraydb',
+    'tabulate',
+    'transformations',
+    'toml',
+    'tomli',
+    'opencv-python',
+    "p4p>=4.2.2",
+    "h5py>=3.16.0",
+    "pyfai>=2026.5.0",
+    "hdf5plugin>=7.0.0",
+]
 
 [project.scripts]
 epicsapps = "epicsapps:run_epicsapps"
 epics_adviewer = "epicsapps:run_adviewer"
+epics_pvaviewer = "epicsapps:run_pvaviewer"
 epics_instruments = "epicsapps:run_instruments"
 epics_stripchart = "epicsapps:run_stripchart"
 epics_jupyterlab = "epicsapps:run_larch_jupyterlab"
