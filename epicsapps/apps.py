@@ -60,6 +60,7 @@ class EpicsApp:
 APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('Sample Microscope', 'microscope', icon='microscope'),
         EpicsApp('areaDetector Viewer', 'adviewer', icon='areadetector'),
+        EpicsApp('areaDetector Viewer PVA', 'pvaviewer', icon='pvaviewer'),
         EpicsApp('StripChart',       'stripchart', icon='stripchart'),
         EpicsApp('PVLogger',         'pvlogviewer', icon='logging'),
         EpicsApp('Jupyter Lab', 'jupyterlab', icon='jupyter',
