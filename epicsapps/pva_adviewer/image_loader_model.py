@@ -56,24 +56,25 @@ class ImageLoaderModel:
         self._hdf5_dataset_path = None
         self._hdf5_filepath = None
 
+        f = None
         try:
-            with h5py.File(filepath, "r") as f:
-                dataset = self._find_dataset(f)
+            f = h5py.File(filepath, "r")
+            dataset = self._find_dataset(f)
 
-                if dataset is None:
-                    raise ValueError(
-                        "Could not find image data in HDF5 file.\n\nTried common dataset paths: data, images, entry/data/data, exchange/data, entry/instrument/detector/data"
-                    )
+            if dataset is None:
+                raise ValueError(
+                    "Could not find image data in HDF5 file.\n\nTried common dataset paths: data, images, entry/data/data, exchange/data, entry/instrument/detector/data"
+                )
 
-                if len(dataset.shape) == 2:
-                    frame = dataset[:]
-                elif len(dataset.shape) == 3:
-                    self._hdf5_frame_count = dataset.shape[0]
-                    self._hdf5_dataset_path = dataset.name
-                    self._hdf5_filepath = filepath
-                    frame = dataset[0]
-                else:
-                    raise ValueError(f"Unsupported data shape: {dataset.shape}\n\nExpected 2D or 3D array.")
+            if len(dataset.shape) == 2:
+                frame = dataset[:]
+            elif len(dataset.shape) == 3:
+                self._hdf5_frame_count = dataset.shape[0]
+                self._hdf5_dataset_path = dataset.name
+                self._hdf5_filepath = filepath
+                frame = dataset[0]
+            else:
+                raise ValueError(f"Unsupported data shape: {dataset.shape}\n\nExpected 2D or 3D array.")
         except OSError as e:
             error_msg = str(e).lower()
             if "can't find plugin" in error_msg or "plugin" in error_msg:
@@ -83,6 +84,12 @@ class ImageLoaderModel:
                     f"Original error: {e}"
                 ) from e
             raise
+        finally:
+            if f is not None:
+                try:
+                    f.close()
+                except Exception:
+                    pass  # h5py close errors are a known issue on some platforms
 
         self._loaded_file = filepath
         return frame.astype(np.float32)
@@ -94,9 +101,10 @@ class ImageLoaderModel:
         if not (0 <= index < self._hdf5_frame_count):
             raise ValueError(f"Frame index {index} out of range [0, {self._hdf5_frame_count}).")
 
+        f = None
         try:
-            with h5py.File(self._hdf5_filepath, "r") as f:
-                frame = f[self._hdf5_dataset_path][index]
+            f = h5py.File(self._hdf5_filepath, "r")
+            frame = f[self._hdf5_dataset_path][index]
         except OSError as e:
             error_msg = str(e).lower()
             if "can't find plugin" in error_msg or "plugin" in error_msg:
@@ -106,6 +114,12 @@ class ImageLoaderModel:
                     f"Original error: {e}"
                 ) from e
             raise
+        finally:
+            if f is not None:
+                try:
+                    f.close()
+                except Exception:
+                    pass
 
         return frame.astype(np.float32)
 
