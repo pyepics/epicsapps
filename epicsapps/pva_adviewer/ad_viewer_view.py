@@ -233,6 +233,9 @@ class ADViewerView(wx.Panel):
     def clear_integration_plot(self) -> None:
         self._integration_plot.clear()
 
+    def reset_view(self) -> None:
+        self._image_canvas.reset_view()
+
     def set_status_overlay(self, text: str) -> None:
         """Show a centered status message over the canvas (or hide it when *text* is empty)."""
         if text:

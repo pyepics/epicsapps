@@ -184,6 +184,7 @@ class ADViewerController:
             return
 
         self._view.display_frame(frame)
+        self._view.reset_view()
         self._view.set_live_updates(False)
         self._run_full_frame_integration(frame)
 
