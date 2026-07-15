@@ -184,9 +184,9 @@ class ADViewerView(wx.Panel):
             _log.warning(f"update_frame: skipping because live_updates={self._live_updates}")
             return
         _log.info(f"update_frame: calling display_frame with shape={frame.shape}, dtype={frame.dtype}")
-        self.display_frame(frame)
+        self.display_frame(frame, reset_histogram_range=self._auto_scale)
 
-    def display_frame(self, frame: np.ndarray) -> None:
+    def display_frame(self, frame: np.ndarray, reset_histogram_range: bool = True) -> None:
         """Forward frame to the GPU every call and throttle the side widgets."""
         _log.info(f"display_frame: shape={frame.shape}, dtype={frame.dtype}, min={frame.min()}, max={frame.max()}")
         self._current_frame = frame
@@ -197,7 +197,11 @@ class ADViewerView(wx.Panel):
         if now - self._last_histogram_update < self._histogram_min_interval_s:
             return
         self._last_histogram_update = now
-        self._intensity_histogram.set_data(frame, auto_scale=False)
+        if reset_histogram_range:
+            self._intensity_histogram.set_data(frame, auto_scale=False)
+        else:
+            # Keep existing axis range; only refresh bars for the new frame
+            self._intensity_histogram.set_data(frame, auto_scale=False, data_range=self._intensity_histogram.get_range())
         lo, hi = self._image_canvas.get_contrast_range()
         self._intensity_histogram.set_levels(lo, hi)
         self._last_pushed_levels = (lo, hi)
