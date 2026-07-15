@@ -143,8 +143,8 @@ class ImageSettingsPopup(wx.Frame):
 
         bin_row = wx.BoxSizer(wx.HORIZONTAL)
         bin_row.Add(_lbl("Live binning"), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
-        self._bin_method_keys = [key for key, _ in self.BIN_METHOD_LABELS]
-        bin_labels = [label for _, label in self.BIN_METHOD_LABELS]
+        self._bin_method_keys = [key for key, _ in BIN_METHOD_LABELS]
+        bin_labels = [label for _, label in BIN_METHOD_LABELS]
         self._bin_choice = FlatCombo(parent, choices=bin_labels, combo_scheme=COMBO_SCHEME)
         if bin_method in self._bin_method_keys:
             self._bin_choice.SetSelection(self._bin_method_keys.index(bin_method))
@@ -168,7 +168,7 @@ class ImageSettingsPopup(wx.Frame):
         self._on_filter_gaps_changed(value)
 
     def _evt_bin_method(self, label: str) -> None:
-        for key, lbl in self.BIN_METHOD_LABELS:
+        for key, lbl in BIN_METHOD_LABELS:
             if lbl == label:
                 self._on_bin_method_changed(key)
                 return
