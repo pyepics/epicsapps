@@ -38,6 +38,7 @@ class ADViewerController:
         self._view.bind_integration_settings_changed(self._on_integration_settings_changed)
         self._view.bind_roi_live_integration(self._on_roi_live_integration_changed)
         self._view.bind_roi_changed(self._on_roi_changed)
+        self._view.bind_roi_cleared(self._on_roi_cleared)
         self._view.bind_line_changed(self._on_line_changed)
         self._view.bind_frame_navigation(self._on_navigate_frame)
 
@@ -84,15 +85,14 @@ class ADViewerController:
                 return
             roi = self._view.get_roi_coords()
             line = self._view.get_line_coords()
-            if roi is None and line is None:
-                return
             if self._integration.is_calibrated:
                 self._run_integration(current_frame)
             elif line is not None:
                 self._run_line_integration(current_frame, *line)
+            elif roi is not None:
+                self._run_roi_fallback(current_frame, *roi)
             else:
-                x1, y1, x2, y2 = roi
-                self._run_roi_fallback(current_frame, x1, y1, x2, y2)
+                self._run_full_image_fallback(current_frame)
         except Exception:
             _log.exception("Error in _on_new_frame_gui - this might cause frames to stop updating")
 
@@ -111,6 +111,16 @@ class ADViewerController:
         self._view.set_poni_label(poni_path.name, success=True)
         self._view.set_d_spacing_func(self._integration.compute_d_spacing)
         self._view.set_two_theta_func(self._integration.compute_two_theta)
+
+    def _on_roi_cleared(self) -> None:
+        """Show the full-image plot when the ROI or line is cleared."""
+        current_frame = self._view.current_frame
+        if current_frame is None:
+            return
+        if self._integration.is_calibrated:
+            self._run_integration(current_frame)
+        else:
+            self._run_full_image_fallback(current_frame)
 
     def _on_integration_settings_changed(self) -> None:
         """Re-integrate the current frame when the unit or npt changes."""
@@ -175,6 +185,7 @@ class ADViewerController:
 
         self._view.display_frame(frame)
         self._view.set_live_updates(False)
+        self._run_full_frame_integration(frame)
 
         frame_count = self._image_loader.frame_count
         self._view.set_frame_navigation(frame_count, 0)
@@ -188,20 +199,19 @@ class ADViewerController:
             wx.MessageBox(f"Error loading frame {index}:\n{exc}", "Error", wx.OK | wx.ICON_ERROR)
             return
         self._view.display_frame(frame)
-        roi = self._view.get_roi_coords()
-        line = self._view.get_line_coords()
-        if self._integration.is_calibrated and (roi is not None or line is not None):
-            self._run_integration(frame)
-        elif line is not None:
-            self._run_line_integration(frame, *line)
-        elif roi is not None:
-            self._run_roi_fallback(frame, *roi)
+        self._run_full_frame_integration(frame)
 
     def _on_roi_changed(self, x1: int | None, y1: int | None, x2: int | None, y2: int | None) -> None:
         """React to an ROI draw or clear event from the canvas."""
         current_frame = self._view.current_frame
-        if x1 is None or y1 is None or x2 is None or y2 is None or current_frame is None:
+        if current_frame is None:
             self._view.clear_integration_plot()
+            return
+        if x1 is None or y1 is None or x2 is None or y2 is None:
+            if self._integration.is_calibrated:
+                self._run_integration(current_frame)
+            else:
+                self._run_full_image_fallback(current_frame)
             return
         if self._integration.is_calibrated:
             self._run_integration(current_frame)
@@ -217,6 +227,27 @@ class ADViewerController:
             self._run_integration(current_frame)
         else:
             self._run_line_integration(current_frame, x1, y1, x2, y2)
+
+    def _run_full_frame_integration(self, frame: np.ndarray) -> None:
+        """Integrate respecting any active ROI/line, or fall back to the full image."""
+        roi = self._view.get_roi_coords()
+        line = self._view.get_line_coords()
+        if self._integration.is_calibrated:
+            self._run_integration(frame)
+        elif line is not None:
+            self._run_line_integration(frame, *line)
+        elif roi is not None:
+            self._run_roi_fallback(frame, *roi)
+        else:
+            self._run_full_image_fallback(frame)
+
+    def _run_full_image_fallback(self, frame: np.ndarray) -> None:
+        """Column-sum the full image when no poni is loaded."""
+        h, w = frame.shape[:2]
+        img = frame.mean(axis=2) if frame.ndim == 3 else frame
+        ys = img.sum(axis=0).astype(np.float64)
+        xs = np.arange(w, dtype=np.float64)
+        self._view.set_integration_data(xs, ys, "Pixel")
 
     def _run_roi_fallback(self, frame: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> None:
         """Compute column-sum integration over the ROI and push results to the view."""
