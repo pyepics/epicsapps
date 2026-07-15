@@ -66,6 +66,7 @@ class ADViewerView(wx.Panel):
         self._load_poni_cb: _FileLoadCallback | None = None
         self._integration_changed_cb: Callable[[], None] | None = None
         self._roi_live_integration_cb: Callable[[bool], None] | None = None
+        self._roi_cleared_cb: Callable[[], None] | None = None
         self._line_changed_cb: Callable | None = None
         self._frame_nav_cb: _FrameNavCallback | None = None
         self._current_frame_index: int = 0
@@ -164,6 +165,9 @@ class ADViewerView(wx.Panel):
         self._roi_live_integration_cb = callback
         self._integration_plot.set_live_integration_callback(callback)
 
+    def bind_roi_cleared(self, callback: Callable[[], None]) -> None:
+        self._roi_cleared_cb = callback
+
     @property
     def is_roi_live_integration(self) -> bool:
         return self._integration_plot.is_live_integration
@@ -251,7 +255,8 @@ class ADViewerView(wx.Panel):
         self._reposition_overlay_buttons()
 
     def _on_roi_or_line_cleared(self) -> None:
-        self._integration_plot.clear()
+        if self._roi_cleared_cb is not None:
+            self._roi_cleared_cb()
 
     def _on_unit_changed(self, unit: str) -> None:
         self._current_unit = unit
