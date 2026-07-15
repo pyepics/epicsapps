@@ -193,15 +193,10 @@ class ADViewerView(wx.Panel):
         if now - self._last_histogram_update < self._histogram_min_interval_s:
             return
         self._last_histogram_update = now
+        self._intensity_histogram.set_data(frame, auto_scale=False)
         lo, hi = self._image_canvas.get_contrast_range()
-        _log.info(f"display_frame: canvas contrast range = ({lo}, {hi})")
-        self._intensity_histogram.set_data(frame, auto_scale=False, data_range=(lo, hi))
-        # Only push contrast levels when they actually moved
-        levels = (lo, hi)
-        if levels != self._last_pushed_levels:
-            _log.info(f"display_frame: calling set_levels({lo}, {hi})")
-            self._intensity_histogram.set_levels(lo, hi)
-            self._last_pushed_levels = levels
+        self._intensity_histogram.set_levels(lo, hi)
+        self._last_pushed_levels = (lo, hi)
 
     def set_live_updates(self, enabled: bool) -> None:
         self._live_updates = enabled
