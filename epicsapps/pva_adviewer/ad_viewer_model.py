@@ -468,6 +468,8 @@ class ADViewerModel:
 
     def _decode_value(self, value: object) -> FrameModel | None:
         """Build a `FrameModel` from a raw PVA Value, or None on decode error."""
+        if value["value"] is None:
+            return None
         decode_start = time.perf_counter()
         try:
             image, codec_name, compressed_size, uncompressed_size = self._decode_image(value)
