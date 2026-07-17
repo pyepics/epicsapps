@@ -5,12 +5,14 @@
 
 from typing import Callable
 
+import numpy as np
 import wx
+from vispy import scene
 from wxmplot import LinePlot
-from wxutils import get_color, draw_folder
+from wxutils import get_color, draw_folder, FlatTextCtrl
 
-from epicsapps.pva_adviewer.theme import LIVE_H, LIVE_W, PONI_LOADED, PONI_MISSING, ICON_SIZE, UNIT_BTN_W, UNIT_BTN_H, UNIT_BTN_GAP
-from epicsapps.pva_adviewer.widgets import LiveToggle
+from epicsapps.pva_adviewer.theme import LIVE_H, LIVE_W, PONI_LOADED, PONI_MISSING, ICON_SIZE, UNIT_BTN_W, UNIT_BTN_H, UNIT_BTN_GAP, TEXT_SCHEME
+from epicsapps.pva_adviewer.widgets import LiveToggle, PlotToggleButton
 from epicsapps.pva_adviewer.fonts import scaled_font, UNIT_KEYS, UNIT_LABELS
 
 __all__ = ["IntegrationPlot"]
@@ -42,6 +44,76 @@ class IntegrationPlot(LinePlot):
         self._btn_pressed: bool = False
         self._btn_rect: wx.Rect = wx.Rect(0, 0, 0, 0)
 
+        self._bg_active: bool = False
+        self._bg_inspect_active: bool = False
+        self._bg_changed_cb: Callable[[bool], None] | None = None
+        self._bg_inspect_changed_cb: Callable[[bool], None] | None = None
+
+        # Background curve visual (orange-red, shown in inspect mode)
+        self._bkg_line = scene.visuals.Line(
+            pos=np.array([[0, 0], [1, 0]], dtype=np.float32),
+            color=(1.0, 0.45, 0.15, 1.0),
+            width=1.5,
+            method="agg",
+            parent=self._view.scene,
+        )
+        self._bkg_line.visible = False
+
+        # ROI region visuals — mesh first so handle lines always render on top
+        _roi_y = 1e10
+        self._roi_mesh = scene.visuals.Mesh(
+            vertices=np.zeros((4, 2), dtype=np.float32),
+            faces=np.array([[0, 1, 2], [0, 2, 3]], dtype=np.uint32),
+            color=(0.4, 0.7, 1.0, 0.10),
+            parent=self._view.scene,
+        )
+        self._roi_mesh.visible = False
+        self._roi_left_line = scene.visuals.Line(
+            pos=np.array([[0, -_roi_y], [0, _roi_y]], dtype=np.float32),
+            color=(0.6, 0.85, 1.0, 1.0),
+            width=3,
+            method="agg",
+            parent=self._view.scene,
+        )
+        self._roi_left_line.visible = False
+        self._roi_right_line = scene.visuals.Line(
+            pos=np.array([[1, -_roi_y], [1, _roi_y]], dtype=np.float32),
+            color=(0.6, 0.85, 1.0, 1.0),
+            width=3,
+            method="agg",
+            parent=self._view.scene,
+        )
+        self._roi_right_line.visible = False
+
+        # ROI drag state
+        self._roi_visible: bool = False
+        self._roi_x_min: float = 0.0
+        self._roi_x_max: float = 1.0
+        self._roi_dragging: int = 0  # 0=none, 1=left handle, 2=right handle
+        self._roi_changed_cb: Callable[[float, float], None] | None = None
+
+        # Canvas bindings for ROI drag — added AFTER super().__init__() so they fire first (LIFO)
+        self._canvas.native.Bind(wx.EVT_LEFT_DOWN, self._on_roi_canvas_down)
+        self._canvas.native.Bind(wx.EVT_MOTION, self._on_roi_canvas_move)
+        self._canvas.native.Bind(wx.EVT_LEFT_UP, self._on_roi_canvas_up)
+
+        self._bg_btn = PlotToggleButton(self, label="b", tooltip="Toggle auto background subtraction")
+        self._bg_btn.SetAction(self._on_bg_toggled)
+        self._bg_btn.Hide()
+
+        self._inspect_btn = PlotToggleButton(self, label="I", tooltip="Inspect / adjust background ROI")
+        self._inspect_btn.SetAction(self._on_inspect_toggled)
+        self._inspect_btn.Hide()
+
+        self._poly_order_changed_cb: Callable[[int], None] | None = None
+        self._poly_order_ctrl = FlatTextCtrl(
+            self, value="50", text_scheme=TEXT_SCHEME, size=wx.Size(UNIT_BTN_W, UNIT_BTN_H)
+        )
+        self._poly_order_ctrl.SetToolTip("Chebyshev polynomial order for background fit")
+        self._poly_order_ctrl.Bind(wx.EVT_TEXT_ENTER, self._on_poly_order_enter)
+        self._poly_order_ctrl.Bind(wx.EVT_KILL_FOCUS, self._on_poly_order_enter)
+        self._poly_order_ctrl.Hide()
+
         self._live_toggle = LiveToggle(self, live=False, tooltip="Toggle live ROI integration")
         self._live_toggle.Hide()
 
@@ -69,14 +141,205 @@ class IntegrationPlot(LinePlot):
         """Register a callback fired with the live toggle state."""
         self._live_toggle.set_toggled_callback(callback)
 
+    def set_bg_callback(self, callback: Callable[[bool], None]) -> None:
+        """Register a callback fired with the bg toggle state."""
+        self._bg_changed_cb = callback
+
+    def set_bg_inspect_callback(self, callback: Callable[[bool], None]) -> None:
+        """Register a callback fired with the inspect (I) toggle state."""
+        self._bg_inspect_changed_cb = callback
+
+    def set_bg_active(self, active: bool) -> None:
+        """Programmatically set the bg button state."""
+        self._bg_active = active
+        self._bg_btn.SetValue(active)
+        if not active:
+            self._bg_inspect_active = False
+            self._inspect_btn.SetValue(False)
+            self._inspect_btn.Hide()
+            self._poly_order_ctrl.Hide()
+        else:
+            self._inspect_btn.Show()
+            self._poly_order_ctrl.Show()
+        self._reposition_children()
+
+    def set_bg_inspect_active(self, active: bool) -> None:
+        """Programmatically set the inspect (I) button state."""
+        self._bg_inspect_active = active and self._bg_active
+        self._inspect_btn.SetValue(self._bg_inspect_active)
+
+    def set_poly_order_callback(self, callback: Callable[[int], None]) -> None:
+        """Register a callback fired with the new polynomial order when the user changes it."""
+        self._poly_order_changed_cb = callback
+
+    def _on_poly_order_enter(self, event: wx.Event) -> None:
+        try:
+            order = max(1, min(200, int(self._poly_order_ctrl.GetValue().strip())))
+        except ValueError:
+            order = 50
+        self._poly_order_ctrl.SetValue(str(order))
+        if self._poly_order_changed_cb is not None:
+            self._poly_order_changed_cb(order)
+        event.Skip()
+
+    @property
+    def bg_active(self) -> bool:
+        return self._bg_active
+
+    @property
+    def bg_inspect_active(self) -> bool:
+        return self._bg_inspect_active
+
+    # ------------------------------------------------------------------
+    # Background curve display
+    # ------------------------------------------------------------------
+
+    def set_bkg_data(self, xs: np.ndarray, ys: np.ndarray) -> None:
+        """Show the background curve overlay (used in inspect mode)."""
+        pts = np.column_stack([xs, ys]).astype(np.float32)
+        self._bkg_line.set_data(pos=pts)
+        self._bkg_line.visible = True
+        self._canvas.update()
+
+    def clear_bkg_data(self) -> None:
+        """Hide the background curve overlay."""
+        self._bkg_line.visible = False
+        self._canvas.update()
+
+    # ------------------------------------------------------------------
+    # ROI region display and drag
+    # ------------------------------------------------------------------
+
+    def set_bkg_roi_changed_callback(self, callback: Callable[[float, float], None]) -> None:
+        self._roi_changed_cb = callback
+
+    def show_bkg_roi(self, x_min: float, x_max: float) -> None:
+        """Show the draggable ROI region between x_min and x_max."""
+        self._roi_x_min = x_min
+        self._roi_x_max = x_max
+        self._roi_visible = True
+        self._update_roi_visuals()
+
+    def hide_bkg_roi(self) -> None:
+        """Hide the ROI region."""
+        self._roi_visible = False
+        self._roi_left_line.visible = False
+        self._roi_right_line.visible = False
+        self._roi_mesh.visible = False
+        self._canvas.update()
+
+    def get_bkg_roi(self) -> tuple[float, float]:
+        return self._roi_x_min, self._roi_x_max
+
+    def set_bkg_roi(self, x_min: float, x_max: float) -> None:
+        self._roi_x_min = x_min
+        self._roi_x_max = x_max
+        if self._roi_visible:
+            self._update_roi_visuals()
+
+    def _update_roi_visuals(self) -> None:
+        _Y = 1e10
+        xL, xR = self._roi_x_min, self._roi_x_max
+        self._roi_left_line.set_data(pos=np.array([[xL, -_Y], [xL, _Y]], dtype=np.float32))
+        self._roi_left_line.visible = True
+        self._roi_right_line.set_data(pos=np.array([[xR, -_Y], [xR, _Y]], dtype=np.float32))
+        self._roi_right_line.visible = True
+        ranges = self._data_ranges()
+        if ranges is not None:
+            _, _, y_min, y_max = ranges
+            verts = np.array(
+                [[xL, y_min], [xR, y_min], [xR, y_max], [xL, y_max]],
+                dtype=np.float32,
+            )
+            self._roi_mesh.set_data(
+                vertices=verts,
+                faces=np.array([[0, 1, 2], [0, 2, 3]], dtype=np.uint32),
+                color=(0.4, 0.7, 1.0, 0.10),
+            )
+            self._roi_mesh.visible = True
+        self._canvas.update()
+
+    def _roi_handle_at(self, canvas_x: int, canvas_y: int) -> int:
+        """Return 1 for left handle, 2 for right handle, 0 for neither."""
+        if not self._roi_visible:
+            return 0
+        panel_pt = self._canvas_pt_to_panel(canvas_x, canvas_y)
+        result = self._panel_pt_to_data(panel_pt)
+        if result is None:
+            return 0
+        data_x, _ = result
+        ranges = self._data_ranges()
+        if ranges is None:
+            return 0
+        W, _ = self.GetSize()
+        pw = max(1, W - self._ml - self._mr)
+        x_min_d, x_max_d, _, _ = ranges
+        if x_max_d == x_min_d:
+            return 0
+        threshold = 8.0 * (x_max_d - x_min_d) / pw
+        dist_l = abs(data_x - self._roi_x_min)
+        dist_r = abs(data_x - self._roi_x_max)
+        if dist_l < threshold and dist_l <= dist_r:
+            return 1
+        if dist_r < threshold:
+            return 2
+        return 0
+
+    def _on_roi_canvas_down(self, event: wx.MouseEvent) -> None:
+        raw = event.GetPosition()
+        handle = self._roi_handle_at(raw.x, raw.y)
+        if handle:
+            self._roi_dragging = handle
+            return  # consume — prevents parent zoom-drag
+        event.Skip()
+
+    def _on_roi_canvas_move(self, event: wx.MouseEvent) -> None:
+        raw = event.GetPosition()
+        if self._roi_dragging:
+            panel_pt = self._canvas_pt_to_panel(raw.x, raw.y)
+            result = self._panel_pt_to_data(panel_pt)
+            if result is not None:
+                data_x, _ = result
+                ranges = self._data_ranges()
+                if ranges is not None:
+                    x_min_d, x_max_d, _, _ = ranges
+                    data_x = max(x_min_d, min(x_max_d, data_x))
+                if self._roi_dragging == 1:
+                    self._roi_x_min = min(data_x, self._roi_x_max - 1e-9)
+                else:
+                    self._roi_x_max = max(data_x, self._roi_x_min + 1e-9)
+                self._update_roi_visuals()
+            return  # consume
+        if self._roi_visible:
+            handle = self._roi_handle_at(raw.x, raw.y)
+            cursor = wx.Cursor(wx.CURSOR_SIZEWE) if handle else wx.Cursor(wx.CURSOR_ARROW)
+            self._canvas.native.SetCursor(cursor)
+        event.Skip()
+
+    def _on_roi_canvas_up(self, event: wx.MouseEvent) -> None:
+        if self._roi_dragging:
+            self._roi_dragging = 0
+            if self._roi_changed_cb is not None:
+                self._roi_changed_cb(self._roi_x_min, self._roi_x_max)
+            return  # consume
+        event.Skip()
+
     def set_calibrated(self, calibrated: bool) -> None:
         """Show or hide the unit buttons and live toggle based on calibration state."""
         self._calibrated = calibrated
         if calibrated:
             self._live_toggle.Show()
+            self._bg_btn.Show()
         else:
             self._live_toggle.set_live(False)
             self._live_toggle.Hide()
+            self._bg_btn.Hide()
+            self._bg_active = False
+            self._bg_btn.SetValue(False)
+            self._bg_inspect_active = False
+            self._inspect_btn.SetValue(False)
+            self._inspect_btn.Hide()
+            self._poly_order_ctrl.Hide()
         self._reposition_children()
         self.Refresh()
 
@@ -102,13 +365,63 @@ class IntegrationPlot(LinePlot):
             self._draw_unit_buttons(gc, W, H)
 
     def _reposition_children(self) -> None:
-        """Reposition the VisPy canvas and live toggle within the panel."""
+        """Reposition the VisPy canvas and right-side widget stack within the panel."""
         self._reposition_canvas()
         W, H = self.GetSize()
-        x = W - LIVE_W - self._BTN_PAD
-        y = self._mt + max(0, (H - self._mt - self._mb - LIVE_H) // 2)
-        self._live_toggle.SetPosition(wx.Point(x, y))
+        canvas_h = max(1, H - self._mt - self._mb)
+        right_edge = W - self._BTN_PAD
+
+        # Compute total height of the right-side stack so it can be centred
+        total_h = LIVE_H
+        if self._calibrated:
+            total_h += self._BTN_PAD + LIVE_W  # b button (square)
+            if self._bg_active:
+                total_h += self._BTN_PAD + LIVE_W  # I button (square)
+                total_h += self._BTN_PAD + UNIT_BTN_H  # poly order ctrl
+
+        y = self._mt + max(0, (canvas_h - total_h) // 2)
+
+        self._live_toggle.SetPosition(wx.Point(right_edge - LIVE_W, y))
         self._live_toggle.Raise()
+        y += LIVE_H
+
+        if self._calibrated:
+            y += self._BTN_PAD
+            self._bg_btn.SetPosition(wx.Point(right_edge - LIVE_W, y))
+            self._bg_btn.Raise()
+            y += LIVE_W  # square button: height == width == LIVE_W
+
+            if self._bg_active:
+                y += self._BTN_PAD
+                self._inspect_btn.SetPosition(wx.Point(right_edge - LIVE_W, y))
+                self._inspect_btn.Raise()
+                y += LIVE_W
+
+                y += self._BTN_PAD
+                poly_w = self._poly_order_ctrl.GetSize().width
+                self._poly_order_ctrl.SetPosition(wx.Point(right_edge - poly_w, y))
+                self._poly_order_ctrl.Raise()
+
+    def _on_bg_toggled(self, _event: wx.CommandEvent) -> None:
+        self._bg_active = self._bg_btn.GetValue()
+        if not self._bg_active:
+            self._bg_inspect_active = False
+            self._inspect_btn.SetValue(False)
+            self._inspect_btn.Hide()
+            self._poly_order_ctrl.Hide()
+            if self._bg_inspect_changed_cb is not None:
+                self._bg_inspect_changed_cb(False)
+        else:
+            self._inspect_btn.Show()
+            self._poly_order_ctrl.Show()
+        self._reposition_children()
+        if self._bg_changed_cb is not None:
+            self._bg_changed_cb(self._bg_active)
+
+    def _on_inspect_toggled(self, _event: wx.CommandEvent) -> None:
+        self._bg_inspect_active = self._inspect_btn.GetValue()
+        if self._bg_inspect_changed_cb is not None:
+            self._bg_inspect_changed_cb(self._bg_inspect_active)
 
     def _btn_rect_for(self, W: int, H: int) -> wx.Rect:
         """Return the bounding rect of the load-PONI button."""
@@ -155,7 +468,7 @@ class IntegrationPlot(LinePlot):
         event.Skip()
 
     def _on_integration_mouse_up(self, event: wx.MouseEvent) -> None:
-        """Fire PONI or unit callbacks on button release."""
+        """Fire PONI and unit callbacks on button release."""
         pt = event.GetPosition()
         W, H = self.GetSize()
         was_btn = self._btn_pressed

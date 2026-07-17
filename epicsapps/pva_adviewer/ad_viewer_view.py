@@ -165,6 +165,40 @@ class ADViewerView(wx.Panel):
         self._roi_live_integration_cb = callback
         self._integration_plot.set_live_integration_callback(callback)
 
+    def bind_bg_changed(self, callback: Callable[[bool], None]) -> None:
+        self._integration_plot.set_bg_callback(callback)
+
+    def bind_bg_inspect_changed(self, callback: Callable[[bool], None]) -> None:
+        self._integration_plot.set_bg_inspect_callback(callback)
+
+    def bind_bkg_roi_changed(self, callback: Callable[[float, float], None]) -> None:
+        self._integration_plot.set_bkg_roi_changed_callback(callback)
+
+    def bind_poly_order_changed(self, callback: Callable[[int], None]) -> None:
+        self._integration_plot.set_poly_order_callback(callback)
+
+    @property
+    def bg_inspect_active(self) -> bool:
+        return self._integration_plot.bg_inspect_active
+
+    def set_bg_active(self, active: bool) -> None:
+        self._integration_plot.set_bg_active(active)
+
+    def set_bkg_data(self, xs: np.ndarray, ys: np.ndarray) -> None:
+        self._integration_plot.set_bkg_data(xs, ys)
+
+    def clear_bkg_data(self) -> None:
+        self._integration_plot.clear_bkg_data()
+
+    def show_bkg_roi(self, x_min: float, x_max: float) -> None:
+        self._integration_plot.show_bkg_roi(x_min, x_max)
+
+    def hide_bkg_roi(self) -> None:
+        self._integration_plot.hide_bkg_roi()
+
+    def get_bkg_roi(self) -> tuple[float, float]:
+        return self._integration_plot.get_bkg_roi()
+
     def bind_roi_cleared(self, callback: Callable[[], None]) -> None:
         self._roi_cleared_cb = callback
 

@@ -33,6 +33,15 @@ class ADViewerController:
 
         self._integration = IntegrationModel()
 
+        # Stored data for toggling inspect mode without re-integrating
+        self._last_xs: np.ndarray | None = None
+        self._last_raw_ys: np.ndarray | None = None
+        self._last_sub_xs: np.ndarray | None = None
+        self._last_sub_ys: np.ndarray | None = None
+        self._last_bkg_xs: np.ndarray | None = None
+        self._last_bkg_ys: np.ndarray | None = None
+        self._last_x_label: str = ""
+
         self._view.bind_load_file(self._on_load_file)
         self._view.bind_load_poni(self._on_load_poni)
         self._view.bind_integration_settings_changed(self._on_integration_settings_changed)
@@ -41,6 +50,10 @@ class ADViewerController:
         self._view.bind_roi_cleared(self._on_roi_cleared)
         self._view.bind_line_changed(self._on_line_changed)
         self._view.bind_frame_navigation(self._on_navigate_frame)
+        self._view.bind_bg_changed(self._on_bg_changed)
+        self._view.bind_bg_inspect_changed(self._on_bg_inspect_changed)
+        self._view.bind_bkg_roi_changed(self._on_bkg_roi_changed)
+        self._view.bind_poly_order_changed(self._on_poly_order_changed)
 
     def subscribe(self, pv_name: str) -> None:
         """Subscribe to a PVA channel and start delivering frames to the view."""
@@ -164,7 +177,80 @@ class ADViewerController:
         except Exception:
             _log.exception("pyFAI integrate1d failed")
             return
-        self._view.set_integration_data(xs, ys, x_label)
+
+        self._last_xs = xs
+        self._last_raw_ys = ys
+        self._last_x_label = x_label
+
+        if self._integration.has_background:
+            try:
+                sub_xs, sub_ys, bkg_xs, bkg_ys = self._integration.apply_background(xs, ys)
+            except Exception:
+                _log.exception("Background subtraction failed")
+                self._view.set_integration_data(xs, ys, x_label)
+                return
+            self._last_sub_xs = sub_xs
+            self._last_sub_ys = sub_ys
+            self._last_bkg_xs = bkg_xs
+            self._last_bkg_ys = bkg_ys
+
+            if self._view.bg_inspect_active:
+                # Show raw data + background curve + draggable ROI region
+                self._view.set_integration_data(xs, ys, x_label)
+                self._view.set_bkg_data(bkg_xs, bkg_ys)
+                roi = self._integration._bkg_roi
+                self._view.show_bkg_roi(*(roi if roi is not None else (float(xs[0]), float(xs[-1]))))
+            else:
+                self._view.set_integration_data(sub_xs, sub_ys, x_label)
+                self._view.clear_bkg_data()
+        else:
+            self._last_sub_xs = None
+            self._last_sub_ys = None
+            self._last_bkg_xs = None
+            self._last_bkg_ys = None
+            self._view.set_integration_data(xs, ys, x_label)
+
+    def _on_bg_changed(self, enabled: bool) -> None:
+        """Enable or disable auto background subtraction."""
+        if enabled:
+            self._integration.enable_background()
+        else:
+            self._integration.disable_background()
+            self._view.clear_bkg_data()
+            self._view.hide_bkg_roi()
+        current_frame = self._view.current_frame
+        if current_frame is not None and self._integration.is_calibrated:
+            self._run_integration(current_frame)
+
+    def _on_bg_inspect_changed(self, enabled: bool) -> None:
+        """Switch between raw+background overlay (I on) and background-subtracted display (I off)."""
+        if not self._integration.has_background or self._last_xs is None:
+            return
+        if enabled:
+            self._view.set_integration_data(self._last_xs, self._last_raw_ys, self._last_x_label)
+            if self._last_bkg_xs is not None and self._last_bkg_ys is not None:
+                self._view.set_bkg_data(self._last_bkg_xs, self._last_bkg_ys)
+            roi = self._integration._bkg_roi
+            self._view.show_bkg_roi(*(roi if roi is not None else (float(self._last_xs[0]), float(self._last_xs[-1]))))
+        else:
+            if self._last_sub_xs is not None and self._last_sub_ys is not None:
+                self._view.set_integration_data(self._last_sub_xs, self._last_sub_ys, self._last_x_label)
+            self._view.clear_bkg_data()
+            self._view.hide_bkg_roi()
+
+    def _on_bkg_roi_changed(self, x_min: float, x_max: float) -> None:
+        """Update the background fitting ROI and re-integrate."""
+        self._integration.set_bkg_roi(x_min, x_max)
+        current_frame = self._view.current_frame
+        if current_frame is not None and self._integration.is_calibrated:
+            self._run_integration(current_frame)
+
+    def _on_poly_order_changed(self, order: int) -> None:
+        """Update the Chebyshev polynomial order and re-integrate."""
+        self._integration._bkg_cheb_order = order
+        current_frame = self._view.current_frame
+        if current_frame is not None and self._integration.is_calibrated and self._integration.has_background:
+            self._run_integration(current_frame)
 
     def _on_load_file(self, filepath: Path) -> None:
         """Load an image file and display it; disable live updates on success."""
