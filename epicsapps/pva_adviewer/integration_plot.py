@@ -89,10 +89,10 @@ class IntegrationPlot(LinePlot):
         self._roi_visible: bool = False
         self._roi_x_min: float = 0.0
         self._roi_x_max: float = 1.0
-        self._roi_dragging: int = 0  # 0=none, 1=left handle, 2=right handle
+        self._roi_dragging: int = 0
         self._roi_changed_cb: Callable[[float, float], None] | None = None
 
-        # Canvas bindings for ROI drag — added AFTER super().__init__() so they fire first (LIFO)
+        # Canvas bindings for ROI drag
         self._canvas.native.Bind(wx.EVT_LEFT_DOWN, self._on_roi_canvas_down)
         self._canvas.native.Bind(wx.EVT_MOTION, self._on_roi_canvas_move)
         self._canvas.native.Bind(wx.EVT_LEFT_UP, self._on_roi_canvas_up)
@@ -190,10 +190,6 @@ class IntegrationPlot(LinePlot):
     def bg_inspect_active(self) -> bool:
         return self._bg_inspect_active
 
-    # ------------------------------------------------------------------
-    # Background curve display
-    # ------------------------------------------------------------------
-
     def set_bkg_data(self, xs: np.ndarray, ys: np.ndarray) -> None:
         """Show the background curve overlay (used in inspect mode)."""
         pts = np.column_stack([xs, ys]).astype(np.float32)
@@ -205,10 +201,6 @@ class IntegrationPlot(LinePlot):
         """Hide the background curve overlay."""
         self._bkg_line.visible = False
         self._canvas.update()
-
-    # ------------------------------------------------------------------
-    # ROI region display and drag
-    # ------------------------------------------------------------------
 
     def set_bkg_roi_changed_callback(self, callback: Callable[[float, float], None]) -> None:
         self._roi_changed_cb = callback
@@ -290,7 +282,7 @@ class IntegrationPlot(LinePlot):
         handle = self._roi_handle_at(raw.x, raw.y)
         if handle:
             self._roi_dragging = handle
-            return  # consume — prevents parent zoom-drag
+            return
         event.Skip()
 
     def _on_roi_canvas_move(self, event: wx.MouseEvent) -> None:
@@ -309,7 +301,7 @@ class IntegrationPlot(LinePlot):
                 else:
                     self._roi_x_max = max(data_x, self._roi_x_min + 1e-9)
                 self._update_roi_visuals()
-            return  # consume
+            return
         if self._roi_visible:
             handle = self._roi_handle_at(raw.x, raw.y)
             cursor = wx.Cursor(wx.CURSOR_SIZEWE) if handle else wx.Cursor(wx.CURSOR_ARROW)
@@ -321,7 +313,7 @@ class IntegrationPlot(LinePlot):
             self._roi_dragging = 0
             if self._roi_changed_cb is not None:
                 self._roi_changed_cb(self._roi_x_min, self._roi_x_max)
-            return  # consume
+            return
         event.Skip()
 
     def set_calibrated(self, calibrated: bool) -> None:
@@ -374,10 +366,10 @@ class IntegrationPlot(LinePlot):
         # Compute total height of the right-side stack so it can be centred
         total_h = LIVE_H
         if self._calibrated:
-            total_h += self._BTN_PAD + LIVE_W  # b button (square)
+            total_h += self._BTN_PAD + LIVE_W
             if self._bg_active:
-                total_h += self._BTN_PAD + LIVE_W  # I button (square)
-                total_h += self._BTN_PAD + UNIT_BTN_H  # poly order ctrl
+                total_h += self._BTN_PAD + LIVE_W
+                total_h += self._BTN_PAD + UNIT_BTN_H
 
         y = self._mt + max(0, (canvas_h - total_h) // 2)
 
@@ -389,7 +381,7 @@ class IntegrationPlot(LinePlot):
             y += self._BTN_PAD
             self._bg_btn.SetPosition(wx.Point(right_edge - LIVE_W, y))
             self._bg_btn.Raise()
-            y += LIVE_W  # square button: height == width == LIVE_W
+            y += LIVE_W
 
             if self._bg_active:
                 y += self._BTN_PAD
