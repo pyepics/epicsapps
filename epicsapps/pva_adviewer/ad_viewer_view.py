@@ -255,6 +255,10 @@ class ADViewerView(wx.Panel):
         self._integration_plot.set_poni_info(text, success=success)
         self._integration_plot.set_calibrated(success)
 
+    def set_active_unit(self, unit: str) -> None:
+        self._current_unit = unit
+        self._integration_plot.set_active_unit(unit)
+
     def set_d_spacing_func(self, func: Callable | None) -> None:
         self._image_canvas.set_d_spacing_func(func)
 

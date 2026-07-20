@@ -125,6 +125,10 @@ class ADViewerController:
         self._view.set_poni_label(poni_path.name, success=True)
         self._view.set_d_spacing_func(self._integration.compute_d_spacing)
         self._view.set_two_theta_func(self._integration.compute_two_theta)
+        self._view.set_active_unit("2th_deg")
+        current_frame = self._view.current_frame
+        if current_frame is not None:
+            self._run_integration(current_frame)
 
     def _on_roi_cleared(self) -> None:
         """Show the full-image plot when the ROI or line is cleared."""
