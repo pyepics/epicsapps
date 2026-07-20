@@ -8,8 +8,7 @@ from typing import Callable
 import wx
 from wxutils import FlatToggleButton, FlatMenuBar
 
-from epicsapps.pva_adviewer.fonts import scaled_font
-from epicsapps.pva_adviewer.theme import BG_SURFACE, LIVE_H, LIVE_SCHEME, LIVE_W, BG_BTN_SCHEME
+from epicsapps.pva_adviewer.theme import AppTheme, get_theme, register_darkdetect
 
 __all__ = ["LiveToggle", "PlotToggleButton"]
 
@@ -18,9 +17,14 @@ class LiveToggle(FlatToggleButton):
     """Vertical LIVE toggle button."""
 
     def __init__(self, parent: wx.Window, live: bool = False, tooltip: str = "Toggle live updates") -> None:
-        super().__init__(parent, label="LIVE", value=live, toggle_scheme=LIVE_SCHEME, size=wx.Size(LIVE_W, LIVE_H))
+        super().__init__(parent, label="LIVE", value=live, size=wx.Size(AppTheme.live_w, AppTheme.live_h))
         if tooltip:
             self.SetToolTip(tooltip)
+        register_darkdetect(self._on_theme)
+
+    def _on_theme(self, _is_dark: bool = True) -> None:
+        if self:
+            wx.CallAfter(self.Refresh)
 
     def set_live(self, live: bool) -> None:
         self.SetValue(live)
@@ -41,18 +45,32 @@ class LiveToggle(FlatToggleButton):
         dc = wx.AutoBufferedPaintDC(self)
         gc = wx.GraphicsContext.Create(dc)
         w, h = self.GetClientSize()
+        t = get_theme()
 
-        gc.SetBrush(wx.Brush(BG_SURFACE))
+        gc.SetBrush(wx.Brush(t.background))
         gc.SetPen(wx.TRANSPARENT_PEN)
         gc.DrawRectangle(0, 0, w, h)
 
-        colour = (self._on_hover if self._hovered else self._on) if self._value else (self._off_hover if self._hovered else self._off)
-        gc.SetPen(wx.Pen(colour, 1))
-        gc.SetBrush(wx.TRANSPARENT_BRUSH)
+        red = t.red
+        if self._value:
+            bg = wx.Brush(wx.Colour(red.Red(), red.Green(), red.Blue(), 40))
+            border = red
+            text_color = red
+        elif self._hovered:
+            bg = wx.Brush(t.white)
+            border = t.white
+            text_color = t.foreground
+        else:
+            bg = wx.TRANSPARENT_BRUSH
+            border = t.white
+            text_color = t.foreground
+
+        gc.SetPen(wx.Pen(border, 1))
+        gc.SetBrush(bg)
         gc.DrawRoundedRectangle(1, 1, w - 2, h - 2, self._corner_radius)
 
-        font = scaled_font(10, weight=wx.FONTWEIGHT_BOLD)
-        gc.SetFont(font, colour)
+        font = AppTheme.scaled_font(10, weight=wx.FONTWEIGHT_BOLD)
+        gc.SetFont(font, text_color)
         _, ch_h = gc.GetTextExtent("L")
         y = (h - (4 * ch_h + 6)) / 2
         for ch in "LIVE":
@@ -64,34 +82,50 @@ class LiveToggle(FlatToggleButton):
 class PlotToggleButton(FlatToggleButton):
     """Square toggle button."""
 
-    def __init__(
-        self,
-        parent: wx.Window,
-        label: str,
-        scheme: tuple = None,
-        tooltip: str = "",
-    ) -> None:
-        if scheme is None:
-            scheme = BG_BTN_SCHEME
-        super().__init__(parent, label=label, toggle_scheme=scheme, size=wx.Size(LIVE_W, LIVE_W))
+    def __init__(self, parent: wx.Window, label: str, tooltip: str = "") -> None:
+        super().__init__(parent, label=label, size=wx.Size(AppTheme.live_w, AppTheme.live_w))
         if tooltip:
             self.SetToolTip(tooltip)
+        register_darkdetect(self._on_theme)
+
+    def set_hovered(self, hovered: bool) -> None:
+        if hovered != self._hovered:
+            self._hovered = hovered
+            self.Refresh()
+
+    def _on_theme(self, _is_dark: bool = True) -> None:
+        if self:
+            wx.CallAfter(self.Refresh)
 
     def _on_paint(self, _: wx.PaintEvent) -> None:
         dc = wx.AutoBufferedPaintDC(self)
         gc = wx.GraphicsContext.Create(dc)
         w, h = self.GetClientSize()
+        t = get_theme()
 
-        gc.SetBrush(wx.Brush(BG_SURFACE))
+        gc.SetBrush(wx.Brush(t.background))
         gc.SetPen(wx.TRANSPARENT_PEN)
         gc.DrawRectangle(0, 0, w, h)
 
-        colour = (self._on_hover if self._hovered else self._on) if self._value else (self._off_hover if self._hovered else self._off)
-        gc.SetPen(wx.Pen(colour, 1))
-        gc.SetBrush(wx.TRANSPARENT_BRUSH)
+        green = t.green
+        if self._value:
+            bg = wx.Brush(wx.Colour(green.Red(), green.Green(), green.Blue(), 40))
+            border = green
+            text_color = green
+        elif self._hovered:
+            bg = wx.Brush(t.white)
+            border = t.white
+            text_color = t.foreground
+        else:
+            bg = wx.TRANSPARENT_BRUSH
+            border = t.white
+            text_color = t.foreground
+
+        gc.SetPen(wx.Pen(border, 1))
+        gc.SetBrush(bg)
         gc.DrawRoundedRectangle(1, 1, w - 2, h - 2, self._corner_radius)
 
-        font = scaled_font(10, weight=wx.FONTWEIGHT_BOLD)
-        gc.SetFont(font, colour)
+        font = AppTheme.scaled_font(10, weight=wx.FONTWEIGHT_BOLD)
+        gc.SetFont(font, text_color)
         tw, th = gc.GetTextExtent(self._label)
         gc.DrawText(self._label, (w - tw) / 2, (h - th) / 2)

@@ -5,13 +5,16 @@ wx.App for the PVA adviewer.
 
 import logging
 import sys
+from typing import Optional
 
 import wx
+from wxutils import ColorTheme
 
 from epicsapps.pva_adviewer.ad_viewer_controller import ADViewerController
 from epicsapps.pva_adviewer.ad_viewer_model import ADViewerModel
 from epicsapps.pva_adviewer.ad_viewer_view import ADViewerView
 from epicsapps.pva_adviewer.image_loader_model import ImageLoaderModel
+from epicsapps.pva_adviewer.theme import AppTheme
 
 __all__ = ["PVAViewerApp"]
 
@@ -53,12 +56,15 @@ class _PVAViewerFrame(wx.Frame):
 class PVAViewerApp(wx.App):
     """Standalone wx.App for the PVA Viewer."""
 
-    def __init__(self, pv_name: str = "") -> None:
+    def __init__(self, pv_name: str = "", dark: Optional[ColorTheme] = None, light: Optional[ColorTheme] = None) -> None:
         self._pv_name = pv_name
+        self._dark = dark
+        self._light = light
         super().__init__(False)
 
     def OnInit(self) -> bool:
         """Initialise wx, apply theme, prompt for PV name, then show the viewer frame."""
+        AppTheme(dark=self._dark, light=self._light)
         pv_name = self._pv_name
         if not pv_name:
             dlg = wx.TextEntryDialog(
@@ -79,7 +85,7 @@ class PVAViewerApp(wx.App):
         return True
 
 
-def run_pvaviewer(pv_name: str = "") -> None:
+def run_pvaviewer(pv_name: str = "", dark: Optional[ColorTheme] = None, light: Optional[ColorTheme] = None) -> None:
     """Entry point called by the epicsapps CLI dispatcher."""
     if sys.platform == "win32":
         try:
@@ -88,5 +94,5 @@ def run_pvaviewer(pv_name: str = "") -> None:
             import ctypes
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
 
-    app = PVAViewerApp(pv_name=pv_name)
+    app = PVAViewerApp(pv_name=pv_name, dark=dark, light=light)
     app.MainLoop()

@@ -9,11 +9,10 @@ import numpy as np
 import wx
 from vispy import scene
 from wxmplot import LinePlot
-from wxutils import get_color, draw_folder, FlatTextCtrl
+from wxutils import draw_folder, FlatTextCtrl
 
-from epicsapps.pva_adviewer.theme import LIVE_H, LIVE_W, PONI_LOADED, PONI_MISSING, ICON_SIZE, UNIT_BTN_W, UNIT_BTN_H, UNIT_BTN_GAP, TEXT_SCHEME
+from epicsapps.pva_adviewer.theme import AppTheme, get_theme
 from epicsapps.pva_adviewer.widgets import LiveToggle, PlotToggleButton
-from epicsapps.pva_adviewer.fonts import scaled_font, UNIT_KEYS, UNIT_LABELS
 
 __all__ = ["IntegrationPlot"]
 
@@ -21,20 +20,17 @@ __all__ = ["IntegrationPlot"]
 class IntegrationPlot(LinePlot):
     """Azimuthal integration profile plot with PONI overlay and unit buttons."""
 
-    _BTN_W = ICON_SIZE + 8
-    _BTN_H = ICON_SIZE + 8
-    _BTN_PAD = 6
 
     def __init__(self, parent: wx.Window) -> None:
         """Initialise the IntegrationPlot."""
         super().__init__(parent)
 
         self._poni_text: str = "No calibration loaded"
-        self._poni_colour: wx.Colour = PONI_MISSING
+        self._poni_loaded: bool = False
         self._load_poni_cb: Callable[[], None] | None = None
         self._calibrated: bool = False
 
-        self._active_unit: str = UNIT_KEYS[0]
+        self._active_unit: str = AppTheme.unit_keys[0]
         self._unit_changed_cb: Callable[[str], None] | None = None
         self._unit_btn_rects: list[wx.Rect] = []
         self.UNIT_BTN_Hovered: int = -1
@@ -107,7 +103,8 @@ class IntegrationPlot(LinePlot):
 
         self._poly_order_changed_cb: Callable[[int], None] | None = None
         self._poly_order_ctrl = FlatTextCtrl(
-            self, value="50", text_scheme=TEXT_SCHEME, size=wx.Size(UNIT_BTN_W, UNIT_BTN_H)
+            self, value="50", centered=True,
+            size=wx.Size(36, AppTheme.live_w), corner_radius=4,
         )
         self._poly_order_ctrl.SetToolTip("Chebyshev polynomial order for background fit")
         self._poly_order_ctrl.Bind(wx.EVT_TEXT_ENTER, self._on_poly_order_enter)
@@ -118,15 +115,16 @@ class IntegrationPlot(LinePlot):
         self._live_toggle.Hide()
 
         self.Bind(wx.EVT_MOTION, self._on_integration_mouse_move)
+        self.Bind(wx.EVT_LEAVE_WINDOW, self._on_integration_mouse_leave)
         self.Bind(wx.EVT_LEFT_DOWN, self._on_integration_mouse_down)
         self.Bind(wx.EVT_LEFT_UP, self._on_integration_mouse_up)
 
         wx.CallAfter(self._reposition_children)
 
     def set_poni_info(self, text: str, success: bool) -> None:
-        """Update the PONI calibration status text and colour."""
+        """Update the PONI calibration status text and color."""
         self._poni_text = text
-        self._poni_colour = PONI_LOADED if success else PONI_MISSING
+        self._poni_loaded = success
         self.Refresh()
 
     def set_load_poni_callback(self, callback: Callable[[], None]) -> None:
@@ -160,13 +158,14 @@ class IntegrationPlot(LinePlot):
             self._poly_order_ctrl.Hide()
         else:
             self._inspect_btn.Show()
-            self._poly_order_ctrl.Show()
         self._reposition_children()
 
     def set_bg_inspect_active(self, active: bool) -> None:
         """Programmatically set the inspect (I) button state."""
         self._bg_inspect_active = active and self._bg_active
         self._inspect_btn.SetValue(self._bg_inspect_active)
+        self._poly_order_ctrl.Show(self._bg_inspect_active)
+        self._reposition_children()
 
     def set_poly_order_callback(self, callback: Callable[[int], None]) -> None:
         """Register a callback fired with the new polynomial order when the user changes it."""
@@ -304,7 +303,7 @@ class IntegrationPlot(LinePlot):
             return
         if self._roi_visible:
             handle = self._roi_handle_at(raw.x, raw.y)
-            cursor = wx.Cursor(wx.CURSOR_SIZEWE) if handle else wx.Cursor(wx.CURSOR_ARROW)
+            cursor = wx.Cursor(wx.CURSOR_SIZEWE) if handle else wx.NullCursor
             self._canvas.native.SetCursor(cursor)
         event.Skip()
 
@@ -337,7 +336,7 @@ class IntegrationPlot(LinePlot):
 
     def set_active_unit(self, unit: str) -> None:
         """Set the active unit button by key."""
-        if unit in UNIT_KEYS:
+        if unit in AppTheme.unit_keys:
             self._active_unit = unit
             self.Refresh()
 
@@ -361,38 +360,39 @@ class IntegrationPlot(LinePlot):
         self._reposition_canvas()
         W, H = self.GetSize()
         canvas_h = max(1, H - self._mt - self._mb)
-        right_edge = W - self._BTN_PAD
+        right_edge = W - AppTheme.btn_pad
 
         # Compute total height of the right-side stack so it can be centred
-        total_h = LIVE_H
+        total_h = AppTheme.live_h
         if self._calibrated:
-            total_h += self._BTN_PAD + LIVE_W
+            total_h += AppTheme.btn_pad + AppTheme.live_w
             if self._bg_active:
-                total_h += self._BTN_PAD + LIVE_W
-                total_h += self._BTN_PAD + UNIT_BTN_H
+                total_h += AppTheme.btn_pad + AppTheme.live_w
 
         y = self._mt + max(0, (canvas_h - total_h) // 2)
 
-        self._live_toggle.SetPosition(wx.Point(right_edge - LIVE_W, y))
+        self._live_toggle.SetPosition(wx.Point(right_edge - AppTheme.live_w, y))
         self._live_toggle.Raise()
-        y += LIVE_H
+        y += AppTheme.live_h
 
         if self._calibrated:
-            y += self._BTN_PAD
-            self._bg_btn.SetPosition(wx.Point(right_edge - LIVE_W, y))
+            y += AppTheme.btn_pad
+            self._bg_btn.SetPosition(wx.Point(right_edge - AppTheme.live_w, y))
             self._bg_btn.Raise()
-            y += LIVE_W
+            y += AppTheme.live_w
 
             if self._bg_active:
-                y += self._BTN_PAD
-                self._inspect_btn.SetPosition(wx.Point(right_edge - LIVE_W, y))
+                y += AppTheme.btn_pad
+                inspect_x = right_edge - AppTheme.live_w
+                self._inspect_btn.SetPosition(wx.Point(inspect_x, y))
                 self._inspect_btn.Raise()
-                y += LIVE_W
 
-                y += self._BTN_PAD
-                poly_w = self._poly_order_ctrl.GetSize().width
-                self._poly_order_ctrl.SetPosition(wx.Point(right_edge - poly_w, y))
-                self._poly_order_ctrl.Raise()
+                if self._bg_inspect_active:
+                    poly_w = self._poly_order_ctrl.GetSize().width
+                    self._poly_order_ctrl.SetPosition(
+                        wx.Point(inspect_x - AppTheme.btn_pad - poly_w, y)
+                    )
+                    self._poly_order_ctrl.Raise()
 
     def _on_bg_toggled(self, _event: wx.CommandEvent) -> None:
         self._bg_active = self._bg_btn.GetValue()
@@ -405,19 +405,20 @@ class IntegrationPlot(LinePlot):
                 self._bg_inspect_changed_cb(False)
         else:
             self._inspect_btn.Show()
-            self._poly_order_ctrl.Show()
         self._reposition_children()
         if self._bg_changed_cb is not None:
             self._bg_changed_cb(self._bg_active)
 
     def _on_inspect_toggled(self, _event: wx.CommandEvent) -> None:
         self._bg_inspect_active = self._inspect_btn.GetValue()
+        self._poly_order_ctrl.Show(self._bg_inspect_active)
+        self._reposition_children()
         if self._bg_inspect_changed_cb is not None:
             self._bg_inspect_changed_cb(self._bg_inspect_active)
 
     def _btn_rect_for(self, W: int, H: int) -> wx.Rect:
         """Return the bounding rect of the load-PONI button."""
-        return wx.Rect(W - self._BTN_W - self._BTN_PAD, H - self._BTN_H - self._BTN_PAD, self._BTN_W, self._BTN_H)
+        return wx.Rect(W - AppTheme.btn_w - AppTheme.btn_pad, H - AppTheme.btn_h - AppTheme.btn_pad, AppTheme.btn_w, AppTheme.btn_h)
 
     def _unit_btn_at(self, pt: wx.Point) -> int:
         """Return the index of the unit button under pt, or -1."""
@@ -425,6 +426,9 @@ class IntegrationPlot(LinePlot):
             if r.Contains(pt):
                 return i
         return -1
+
+    def _overlay_buttons(self) -> list:
+        return [self._live_toggle, self._bg_btn, self._inspect_btn]
 
     def _on_integration_mouse_move(self, event: wx.MouseEvent) -> None:
         """Update button hover state in addition to base hover logic."""
@@ -439,6 +443,16 @@ class IntegrationPlot(LinePlot):
             if idx != self.UNIT_BTN_Hovered:
                 self.UNIT_BTN_Hovered = idx
                 self.Refresh()
+        for btn in self._overlay_buttons():
+            if btn.IsShown():
+                pos = btn.GetPosition()
+                sz = btn.GetSize()
+                btn.set_hovered(wx.Rect(pos.x, pos.y, sz.width, sz.height).Contains(pt))
+        event.Skip()
+
+    def _on_integration_mouse_leave(self, event: wx.MouseEvent) -> None:
+        for btn in self._overlay_buttons():
+            btn.set_hovered(False)
         event.Skip()
 
     def _on_integration_mouse_down(self, event: wx.MouseEvent) -> None:
@@ -471,34 +485,33 @@ class IntegrationPlot(LinePlot):
         if was_btn and self._btn_rect_for(W, H).Contains(pt) and self._load_poni_cb is not None:
             self._load_poni_cb()
         if was_unit != -1 and self._unit_btn_at(pt) == was_unit:
-            self._active_unit = UNIT_KEYS[was_unit]
+            self._active_unit = AppTheme.unit_keys[was_unit]
             if self._unit_changed_cb is not None:
                 self._unit_changed_cb(self._active_unit)
         event.Skip()
 
     def _draw_unit_buttons(self, gc: wx.GraphicsContext, W: int, H: int) -> None:
         """Paint the 2θ / d / Q unit selector buttons."""
-        active_green = wx.Colour(72, 199, 116)
-        fg = get_color("text")
-        bg = get_color("button_bg")
-        bg_hover = get_color("highight")
-        bg_active = get_color("nb_active")
-        border = get_color("graytext")
-        border_active = active_green
+        t = get_theme()
+        fg = t.foreground
+        bg = t.background
+        bg_hover = t.white
+        border = t.white
 
-        total_w = len(UNIT_KEYS) * UNIT_BTN_W + (len(UNIT_KEYS) - 1) * UNIT_BTN_GAP
+        total_w = len(AppTheme.unit_keys) * AppTheme.unit_btn_w + (len(AppTheme.unit_keys) - 1) * AppTheme.unit_btn_gap
         start_x = W - self._mr - total_w
         self._unit_btn_rects = []
-        font = scaled_font(9, weight=wx.FONTWEIGHT_BOLD)
-        for i, (key, label) in enumerate(zip(UNIT_KEYS, UNIT_LABELS)):
-            x = start_x + i * (UNIT_BTN_W + UNIT_BTN_GAP)
-            r = wx.Rect(x, 2, UNIT_BTN_W, UNIT_BTN_H)
+        font = AppTheme.scaled_font(9, weight=wx.FONTWEIGHT_BOLD)
+        for i, (key, label) in enumerate(zip(AppTheme.unit_keys, AppTheme.unit_labels)):
+            x = start_x + i * (AppTheme.unit_btn_w + AppTheme.unit_btn_gap)
+            r = wx.Rect(x, 2, AppTheme.unit_btn_w, AppTheme.unit_btn_h)
             self._unit_btn_rects.append(r)
             active = key == self._active_unit
+            green = t.green
             if i == self._unit_btn_pressed:
-                b, brd, f = get_color("hotlight"), border_active if active else border, active_green if active else fg
+                b, brd, f = t.bright_black, green if active else border, green if active else fg
             elif active:
-                b, brd, f = bg_active, border_active, active_green
+                b, brd, f = wx.Colour(green.Red(), green.Green(), green.Blue(), 40), green, green
             elif i == self.UNIT_BTN_Hovered:
                 b, brd, f = bg_hover, border, fg
             else:
@@ -512,32 +525,31 @@ class IntegrationPlot(LinePlot):
 
     def _draw_poni_overlay(self, gc: wx.GraphicsContext, W: int, H: int) -> None:
         """Paint the load-PONI button, calibration status text, and hover/max info."""
-        btn_bg = get_color("button_bg")
-        btn_hover = get_color("highight")
-        btn_press = get_color("hotlight")
-        active_green = wx.Colour(72, 199, 116)
+        t = get_theme()
+        btn_hover = t.white
+        btn_press = t.bright_black
 
         br = self._btn_rect_for(W, H)
         self._btn_rect = br
-        bg = btn_press if self._btn_pressed else (btn_hover if self._btn_hovered else btn_bg)
+        bg = btn_press if self._btn_pressed else (btn_hover if self._btn_hovered else t.background)
         gc.SetBrush(wx.Brush(bg))
         gc.SetPen(wx.TRANSPARENT_PEN)
         gc.DrawRoundedRectangle(br.x, br.y, br.width, br.height, 4)
         gc.SetAntialiasMode(wx.ANTIALIAS_DEFAULT)
-        off = (br.width - ICON_SIZE) / 2
+        off = (br.width - AppTheme.icon_size) / 2
         gc.PushState()
         gc.Translate(br.x + off, br.y + off)
-        draw_folder(gc, ICON_SIZE)
+        draw_folder(gc, AppTheme.icon_size)
         gc.PopState()
 
-        font = scaled_font(11, style=wx.FONTSTYLE_ITALIC)
-        gc.SetFont(font, self._poni_colour)
+        font = AppTheme.scaled_font(11, style=wx.FONTSTYLE_ITALIC)
+        gc.SetFont(font, get_theme().green if self._poni_loaded else get_theme().white)
         tw, th = gc.GetTextExtent(self._poni_text)
-        gc.DrawText(self._poni_text, br.x - tw - self._BTN_PAD, br.y + (br.height - th) / 2)
+        gc.DrawText(self._poni_text, br.x - tw - AppTheme.btn_pad, br.y + (br.height - th) / 2)
 
-        info_font = scaled_font(11, weight=wx.FONTWEIGHT_BOLD)
-        gc.SetFont(info_font, active_green)
-        x = self._BTN_PAD
+        info_font = AppTheme.scaled_font(11, weight=wx.FONTWEIGHT_BOLD)
+        gc.SetFont(info_font, t.green)
+        x = AppTheme.btn_pad
         if self.ys is not None:
             lbl = f"max: {float(self.ys.max()):.4g}"
             lw, lh = gc.GetTextExtent(lbl)

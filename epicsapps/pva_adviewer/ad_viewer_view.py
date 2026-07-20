@@ -15,8 +15,7 @@ from wxmplot import Histogram
 from wxutils import FlatTextCtrl, FlatIconButton, draw_chevron_left, draw_chevron_right, draw_cog, draw_folder
 
 from epicsapps.pva_adviewer import ImageCanvas, ImageSettingsPopup, IntegrationPlot, LiveToggle
-from epicsapps.pva_adviewer.theme import BG_SURFACE, FG_SECONDARY, PONI_LOADED, PONI_MISSING, TEXT_SCHEME, icon_scheme
-from epicsapps.pva_adviewer.fonts import scaled_font
+from epicsapps.pva_adviewer.theme import AppTheme, get_theme
 
 __all__ = ["ADViewerView"]
 
@@ -60,7 +59,6 @@ class ADViewerView(wx.Panel):
         self._current_npt: int = _DEFAULT_NPT
         self._current_unit: str = _INTEGRATION_UNITS[0]
         self._poni_label_text: str = "No calibration loaded"
-        self._poni_label_colour: wx.Colour = PONI_MISSING
 
         self._load_file_cb: _FileLoadCallback | None = None
         self._load_poni_cb: _FileLoadCallback | None = None
@@ -87,32 +85,36 @@ class ADViewerView(wx.Panel):
         # Parent overlay buttons to the VisPy native widget so they render above it on Windows
         overlay_parent = self._image_canvas.native
 
-        self._load_file_btn = FlatIconButton(overlay_parent, draw_folder, tooltip="Load image file", icon_scheme=icon_scheme(BG_SURFACE))
+        self._load_file_btn = FlatIconButton(overlay_parent, draw_folder, tooltip="Load image file")
         self._load_file_btn.Bind(wx.EVT_BUTTON, lambda _: self._trigger_load_file())
 
-        self._prev_btn = FlatIconButton(overlay_parent, draw_chevron_left, tooltip="Previous frame", icon_scheme=icon_scheme(BG_SURFACE))
+        self._prev_btn = FlatIconButton(overlay_parent, draw_chevron_left, tooltip="Previous frame")
         self._prev_btn.Bind(wx.EVT_BUTTON, self._on_prev_frame)
         self._prev_btn.Hide()
 
-        self._next_btn = FlatIconButton(overlay_parent, draw_chevron_right, tooltip="Next frame", icon_scheme=icon_scheme(BG_SURFACE))
+        self._next_btn = FlatIconButton(overlay_parent, draw_chevron_right, tooltip="Next frame")
         self._next_btn.Bind(wx.EVT_BUTTON, self._on_next_frame)
         self._next_btn.Hide()
 
-        self._frame_ctrl = FlatTextCtrl(overlay_parent, value="0", text_scheme=TEXT_SCHEME)
+        self._frame_ctrl = FlatTextCtrl(
+            overlay_parent, value="0", centered=True,
+            size=wx.Size(AppTheme.unit_btn_w, AppTheme.btn_h),
+        )
         self._frame_ctrl.Bind(wx.EVT_TEXT_ENTER, self._on_frame_ctrl_enter)
         self._frame_ctrl.Bind(wx.EVT_KILL_FOCUS, self._on_frame_ctrl_enter)
         self._frame_ctrl.Hide()
 
-        self._settings_btn = FlatIconButton(overlay_parent, draw_cog, tooltip="Image settings", icon_scheme=icon_scheme(BG_SURFACE))
+        self._settings_btn = FlatIconButton(overlay_parent, draw_cog, tooltip="Image settings")
         self._settings_btn.Bind(wx.EVT_BUTTON, self._on_settings_btn)
 
         self._live_toggle = LiveToggle(overlay_parent, live=self._live_updates)
         self._live_toggle.set_toggled_callback(self._apply_live_updates)
 
         self._status_overlay = wx.StaticText(overlay_parent, label="")
-        self._status_overlay.SetBackgroundColour(BG_SURFACE)
-        self._status_overlay.SetForegroundColour(FG_SECONDARY)
-        self._status_overlay.SetFont(scaled_font(13))
+        t = get_theme()
+        self._status_overlay.SetBackgroundColour(t.background)
+        self._status_overlay.SetForegroundColour(t.white)
+        self._status_overlay.SetFont(AppTheme.scaled_font(13))
         self._status_overlay.Hide()
 
         canvas_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -246,7 +248,6 @@ class ADViewerView(wx.Panel):
 
     def set_poni_label(self, text: str, success: bool = True) -> None:
         self._poni_label_text = text
-        self._poni_label_colour = PONI_LOADED if success else PONI_MISSING
         self._integration_plot.set_poni_info(text, success=success)
         self._integration_plot.set_calibrated(success)
 
