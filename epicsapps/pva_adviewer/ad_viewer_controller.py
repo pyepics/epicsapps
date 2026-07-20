@@ -48,6 +48,7 @@ class ADViewerController:
         self._view.bind_roi_live_integration(self._on_roi_live_integration_changed)
         self._view.bind_roi_changed(self._on_roi_changed)
         self._view.bind_roi_cleared(self._on_roi_cleared)
+        self._view.bind_reset_view(self._on_reset_view)
         self._view.bind_line_changed(self._on_line_changed)
         self._view.bind_frame_navigation(self._on_navigate_frame)
         self._view.bind_bg_changed(self._on_bg_changed)
@@ -127,6 +128,16 @@ class ADViewerController:
 
     def _on_roi_cleared(self) -> None:
         """Show the full-image plot when the ROI or line is cleared."""
+        current_frame = self._view.current_frame
+        if current_frame is None:
+            return
+        if self._integration.is_calibrated:
+            self._run_integration(current_frame)
+        else:
+            self._run_full_image_fallback(current_frame)
+
+    def _on_reset_view(self) -> None:
+        """Re-plot the full image when the view is reset."""
         current_frame = self._view.current_frame
         if current_frame is None:
             return

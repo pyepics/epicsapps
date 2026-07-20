@@ -65,6 +65,7 @@ class ADViewerView(wx.Panel):
         self._integration_changed_cb: Callable[[], None] | None = None
         self._roi_live_integration_cb: Callable[[bool], None] | None = None
         self._roi_cleared_cb: Callable[[], None] | None = None
+        self._reset_view_cb: Callable[[], None] | None = None
         self._line_changed_cb: Callable | None = None
         self._frame_nav_cb: _FrameNavCallback | None = None
         self._current_frame_index: int = 0
@@ -203,6 +204,9 @@ class ADViewerView(wx.Panel):
 
     def bind_roi_cleared(self, callback: Callable[[], None]) -> None:
         self._roi_cleared_cb = callback
+
+    def bind_reset_view(self, callback: Callable[[], None]) -> None:
+        self._reset_view_cb = callback
 
     @property
     def is_roi_live_integration(self) -> bool:
@@ -469,7 +473,8 @@ class ADViewerView(wx.Panel):
 
     def _apply_reset_view(self) -> None:
         self._image_canvas.reset_view()
-        self._integration_plot.clear()
+        if self._reset_view_cb is not None:
+            self._reset_view_cb()
 
     def _trigger_load_file(self) -> None:
         with wx.FileDialog(
