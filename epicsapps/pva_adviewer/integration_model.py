@@ -68,6 +68,9 @@ class IntegrationModel:
     _bkg_cheb_order: int = field(init=False, compare=False, repr=False, default=50)
     _bkg_roi: "list[float] | None" = field(init=False, compare=False, repr=False, default=None)
 
+    _mask_above: "float | None" = field(init=False, compare=False, repr=False, default=None)
+    _mask_below: "float | None" = field(init=False, compare=False, repr=False, default=None)
+
     @property
     def is_calibrated(self) -> bool:
         """Returns True if a calibration file has been loaded."""
@@ -144,6 +147,53 @@ class IntegrationModel:
 
         return xr, yr - bkg_ys, xr, bkg_ys
 
+    def set_mask_thresholds(self, above: "float | None", below: "float | None") -> None:
+        """Set pixel intensity thresholds for masking. None disables that threshold."""
+        self._mask_above = above
+        self._mask_below = below
+
+    def apply_threshold_mask(self, frame_2d: np.ndarray) -> np.ndarray:
+        """Zero out masked pixels in a 2D frame copy and return it. Returns original if no thresholds set."""
+        if self._mask_above is None and self._mask_below is None:
+            return frame_2d
+        out = frame_2d.copy()
+        if self._mask_above is not None:
+            out[frame_2d >= self._mask_above] = 0
+        if self._mask_below is not None:
+            out[frame_2d <= self._mask_below] = 0
+        return out
+
+    def get_threshold_mask(self, frame_2d: np.ndarray) -> "np.ndarray | None":
+        """Return uint8 mask (1=masked) for current thresholds on frame_2d, or None if no thresholds."""
+        if self._mask_above is None and self._mask_below is None:
+            return None
+        mask = np.zeros(frame_2d.shape, dtype=np.uint8)
+        if self._mask_above is not None:
+            mask |= (frame_2d >= self._mask_above).astype(np.uint8)
+        if self._mask_below is not None:
+            mask |= (frame_2d <= self._mask_below).astype(np.uint8)
+        return mask
+
+    def _build_mask(self, frame: np.ndarray, roi: "tuple[int, int, int, int] | None") -> "np.ndarray | None":
+        """Return a uint8 mask (1 = masked) combining threshold and ROI constraints, or None."""
+        mask = None
+
+        if self._mask_above is not None or self._mask_below is not None:
+            mask = np.zeros(frame.shape, dtype=np.uint8)
+            if self._mask_above is not None:
+                mask |= (frame >= self._mask_above).astype(np.uint8)
+            if self._mask_below is not None:
+                mask |= (frame <= self._mask_below).astype(np.uint8)
+
+        if roi is not None:
+            x1, y1, x2, y2 = roi
+            h, w = frame.shape
+            roi_mask = np.ones(frame.shape, dtype=np.uint8)
+            roi_mask[max(0, y1) : min(h, y2), max(0, x1) : min(w, x2)] = 0
+            mask = roi_mask if mask is None else (mask | roi_mask)
+
+        return mask
+
     def integrate1d(
         self,
         frame: np.ndarray,
@@ -155,12 +205,7 @@ class IntegrationModel:
         if self._ai is None:
             raise RuntimeError("No calibration loaded. Call load_poni() first.")
 
-        mask = None
-        if roi is not None:
-            x1, y1, x2, y2 = roi
-            h, w = frame.shape
-            mask = np.ones(frame.shape, dtype=np.uint8)
-            mask[max(0, y1) : min(h, y2), max(0, x1) : min(w, x2)] = 0
+        mask = self._build_mask(frame, roi)
 
         result = self._ai.integrate1d(
             frame.astype(np.float32),

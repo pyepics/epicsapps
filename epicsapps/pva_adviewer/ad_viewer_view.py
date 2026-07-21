@@ -16,6 +16,7 @@ from wxutils import FlatTextCtrl, FlatIconButton, draw_chevron_left, draw_chevro
 
 from epicsapps.pva_adviewer import ImageCanvas, ImageSettingsPopup, IntegrationPlot, LiveToggle
 from epicsapps.pva_adviewer.theme import AppTheme, get_theme
+from epicsapps.pva_adviewer.widgets import PlotToggleButton
 
 __all__ = ["ADViewerView"]
 
@@ -59,6 +60,8 @@ class ADViewerView(wx.Panel):
         self._current_npt: int = _DEFAULT_NPT
         self._current_unit: str = _INTEGRATION_UNITS[0]
         self._poni_label_text: str = "No calibration loaded"
+        self._mask_above: float | None = None
+        self._mask_below: float | None = None
 
         self._load_file_cb: _FileLoadCallback | None = None
         self._load_poni_cb: _FileLoadCallback | None = None
@@ -66,6 +69,8 @@ class ADViewerView(wx.Panel):
         self._roi_live_integration_cb: Callable[[bool], None] | None = None
         self._roi_cleared_cb: Callable[[], None] | None = None
         self._reset_view_cb: Callable[[], None] | None = None
+        self._mask_changed_cb: Callable | None = None
+        self._mask_toggle_cb: Callable | None = None
         self._line_changed_cb: Callable | None = None
         self._frame_nav_cb: _FrameNavCallback | None = None
         self._current_frame_index: int = 0
@@ -110,6 +115,9 @@ class ADViewerView(wx.Panel):
 
         self._live_toggle = LiveToggle(overlay_parent, live=self._live_updates)
         self._live_toggle.set_toggled_callback(self._apply_live_updates)
+
+        self._mask_btn = PlotToggleButton(overlay_parent, label="M", tooltip="Toggle pixel masking")
+        self._mask_btn.SetAction(lambda _e: self._on_mask_toggle_btn(self._mask_btn.GetValue()))
 
         self._status_overlay = wx.StaticText(overlay_parent, label="")
         t = get_theme()
@@ -207,6 +215,18 @@ class ADViewerView(wx.Panel):
 
     def bind_reset_view(self, callback: Callable[[], None]) -> None:
         self._reset_view_cb = callback
+
+    def bind_mask_changed(self, callback: Callable) -> None:
+        self._mask_changed_cb = callback
+
+    def bind_mask_toggle(self, callback: Callable[[bool], None]) -> None:
+        self._mask_toggle_cb = callback
+
+    def set_mask_active(self, active: bool) -> None:
+        self._mask_btn.SetValue(active)
+
+    def set_mask_overlay(self, mask: "np.ndarray | None") -> None:
+        self._image_canvas.set_mask_overlay(mask)
 
     @property
     def is_roi_live_integration(self) -> bool:
@@ -351,6 +371,12 @@ class ADViewerView(wx.Panel):
         self._load_file_btn.SetPosition(wx.Point(x, 4))
         self._load_file_btn.Raise()
 
+        mask_sz = self._mask_btn.GetBestSize()
+        mx = panel_w - cog_sz.width - 4 + (cog_sz.width - mask_sz.width) // 2
+        my = panel_h - mask_sz.height - 4
+        self._mask_btn.SetPosition(wx.Point(mx, my))
+        self._mask_btn.Raise()
+
         if self._total_frames > 1:
             next_sz = self._next_btn.GetBestSize()
             x -= next_sz.width + 2
@@ -368,7 +394,7 @@ class ADViewerView(wx.Panel):
             self._prev_btn.Raise()
 
     def _overlay_buttons(self) -> list:
-        btns = [self._load_file_btn, self._settings_btn, self._live_toggle]
+        btns = [self._mask_btn, self._load_file_btn, self._settings_btn, self._live_toggle]
         if self._total_frames > 1:
             btns += [self._prev_btn, self._next_btn]
         return btns
@@ -411,6 +437,9 @@ class ADViewerView(wx.Panel):
             on_levels_changed=self._on_histogram_levels_changed,
             on_bin_method_changed=self._apply_bin_method,
             on_reset_view=self._apply_reset_view,
+            on_mask_changed=self._apply_mask_changed,
+            mask_above=self._mask_above,
+            mask_below=self._mask_below,
         )
         btn_sz = self._settings_btn.GetSize()
         popup_w, _ = popup.GetSize()
@@ -479,6 +508,16 @@ class ADViewerView(wx.Panel):
         self._image_canvas.reset_view()
         if self._reset_view_cb is not None:
             self._reset_view_cb()
+
+    def _on_mask_toggle_btn(self, active: bool) -> None:
+        if self._mask_toggle_cb is not None:
+            self._mask_toggle_cb(active)
+
+    def _apply_mask_changed(self, above: "float | None", below: "float | None") -> None:
+        self._mask_above = above
+        self._mask_below = below
+        if self._mask_changed_cb is not None:
+            self._mask_changed_cb(above, below)
 
     def _trigger_load_file(self) -> None:
         with wx.FileDialog(

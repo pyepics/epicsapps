@@ -5,7 +5,9 @@ Extends wxmplot.ImageCanvas with pixel info (d-spacing, 2-theta) and overlay mot
 
 from typing import Callable
 
+import numpy as np
 import wx
+from vispy import scene
 
 from wxmplot.image_canvas import BinMethod, ImageCanvas as _ImageCanvas
 
@@ -22,6 +24,13 @@ class ImageCanvas(_ImageCanvas):
         self._two_theta_func = None
         self._overlay_motion_callback = None
 
+        self._mask_visual = scene.visuals.Image(
+            np.zeros((1, 1, 4), dtype=np.float32),
+            parent=self._view.scene,
+            method='subdivide',
+        )
+        self._mask_visual.visible = False
+
     def set_d_spacing_func(self, func: Callable | None) -> None:
         """Set a function (ix, iy) -> float | None for d-spacing overlay."""
         self._d_spacing_func = func
@@ -29,6 +38,19 @@ class ImageCanvas(_ImageCanvas):
     def set_two_theta_func(self, func: Callable | None) -> None:
         """Set a function (ix, iy) -> float | None for 2-theta overlay."""
         self._two_theta_func = func
+
+    def set_mask_overlay(self, mask: "np.ndarray | None") -> None:
+        """Show semi-transparent orange overlay on masked pixels, or hide if mask is None."""
+        if mask is None or not np.any(mask):
+            self._mask_visual.visible = False
+            self._canvas.update()
+            return
+        h, w = mask.shape
+        rgba = np.zeros((h, w, 4), dtype=np.float32)
+        rgba[mask.astype(bool)] = [1.0, 0.35, 0.0, 0.55]
+        self._mask_visual.set_data(rgba)
+        self._mask_visual.visible = True
+        self._canvas.update()
 
     def set_overlay_motion_callback(self, callback: Callable[[int, int], None] | None) -> None:
         """Set a callback invoked with parent-relative (x, y) on every mouse move."""

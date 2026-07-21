@@ -32,6 +32,9 @@ class ADViewerController:
         self._pending_lock = Lock()
 
         self._integration = IntegrationModel()
+        self._mask_active: bool = False
+        self._stored_mask_above: "float | None" = None
+        self._stored_mask_below: "float | None" = None
 
         # Stored data for toggling inspect mode without re-integrating
         self._last_xs: np.ndarray | None = None
@@ -55,6 +58,8 @@ class ADViewerController:
         self._view.bind_bg_inspect_changed(self._on_bg_inspect_changed)
         self._view.bind_bkg_roi_changed(self._on_bkg_roi_changed)
         self._view.bind_poly_order_changed(self._on_poly_order_changed)
+        self._view.bind_mask_changed(self._on_mask_changed)
+        self._view.bind_mask_toggle(self._on_mask_toggle)
 
     def subscribe(self, pv_name: str) -> None:
         """Subscribe to a PVA channel and start delivering frames to the view."""
@@ -107,6 +112,7 @@ class ADViewerController:
                 self._run_roi_fallback(current_frame, *roi)
             else:
                 self._run_full_image_fallback(current_frame)
+            self._update_mask_overlay(current_frame)
         except Exception:
             _log.exception("Error in _on_new_frame_gui - this might cause frames to stop updating")
 
@@ -260,6 +266,47 @@ class ADViewerController:
         if current_frame is not None and self._integration.is_calibrated:
             self._run_integration(current_frame)
 
+    def _on_mask_toggle(self, enabled: bool) -> None:
+        """Enable or disable pixel masking via the M button."""
+        self._mask_active = enabled
+        if enabled:
+            self._integration.set_mask_thresholds(self._stored_mask_above, self._stored_mask_below)
+        else:
+            self._integration.set_mask_thresholds(None, None)
+        frame = self._view.current_frame
+        if frame is not None:
+            try:
+                self._run_full_frame_integration(frame)
+            except Exception:
+                _log.exception("_on_mask_toggle: integration failed")
+            self._update_mask_overlay(frame)
+
+    def _on_mask_changed(self, above: "float | None", below: "float | None") -> None:
+        """Store new threshold values from the popup and apply if mask is active."""
+        self._stored_mask_above = above
+        self._stored_mask_below = below
+        if above is not None or below is not None:
+            if not self._mask_active:
+                self._mask_active = True
+                self._view.set_mask_active(True)
+            self._integration.set_mask_thresholds(above, below)
+            frame = self._view.current_frame
+            if frame is not None:
+                try:
+                    self._run_full_frame_integration(frame)
+                except Exception:
+                    _log.exception("_on_mask_changed: integration failed")
+                self._update_mask_overlay(frame)
+        elif self._mask_active:
+            self._integration.set_mask_thresholds(None, None)
+            frame = self._view.current_frame
+            if frame is not None:
+                try:
+                    self._run_full_frame_integration(frame)
+                except Exception:
+                    _log.exception("_on_mask_changed: integration failed (clear)")
+                self._update_mask_overlay(frame)
+
     def _on_poly_order_changed(self, order: int) -> None:
         """Update the Chebyshev polynomial order and re-integrate."""
         self._integration._bkg_cheb_order = order
@@ -288,6 +335,7 @@ class ADViewerController:
         self._view.reset_view()
         self._view.set_live_updates(False)
         self._run_full_frame_integration(frame)
+        self._update_mask_overlay(frame)
 
         frame_count = self._image_loader.frame_count
         self._view.set_frame_navigation(frame_count, 0)
@@ -302,6 +350,7 @@ class ADViewerController:
             return
         self._view.display_frame(frame)
         self._run_full_frame_integration(frame)
+        self._update_mask_overlay(frame)
 
     def _on_roi_changed(self, x1: int | None, y1: int | None, x2: int | None, y2: int | None) -> None:
         """React to an ROI draw or clear event from the canvas."""
@@ -344,15 +393,15 @@ class ADViewerController:
             self._run_full_image_fallback(frame)
 
     def _run_full_image_fallback(self, frame: np.ndarray) -> None:
-        """Column-sum the full image when no poni is loaded."""
+        """Column mean (over unmasked pixels) when no poni is loaded."""
         h, w = frame.shape[:2]
-        img = frame.mean(axis=2) if frame.ndim == 3 else frame
-        ys = img.sum(axis=0).astype(np.float64)
+        img = frame.mean(axis=2).astype(np.float64) if frame.ndim == 3 else frame.astype(np.float64)
+        ys = self._column_mean_masked(img)
         xs = np.arange(w, dtype=np.float64)
         self._view.set_integration_data(xs, ys, "Pixel")
 
     def _run_roi_fallback(self, frame: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> None:
-        """Compute column-sum integration over the ROI and push results to the view."""
+        """Compute column mean over unmasked ROI pixels and push results to the view."""
         h, w = frame.shape[:2]
         x1c = max(0, min(x1, w - 1))
         x2c = max(x1c + 1, min(x2, w))
@@ -361,9 +410,26 @@ class ADViewerController:
         roi = frame[y1c:y2c, x1c:x2c].astype(np.float64)
         if roi.ndim == 3:
             roi = roi.mean(axis=2)
-        ys = roi.sum(axis=0)
+        ys = self._column_mean_masked(roi)
         xs = np.arange(x1c, x1c + len(ys), dtype=np.float64)
         self._view.set_integration_data(xs, ys, "Pixel")
+
+    def _column_mean_masked(self, img: np.ndarray) -> np.ndarray:
+        """Return per-column mean of unmasked pixels; masked columns become 0."""
+        mask = self._integration.get_threshold_mask(img)
+        if mask is None:
+            return img.mean(axis=0)
+        valid = ~mask.astype(bool)
+        count = valid.sum(axis=0).astype(np.float64)
+        return np.where(count > 0, (img * valid).sum(axis=0) / count, 0.0)
+
+    def _update_mask_overlay(self, frame: np.ndarray) -> None:
+        if not self._mask_active:
+            self._view.set_mask_overlay(None)
+            return
+        img_2d = frame.mean(axis=2).astype(np.float64) if frame.ndim == 3 else frame.astype(np.float64)
+        mask = self._integration.get_threshold_mask(img_2d)
+        self._view.set_mask_overlay(mask)
 
     def _run_line_integration(self, frame: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> None:
         """Extract a line profile along the given pixel coordinates."""

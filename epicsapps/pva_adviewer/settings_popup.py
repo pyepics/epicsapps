@@ -32,6 +32,9 @@ class ImageSettingsPopup(wx.Frame):
         on_levels_changed: Callable[[float, float], None],
         on_bin_method_changed: Callable[[str], None],
         on_reset_view: Callable[[], None],
+        on_mask_changed: "Callable[[float | None, float | None], None]",
+        mask_above: "float | None" = None,
+        mask_below: "float | None" = None,
     ) -> None:
         super().__init__(
             parent,
@@ -43,6 +46,7 @@ class ImageSettingsPopup(wx.Frame):
         self._on_levels_changed = on_levels_changed
         self._on_bin_method_changed = on_bin_method_changed
         self._on_reset_view = on_reset_view
+        self._on_mask_changed = on_mask_changed
 
         t = get_theme()
         self.SetBackgroundColour(t.bright_black)
@@ -52,7 +56,7 @@ class ImageSettingsPopup(wx.Frame):
         panel.SetForegroundColour(t.foreground)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        self._build_section(panel, sizer, colormap, auto_scale, filter_gaps, contrast_min, contrast_max, bin_method, t)
+        self._build_section(panel, sizer, colormap, auto_scale, filter_gaps, contrast_min, contrast_max, bin_method, mask_above, mask_below, t)
         sizer.AddSpacer(10)
         panel.SetSizer(sizer)
         sizer.Fit(panel)
@@ -87,6 +91,7 @@ class ImageSettingsPopup(wx.Frame):
             return
         focused = wx.Window.FindFocus()
         if focused is None or not self.IsDescendant(focused):
+            self._evt_mask()
             self.Hide()
             self.Destroy()
 
@@ -100,6 +105,8 @@ class ImageSettingsPopup(wx.Frame):
         contrast_min: float,
         contrast_max: float,
         bin_method: str,
+        mask_above: "float | None",
+        mask_below: "float | None",
         t,
     ) -> None:
         font = AppTheme.scaled_font(12)
@@ -156,6 +163,32 @@ class ImageSettingsPopup(wx.Frame):
         bin_row.Add(self._bin_choice, 1, wx.EXPAND)
         sizer.Add(bin_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
+        above_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._mask_above_cb = FlatCheckBox(parent, label="Mask above", value=mask_above is not None)
+        self._mask_above_cb.SetAction(lambda _: self._evt_mask())
+        above_row.Add(self._mask_above_cb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        self._mask_above_ctrl = FlatTextCtrl(
+            parent, value=f"{mask_above:.6g}" if mask_above is not None else "",
+            placeholder="threshold", size=wx.Size(-1, AppTheme.btn_h),
+        )
+        self._mask_above_ctrl.Bind(wx.EVT_TEXT_ENTER, lambda _: self._evt_mask())
+        self._mask_above_ctrl.Bind(wx.EVT_KILL_FOCUS, lambda _: self._evt_mask())
+        above_row.Add(self._mask_above_ctrl, 1, wx.EXPAND)
+        sizer.Add(above_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
+
+        below_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._mask_below_cb = FlatCheckBox(parent, label="Mask below", value=mask_below is not None)
+        self._mask_below_cb.SetAction(lambda _: self._evt_mask())
+        below_row.Add(self._mask_below_cb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        self._mask_below_ctrl = FlatTextCtrl(
+            parent, value=f"{mask_below:.6g}" if mask_below is not None else "",
+            placeholder="threshold", size=wx.Size(-1, AppTheme.btn_h),
+        )
+        self._mask_below_ctrl.Bind(wx.EVT_TEXT_ENTER, lambda _: self._evt_mask())
+        self._mask_below_ctrl.Bind(wx.EVT_KILL_FOCUS, lambda _: self._evt_mask())
+        below_row.Add(self._mask_below_ctrl, 1, wx.EXPAND)
+        sizer.Add(below_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
+
         reset_btn = FlatButton(parent, label="Reset View", font=AppTheme.btn_font())
         reset_btn.SetAction(self._evt_reset_view)
         sizer.Add(reset_btn, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
@@ -189,6 +222,21 @@ class ImageSettingsPopup(wx.Frame):
         except ValueError:
             pass
         event.Skip()
+
+    def _evt_mask(self) -> None:
+        above = None
+        if self._mask_above_cb.GetValue():
+            try:
+                above = float(self._mask_above_ctrl.GetValue())
+            except ValueError:
+                pass
+        below = None
+        if self._mask_below_cb.GetValue():
+            try:
+                below = float(self._mask_below_ctrl.GetValue())
+            except ValueError:
+                pass
+        self._on_mask_changed(above, below)
 
     def _evt_reset_view(self, _e=None) -> None:
         self._on_reset_view()
