@@ -60,6 +60,7 @@ class ADViewerController:
         self._view.bind_poly_order_changed(self._on_poly_order_changed)
         self._view.bind_mask_changed(self._on_mask_changed)
         self._view.bind_mask_toggle(self._on_mask_toggle)
+        self._view.bind_pixel_size_changed(self._on_pixel_size_changed)
 
     def subscribe(self, pv_name: str) -> None:
         """Subscribe to a PVA channel and start delivering frames to the view."""
@@ -138,6 +139,7 @@ class ADViewerController:
 
     def _on_roi_cleared(self) -> None:
         """Show the full-image plot when the ROI or line is cleared."""
+        self._view.set_line_length_label(None)
         current_frame = self._view.current_frame
         if current_frame is None:
             return
@@ -148,6 +150,7 @@ class ADViewerController:
 
     def _on_reset_view(self) -> None:
         """Re-plot the full image when the view is reset."""
+        self._view.set_line_length_label(None)
         current_frame = self._view.current_frame
         if current_frame is None:
             return
@@ -307,6 +310,12 @@ class ADViewerController:
                     _log.exception("_on_mask_changed: integration failed (clear)")
                 self._update_mask_overlay(frame)
 
+    def _on_pixel_size_changed(self, _value: "float | None") -> None:
+        """Recompute line length label when pixel size changes."""
+        line = self._view.get_line_coords()
+        if line is not None:
+            self._on_line_changed(*line)
+
     def _on_poly_order_changed(self, order: int) -> None:
         """Update the Chebyshev polynomial order and re-integrate."""
         self._integration._bkg_cheb_order = order
@@ -378,6 +387,16 @@ class ADViewerController:
             self._run_integration(current_frame)
         else:
             self._run_line_integration(current_frame, x1, y1, x2, y2)
+        pixel_size = self._view.pixel_size
+        if pixel_size is not None and pixel_size > 0:
+            length_px = float(np.hypot(x2 - x1, y2 - y1))
+            length_um = length_px * pixel_size
+            if length_um >= 1000:
+                self._view.set_line_length_label(f"Line: {length_um / 1000:.3g} mm")
+            else:
+                self._view.set_line_length_label(f"Line: {length_um:.4g} µm")
+        else:
+            self._view.set_line_length_label(None)
 
     def _run_full_frame_integration(self, frame: np.ndarray) -> None:
         """Integrate respecting any active ROI/line, or fall back to the full image."""

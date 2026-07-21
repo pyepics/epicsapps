@@ -11,6 +11,8 @@ from vispy import scene
 
 from wxmplot.image_canvas import BinMethod, ImageCanvas as _ImageCanvas
 
+from epicsapps.pva_adviewer.theme import get_theme
+
 __all__ = ["ImageCanvas", "BinMethod"]
 
 
@@ -31,6 +33,27 @@ class ImageCanvas(_ImageCanvas):
         )
         self._mask_visual.visible = False
 
+        self._line_label_visual = scene.visuals.Text(
+            text="",
+            color=self._theme_green(),
+            font_size=6,
+            bold=True,
+            anchor_x="center",
+            anchor_y="top",
+            parent=self._canvas.scene,
+        )
+        self._line_label_visual.visible = False
+
+        self._canvas.native.Bind(wx.EVT_SIZE, self._on_canvas_size)
+
+    def _theme_green(self) -> tuple:
+        c = get_theme().green
+        return (c.Red() / 255, c.Green() / 255, c.Blue() / 255, 1.0)
+
+    def _on_theme_change(self, is_dark: bool = False) -> None:
+        super()._on_theme_change(is_dark)
+        self._line_label_visual.color = self._theme_green()
+
     def set_d_spacing_func(self, func: Callable | None) -> None:
         """Set a function (ix, iy) -> float | None for d-spacing overlay."""
         self._d_spacing_func = func
@@ -38,6 +61,24 @@ class ImageCanvas(_ImageCanvas):
     def set_two_theta_func(self, func: Callable | None) -> None:
         """Set a function (ix, iy) -> float | None for 2-theta overlay."""
         self._two_theta_func = func
+
+    def set_line_length_label(self, text: "str | None") -> None:
+        """Show a length label in the bottom-right corner of the canvas, or hide it."""
+        if not text:
+            self._line_label_visual.visible = False
+            self._canvas.update()
+            return
+        cw, ch = self._canvas.size
+        self._line_label_visual.text = text
+        self._line_label_visual.pos = (cw / 2, ch - 20)
+        self._line_label_visual.visible = True
+        self._canvas.update()
+
+    def _on_canvas_size(self, event: wx.SizeEvent) -> None:
+        event.Skip()
+        if self._line_label_visual.visible:
+            cw, ch = self._canvas.size
+            self._line_label_visual.pos = (cw / 2, ch - 20)
 
     def set_mask_overlay(self, mask: "np.ndarray | None") -> None:
         """Show semi-transparent orange overlay on masked pixels, or hide if mask is None."""

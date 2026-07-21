@@ -62,6 +62,7 @@ class ADViewerView(wx.Panel):
         self._poni_label_text: str = "No calibration loaded"
         self._mask_above: float | None = None
         self._mask_below: float | None = None
+        self._pixel_size: float | None = 1.0
 
         self._load_file_cb: _FileLoadCallback | None = None
         self._load_poni_cb: _FileLoadCallback | None = None
@@ -71,6 +72,7 @@ class ADViewerView(wx.Panel):
         self._reset_view_cb: Callable[[], None] | None = None
         self._mask_changed_cb: Callable | None = None
         self._mask_toggle_cb: Callable | None = None
+        self._pixel_size_changed_cb: Callable | None = None
         self._line_changed_cb: Callable | None = None
         self._frame_nav_cb: _FrameNavCallback | None = None
         self._current_frame_index: int = 0
@@ -222,11 +224,21 @@ class ADViewerView(wx.Panel):
     def bind_mask_toggle(self, callback: Callable[[bool], None]) -> None:
         self._mask_toggle_cb = callback
 
+    def bind_pixel_size_changed(self, callback: Callable) -> None:
+        self._pixel_size_changed_cb = callback
+
     def set_mask_active(self, active: bool) -> None:
         self._mask_btn.SetValue(active)
 
     def set_mask_overlay(self, mask: "np.ndarray | None") -> None:
         self._image_canvas.set_mask_overlay(mask)
+
+    @property
+    def pixel_size(self) -> "float | None":
+        return self._pixel_size
+
+    def set_line_length_label(self, text: "str | None") -> None:
+        self._image_canvas.set_line_length_label(text)
 
     @property
     def is_roi_live_integration(self) -> bool:
@@ -241,7 +253,6 @@ class ADViewerView(wx.Panel):
             _log.warning(f"update_frame: skipping (frame is None or empty)")
             return
         if not self._live_updates:
-            _log.warning(f"update_frame: skipping because live_updates={self._live_updates}")
             return
         _log.info(f"update_frame: calling display_frame with shape={frame.shape}, dtype={frame.dtype}")
         self.display_frame(frame, reset_histogram_range=self._auto_scale)
@@ -441,6 +452,8 @@ class ADViewerView(wx.Panel):
             on_mask_changed=self._apply_mask_changed,
             mask_above=self._mask_above,
             mask_below=self._mask_below,
+            pixel_size=self._pixel_size,
+            on_pixel_size_changed=self._apply_pixel_size,
         )
         btn_sz = self._settings_btn.GetSize()
         popup_w, _ = popup.GetSize()
@@ -519,6 +532,11 @@ class ADViewerView(wx.Panel):
         self._mask_below = below
         if self._mask_changed_cb is not None:
             self._mask_changed_cb(above, below)
+
+    def _apply_pixel_size(self, value: "float | None") -> None:
+        self._pixel_size = value
+        if self._pixel_size_changed_cb is not None:
+            self._pixel_size_changed_cb(value)
 
     def _trigger_load_file(self) -> None:
         with wx.FileDialog(

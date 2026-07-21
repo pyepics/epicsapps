@@ -35,6 +35,8 @@ class ImageSettingsPopup(wx.Frame):
         on_mask_changed: "Callable[[float | None, float | None], None]",
         mask_above: "float | None" = None,
         mask_below: "float | None" = None,
+        pixel_size: "float | None" = None,
+        on_pixel_size_changed: "Callable[[float | None], None] | None" = None,
     ) -> None:
         super().__init__(
             parent,
@@ -47,6 +49,7 @@ class ImageSettingsPopup(wx.Frame):
         self._on_bin_method_changed = on_bin_method_changed
         self._on_reset_view = on_reset_view
         self._on_mask_changed = on_mask_changed
+        self._on_pixel_size_changed = on_pixel_size_changed
 
         t = get_theme()
         self.SetBackgroundColour(t.bright_black)
@@ -56,7 +59,7 @@ class ImageSettingsPopup(wx.Frame):
         panel.SetForegroundColour(t.foreground)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        self._build_section(panel, sizer, colormap, auto_scale, filter_gaps, contrast_min, contrast_max, bin_method, mask_above, mask_below, t)
+        self._build_section(panel, sizer, colormap, auto_scale, filter_gaps, contrast_min, contrast_max, bin_method, mask_above, mask_below, pixel_size, t)
         sizer.AddSpacer(10)
         panel.SetSizer(sizer)
         sizer.Fit(panel)
@@ -107,6 +110,7 @@ class ImageSettingsPopup(wx.Frame):
         bin_method: str,
         mask_above: "float | None",
         mask_below: "float | None",
+        pixel_size: "float | None",
         t,
     ) -> None:
         font = AppTheme.scaled_font(12)
@@ -189,6 +193,17 @@ class ImageSettingsPopup(wx.Frame):
         below_row.Add(self._mask_below_ctrl, 1, wx.EXPAND)
         sizer.Add(below_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
+        pixel_row = wx.BoxSizer(wx.HORIZONTAL)
+        pixel_row.Add(_lbl("Pixel size (µm)"), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        self._pixel_size_ctrl = FlatTextCtrl(
+            parent, value=f"{pixel_size:.6g}" if pixel_size is not None else "",
+            placeholder="e.g. 172", size=wx.Size(-1, AppTheme.btn_h),
+        )
+        self._pixel_size_ctrl.Bind(wx.EVT_TEXT_ENTER, lambda _: self._evt_pixel_size())
+        self._pixel_size_ctrl.Bind(wx.EVT_KILL_FOCUS, lambda _: self._evt_pixel_size())
+        pixel_row.Add(self._pixel_size_ctrl, 1, wx.EXPAND)
+        sizer.Add(pixel_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
+
         reset_btn = FlatButton(parent, label="Reset View", font=AppTheme.btn_font())
         reset_btn.SetAction(self._evt_reset_view)
         sizer.Add(reset_btn, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
@@ -237,6 +252,15 @@ class ImageSettingsPopup(wx.Frame):
             except ValueError:
                 pass
         self._on_mask_changed(above, below)
+
+    def _evt_pixel_size(self) -> None:
+        if self._on_pixel_size_changed is None:
+            return
+        val = self._pixel_size_ctrl.GetValue().strip()
+        try:
+            self._on_pixel_size_changed(float(val) if val else None)
+        except ValueError:
+            pass
 
     def _evt_reset_view(self, _e=None) -> None:
         self._on_reset_view()
