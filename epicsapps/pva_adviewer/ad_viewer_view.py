@@ -63,6 +63,7 @@ class ADViewerView(wx.Panel):
         self._mask_above: float | None = None
         self._mask_below: float | None = None
         self._pixel_size: float | None = 1.0
+        self._integration_plot_visible: bool = True
 
         self._load_file_cb: _FileLoadCallback | None = None
         self._load_poni_cb: _FileLoadCallback | None = None
@@ -142,6 +143,7 @@ class ADViewerView(wx.Panel):
         inner.Add(self._intensity_histogram, 0, wx.EXPAND)
         inner.Add(self._canvas_panel, 3, wx.EXPAND)
         inner.Add(self._integration_plot, 1, wx.EXPAND)
+        self._inner_sizer = inner
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(inner, 1, wx.EXPAND | wx.ALL, 5)
         self.SetSizer(sizer)
@@ -306,10 +308,25 @@ class ADViewerView(wx.Panel):
     def get_line_coords(self) -> RoiCoords | None:
         return self._image_canvas.get_line_coords()
 
+    @property
+    def is_integration_plot_visible(self) -> bool:
+        return self._integration_plot_visible
+
+    def set_integration_plot_visible(self, visible: bool) -> None:
+        if visible == self._integration_plot_visible:
+            return
+        self._integration_plot_visible = visible
+        self._inner_sizer.Show(self._integration_plot, visible, recursive=True)
+        self.Layout()
+
     def set_integration_data(self, xs: np.ndarray, ys: np.ndarray, x_label: str) -> None:
+        if not self._integration_plot_visible:
+            return
         self._integration_plot.set_data(xs, ys, x_label=x_label)
 
     def clear_integration_plot(self) -> None:
+        if not self._integration_plot_visible:
+            return
         self._integration_plot.clear()
 
     def reset_view(self) -> None:

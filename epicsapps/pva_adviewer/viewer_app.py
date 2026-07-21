@@ -41,11 +41,22 @@ class _PVAViewerFrame(wx.Frame):
         self.SetSizer(sizer)
         self.SetBackgroundColour(wx.BLACK)
 
+        menubar = wx.MenuBar()
+        view_menu = wx.Menu()
+        self._menu_show_integration = view_menu.AppendCheckItem(wx.ID_ANY, "Show 1D Integration Plot\tCtrl+I")
+        self._menu_show_integration.Check(True)
+        menubar.Append(view_menu, "&View")
+        self.SetMenuBar(menubar)
+        self.Bind(wx.EVT_MENU, self._on_toggle_integration_plot, self._menu_show_integration)
+
         self.Bind(wx.EVT_CLOSE, self._on_close)
         self.Show()
 
         if pv_name:
             self._controller.subscribe(pv_name)
+
+    def _on_toggle_integration_plot(self, event: wx.CommandEvent) -> None:
+        self._view.set_integration_plot_visible(self._menu_show_integration.IsChecked())
 
     def _on_close(self, event: wx.CloseEvent) -> None:
         """Tear down PVA resources before the frame is destroyed."""
