@@ -250,7 +250,8 @@ class ADViewerView(wx.Panel):
         """Forward frame to the GPU every call and throttle the side widgets."""
         _log.info(f"display_frame: shape={frame.shape}, dtype={frame.dtype}, min={frame.min()}, max={frame.max()}")
         self._current_frame = frame
-        self._image_canvas.set_image(frame)
+        display_2d = frame.mean(axis=2) if frame.ndim == 3 else frame.copy()
+        self._image_canvas.set_image(display_2d)
         _log.info(f"display_frame: called set_image on canvas")
 
         now = time.perf_counter()
