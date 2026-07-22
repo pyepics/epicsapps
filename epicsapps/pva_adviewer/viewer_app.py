@@ -150,8 +150,7 @@ class _PVAViewerFrame(wx.Frame):
         colormap = cfg.get("colormap")
         if colormap:
             try:
-                self._view._image_canvas.set_colormap(colormap)
-                self._view._current_colormap = colormap
+                self._view._apply_colormap(colormap)
             except Exception:
                 pass
 
