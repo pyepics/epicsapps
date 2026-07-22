@@ -68,6 +68,7 @@ class ADViewerView(wx.Panel):
         self._integration_plot_visible: bool = True
         self._pv_panel: wx.Panel | None = None
         self._pv_controls_visible: bool = True
+        self._reset_on_next_frame: bool = False
 
         self._load_file_cb: _FileLoadCallback | None = None
         self._load_poni_cb: _FileLoadCallback | None = None
@@ -256,12 +257,13 @@ class ADViewerView(wx.Panel):
 
     def update_frame(self, frame: np.ndarray) -> None:
         if frame is None or frame.size == 0:
-            _log.warning(f"update_frame: skipping (frame is None or empty)")
             return
         if not self._live_updates:
             return
-        _log.info(f"update_frame: calling display_frame with shape={frame.shape}, dtype={frame.dtype}")
         self.display_frame(frame, reset_histogram_range=self._auto_scale)
+        if self._reset_on_next_frame:
+            self._reset_on_next_frame = False
+            self._image_canvas.reset_view()
 
     def display_frame(self, frame: np.ndarray, reset_histogram_range: bool = True) -> None:
         """Forward frame to the GPU every call and throttle the side widgets."""
@@ -627,13 +629,13 @@ class ADViewerView(wx.Panel):
         self._image_canvas.set_bin_method(method)
 
     def _apply_live_updates(self, enabled: bool) -> None:
-        _log.info(f"_apply_live_updates: changing from {self._live_updates} to {enabled}")
         self._live_updates = enabled
         if enabled:
             self._prev_btn.Hide()
             self._next_btn.Hide()
             self._frame_ctrl.Hide()
             self._reposition_overlay_buttons()
+            self._reset_on_next_frame = True
 
     def _apply_reset_view(self) -> None:
         self._image_canvas.reset_view()
