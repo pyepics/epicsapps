@@ -382,6 +382,56 @@ class ADViewerView(wx.Panel):
     def set_fps(self, fps: "float | None") -> None:
         self._image_canvas.set_fps(fps)
 
+    def capture(self) -> wx.Bitmap:
+        """Capture all visible panels as a single bitmap."""
+        canvas_rgb = self._image_canvas.render_to_array()
+        target_w = canvas_rgb.shape[1]
+
+        def _wx_panel_rgb(panel: wx.Panel) -> np.ndarray:
+            panel.Refresh(False)
+            panel.Update()
+            pw, ph = panel.GetSize()
+            bmp = wx.Bitmap(pw, ph)
+            mem_dc = wx.MemoryDC(bmp)
+
+            try:
+                src_dc = wx.WindowDC(panel)
+            except Exception:
+                src_dc = wx.ClientDC(panel)
+
+            mem_dc.Blit(0, 0, pw, ph, src_dc, 0, 0)
+            del src_dc
+            mem_dc.SelectObject(wx.NullBitmap)
+            img = bmp.ConvertToImage()
+            arr = np.frombuffer(img.GetData(), dtype=np.uint8).reshape(ph, pw, 3)
+            if pw != target_w:
+                new_h = max(1, ph * target_w // pw)
+                img = img.Scale(target_w, new_h, wx.IMAGE_QUALITY_HIGH)
+                arr = np.frombuffer(img.GetData(), dtype=np.uint8).reshape(new_h, target_w, 3)
+            return arr
+
+        parts: list[np.ndarray] = []
+        if self._intensity_histogram.IsShown():
+            parts.append(_wx_panel_rgb(self._intensity_histogram))
+        parts.append(canvas_rgb)
+        if self._integration_plot_visible and self._integration_plot.IsShown():
+            iplot_rgb = self._integration_plot.render_to_array()
+            pw = iplot_rgb.shape[1]
+            if pw != target_w:
+                ih, iw = iplot_rgb.shape[:2]
+                new_h = max(1, ih * target_w // iw)
+                img_i = wx.Image(iw, ih)
+                img_i.SetData(iplot_rgb.tobytes())
+                img_i = img_i.Scale(target_w, new_h, wx.IMAGE_QUALITY_HIGH)
+                iplot_rgb = np.frombuffer(img_i.GetData(), dtype=np.uint8).reshape(new_h, target_w, 3)
+            parts.append(iplot_rgb)
+
+        combined = np.vstack(parts)
+        h, w = combined.shape[:2]
+        img = wx.Image(w, h)
+        img.SetData(combined.tobytes())
+        return wx.Bitmap(img)
+
     def set_status_overlay(self, text: str) -> None:
         """Show a centered status message over the canvas (or hide it when *text* is empty)."""
         if text:

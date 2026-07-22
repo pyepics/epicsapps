@@ -79,6 +79,7 @@ class _PVAViewerFrame(wx.Frame):
             menubar = wx.MenuBar()
             file_menu = wx.Menu()
             load_item = file_menu.Append(wx.ID_ANY, "Load Config File…\tCtrl+O")
+            save_item = file_menu.Append(wx.ID_ANY, "Save Image…\tCtrl+S")
             menubar.Append(file_menu, "&File")
             view_menu = wx.Menu()
             self._menu_check_integration = view_menu.AppendCheckItem(wx.ID_ANY, "Show Integration Plot\tCtrl+I")
@@ -88,6 +89,7 @@ class _PVAViewerFrame(wx.Frame):
             menubar.Append(view_menu, "&View")
             self.SetMenuBar(menubar)
             self.Bind(wx.EVT_MENU, lambda _e: self._on_load_config(), load_item)
+            self.Bind(wx.EVT_MENU, lambda _e: self._on_save_image(), save_item)
             self.Bind(wx.EVT_MENU, lambda _e: self._on_toggle_integration_plot(), self._menu_check_integration)
             self.Bind(wx.EVT_MENU, lambda _e: self._on_toggle_pv_controls(), self._menu_check_controls)
             return None
@@ -95,9 +97,9 @@ class _PVAViewerFrame(wx.Frame):
         bar = FlatMenuBar(self)
         bar.AppendMenu(
             title="File",
-            items=["Load Config File…"],
-            shortcuts=["Ctrl+O"],
-            callbacks=[self._on_load_config],
+            items=["Load Config File…", "Save Image…"],
+            shortcuts=["Ctrl+O", "Ctrl+S"],
+            callbacks=[self._on_load_config, self._on_save_image],
         )
         bar.AppendMenu(
             title="View",
@@ -107,13 +109,16 @@ class _PVAViewerFrame(wx.Frame):
         )
         # FlatMenuBar shows shortcut hints but doesn't bind keys
         _load_id = wx.NewIdRef()
+        _save_id = wx.NewIdRef()
         _toggle_id = wx.NewIdRef()
         _controls_id = wx.NewIdRef()
         self.Bind(wx.EVT_MENU, lambda _e: self._on_load_config(), _load_id)
+        self.Bind(wx.EVT_MENU, lambda _e: self._on_save_image(), _save_id)
         self.Bind(wx.EVT_MENU, lambda _e: self._on_toggle_integration_plot(), _toggle_id)
         self.Bind(wx.EVT_MENU, lambda _e: self._on_toggle_pv_controls(), _controls_id)
         self.SetAcceleratorTable(wx.AcceleratorTable([
             wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('O'), _load_id),
+            wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('S'), _save_id),
             wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('I'), _toggle_id),
             wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('K'), _controls_id),
         ]))
@@ -158,6 +163,31 @@ class _PVAViewerFrame(wx.Frame):
             default_fontsize = int(cfg.get("control_fontsize") or 12)
             columns = max(1, int(cfg.get("control_columns") or 1))
             wx.CallAfter(self._view.set_pv_controls, prefix, controls, default_width, default_fontsize, columns)
+
+    def _on_save_image(self) -> None:
+        wildcard = "PNG files (*.png)|*.png|TIFF files (*.tiff;*.tif)|*.tiff;*.tif"
+        with wx.FileDialog(
+            self,
+            "Save image",
+            wildcard=wildcard,
+            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT,
+            defaultFile="pvaviewer_capture.png",
+        ) as dlg:
+            if dlg.ShowModal() != wx.ID_OK:
+                return
+            path = Path(dlg.GetPath())
+
+        ext = path.suffix.lower()
+        if ext in (".tiff", ".tif"):
+            bmp_type = wx.BITMAP_TYPE_TIFF
+        else:
+            if path.suffix == "":
+                path = path.with_suffix(".png")
+            bmp_type = wx.BITMAP_TYPE_PNG
+
+        bmp = self._view.capture()
+        if not bmp.SaveFile(str(path), bmp_type):
+            FlatMessageDialog(self, f"Failed to save image to:\n{path}", "Save Error").ShowModal()
 
     def _on_load_config(self) -> None:
         with wx.FileDialog(
