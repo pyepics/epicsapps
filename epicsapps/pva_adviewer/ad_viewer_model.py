@@ -444,12 +444,7 @@ class ADViewerModel:
         """p4p monitor callback (runs on the WorkQueue thread). Hand the latest value off to the decoder pool."""
         if isinstance(value, Exception):
             self._record_subscription_error()
-            _log.error("PVA subscription error on %s: %r", self._pv_name, value)
-            _log.error("Troubleshooting tips:")
-            _log.error("  1. Check if the IOC is running")
-            _log.error("  2. Verify the PV name is correct (should end with ':Pva1:Image' for areaDetector)")
-            _log.error("  3. Test with: pvget %s", self._pv_name)
-            _log.error("  4. Check network connectivity if the IOC is on another machine")
+            _log.debug("PVA subscription error on %s: %r", self._pv_name, value)
             return
         if self._slot.put(value):
             self._record_input_drop()
