@@ -4,6 +4,7 @@ Controller for the PVA adviewer.
 """
 
 import logging
+import time
 from pathlib import Path
 from threading import Lock
 
@@ -64,18 +65,23 @@ class ADViewerController:
         self._view.bind_pixel_size_changed(self._on_pixel_size_changed)
 
         self._stats_prev = None
+        self._stats_prev_time: float = 0.0
         self._stats_timer = wx.Timer()
         self._stats_timer.Bind(wx.EVT_TIMER, self._on_stats_tick)
         self._stats_timer.Start(1000)
 
     def _on_stats_tick(self, _event=None) -> None:
+        now = time.monotonic()
         curr = self._ad_model.stats
         if self._stats_prev is None or not self._ad_model.is_subscribed:
             self._stats_prev = curr
+            self._stats_prev_time = now
             self._view.set_fps(None)
             return
-        rates = StreamRatesModel.between(self._stats_prev, curr, 1.0, 0.0)
+        elapsed = now - self._stats_prev_time
+        rates = StreamRatesModel.between(self._stats_prev, curr, elapsed, 0.0)
         self._stats_prev = curr
+        self._stats_prev_time = now
         self._view.set_fps(rates.fps if rates.fps > 0 else None)
 
     def subscribe(self, pv_name: str) -> None:
