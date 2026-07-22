@@ -128,8 +128,11 @@ class ADViewerController:
                 return
             roi = self._view.get_roi_coords()
             line = self._view.get_line_coords()
-            if self._integration.is_calibrated:
-                self._run_integration(current_frame)
+            if not self._view.is_integration_plot_visible:
+                pass
+            elif self._integration.is_calibrated:
+                if self._view.is_roi_live_integration:
+                    self._run_integration(current_frame)
             elif line is not None:
                 self._run_line_integration(current_frame, *line)
             elif roi is not None:
