@@ -9,6 +9,7 @@ from threading import Lock
 
 import numpy as np
 import wx
+from wxutils import FlatMessageDialog
 
 from epicsapps.pva_adviewer.ad_viewer_model import ADViewerModel, FrameModel
 from epicsapps.pva_adviewer.ad_viewer_view import ADViewerView
@@ -120,13 +121,13 @@ class ADViewerController:
     def _on_load_poni(self, poni_path: Path) -> None:
         """Load a .poni calibration file and wire pixel-level d-spacing / 2θ overlays."""
         if not HAS_PYFAI:
-            wx.MessageBox("pyFAI is not installed.", "Missing Dependency", wx.OK | wx.ICON_ERROR)
+            FlatMessageDialog(self._view, "pyFAI is not installed.", "Missing Dependency").ShowModal()
             return
         try:
             self._integration.load_poni(poni_path)
         except Exception as exc:
             _log.exception("Failed to load .poni file %s", poni_path)
-            wx.MessageBox(f"Failed to load .poni file:\n{exc}", "Error", wx.OK | wx.ICON_ERROR)
+            FlatMessageDialog(self._view, f"Failed to load .poni file:\n{exc}", "Error").ShowModal()
             return
 
         self._view.set_poni_label(poni_path.name, success=True)
@@ -330,14 +331,14 @@ class ADViewerController:
             if suffix in (".h5", ".hdf5"):
                 frame = self._image_loader.load_hdf5(filepath)
             else:
-                wx.MessageBox(f"Unsupported file format: {suffix}", "Error", wx.OK | wx.ICON_ERROR)
+                FlatMessageDialog(self._view, f"Unsupported file format: {suffix}", "Error").ShowModal()
                 return
         except ImportError as exc:
-            wx.MessageBox(str(exc), "Missing Dependency", wx.OK | wx.ICON_ERROR)
+            FlatMessageDialog(self._view, str(exc), "Missing Dependency").ShowModal()
             return
         except Exception as exc:
             _log.exception("Failed to load image file %s", filepath)
-            wx.MessageBox(f"Error loading file:\n{exc}", "Error", wx.OK | wx.ICON_ERROR)
+            FlatMessageDialog(self._view, f"Error loading file:\n{exc}", "Error").ShowModal()
             return
 
         self._view.display_frame(frame)
@@ -355,7 +356,7 @@ class ADViewerController:
             frame = self._image_loader.load_hdf5_frame(index)
         except Exception as exc:
             _log.exception("Failed to load frame %d", index)
-            wx.MessageBox(f"Error loading frame {index}:\n{exc}", "Error", wx.OK | wx.ICON_ERROR)
+            FlatMessageDialog(self._view, f"Error loading frame {index}:\n{exc}", "Error").ShowModal()
             return
         self._view.display_frame(frame)
         self._run_full_frame_integration(frame)

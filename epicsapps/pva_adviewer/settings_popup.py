@@ -7,7 +7,7 @@ from typing import Callable
 
 import wx
 from wxmplot.colors import get_colormap_names
-from wxutils import FlatButton, FlatCheckBox, FlatTextCtrl, FlatCombo
+from wxutils import FlatButton, FlatCheckBox, FlatTextCtrl, FlatCombo, FlatPanel, FlatLabel
 
 from epicsapps.pva_adviewer.theme import AppTheme, get_theme
 
@@ -51,15 +51,12 @@ class ImageSettingsPopup(wx.Frame):
         self._on_mask_changed = on_mask_changed
         self._on_pixel_size_changed = on_pixel_size_changed
 
-        t = get_theme()
-        self.SetBackgroundColour(t.bright_black)
+        self.SetBackgroundColour(get_theme().bright_black)
 
-        panel = wx.Panel(self)
-        panel.SetBackgroundColour(t.black)
-        panel.SetForegroundColour(t.foreground)
+        panel = FlatPanel(self)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        self._build_section(panel, sizer, colormap, auto_scale, filter_gaps, contrast_min, contrast_max, bin_method, mask_above, mask_below, pixel_size, t)
+        self._build_section(panel, sizer, colormap, auto_scale, filter_gaps, contrast_min, contrast_max, bin_method, mask_above, mask_below, pixel_size, get_theme())
         sizer.AddSpacer(10)
         panel.SetSizer(sizer)
         sizer.Fit(panel)
@@ -114,14 +111,9 @@ class ImageSettingsPopup(wx.Frame):
         t,
     ) -> None:
         font = AppTheme.scaled_font(12)
-        popup_bg = t.black
 
-        def _lbl(text: str) -> wx.StaticText:
-            w = wx.StaticText(parent, label=text)
-            w.SetBackgroundColour(popup_bg)
-            w.SetForegroundColour(t.foreground)
-            w.SetFont(font)
-            return w
+        def _lbl(text: str) -> FlatLabel:
+            return FlatLabel(parent, label=text, font=font)
 
         cmap_row = wx.BoxSizer(wx.HORIZONTAL)
         cmap_row.Add(_lbl("Colormap"), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)

@@ -1,0 +1,27 @@
+prefix: '13IDD_PG3:'
+pva_suffix: 'Pva1:Image'
+title: '13IDD_PG3'
+pixel_size: 0.31
+colormap: 'viridis'
+poni_file: null
+
+# Widget defaults (can be overridden per-entry)
+show_integration_plot: true
+show_pv_controls: false
+control_width: 140
+control_fontsize: 12
+control_columns: 3
+
+# epics_controls entry format:
+# [label, pvname, use_prefix, type]
+# [label, pvname, use_prefix, type, readback_suffix]
+# [label, pvname, use_prefix, type, readback_suffix, width]
+# [label, pvname, use_prefix, type, readback_suffix, width, fontsize]
+# types: pvfloat, pvenum, pvenumbuttons, pvtctrl, pvtext
+epics_controls:
+  - ['Acquire Time',   'cam1:AcquireTime',        true, pvfloat,        _RBV]
+  - ['Num Images',     'cam1:NumImages',          true, pvfloat,        _RBV]
+  - ['Trigger Mode',   'cam1:TriggerMode',        true, pvenum,         _RBV]
+  - ['Image Mode',     'cam1:ImageMode',          true, pvenum,         _RBV]
+  - ['Acquire',        'cam1:Acquire',            true, pvenumbuttons,  false]
+  - ['Detector State', 'cam1:DetectorState_RBV',  true, pvtext,         false]

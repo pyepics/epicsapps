@@ -5,6 +5,7 @@ AD Viewer view
 
 import logging
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Callable, Protocol
@@ -15,6 +16,7 @@ from wxmplot import Histogram
 from wxutils import FlatTextCtrl, FlatIconButton, draw_chevron_left, draw_chevron_right, draw_cog, draw_folder
 
 from epicsapps.pva_adviewer import ImageCanvas, ImageSettingsPopup, IntegrationPlot, LiveToggle
+from epicsapps.pva_adviewer.pv_panel import PVControlPanel
 from epicsapps.pva_adviewer.theme import AppTheme, get_theme
 from epicsapps.pva_adviewer.widgets import PlotToggleButton
 
@@ -64,6 +66,8 @@ class ADViewerView(wx.Panel):
         self._mask_below: float | None = None
         self._pixel_size: float | None = 1.0
         self._integration_plot_visible: bool = True
+        self._pv_panel: wx.Panel | None = None
+        self._pv_controls_visible: bool = True
 
         self._load_file_cb: _FileLoadCallback | None = None
         self._load_poni_cb: _FileLoadCallback | None = None
@@ -145,7 +149,7 @@ class ADViewerView(wx.Panel):
         inner.Add(self._integration_plot, 1, wx.EXPAND)
         self._inner_sizer = inner
         sizer = wx.BoxSizer(wx.VERTICAL)
-        sizer.Add(inner, 1, wx.EXPAND | wx.ALL, 5)
+        sizer.Add(inner, 1, wx.EXPAND)
         self.SetSizer(sizer)
 
         self._image_canvas.set_roi_cleared_callback(self._on_roi_or_line_cleared)
@@ -318,6 +322,49 @@ class ADViewerView(wx.Panel):
         self._integration_plot_visible = visible
         self._inner_sizer.Show(self._integration_plot, visible, recursive=True)
         self.Layout()
+
+    def set_pv_controls_visible(self, visible: bool) -> None:
+        if visible == self._pv_controls_visible:
+            return
+        self._pv_controls_visible = visible
+        if self._pv_panel is not None:
+            self._inner_sizer.Show(self._pv_panel, visible, recursive=True)
+            self.Layout()
+
+    def set_pv_controls(self, prefix: str, controls: list, default_width: int = 140, default_fontsize: int = 12, columns: int = 1) -> None:
+        if not controls:
+            return
+
+        def _preconnect() -> None:
+            from epics import get_pv, poll
+            for entry in controls:
+                pvname = entry[1]
+                use_prefix = entry[2]
+                rsuff = entry[4] if len(entry) > 4 else False
+                if use_prefix:
+                    pvname = prefix + pvname
+                get_pv(pvname)
+                if rsuff:
+                    get_pv(pvname + rsuff)
+            poll(0.1)
+            wx.CallAfter(self._add_pv_panel, prefix, controls, default_width, default_fontsize, columns)
+
+        threading.Thread(target=_preconnect, daemon=True).start()
+
+    def _add_pv_panel(self, prefix: str, controls: list, default_width: int, default_fontsize: int, columns: int = 1) -> None:
+        self.clear_pv_controls()
+        self._pv_panel = PVControlPanel(self, prefix, controls, default_width=default_width, default_fontsize=default_fontsize, columns=columns)
+        self._inner_sizer.Add(self._pv_panel, 0, wx.EXPAND)
+        if not self._pv_controls_visible:
+            self._inner_sizer.Show(self._pv_panel, False, recursive=True)
+        self.Layout()
+
+    def clear_pv_controls(self) -> None:
+        if self._pv_panel is not None:
+            self._inner_sizer.Detach(self._pv_panel)
+            self._pv_panel.Destroy()
+            self._pv_panel = None
+            self.Layout()
 
     def set_integration_data(self, xs: np.ndarray, ys: np.ndarray, x_label: str) -> None:
         if not self._integration_plot_visible:
