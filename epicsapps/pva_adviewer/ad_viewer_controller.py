@@ -11,7 +11,7 @@ import numpy as np
 import wx
 from wxutils import FlatMessageDialog
 
-from epicsapps.pva_adviewer.ad_viewer_model import ADViewerModel, FrameModel
+from epicsapps.pva_adviewer.ad_viewer_model import ADViewerModel, FrameModel, StreamRatesModel
 from epicsapps.pva_adviewer.ad_viewer_view import ADViewerView
 from epicsapps.pva_adviewer.image_loader_model import ImageLoaderModel
 from epicsapps.pva_adviewer.integration_model import HAS_PYFAI, IntegrationModel
@@ -63,6 +63,21 @@ class ADViewerController:
         self._view.bind_mask_toggle(self._on_mask_toggle)
         self._view.bind_pixel_size_changed(self._on_pixel_size_changed)
 
+        self._stats_prev = None
+        self._stats_timer = wx.Timer()
+        self._stats_timer.Bind(wx.EVT_TIMER, self._on_stats_tick)
+        self._stats_timer.Start(1000)
+
+    def _on_stats_tick(self, _event=None) -> None:
+        curr = self._ad_model.stats
+        if self._stats_prev is None or not self._ad_model.is_subscribed:
+            self._stats_prev = curr
+            self._view.set_fps(None)
+            return
+        rates = StreamRatesModel.between(self._stats_prev, curr, 1.0, 0.0)
+        self._stats_prev = curr
+        self._view.set_fps(rates.fps if rates.fps > 0 else None)
+
     def subscribe(self, pv_name: str) -> None:
         """Subscribe to a PVA channel and start delivering frames to the view."""
         if not pv_name:
@@ -79,6 +94,7 @@ class ADViewerController:
 
     def shutdown(self) -> None:
         """Release all PVA resources. Call on application exit."""
+        self._stats_timer.Stop()
         self._ad_model.shutdown()
 
     def _on_new_frame(self, frame: FrameModel) -> None:

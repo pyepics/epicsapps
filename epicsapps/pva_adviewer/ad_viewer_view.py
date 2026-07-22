@@ -379,6 +379,9 @@ class ADViewerView(wx.Panel):
     def reset_view(self) -> None:
         self._image_canvas.reset_view()
 
+    def set_fps(self, fps: "float | None") -> None:
+        self._image_canvas.set_fps(fps)
+
     def set_status_overlay(self, text: str) -> None:
         """Show a centered status message over the canvas (or hide it when *text* is empty)."""
         if text:
