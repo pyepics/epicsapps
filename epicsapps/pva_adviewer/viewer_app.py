@@ -5,6 +5,7 @@ wx.App for the PVA adviewer.
 
 import logging
 import sys
+from contextlib import suppress
 from pathlib import Path
 from typing import Optional
 
@@ -226,6 +227,15 @@ class PVAViewerApp(wx.App):
         super().__init__(False)
 
     def OnInit(self) -> bool:
+        self.SetAppDisplayName("PVA Viewer")
+
+        if sys.platform == "darwin":
+            with suppress(Exception):
+                from Foundation import NSBundle
+                info = NSBundle.mainBundle().infoDictionary()
+                if info is not None:
+                    info["CFBundleName"] = "PVA Viewer"
+
         AppTheme(dark=self._dark, light=self._light)
 
         pv_name = self._pv_name
