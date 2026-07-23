@@ -675,10 +675,20 @@ class ADViewerView(wx.Panel):
             self._pixel_size_changed_cb(value)
 
     def _trigger_load_file(self) -> None:
+        wildcard = (
+            "All supported|*.h5;*.hdf5;*.tif;*.tiff;*.cbf;*.edf;*.jpg;*.jpeg;*.png;*.bmp|"
+            "HDF5 files (*.h5;*.hdf5)|*.h5;*.hdf5|"
+            "TIFF files (*.tif;*.tiff)|*.tif;*.tiff|"
+            "CBF files (*.cbf)|*.cbf|"
+            "EDF files (*.edf)|*.edf|"
+            "Image files (*.jpg;*.jpeg;*.png;*.bmp)|*.jpg;*.jpeg;*.png;*.bmp"
+        )
+        if sys.platform == "win32":
+            wildcard += "|All files (*.*)|*.*"
         with wx.FileDialog(
             self,
             "Open image file",
-            wildcard="HDF5 files (*.h5;*.hdf5)|*.h5;*.hdf5" + ("|All files (*.*)|*.*" if sys.platform == "win32" else ""),
+            wildcard=wildcard,
             style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
         ) as dlg:
             if dlg.ShowModal() == wx.ID_CANCEL:

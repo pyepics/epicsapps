@@ -15,7 +15,7 @@ from wxutils import FlatMessageDialog
 
 from epicsapps.pva_adviewer.ad_viewer_model import ADViewerModel, FrameModel, StreamRatesModel
 from epicsapps.pva_adviewer.ad_viewer_view import ADViewerView
-from epicsapps.pva_adviewer.image_loader_model import ImageLoaderModel
+from epicsapps.pva_adviewer.image_loader_model import ImageLoaderModel, _FABIO_SUFFIXES, _PIL_SUFFIXES
 from epicsapps.pva_adviewer.integration_model import HAS_PYFAI, IntegrationModel
 
 __all__ = ["ADViewerController"]
@@ -333,6 +333,10 @@ class ADViewerController:
         try:
             if suffix in (".h5", ".hdf5"):
                 frame = self._image_loader.load_hdf5(filepath)
+            elif suffix in _FABIO_SUFFIXES:
+                frame = self._image_loader.load_fabio(filepath)
+            elif suffix in _PIL_SUFFIXES:
+                frame = self._image_loader.load_pillow(filepath)
             else:
                 FlatMessageDialog(self._view, f"Unsupported file format: {suffix}", "Error").ShowModal()
                 return
@@ -355,9 +359,9 @@ class ADViewerController:
         self._view.set_frame_navigation(frame_count, 0)
 
     def _on_navigate_frame(self, index: int) -> None:
-        """Load and display the requested frame index from the current HDF5 file."""
+        """Load and display the requested frame index from the current multi-frame file."""
         try:
-            frame = self._image_loader.load_hdf5_frame(index)
+            frame = self._image_loader.load_frame(index)
         except Exception as exc:
             _log.exception("Failed to load frame %d", index)
             FlatMessageDialog(self._view, f"Error loading frame {index}:\n{exc}", "Error").ShowModal()

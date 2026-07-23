@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Model for loading detector images from HDF5 files.
+Model for loading detector images from HDF5, TIFF, CBF, and common image files.
 """
 
 from dataclasses import dataclass, field
@@ -25,22 +25,43 @@ try:
 except ImportError:
     HAS_HDF5PLUGIN = False
 
-__all__ = ["ImageLoaderModel", "HAS_H5PY"]
+try:
+    import fabio
+    HAS_FABIO = True
+except ImportError:
+    HAS_FABIO = False
+
+try:
+    from PIL import Image as _PilImage
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+
+__all__ = ["ImageLoaderModel", "HAS_H5PY", "HAS_FABIO", "HAS_PIL"]
+
+_FABIO_SUFFIXES = {".tif", ".tiff", ".cbf", ".edf", ".img", ".mar3450", ".mar2300"}
+_PIL_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp"}
 
 
 @dataclass()
 class ImageLoaderModel:
-    """Handles loading detector images from HDF5 files."""
+    """Handles loading detector images from HDF5, fabio, and common image files."""
 
     _loaded_file: Path | None = field(init=False, compare=False, repr=False, default=None)
+    _frame_type: str = field(init=False, compare=False, repr=False, default="none")
+    _frame_count: int = field(init=False, compare=False, repr=False, default=0)
+
+    # HDF5-specific
     _hdf5_dataset_path: str | None = field(init=False, compare=False, repr=False, default=None)
-    _hdf5_frame_count: int = field(init=False, compare=False, repr=False, default=0)
     _hdf5_filepath: Path | None = field(init=False, compare=False, repr=False, default=None)
+
+    # fabio-specific
+    _fabio_filepath: Path | None = field(init=False, compare=False, repr=False, default=None)
 
     @property
     def frame_count(self) -> int:
-        """Number of frames in the currently loaded HDF5 file (0 if not multi-frame)."""
-        return self._hdf5_frame_count
+        """Number of navigable frames in the current file (0 for single-frame files)."""
+        return self._frame_count
 
     @property
     def loaded_file(self) -> Path | None:
@@ -52,7 +73,7 @@ class ImageLoaderModel:
         if not HAS_H5PY:
             raise ImportError("h5py is not installed. Cannot load HDF5 files.")
 
-        self._hdf5_frame_count = 0
+        self._frame_count = 0
         self._hdf5_dataset_path = None
         self._hdf5_filepath = None
 
@@ -69,7 +90,7 @@ class ImageLoaderModel:
             if len(dataset.shape) == 2:
                 frame = dataset[:]
             elif len(dataset.shape) == 3:
-                self._hdf5_frame_count = dataset.shape[0]
+                self._frame_count = dataset.shape[0]
                 self._hdf5_dataset_path = dataset.name
                 self._hdf5_filepath = filepath
                 frame = dataset[0]
@@ -89,17 +110,18 @@ class ImageLoaderModel:
                 try:
                     f.close()
                 except Exception:
-                    pass  # h5py close errors are a known issue on some platforms
+                    pass
 
         self._loaded_file = filepath
+        self._frame_type = "hdf5"
         return frame.astype(np.float32)
 
     def load_hdf5_frame(self, index: int) -> np.ndarray:
         """Loads a specific frame by index from the currently open HDF5 file."""
         if self._hdf5_filepath is None or self._hdf5_dataset_path is None:
             raise ValueError("No multi-frame HDF5 file is currently loaded.")
-        if not (0 <= index < self._hdf5_frame_count):
-            raise ValueError(f"Frame index {index} out of range [0, {self._hdf5_frame_count}).")
+        if not (0 <= index < self._frame_count):
+            raise ValueError(f"Frame index {index} out of range [0, {self._frame_count}).")
 
         f = None
         try:
@@ -122,6 +144,62 @@ class ImageLoaderModel:
                     pass
 
         return frame.astype(np.float32)
+
+
+    def load_fabio(self, filepath: Path) -> np.ndarray:
+        """Load a detector image using fabio (TIFF, CBF, EDF, etc.)."""
+        if not HAS_FABIO:
+            raise ImportError(
+                "fabio is not installed. Cannot load this file format.\n\n"
+                "Try: pip install fabio"
+            )
+        img = fabio.open(str(filepath))
+        try:
+            n = img.nframes
+            frame = img.data
+        finally:
+            img.close()
+
+        self._loaded_file = filepath
+        self._frame_type = "fabio"
+        self._fabio_filepath = filepath
+        self._frame_count = n if n > 1 else 0
+        return np.asarray(frame, dtype=np.float32)
+
+    def load_fabio_frame(self, index: int) -> np.ndarray:
+        """Load a specific frame by index from the current fabio file."""
+        if self._fabio_filepath is None:
+            raise ValueError("No fabio file is currently loaded.")
+        if not (0 <= index < self._frame_count):
+            raise ValueError(f"Frame index {index} out of range [0, {self._frame_count}).")
+        img = fabio.open(str(self._fabio_filepath))
+        try:
+            frame = img.getframe(index).data
+        finally:
+            img.close()
+        return np.asarray(frame, dtype=np.float32)
+
+    def load_pillow(self, filepath: Path) -> np.ndarray:
+        """Load a common image file (JPEG, PNG, BMP) using Pillow."""
+        if not HAS_PIL:
+            raise ImportError(
+                "Pillow is not installed. Cannot load this file format.\n\n"
+                "Try: pip install Pillow"
+            )
+        with _PilImage.open(filepath) as img:
+            arr = np.array(img)
+        self._loaded_file = filepath
+        self._frame_type = "single"
+        self._frame_count = 0
+        return arr.astype(np.float32)
+
+    def load_frame(self, index: int) -> np.ndarray:
+        """Load a frame by index from whatever multi-frame file is currently open."""
+        if self._frame_type == "hdf5":
+            return self.load_hdf5_frame(index)
+        if self._frame_type == "fabio":
+            return self.load_fabio_frame(index)
+        raise ValueError("No multi-frame file is currently loaded.")
 
     @staticmethod
     def _find_dataset(f: "h5py.File") -> "h5py.Dataset | None":
