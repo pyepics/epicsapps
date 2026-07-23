@@ -62,6 +62,9 @@ dependencies = [
     "h5py>=3.16.0",
     "pyfai>=2026.5.0",
     "hdf5plugin>=7.0.0",
+    "bitshuffle>=0.5.2",
+    "lz4>=4.4.5",
+    "blosc>=1.11.4",
 ]
 
 [project.scripts]
