@@ -550,7 +550,7 @@ class IntegrationPlot(LinePlot):
         info_font = AppTheme.scaled_font(11, weight=wx.FONTWEIGHT_BOLD)
         gc.SetFont(info_font, t.green)
         x = AppTheme.btn_pad
-        if self.ys is not None:
+        if self.ys is not None and self.ys.size > 0:
             lbl = f"max: {float(self.ys.max()):.4g}"
             lw, lh = gc.GetTextExtent(lbl)
             gc.DrawText(lbl, x, br.y + (br.height - lh) / 2)
