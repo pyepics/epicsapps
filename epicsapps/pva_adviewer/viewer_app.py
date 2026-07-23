@@ -54,6 +54,7 @@ class _PVAViewerFrame(wx.Frame):
 
         self._menu_check_integration = None
         self._menu_check_controls = None
+        self._menu_check_fps = None
         flat_menubar = self._build_menu()
 
         sizer = wx.BoxSizer(wx.VERTICAL)
@@ -87,6 +88,8 @@ class _PVAViewerFrame(wx.Frame):
             self._menu_check_integration.Check(True)
             self._menu_check_controls = view_menu.AppendCheckItem(wx.ID_ANY, "Show PV Controls\tCtrl+K")
             self._menu_check_controls.Check(True)
+            self._menu_check_fps = view_menu.AppendCheckItem(wx.ID_ANY, "Show FPS\tCtrl+F")
+            self._menu_check_fps.Check(False)
             menubar.Append(view_menu, "&View")
             self.SetMenuBar(menubar)
             self.Bind(wx.EVT_MENU, lambda _e: self._on_load_config(), load_item)
@@ -94,6 +97,7 @@ class _PVAViewerFrame(wx.Frame):
             self.Bind(wx.EVT_MENU, lambda _e: self._on_copy_image(), copy_item)
             self.Bind(wx.EVT_MENU, lambda _e: self._on_toggle_integration_plot(), self._menu_check_integration)
             self.Bind(wx.EVT_MENU, lambda _e: self._on_toggle_pv_controls(), self._menu_check_controls)
+            self.Bind(wx.EVT_MENU, lambda _e: self._on_toggle_fps(), self._menu_check_fps)
             return None
 
         bar = FlatMenuBar(self)
@@ -105,9 +109,9 @@ class _PVAViewerFrame(wx.Frame):
         )
         bar.AppendMenu(
             title="View",
-            items=["Toggle Integration Plot", "Toggle PV Controls"],
-            shortcuts=["Ctrl+I", "Ctrl+K"],
-            callbacks=[self._on_toggle_integration_plot, self._on_toggle_pv_controls],
+            items=["Toggle Integration Plot", "Toggle PV Controls", "Toggle FPS"],
+            shortcuts=["Ctrl+I", "Ctrl+K", "Ctrl+F"],
+            callbacks=[self._on_toggle_integration_plot, self._on_toggle_pv_controls, self._on_toggle_fps],
         )
         # FlatMenuBar shows shortcut hints but doesn't bind keys
         _load_id = wx.NewIdRef()
@@ -115,17 +119,20 @@ class _PVAViewerFrame(wx.Frame):
         _copy_id = wx.NewIdRef()
         _toggle_id = wx.NewIdRef()
         _controls_id = wx.NewIdRef()
+        _fps_id = wx.NewIdRef()
         self.Bind(wx.EVT_MENU, lambda _e: self._on_load_config(), _load_id)
         self.Bind(wx.EVT_MENU, lambda _e: self._on_save_image(), _save_id)
         self.Bind(wx.EVT_MENU, lambda _e: self._on_copy_image(), _copy_id)
         self.Bind(wx.EVT_MENU, lambda _e: self._on_toggle_integration_plot(), _toggle_id)
         self.Bind(wx.EVT_MENU, lambda _e: self._on_toggle_pv_controls(), _controls_id)
+        self.Bind(wx.EVT_MENU, lambda _e: self._on_toggle_fps(), _fps_id)
         self.SetAcceleratorTable(wx.AcceleratorTable([
             wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('O'), _load_id),
             wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('S'), _save_id),
             wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('C'), _copy_id),
             wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('I'), _toggle_id),
             wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('K'), _controls_id),
+            wx.AcceleratorEntry(wx.ACCEL_CTRL, ord('F'), _fps_id),
         ]))
         return bar
 
@@ -240,6 +247,13 @@ class _PVAViewerFrame(wx.Frame):
         else:
             visible = not self._view._pv_controls_visible
         self._view.set_pv_controls_visible(visible)
+
+    def _on_toggle_fps(self) -> None:
+        if self._menu_check_fps is not None:
+            visible = self._menu_check_fps.IsChecked()
+        else:
+            visible = not self._view._show_fps
+        self._view.set_fps_visible(visible)
 
     def _on_close(self, event: wx.CloseEvent) -> None:
         """Tear down PVA resources before the frame is destroyed."""

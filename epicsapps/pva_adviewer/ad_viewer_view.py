@@ -69,6 +69,8 @@ class ADViewerView(wx.Panel):
         self._pv_panel: wx.Panel | None = None
         self._pv_controls_visible: bool = True
         self._reset_on_next_frame: bool = False
+        self._show_fps: bool = False
+        self._last_fps: float | None = None
 
         self._load_file_cb: _FileLoadCallback | None = None
         self._load_poni_cb: _FileLoadCallback | None = None
@@ -378,7 +380,12 @@ class ADViewerView(wx.Panel):
         self._image_canvas.reset_view()
 
     def set_fps(self, fps: "float | None") -> None:
-        self._image_canvas.set_fps(fps)
+        self._last_fps = fps
+        self._image_canvas.set_fps(fps if (self._show_fps and self._live_updates) else None)
+
+    def set_fps_visible(self, visible: bool) -> None:
+        self._show_fps = visible
+        self._image_canvas.set_fps(self._last_fps if (visible and self._live_updates) else None)
 
     def capture(self) -> wx.Bitmap:
         """Capture all visible panels as a single bitmap."""
@@ -636,6 +643,7 @@ class ADViewerView(wx.Panel):
 
     def _apply_live_updates(self, enabled: bool) -> None:
         self._live_updates = enabled
+        self._image_canvas.set_fps(self._last_fps if (self._show_fps and enabled) else None)
         if enabled:
             self._prev_btn.Hide()
             self._next_btn.Hide()
