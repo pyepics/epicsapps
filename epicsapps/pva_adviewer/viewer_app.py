@@ -43,6 +43,7 @@ class _PVAViewerFrame(wx.Frame):
         cfg = config.config if config is not None else {}
         title = cfg.get("title") or "PVA Viewer"
         super().__init__(None, title=title, size=(1200, 800))
+        _set_frame_icon(self)
 
         self._ad_model = ADViewerModel()
         self._image_loader = ImageLoaderModel()
@@ -365,6 +366,15 @@ class PVAViewerApp(wx.App):
 def _update_recents(fname: str, current: list[str], new_entry: str) -> None:
     updated = [new_entry] + [x for x in current if x != new_entry]
     write_recents_file(fname, updated[:20])
+
+
+def _set_frame_icon(frame: wx.Frame) -> None:
+    """Set the window/taskbar icon (all platforms)."""
+    with suppress(Exception):
+        from importlib.resources import as_file
+        ico = "pvaviewer.ico" if sys.platform == "win32" else "pvaviewer.icns"
+        with as_file(files("epicsapps.icons").joinpath(ico)) as path:
+            frame.SetIcon(wx.Icon(str(path)))
 
 
 def _set_dock_icon() -> None:
