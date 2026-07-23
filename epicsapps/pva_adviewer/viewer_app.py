@@ -6,6 +6,7 @@ wx.App for the PVA adviewer.
 import logging
 import sys
 from contextlib import suppress
+from importlib.resources import files
 from pathlib import Path
 from typing import Optional
 
@@ -289,6 +290,7 @@ class PVAViewerApp(wx.App):
                 info = NSBundle.mainBundle().infoDictionary()
                 if info is not None:
                     info["CFBundleName"] = "PVA Viewer"
+            _set_dock_icon()
 
         AppTheme(dark=self._dark, light=self._light)
 
@@ -363,6 +365,16 @@ class PVAViewerApp(wx.App):
 def _update_recents(fname: str, current: list[str], new_entry: str) -> None:
     updated = [new_entry] + [x for x in current if x != new_entry]
     write_recents_file(fname, updated[:20])
+
+
+def _set_dock_icon() -> None:
+    """Set the macOS dock icon from the bundled .icns asset."""
+    with suppress(Exception):
+        from AppKit import NSApplication, NSImage, NSData
+        icon_bytes = files("epicsapps.icons").joinpath("pvaviewer.icns").read_bytes()
+        ns_data = NSData.dataWithBytes_length_(icon_bytes, len(icon_bytes))
+        ns_image = NSImage.alloc().initWithData_(ns_data)
+        NSApplication.sharedApplication().setApplicationIconImage_(ns_image)
 
 
 def run_pvaviewer(
