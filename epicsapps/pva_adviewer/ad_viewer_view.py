@@ -87,7 +87,7 @@ class ADViewerView(wx.Panel):
         self._build_layout()
 
     def _build_layout(self) -> None:
-        self._intensity_histogram = Histogram(self, colormap="gray", on_levels_changed=self._on_histogram_levels_changed, log_scale=True, show_colorbar=True)
+        self._intensity_histogram = Histogram(self, colormap="gray", norm="linear", on_levels_changed=self._on_histogram_levels_changed, show_colorbar=True)
         self._integration_plot = IntegrationPlot(self)
 
         self.SetBackgroundColour(wx.BLACK)
@@ -260,12 +260,12 @@ class ADViewerView(wx.Panel):
             return
         if not self._live_updates:
             return
-        self.display_frame(frame, reset_histogram_range=self._auto_scale)
+        self.display_frame(frame)
         if self._reset_on_next_frame:
             self._reset_on_next_frame = False
             self._image_canvas.reset_view()
 
-    def display_frame(self, frame: np.ndarray, reset_histogram_range: bool = True) -> None:
+    def display_frame(self, frame: np.ndarray) -> None:
         """Forward frame to the GPU every call and throttle the side widgets."""
         _log.info(f"display_frame: shape={frame.shape}, dtype={frame.dtype}, min={frame.min()}, max={frame.max()}")
         self._current_frame = frame
@@ -277,11 +277,7 @@ class ADViewerView(wx.Panel):
         if now - self._last_histogram_update < self._histogram_min_interval_s:
             return
         self._last_histogram_update = now
-        if reset_histogram_range:
-            self._intensity_histogram.set_data(frame, auto_scale=False)
-        else:
-            # Keep existing axis range; only refresh bars for the new frame
-            self._intensity_histogram.set_data(frame, auto_scale=False, data_range=self._intensity_histogram.get_range())
+        self._intensity_histogram.set_data(frame, auto_scale=False)
         lo, hi = self._image_canvas.get_contrast_range()
         self._intensity_histogram.set_levels(lo, hi)
         self._last_pushed_levels = (lo, hi)
@@ -469,6 +465,14 @@ class ADViewerView(wx.Panel):
         if self._roi_live_integration_cb is not None:
             self._roi_live_integration_cb(enabled)
 
+    def _on_histogram_norm_changed(self, norm: str) -> None:
+        self._image_canvas.set_norm(norm)
+        self._intensity_histogram.set_norm(norm)
+        if self._current_frame is not None:
+            lo, hi = self._intensity_histogram.get_levels()
+            self._intensity_histogram.set_data(self._current_frame, auto_scale=False)
+            self._intensity_histogram.set_levels(lo, hi)
+
     def _on_histogram_levels_changed(self, min_val: float, max_val: float) -> None:
         _log.info(f"Histogram levels changed: min={min_val}, max={max_val}, setting auto_scale=False")
         self._auto_scale = False
@@ -573,6 +577,8 @@ class ADViewerView(wx.Panel):
             mask_below=self._mask_below,
             pixel_size=self._pixel_size,
             on_pixel_size_changed=self._apply_pixel_size,
+            hist_norm=self._intensity_histogram.norm,
+            on_hist_norm_changed=self._on_histogram_norm_changed,
         )
         btn_sz = self._settings_btn.GetSize()
         popup_w, _ = popup.GetSize()

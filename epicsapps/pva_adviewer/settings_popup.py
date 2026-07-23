@@ -37,6 +37,8 @@ class ImageSettingsPopup(wx.Frame):
         mask_below: "float | None" = None,
         pixel_size: "float | None" = None,
         on_pixel_size_changed: "Callable[[float | None], None] | None" = None,
+        hist_norm: str = "linear",
+        on_hist_norm_changed: "Callable[[str], None] | None" = None,
     ) -> None:
         super().__init__(
             parent,
@@ -50,13 +52,14 @@ class ImageSettingsPopup(wx.Frame):
         self._on_reset_view = on_reset_view
         self._on_mask_changed = on_mask_changed
         self._on_pixel_size_changed = on_pixel_size_changed
+        self._on_hist_norm_changed = on_hist_norm_changed
 
         self.SetBackgroundColour(get_theme().bright_black)
 
         panel = FlatPanel(self)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
-        self._build_section(panel, sizer, colormap, auto_scale, filter_gaps, contrast_min, contrast_max, bin_method, mask_above, mask_below, pixel_size, get_theme())
+        self._build_section(panel, sizer, colormap, auto_scale, filter_gaps, contrast_min, contrast_max, bin_method, mask_above, mask_below, pixel_size, hist_norm, get_theme())
         sizer.AddSpacer(10)
         panel.SetSizer(sizer)
         sizer.Fit(panel)
@@ -108,6 +111,7 @@ class ImageSettingsPopup(wx.Frame):
         mask_above: "float | None",
         mask_below: "float | None",
         pixel_size: "float | None",
+        hist_norm: str,
         t,
     ) -> None:
         font = AppTheme.scaled_font(12)
@@ -158,6 +162,17 @@ class ImageSettingsPopup(wx.Frame):
         self._bin_choice.Bind(wx.EVT_CHOICE, self._evt_bin_method)
         bin_row.Add(self._bin_choice, 1, wx.EXPAND)
         sizer.Add(bin_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
+
+        norm_row = wx.BoxSizer(wx.HORIZONTAL)
+        norm_row.Add(_lbl("Display scale"), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        _norm_keys = ("linear", "sqrt", "log")
+        _norm_labels = ("Linear", "√ (Sqrt)", "Log")
+        self._hist_norm_choice = FlatCombo(parent, choices=list(_norm_labels))
+        norm_idx = _norm_keys.index(hist_norm) if hist_norm in _norm_keys else 0
+        self._hist_norm_choice.SetSelection(norm_idx)
+        self._hist_norm_choice.Bind(wx.EVT_CHOICE, self._evt_hist_norm)
+        norm_row.Add(self._hist_norm_choice, 1, wx.EXPAND)
+        sizer.Add(norm_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, 10)
 
         above_row = wx.BoxSizer(wx.HORIZONTAL)
         self._mask_above_cb = FlatCheckBox(parent, label="Mask above", value=mask_above is not None)
@@ -214,6 +229,12 @@ class ImageSettingsPopup(wx.Frame):
             if lbl == label:
                 self._on_bin_method_changed(key)
                 return
+
+    def _evt_hist_norm(self, label: str) -> None:
+        _norm_map = {"Linear": "linear", "√ (Sqrt)": "sqrt", "Log": "log"}
+        norm = _norm_map.get(label)
+        if norm and self._on_hist_norm_changed:
+            self._on_hist_norm_changed(norm)
 
     def _evt_levels_key(self, event: wx.KeyEvent) -> None:
         if event.GetKeyCode() in (wx.WXK_RETURN, wx.WXK_NUMPAD_ENTER):
