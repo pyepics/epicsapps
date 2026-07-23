@@ -486,6 +486,8 @@ class ADViewerController:
         length = int(np.hypot(x2 - x1, y2 - y1))
         if length < 2:
             return np.array([0.0]), np.array([0.0]), "Pixel"
+        if frame.ndim == 3:
+            frame = frame.mean(axis=2)
         xi = np.clip(np.linspace(x1, x2, length).astype(int), 0, frame.shape[1] - 1)
         yi = np.clip(np.linspace(y1, y2, length).astype(int), 0, frame.shape[0] - 1)
         profile = frame[yi, xi].astype(np.float64)
