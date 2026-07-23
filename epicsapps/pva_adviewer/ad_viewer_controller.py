@@ -36,6 +36,7 @@ class ADViewerController:
 
         self._integration = IntegrationModel()
         self._mask_active: bool = False
+        self._overlay_visible: bool = False
         self._stored_mask_above: "float | None" = None
         self._stored_mask_below: "float | None" = None
         self._compute_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="adviewer-compute")
@@ -287,39 +288,31 @@ class ADViewerController:
             self._run_integration(current_frame)
 
     def _on_mask_toggle(self, enabled: bool) -> None:
-        """Enable or disable pixel masking via the M button."""
-        self._mask_active = enabled
-        if enabled:
-            self._integration.set_mask_thresholds(self._stored_mask_above, self._stored_mask_below)
+        """Show or hide the mask overlay without changing the underlying mask."""
+        self._overlay_visible = enabled
+        frame = self._view.current_frame
+        if frame is not None:
+            self._submit_compute(frame)
+
+    def _on_mask_changed(self, above: "float | None", below: "float | None") -> None:
+        """Enable or disable the mask from the settings popup."""
+        self._stored_mask_above = above
+        self._stored_mask_below = below
+        if above is not None or below is not None:
+            self._mask_active = True
+            self._overlay_visible = True
+            self._view.set_mask_active(True)
+            self._integration.set_mask_thresholds(above, below)
         else:
+            self._mask_active = False
+            self._overlay_visible = False
+            self._view.set_mask_active(False)
             self._integration.set_mask_thresholds(None, None)
         frame = self._view.current_frame
         if frame is not None:
             if self._integration.is_calibrated and self._view.is_integration_plot_visible:
                 self._run_integration(frame)
             self._submit_compute(frame)
-
-    def _on_mask_changed(self, above: "float | None", below: "float | None") -> None:
-        """Store new threshold values from the popup and apply if mask is active."""
-        self._stored_mask_above = above
-        self._stored_mask_below = below
-        if above is not None or below is not None:
-            if not self._mask_active:
-                self._mask_active = True
-                self._view.set_mask_active(True)
-            self._integration.set_mask_thresholds(above, below)
-            frame = self._view.current_frame
-            if frame is not None:
-                if self._integration.is_calibrated and self._view.is_integration_plot_visible:
-                    self._run_integration(frame)
-                self._submit_compute(frame)
-        elif self._mask_active:
-            self._integration.set_mask_thresholds(None, None)
-            frame = self._view.current_frame
-            if frame is not None:
-                if self._integration.is_calibrated and self._view.is_integration_plot_visible:
-                    self._run_integration(frame)
-                self._submit_compute(frame)
 
     def _on_pixel_size_changed(self, _value: "float | None") -> None:
         """Recompute line length label when pixel size changes."""
@@ -424,9 +417,9 @@ class ADViewerController:
         line = self._view.get_line_coords()
         is_calibrated = self._integration.is_calibrated
         plot_visible = self._view.is_integration_plot_visible
-        mask_active = self._mask_active
+        overlay_visible = self._overlay_visible
         with self._compute_lock:
-            self._pending_compute_args = (frame, roi, line, is_calibrated, plot_visible, mask_active)
+            self._pending_compute_args = (frame, roi, line, is_calibrated, plot_visible, overlay_visible)
             if not self._compute_active:
                 self._compute_active = True
                 self._compute_pool.submit(self._compute_worker)
@@ -440,7 +433,7 @@ class ADViewerController:
                 if args is None:
                     self._compute_active = False
                     return
-            frame, roi, line, is_calibrated, plot_visible, mask_active = args
+            frame, roi, line, is_calibrated, plot_visible, overlay_visible = args
             try:
                 integration: "tuple | None" = None
                 if not is_calibrated and plot_visible:
@@ -450,23 +443,22 @@ class ADViewerController:
                         integration = self._bg_roi_fallback(frame, *roi)
                     else:
                         integration = self._bg_full_image_fallback(frame)
-                mask_rgba: "np.ndarray | None" = self._bg_mask_rgba(frame) if mask_active else None
+                mask_rgba: "np.ndarray | None" = self._bg_mask_rgba(frame) if overlay_visible else None
             except Exception:
                 _log.exception("Error in background compute")
                 continue
-            wx.CallAfter(self._apply_compute, integration, mask_rgba, mask_active)
+            wx.CallAfter(self._apply_compute, integration, mask_rgba)
 
     def _apply_compute(
         self,
         integration: "tuple | None",
         mask_rgba: "np.ndarray | None",
-        mask_active: bool,
     ) -> None:
         """Main thread: apply results from the background compute thread."""
         if integration is not None:
             xs, ys, label = integration
             self._view.set_integration_data(xs, ys, label)
-        self._view.set_mask_overlay_rgba(mask_rgba if mask_active else None)
+        self._view.set_mask_overlay_rgba(mask_rgba)
 
     def _bg_full_image_fallback(self, frame: np.ndarray) -> tuple:
         h, w = frame.shape[:2]
