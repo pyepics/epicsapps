@@ -27,11 +27,12 @@ class ImageCanvas(_ImageCanvas):
         self._overlay_motion_callback = None
 
         self._mask_visual = scene.visuals.Image(
-            np.zeros((1, 1, 4), dtype=np.float32),
+            np.zeros((1, 1, 4), dtype=np.uint8),
             parent=self._view.scene,
-            method='subdivide',
+            method='auto',
         )
         self._mask_visual.visible = False
+        self._mask_rgba_buf: "np.ndarray | None" = None
 
         self._line_label_visual = scene.visuals.Text(
             text="",
@@ -87,8 +88,21 @@ class ImageCanvas(_ImageCanvas):
             self._canvas.update()
             return
         h, w = mask.shape
-        rgba = np.zeros((h, w, 4), dtype=np.float32)
-        rgba[mask.astype(bool)] = [1.0, 0.35, 0.0, 0.55]
+        if self._mask_rgba_buf is None or self._mask_rgba_buf.shape[:2] != (h, w):
+            self._mask_rgba_buf = np.zeros((h, w, 4), dtype=np.uint8)
+        else:
+            self._mask_rgba_buf[:] = 0
+        self._mask_rgba_buf[mask.astype(bool)] = [255, 89, 0, 140]
+        self._mask_visual.set_data(self._mask_rgba_buf)
+        self._mask_visual.visible = True
+        self._canvas.update()
+
+    def set_mask_overlay_rgba(self, rgba: "np.ndarray | None") -> None:
+        """Apply a pre-computed RGBA mask buffer (must be called on main thread)."""
+        if rgba is None:
+            self._mask_visual.visible = False
+            self._canvas.update()
+            return
         self._mask_visual.set_data(rgba)
         self._mask_visual.visible = True
         self._canvas.update()

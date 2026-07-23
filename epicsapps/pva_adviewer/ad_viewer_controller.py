@@ -5,8 +5,9 @@ Controller for the PVA adviewer.
 
 import logging
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from threading import Lock
+from threading import Lock, RLock
 
 import numpy as np
 import wx
@@ -37,6 +38,10 @@ class ADViewerController:
         self._mask_active: bool = False
         self._stored_mask_above: "float | None" = None
         self._stored_mask_below: "float | None" = None
+        self._compute_pool = ThreadPoolExecutor(max_workers=2, thread_name_prefix="adviewer-compute")
+        self._compute_lock = RLock()
+        self._pending_compute_args: "tuple | None" = None
+        self._compute_active: bool = False
 
         # Stored data for toggling inspect mode without re-integrating
         self._last_xs: np.ndarray | None = None
@@ -101,6 +106,7 @@ class ADViewerController:
     def shutdown(self) -> None:
         """Release all PVA resources. Call on application exit."""
         self._stats_timer.Stop()
+        self._compute_pool.shutdown(wait=False)
         self._ad_model.shutdown()
 
     def _on_new_frame(self, frame: FrameModel) -> None:
@@ -126,20 +132,10 @@ class ADViewerController:
             current_frame = self._view.current_frame
             if current_frame is None:
                 return
-            roi = self._view.get_roi_coords()
-            line = self._view.get_line_coords()
-            if not self._view.is_integration_plot_visible:
-                pass
-            elif self._integration.is_calibrated:
+            if self._integration.is_calibrated and self._view.is_integration_plot_visible:
                 if self._view.is_roi_live_integration:
                     self._run_integration(current_frame)
-            elif line is not None:
-                self._run_line_integration(current_frame, *line)
-            elif roi is not None:
-                self._run_roi_fallback(current_frame, *roi)
-            else:
-                self._run_full_image_fallback(current_frame)
-            self._update_mask_overlay(current_frame)
+            self._submit_compute(current_frame)
         except Exception:
             _log.exception("Error in _on_new_frame_gui - this might cause frames to stop updating")
 
@@ -171,8 +167,7 @@ class ADViewerController:
             return
         if self._integration.is_calibrated:
             self._run_integration(current_frame)
-        else:
-            self._run_full_image_fallback(current_frame)
+        self._submit_compute(current_frame)
 
     def _on_reset_view(self) -> None:
         """Re-plot the full image when the view is reset."""
@@ -182,8 +177,7 @@ class ADViewerController:
             return
         if self._integration.is_calibrated:
             self._run_integration(current_frame)
-        else:
-            self._run_full_image_fallback(current_frame)
+        self._submit_compute(current_frame)
 
     def _on_integration_settings_changed(self) -> None:
         """Re-integrate the current frame when the unit or npt changes."""
@@ -204,10 +198,7 @@ class ADViewerController:
             return
         if self._integration.is_calibrated:
             self._run_integration(current_frame)
-        elif line is not None:
-            self._run_line_integration(current_frame, *line)
-        elif roi is not None:
-            self._run_roi_fallback(current_frame, *roi)
+        self._submit_compute(current_frame)
 
     def _run_integration(self, frame: np.ndarray) -> None:
         """Run pyFAI azimuthal or line integration and push results to the view."""
@@ -304,11 +295,9 @@ class ADViewerController:
             self._integration.set_mask_thresholds(None, None)
         frame = self._view.current_frame
         if frame is not None:
-            try:
-                self._run_full_frame_integration(frame)
-            except Exception:
-                _log.exception("_on_mask_toggle: integration failed")
-            self._update_mask_overlay(frame)
+            if self._integration.is_calibrated and self._view.is_integration_plot_visible:
+                self._run_integration(frame)
+            self._submit_compute(frame)
 
     def _on_mask_changed(self, above: "float | None", below: "float | None") -> None:
         """Store new threshold values from the popup and apply if mask is active."""
@@ -321,20 +310,16 @@ class ADViewerController:
             self._integration.set_mask_thresholds(above, below)
             frame = self._view.current_frame
             if frame is not None:
-                try:
-                    self._run_full_frame_integration(frame)
-                except Exception:
-                    _log.exception("_on_mask_changed: integration failed")
-                self._update_mask_overlay(frame)
+                if self._integration.is_calibrated and self._view.is_integration_plot_visible:
+                    self._run_integration(frame)
+                self._submit_compute(frame)
         elif self._mask_active:
             self._integration.set_mask_thresholds(None, None)
             frame = self._view.current_frame
             if frame is not None:
-                try:
-                    self._run_full_frame_integration(frame)
-                except Exception:
-                    _log.exception("_on_mask_changed: integration failed (clear)")
-                self._update_mask_overlay(frame)
+                if self._integration.is_calibrated and self._view.is_integration_plot_visible:
+                    self._run_integration(frame)
+                self._submit_compute(frame)
 
     def _on_pixel_size_changed(self, _value: "float | None") -> None:
         """Recompute line length label when pixel size changes."""
@@ -369,8 +354,9 @@ class ADViewerController:
         self._view.display_frame(frame)
         self._view.reset_view()
         self._view.set_live_updates(False)
-        self._run_full_frame_integration(frame)
-        self._update_mask_overlay(frame)
+        if self._integration.is_calibrated and self._view.is_integration_plot_visible:
+            self._run_integration(frame)
+        self._submit_compute(frame)
 
         frame_count = self._image_loader.frame_count
         self._view.set_frame_navigation(frame_count, 0)
@@ -384,8 +370,9 @@ class ADViewerController:
             FlatMessageDialog(self._view, f"Error loading frame {index}:\n{exc}", "Error").ShowModal()
             return
         self._view.display_frame(frame)
-        self._run_full_frame_integration(frame)
-        self._update_mask_overlay(frame)
+        if self._integration.is_calibrated and self._view.is_integration_plot_visible:
+            self._run_integration(frame)
+        self._submit_compute(frame)
 
     def _on_roi_changed(self, x1: int | None, y1: int | None, x2: int | None, y2: int | None) -> None:
         """React to an ROI draw or clear event from the canvas."""
@@ -396,13 +383,11 @@ class ADViewerController:
         if x1 is None or y1 is None or x2 is None or y2 is None:
             if self._integration.is_calibrated:
                 self._run_integration(current_frame)
-            else:
-                self._run_full_image_fallback(current_frame)
+            self._submit_compute(current_frame)
             return
         if self._integration.is_calibrated:
             self._run_integration(current_frame)
-        else:
-            self._run_roi_fallback(current_frame, x1, y1, x2, y2)
+        self._submit_compute(current_frame)
 
     def _on_line_changed(self, x1: int, y1: int, x2: int, y2: int) -> None:
         """React to a line ROI committed via Alt+click on the canvas."""
@@ -411,8 +396,7 @@ class ADViewerController:
             return
         if self._integration.is_calibrated:
             self._run_integration(current_frame)
-        else:
-            self._run_line_integration(current_frame, x1, y1, x2, y2)
+        self._submit_compute(current_frame)
         pixel_size = self._view.pixel_size
         if pixel_size is not None and pixel_size > 0:
             length_px = float(np.hypot(x2 - x1, y2 - y1))
@@ -424,29 +408,73 @@ class ADViewerController:
         else:
             self._view.set_line_length_label(None)
 
-    def _run_full_frame_integration(self, frame: np.ndarray) -> None:
-        """Integrate respecting any active ROI/line, or fall back to the full image."""
+    def _column_mean_masked(self, img: np.ndarray) -> np.ndarray:
+        """Return per-column mean of unmasked pixels; masked columns become 0."""
+        mask = self._integration.get_threshold_mask(img)
+        if mask is None:
+            return img.mean(axis=0)
+        valid = ~mask.astype(bool)
+        count = valid.sum(axis=0).astype(np.float64)
+        safe_count = np.where(count > 0, count, 1.0)
+        return np.where(count > 0, (img * valid).sum(axis=0) / safe_count, 0.0)
+
+    def _submit_compute(self, frame: np.ndarray) -> None:
+        """Post the latest frame for background integration + mask computation."""
         roi = self._view.get_roi_coords()
         line = self._view.get_line_coords()
-        if self._integration.is_calibrated:
-            self._run_integration(frame)
-        elif line is not None:
-            self._run_line_integration(frame, *line)
-        elif roi is not None:
-            self._run_roi_fallback(frame, *roi)
-        else:
-            self._run_full_image_fallback(frame)
+        is_calibrated = self._integration.is_calibrated
+        plot_visible = self._view.is_integration_plot_visible
+        mask_active = self._mask_active
+        with self._compute_lock:
+            self._pending_compute_args = (frame, roi, line, is_calibrated, plot_visible, mask_active)
+            if not self._compute_active:
+                self._compute_active = True
+                self._compute_pool.submit(self._compute_worker)
 
-    def _run_full_image_fallback(self, frame: np.ndarray) -> None:
-        """Column mean (over unmasked pixels) when no poni is loaded."""
+    def _compute_worker(self) -> None:
+        """Background thread."""
+        while True:
+            with self._compute_lock:
+                args = self._pending_compute_args
+                self._pending_compute_args = None
+                if args is None:
+                    self._compute_active = False
+                    return
+            frame, roi, line, is_calibrated, plot_visible, mask_active = args
+            try:
+                integration: "tuple | None" = None
+                if not is_calibrated and plot_visible:
+                    if line is not None:
+                        integration = self._bg_line_integration(frame, *line)
+                    elif roi is not None:
+                        integration = self._bg_roi_fallback(frame, *roi)
+                    else:
+                        integration = self._bg_full_image_fallback(frame)
+                mask_rgba: "np.ndarray | None" = self._bg_mask_rgba(frame) if mask_active else None
+            except Exception:
+                _log.exception("Error in background compute")
+                continue
+            wx.CallAfter(self._apply_compute, integration, mask_rgba, mask_active)
+
+    def _apply_compute(
+        self,
+        integration: "tuple | None",
+        mask_rgba: "np.ndarray | None",
+        mask_active: bool,
+    ) -> None:
+        """Main thread: apply results from the background compute thread."""
+        if integration is not None:
+            xs, ys, label = integration
+            self._view.set_integration_data(xs, ys, label)
+        self._view.set_mask_overlay_rgba(mask_rgba if mask_active else None)
+
+    def _bg_full_image_fallback(self, frame: np.ndarray) -> tuple:
         h, w = frame.shape[:2]
         img = frame.mean(axis=2).astype(np.float64) if frame.ndim == 3 else frame.astype(np.float64)
         ys = self._column_mean_masked(img)
-        xs = np.arange(w, dtype=np.float64)
-        self._view.set_integration_data(xs, ys, "Pixel")
+        return np.arange(w, dtype=np.float64), ys, "Pixel"
 
-    def _run_roi_fallback(self, frame: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> None:
-        """Compute column mean over unmasked ROI pixels and push results to the view."""
+    def _bg_roi_fallback(self, frame: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> tuple:
         h, w = frame.shape[:2]
         x1c = max(0, min(x1, w - 1))
         x2c = max(x1c + 1, min(x2, w))
@@ -456,36 +484,24 @@ class ADViewerController:
         if roi.ndim == 3:
             roi = roi.mean(axis=2)
         ys = self._column_mean_masked(roi)
-        xs = np.arange(x1c, x1c + len(ys), dtype=np.float64)
-        self._view.set_integration_data(xs, ys, "Pixel")
+        return np.arange(x1c, x1c + len(ys), dtype=np.float64), ys, "Pixel"
 
-    def _column_mean_masked(self, img: np.ndarray) -> np.ndarray:
-        """Return per-column mean of unmasked pixels; masked columns become 0."""
-        mask = self._integration.get_threshold_mask(img)
-        if mask is None:
-            return img.mean(axis=0)
-        valid = ~mask.astype(bool)
-        count = valid.sum(axis=0).astype(np.float64)
-        return np.where(count > 0, (img * valid).sum(axis=0) / count, 0.0)
-
-    def _update_mask_overlay(self, frame: np.ndarray) -> None:
-        if not self._mask_active:
-            self._view.set_mask_overlay(None)
-            return
-        img_2d = frame.mean(axis=2).astype(np.float64) if frame.ndim == 3 else frame.astype(np.float64)
-        mask = self._integration.get_threshold_mask(img_2d)
-        self._view.set_mask_overlay(mask)
-
-    def _run_line_integration(self, frame: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> None:
-        """Extract a line profile along the given pixel coordinates."""
+    def _bg_line_integration(self, frame: np.ndarray, x1: int, y1: int, x2: int, y2: int) -> tuple:
         length = int(np.hypot(x2 - x1, y2 - y1))
         if length < 2:
-            return
-        xs_px = np.linspace(x1, x2, length)
-        ys_px = np.linspace(y1, y2, length)
-        h, w = frame.shape[:2]
-        xi = np.clip(xs_px.astype(int), 0, w - 1)
-        yi = np.clip(ys_px.astype(int), 0, h - 1)
+            return np.array([0.0]), np.array([0.0]), "Pixel"
+        xi = np.clip(np.linspace(x1, x2, length).astype(int), 0, frame.shape[1] - 1)
+        yi = np.clip(np.linspace(y1, y2, length).astype(int), 0, frame.shape[0] - 1)
         profile = frame[yi, xi].astype(np.float64)
-        xs = np.arange(length, dtype=np.float64)
-        self._view.set_integration_data(xs, profile, "Pixel")
+        return np.arange(length, dtype=np.float64), profile, "Pixel"
+
+    def _bg_mask_rgba(self, frame: np.ndarray) -> "np.ndarray | None":
+        """Compute the mask RGBA overlay buffer. Safe to call from a background thread."""
+        img_2d = frame.mean(axis=2).astype(np.float64) if frame.ndim == 3 else frame.astype(np.float64)
+        mask = self._integration.get_threshold_mask(img_2d)
+        if mask is None or not np.any(mask):
+            return None
+        h, w = mask.shape
+        rgba = np.zeros((h, w, 4), dtype=np.uint8)
+        rgba[mask.astype(bool)] = [255, 89, 0, 140]
+        return rgba

@@ -242,6 +242,9 @@ class ADViewerView(wx.Panel):
     def set_mask_overlay(self, mask: "np.ndarray | None") -> None:
         self._image_canvas.set_mask_overlay(mask)
 
+    def set_mask_overlay_rgba(self, rgba: "np.ndarray | None") -> None:
+        self._image_canvas.set_mask_overlay_rgba(rgba)
+
     @property
     def pixel_size(self) -> "float | None":
         return self._pixel_size
