@@ -60,6 +60,7 @@ class EpicsApp:
 APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('Sample Microscope', 'microscope', icon='microscope'),
         EpicsApp('areaDetector Viewer', 'adviewer', icon='areadetector'),
+        EpicsApp('areaDetector Viewer PVA', 'pvaviewer', icon='pvaviewer'),
         EpicsApp('StripChart',       'stripchart', icon='stripchart'),
         EpicsApp('PVLogger',         'pvlogviewer', icon='logging'),
         EpicsApp('Jupyter Lab', 'jupyterlab', icon='jupyter',
@@ -83,6 +84,11 @@ def run_adviewer(configfile=None, prompt=True):
     """AD Viewer"""
     from .areadetector import areaDetectorApp
     areaDetectorApp(configfile=configfile, prompt=prompt).MainLoop()
+
+def run_pvaviewer():
+    """PVA Viewer"""
+    from .pva_adviewer.viewer_app import run_pvaviewer
+    run_pvaviewer()
 
 def run_stripchart(configfile=None, prompt=False):
     """StripChart"""
@@ -122,6 +128,7 @@ def run_epicsapps():
     desc = 'run pyepics applications'
     epilog ='''applications:
   adviewer     [filename] Area Detector Viewer
+  pvaviewer               PVA Image Viewer
   instruments  [filename] Epics Instruments GUI
   microscope   [filename] Sample Microscope Viewer
   pvlogviewer             Epics PV Logger Viewer GUI
@@ -181,6 +188,9 @@ notes:
             kwargs['use_cli'] = args.use_cli
         elif isapp('ad'):
             runner = run_adviewer
+        elif isapp('pva'):
+            runner = run_pvaviewer
+            kwargs = {}
         else:
             needs_help = True
     if needs_help:
