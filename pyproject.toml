@@ -48,8 +48,6 @@ dependencies = [
     'datetime',
     'python-dateutil',
     'wxpython>=4.2.1',
-    'wxmplot>=2026.1.0',
-    'wxutils>=2026.2.1',
     'lmfit',
     'pyshortcuts>=1.9.9',
     'xraydb',
@@ -65,6 +63,8 @@ dependencies = [
     "bitshuffle>=0.5.2",
     "lz4>=4.4.5",
     "blosc>=1.11.4",
+    "wxutils>=2026.3.0",
+    "wxmplot>=2026.2.1",
 ]
 
 [project.scripts]
