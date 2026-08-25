@@ -223,7 +223,7 @@ class LoggedPV():
         """
         self.data.append((time(), self.value, self.char_value))
 
-    def write_data(self):
+    def write_data(self, force_flush=False):
         if len(self.data) < 1:
             return
         buff = []
@@ -280,7 +280,7 @@ class LoggedPV():
             self.needs_flush = True
             self.needs_header = False
         flush = self.needs_flush and (time() > self.next_flushtime)
-        self.write('\n'.join(buff), flush=flush)
+        self.write('\n'.join(buff), flush=(flush or force_flush))
 
 
 class PVLogger():
@@ -541,12 +541,14 @@ class PVLogger():
         with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
             fh.write(f'{isotime()}: got exit signal\n')
         for pv in self.pvs.values():
-            pv.pv.clear_callbacks()
-            pv.save_current_value()
+            if pv.pv.connected:
+                pv.pv.clear_callbacks()
+                pv.save_current_value()
         sleep(SLEEPTIME)
         for pv in self.pvs.values():
-            pv.write_data()
-            pv.flush()
+            if pv.pv.connected:
+                pv.write_data(force_flush=True)
+        sleep(SLEEPTIME)
         with open(Path(self.pvlog_folder, RUNLOG_FILE), 'a', encoding='utf-8') as fh:
             fh.write(f'{isotime()}: finishing\n')
 
