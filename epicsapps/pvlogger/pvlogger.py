@@ -14,7 +14,7 @@ from datetime import datetime, timedelta
 from dateutil import parser as dateparser
 import numpy as np
 import yaml
-from pyshortcuts import fix_filename, new_filename, isotime, gformat
+from pyshortcuts import fix_filename, isotime, gformat
 
 from epics import get_pv, PV
 from epics import ca
@@ -115,7 +115,7 @@ class LoggedPV():
         self.pvname = normalize_pvname(pvname)
         self.connection_timeout = connection_timeout
         logname = self.pvname.replace('.', '_') + '.log'
-        self.fpath = Path(new_filename(fix_filename(logname)))
+        self.fpath = Path(fix_filename(logname))
         self.filename = self.fpath.as_posix()
         self.timestamp = 0.0
         self.start_timestamp = None
@@ -123,8 +123,8 @@ class LoggedPV():
         self.value = None
         self.char_value = None
         self.data = deque()
-        self.needs_header = False
         self.needs_flush = False
+        self.needs_header = True
         self.connected = None
         self.next_flushtime = 0.0
         self.set_desc(desc, descpv)
@@ -174,13 +174,16 @@ class LoggedPV():
             if descpv.connected:
                 self.desc = descpv.get()
 
+    def logfile_is_empty(self):
+        if self.fpath.exists():
+            return (self.fpath.stat().st_size < 16)
+        return True
 
     def onConnect(self, pvname, conn, pv):
         ts = time()
         if conn:
             if self.connected is None: # initial connection
                 self.connected = True
-                self.needs_header = True
                 msg = None
             else:
                 msg = "<event> <CA_reconnected>"
@@ -224,7 +227,8 @@ class LoggedPV():
         if len(self.data) < 1:
             return
         buff = []
-        if self.needs_header:
+        new_logfile = self.needs_header and self.logfile_is_empty()
+        if new_logfile:
             if self.pv.connected:
                 if self.value is None:
                     self.value = self.pv.get()
@@ -255,7 +259,7 @@ class LoggedPV():
         if n > 0:
             for i in range(n):
                 ts, val, cval = self.data.popleft()
-                if i == 0 and self.needs_header:
+                if i == 0 and new_logfile:
                     # re-determine the char value for the first point
                     cur_val = self.pv.value
                     cval = self.pv._set_charval(val)
@@ -283,7 +287,7 @@ class PVLogger():
     about_msg =  """Epics PV Logger, CLI
  Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, configfile, prompt=None, escan_credentials=None):
+    def __init__(self, configfile, append=False, escan_credentials=None):
         self.pvs = {}
         self.end_datestring = None
         self.start_datestring = None
@@ -291,6 +295,7 @@ class PVLogger():
         self.start_timestamp = None
         self.configread_timestamp = None
         self.escan_credentials = escan_credentials
+        self.append = append
         self.exc = None
         self.configfile = configfile
         if configfile is not None and Path(configfile).exists():
@@ -327,7 +332,14 @@ class PVLogger():
         cfile = Path(pvlog_folder, CONF_FILE)
         lfile = Path(pvlog_folder, FILELIST_FILE)
         if tfile.exists() and cfile.exists() and lfile.exists():
-            raise ValueError(f"PVLOG folder '{pvlog_folder.absolute()}' appears to be in use")
+            if self.append:
+                print(f"PVLOG folder '{pvlog_folder.absolute()}' exists and will append data to that folder")
+                # raise ValueError("but not yet")
+            elif check_pvlog_timestamp(pvlog_folder, timestamp_only=True):
+                raise ValueError(f"PVLOG folder '{pvlog_folder.absolute()}' appears to be in use")
+            else:
+                raise ValueError(f"PVLOG folder '{pvlog_folder.absolute()}' exists, appears complete (use -a to append)")
+
         if chdir:
             os.chdir(pvlog_folder)
 
@@ -399,6 +411,7 @@ class PVLogger():
         out['motors'] = []
         out['pvs'] = []
 
+
         for ipv, pvname in enumerate(_pvnames):
             desc = _pvdesc[ipv]
             mdel = _pvmdel[ipv]
@@ -421,15 +434,22 @@ class PVLogger():
                     self.add_pv(f"{prefix}{mfield}",
                                 desc=f"{lpv.desc} {mfield}",  mdel=None)
 
-        with open(Path(self.pvlog_folder, CONF_FILE), 'w', encoding='utf-8') as fh:
-            yaml.safe_dump(out, fh, default_flow_style=False, sort_keys=False)
+        conf_path = Path(self.pvlog_folder, CONF_FILE)
+        if not conf_path.exists():
+            with open(conf_path, 'w', encoding='utf-8') as fh:
+                yaml.safe_dump(out, fh, default_flow_style=False, sort_keys=False)
 
-        pfiles = ["# PV Name                                |    Log File "]
-        for lpv in self.pvs.values():
-            pfiles.append(f"{lpv.pvname:40s} | {lpv.filename:40s}")
-        pfiles.append("")
-        with open(Path(self.pvlog_folder, FILELIST_FILE), 'w', encoding='utf-8') as fh:
-            fh.write('\n'.join(pfiles))
+
+        # FileList
+        filelist = Path(self.pvlog_folder, FILELIST_FILE)
+        if not filelist.exists():
+            pfiles = ["# PV Name                                |    Log File "]
+            for lpv in self.pvs.values():
+                pfiles.append(f"{lpv.pvname:40s} | {lpv.filename:40s}")
+            pfiles.append("")
+            with open(filelist, 'w', encoding='utf-8') as fh:
+                fh.write('\n'.join(pfiles))
+
         # count connected PVs
         sleep(0.1)
         ntotal = len(self.pvs)
