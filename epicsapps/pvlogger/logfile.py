@@ -5,7 +5,6 @@
 import os
 import random
 import time
-import tomli
 import yaml
 from pathlib import Path
 from dataclasses import dataclass
@@ -274,7 +273,7 @@ def q_parse_logfile(text, filename, queue):
 def read_logfolder(folder):
     """read information for PVLOG folder
     this folder must have the following files
-        _PVLOG.yaml (or _PVLOG.toml):
+        _PVLOG.yaml:
              main configuration, as used for collection
         _PVLOG_filelist.txt
              mapping PV names to logfile names
@@ -332,18 +331,12 @@ class PVLogFolder:
         self.logfiles = logfiles
 
         # main config
-        form = 'yaml'
         cfile = Path(self.folder, CONF_FILE)
         if not cfile.exists():
-            form = 'toml'
-            cfile = Path(self.folder, CONF_FILE)
-            if not cfile.exists():
-                raise ValueError(f"'{self.folder}' is not a valid PVlog folder: no config file")
+            raise ValueError(f"'{self.folder}' is not a valid PVlog folder: no config file")
         ctext = open(cfile, 'r', encoding='utf-8').read()
-        if form == 'yaml':
-            conf = yaml.load(ctext, Loader=yaml.Loader)
-        else:
-            conf = tomli.loads(ctext)
+        conf = yaml.safe_load(ctext)
+
         self.config = conf
         self.pvs = {}
         for pline in conf['pvs']:
