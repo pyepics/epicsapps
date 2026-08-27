@@ -95,11 +95,11 @@ def run_stripchart(configfile=None, prompt=False):
     from .stripchart import StripChartApp
     StripChartApp(configfile=configfile, prompt=prompt).MainLoop()
 
-def run_pvlogger(configfile=None, prompt=False, append=False, **kws):
+def run_pvlogger(configfile=None, prompt=False, **kws):
     """PV Logger Command Line App"""
     from .pvlogger import PVLogger
     if configfile is not None:
-        PVLogger(configfile=configfile, append=append).run()
+        PVLogger(configfile=configfile).run()
     else:
         run_pvlogviewer(prompt=prompt)
 
@@ -156,9 +156,6 @@ notes:
     parser.add_argument('-c', '--cli', dest='use_cli',
                         action='store_true', default=False,
                         help='use Command-line interface, no GUI (pvlogger only)')
-    parser.add_argument('-a', '--append', dest='append',
-                        action='store_true', default=False,
-                        help='append to existing PVLog folder(pvlogger only)')
     parser.add_argument('appname', nargs='?', help='application name')
     parser.add_argument('filename', nargs='?', help='configuration file name')
 
@@ -189,7 +186,6 @@ notes:
         elif isapp('pvlog'):
             runner= run_pvlogger
             kwargs['use_cli'] = args.use_cli
-            kwargs['append'] = args.append
         elif isapp('ad'):
             runner = run_adviewer
         elif isapp('pva'):
