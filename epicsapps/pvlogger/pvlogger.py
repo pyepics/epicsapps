@@ -26,24 +26,28 @@ from ..utils import normalize_pvname, normalize_path
 ca.WITH_CA_MESSAGES = True
 ca.initialize_libca()
 
-CONF_FILE = '_PVLOG.yaml'
-REQUEST_FILE = '_PVLOG_request.yaml'
-STOP_FILE = '_PVLOG_stop.txt'
-RUNLOG_FILE = '_PVLOG_runlog.txt'
-ERROR_FILE = '_PVLOG_error.txt'
-FILELIST_FILE = '_PVLOG_filelist.txt'
-TIMESTAMP_FILE = '_PVLOG_timestamp.txt'
-INSTRUMENTS_FILE = '_PVLOG_instruments.txt'
-UPDATETIME = 15.0
-LOGTIME = 300.0
-SLEEPTIME = 0.5
+CONF_FILE      = '_PVLOG.yaml'            # main config file
+REQUEST_FILE   = '_PVLOG_request.yaml'    # write new PVs here
+STOP_FILE      = '_PVLOG_stop.txt'        # write to this to stop collection
+RUNLOG_FILE    = '_PVLOG_runlog.txt'      # log file for process
+ERROR_FILE     = '_PVLOG_error.txt'       # log file for errors
+FILELIST_FILE  = '_PVLOG_filelist.txt'    # list of PVs <-> data files map
+TIMESTAMP_FILE = '_PVLOG_timestamp.txt'   # file with latest timestamp/PID
+INSTRUMENTS_FILE = '_PVLOG_instruments.txt' # file with additional Instruments
+
+HEARTBEAT_TIME = 15.0   # time (sec) to write heartbeat timestamp
+LOGTIME        = 600.0  # time (sec) to report to log
+SLEEPTIME      = 0.5    # time (sec) to sleep at each 'loop',
+
+# The EPICS EPOCH starts at 1990, and may sometimes
+# send 0 or EPIC2UNIX_EPOCH=631152000 (=20*365.25*24*3600).
+# And also, we're way past 2010.   Therefore:
+#     if Epics sends a timestamp < MIN_TIMESTAMP,
+#     then the local time will be used
+MIN_TIMESTAMP = 20*365.25*24*3600
 
 motor_fields = ('.OFF', '.FOFF', '.SET', '.HLS', '.LLS',
                 '.DIR', '_able.VAL', '.SPMG')
-
-# The EPICS EPOCH starts at 1990, and may sometimes
-# send 0 or EPIC2UNIX_EPOCH=631152000.0
-MIN_TIMESTAMP = 1.0e9
 
 def get_machineid_process():
     """return (matimhine_id, process_id)"""
@@ -101,7 +105,7 @@ def check_pvlog_timestamp(pvlog_folder, timestamp_only=False):
         _ts = int(words[0])
         _mid = words[1]
         _pid = int(words[2])
-    recently_updated = (time() - _ts) < (3*UPDATETIME)
+    recently_updated = (time() - _ts) < (2.0*HEARTBEAT_TIME)
     if timestamp_only:
         return recently_updated
     return (_mid == mid and _pid == pid and recently_updated)
@@ -287,7 +291,7 @@ class PVLogger():
     about_msg =  """Epics PV Logger, CLI
  Matt Newville <newville@cars.uchicago.edu>
 """
-    def __init__(self, configfile, append=False, escan_credentials=None):
+    def __init__(self, configfile, escan_credentials=None):
         self.pvs = {}
         self.end_datestring = None
         self.start_datestring = None
@@ -295,7 +299,6 @@ class PVLogger():
         self.start_timestamp = None
         self.configread_timestamp = None
         self.escan_credentials = escan_credentials
-        self.append = append
         self.exc = None
         self.configfile = configfile
         if configfile is not None and Path(configfile).exists():
@@ -332,13 +335,10 @@ class PVLogger():
         cfile = Path(pvlog_folder, CONF_FILE)
         lfile = Path(pvlog_folder, FILELIST_FILE)
         if tfile.exists() and cfile.exists() and lfile.exists():
-            if self.append:
-                print(f"PVLOG folder '{pvlog_folder.absolute()}' exists and will append data to that folder")
-                # raise ValueError("but not yet")
-            elif check_pvlog_timestamp(pvlog_folder, timestamp_only=True):
+            if check_pvlog_timestamp(pvlog_folder, timestamp_only=True):
                 raise ValueError(f"PVLOG folder '{pvlog_folder.absolute()}' appears to be in use")
             else:
-                raise ValueError(f"PVLOG folder '{pvlog_folder.absolute()}' exists, appears complete (use -a to append)")
+                print(f"PVLOG folder '{pvlog_folder.absolute()}' -- will append data to that folder")
 
         if chdir:
             os.chdir(pvlog_folder)
@@ -566,7 +566,6 @@ class PVLogger():
         # make sure we have some PVs
         if self.start_timestamp is None or self.configread_timestamp is None:
             self.read_configfile()
-            sleep(SLEEPTIME)
 
         # wait until start time is reached
         tnow = datetime.now().timestamp()
@@ -627,7 +626,7 @@ class PVLogger():
             except Exception:
                 self.exc = sys.exception()
 
-            if now > last_update + UPDATETIME:
+            if now > last_update + HEARTBEAT_TIME:
                 save_pvlog_timestamp(self.pvlog_folder)
                 try:
                     if self.look_for_exit_signal():
