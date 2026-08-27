@@ -37,7 +37,7 @@ def is_int(s):
     try:
         _ = int(s)
         return True
-    except:
+    except (ValueError, TypeError):
         return False
 
 @dataclass
@@ -364,7 +364,7 @@ class PVLogFolder:
         self.instruments = conf['instruments']
 
         # determine start and stop time
-        start_time = stop_time = 0
+        stop_time = 0
         tstamp_file = Path(self.folder, TIMESTAMP_FILE)
         if tstamp_file.exists():
             with open(tstamp_file, 'r', encoding='utf-8') as fh:
@@ -398,7 +398,7 @@ class PVLogFolder:
                     words = last_line[-1].split()
                     if len(words) > 0:
                         ts = float(words[0])
-            except:
+            except (ValueError, TypeError):
                 pass
             if ts is not None:
                 self.time_stop = ts
@@ -469,7 +469,7 @@ class PVLogFolder:
             ret = None
             try:
                 ret = pdat['queue'].get(timeout=0.5)
-            except:
+            except Exception:
                 ret = None
             if ret is not None:
                 self.pvs[pvname].data = ret

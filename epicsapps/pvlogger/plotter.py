@@ -66,7 +66,7 @@ class DatePlotPanel(PlotPanel):
             try:
                 fval = frac % (1.e-6*dtval.microsecond)
                 out = out + fval[1:]
-            except:
+            except (ValueError, TypeError):
                 pass
         return out
 
@@ -289,7 +289,7 @@ Matt Newville <newville@cars.uchicago.edu>"""
         for lx in self.event_lines:
             try:
                 lx.remove()
-            except:
+            except Exception:
                 pass
         self.event_lines = []
         self.events = []
@@ -497,19 +497,19 @@ Matt Newville <newville@cars.uchicago.edu>"""
         try:
             if callable(self.exit_callback):
                 self.exit_callback()
-        except:
+        except Exception:
             pass
         try:
             if self.panel is not None:
                 self.panel.win_config.Close(True)
             if self.panel is not None:
                 self.panel.win_config.Destroy()
-        except:
+        except Exception:
             pass
 
         try:
             self.Destroy()
-        except:
+        except Exception:
             pass
 
     def get_figure(self):

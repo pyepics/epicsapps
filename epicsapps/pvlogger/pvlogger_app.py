@@ -28,7 +28,7 @@ from epics import get_pv
 
 
 from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem,
-                     OkCancel, Popup, Font, HLine, COLORS, Button,
+                     OkCancel, Popup,  HLine, Button,
                      flatnotebook, Choice, FileSave, FileCheckList,
                      LEFT, pack)
 from wxutils.colors import use_darkdetect
@@ -955,7 +955,7 @@ Matt Newville <newville@cars.uchicago.edu>
             print("Waiting for previous request to be processed...")
             timeout = time.time() + UPDATETIME*1.5
             while outfile.exists() and time.time() < timeout:
-                sleep(1.0)
+                time.sleep(1.0)
         if outfile.exists():
             Popup(self, f"""`<
 Warning: The requests file in the folder
@@ -967,7 +967,7 @@ were not processed.  Data collection may be stopped.""",
                 fh.write(req_text)
 
     def onEndCollection(self, event=None):
-        ret = Popup(self, f"End Data Collection immediately?\n",
+        ret = Popup(self, "End Data Collection immediately?\n",
                         'Verify Stopping of Data Collection',
                         style=wx.YES_NO|wx.ICON_QUESTION)
         if ret != wx.ID_YES:
@@ -976,7 +976,7 @@ were not processed.  Data collection may be stopped.""",
             print("Waiting for previous request to be processed...")
             timeout = time.time() + UPDATETIME*1.5
             while outfile.exists() and time.time() < timeout:
-                sleep(1.0)
+                time.sleep(1.0)
         if outfile.exists():
             Popup(self, f"""`<
 Warning: The requests file in the folder
@@ -985,9 +985,7 @@ were not processed.  Data collection may be stopped.""",
           "Could not request updates to data collection.")
         else:
             with open(outfile, 'w') as fh:
-                fh.write(req_text)
-
-
+                fh.write('1')
 
     def onUseSelected(self, event=None):
         for i in range(3):

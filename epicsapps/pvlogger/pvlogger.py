@@ -573,7 +573,7 @@ class PVLogger():
         while waiting:
             sleep_time = int(min(1800., max(1, 0.75*(self.start_timestamp-tnow))))
             if sleep_time < 10:
-                stime =  f"collection starting soon"
+                stime =  "collection starting soon"
                 waiting = False
             elif sleep_time < 300:
                 stime = f"sleeping for {sleep_time} seconds"
