@@ -45,7 +45,7 @@ from .pvtableview import PVTableFrame
 from .eventtableview import EventTableFrame
 
 from ..utils import get_icon, fit_frame, get_pvdesc, get_pvmdel
-from .pvlogger import (get_instruments, check_pvlog_timestamp, UPDATETIME,
+from .pvlogger import (get_instruments, check_pvlog_timestamp, HEARTBEAT_TIME,
                        REQUEST_FILE, STOP_FILE, INSTRUMENTS_FILE)
 DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE|dv.DV_HORIZ_RULES
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
@@ -953,7 +953,7 @@ Matt Newville <newville@cars.uchicago.edu>
         outfile = Path(self.log_folder.fullpath, REQUEST_FILE)
         if outfile.exists():
             print("Waiting for previous request to be processed...")
-            timeout = time.time() + UPDATETIME*1.5
+            timeout = time.time() + HEARTBEAT_TIME*1.5
             while outfile.exists() and time.time() < timeout:
                 time.sleep(1.0)
         if outfile.exists():
@@ -974,7 +974,7 @@ were not processed.  Data collection may be stopped.""",
             outfile = Path(self.log_folder.fullpath, STOP_FILE)
         if outfile.exists():
             print("Waiting for previous request to be processed...")
-            timeout = time.time() + UPDATETIME*1.5
+            timeout = time.time() + HEARTBEAT_TIME*1.5
             while outfile.exists() and time.time() < timeout:
                 time.sleep(1.0)
         if outfile.exists():
