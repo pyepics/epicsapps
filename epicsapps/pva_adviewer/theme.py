@@ -3,7 +3,6 @@
 Theme definitions used for the pva adviewer.
 """
 
-import sys
 from typing import Optional
 
 import wx
@@ -36,7 +35,6 @@ class AppTheme:
 
     # Font scaling
     _pt_to_px = {9: 10, 10: 11, 11: 12, 12: 13, 13: 14}
-    _win_px_adjust = -2
 
     def __init__(self, dark: Optional[ColorTheme] = None, light: Optional[ColorTheme] = None) -> None:
         self._dark = dark
@@ -59,8 +57,6 @@ class AppTheme:
         weight: int = wx.FONTWEIGHT_NORMAL,
     ) -> wx.Font:
         px = AppTheme._pt_to_px.get(pt, pt)
-        if sys.platform == "win32":
-            px = max(1, px + AppTheme._win_px_adjust)
         return wx.Font(wx.Size(0, px), family, style, weight)
 
     @staticmethod
