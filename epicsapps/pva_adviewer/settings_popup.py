@@ -42,6 +42,8 @@ class ImageSettingsPopup(wx.Frame):
         on_pixel_size_changed: "Callable[[float | None], None] | None" = None,
         hist_norm: str = "linear",
         on_hist_norm_changed: "Callable[[str], None] | None" = None,
+        percentile_level: "float | None" = None,
+        on_percentile_level_changed: "Callable[[float | None], None] | None" = None,
     ) -> None:
         super().__init__(
             parent,
@@ -56,6 +58,7 @@ class ImageSettingsPopup(wx.Frame):
         self._on_mask_changed = on_mask_changed
         self._on_pixel_size_changed = on_pixel_size_changed
         self._on_hist_norm_changed = on_hist_norm_changed
+        self._on_percentile_level_changed = on_percentile_level_changed
 
         self.SetBackgroundColour(get_theme().bright_black)
 
@@ -66,7 +69,7 @@ class ImageSettingsPopup(wx.Frame):
         self._build(
             panel, sizer,
             colormap, auto_scale, filter_gaps, contrast_min, contrast_max,
-            bin_method, mask_above, mask_below, pixel_size, hist_norm,
+            bin_method, mask_above, mask_below, pixel_size, hist_norm, percentile_level,
         )
 
         sizer.AddSpacer(10)
@@ -115,9 +118,10 @@ class ImageSettingsPopup(wx.Frame):
         mask_below: "float | None",
         pixel_size: "float | None",
         hist_norm: str,
+        percentile_level: "float | None" = None,
     ) -> None:
         self._build_display(parent, sizer, colormap, bin_method, hist_norm, first=True)
-        self._build_range(parent, sizer, auto_scale, filter_gaps, contrast_min, contrast_max)
+        self._build_range(parent, sizer, auto_scale, filter_gaps, contrast_min, contrast_max, percentile_level)
         self._build_mask(parent, sizer, mask_above, mask_below)
         self._build_detector(parent, sizer, pixel_size)
         self._build_actions(parent, sizer)
@@ -162,7 +166,14 @@ class ImageSettingsPopup(wx.Frame):
         sizer.Add(bin_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, _ROW_PAD)
 
     def _build_range(
-        self, parent, sizer, auto_scale: bool, filter_gaps: bool, contrast_min: float, contrast_max: float
+        self,
+        parent,
+        sizer,
+        auto_scale: bool,
+        filter_gaps: bool,
+        contrast_min: float,
+        contrast_max: float,
+        percentile_level: "float | None" = None,
     ) -> None:
         self._section_header(parent, sizer, "RANGE")
 
@@ -173,6 +184,21 @@ class ImageSettingsPopup(wx.Frame):
         self._filter_gaps_cb = FlatCheckBox(parent, label="Filter gaps (zeros)", value=filter_gaps)
         self._filter_gaps_cb.SetAction(lambda v: self._evt_filter_gaps(v))
         sizer.Add(self._filter_gaps_cb, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, _ROW_PAD)
+
+        pct_row = wx.BoxSizer(wx.HORIZONTAL)
+        self._percentile_cb = FlatCheckBox(parent, label="Contrast clip", value=percentile_level is not None)
+        self._percentile_cb.SetAction(lambda _: self._evt_percentile_clip())
+        pct_row.Add(self._percentile_cb, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 8)
+        self._percentile_ctrl = FlatTextCtrl(
+            parent,
+            value=f"{percentile_level:.4g}" if percentile_level is not None else "2",
+            size=wx.Size(55, AppTheme.btn_h),
+        )
+        self._percentile_ctrl.Bind(wx.EVT_TEXT_ENTER, lambda _: self._evt_percentile_clip())
+        self._percentile_ctrl.Bind(wx.EVT_KILL_FOCUS, lambda _: self._evt_percentile_clip())
+        pct_row.Add(self._percentile_ctrl, 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
+        pct_row.Add(self._lbl(parent, "%"), 0, wx.ALIGN_CENTER_VERTICAL)
+        sizer.Add(pct_row, 0, wx.EXPAND | wx.LEFT | wx.RIGHT | wx.TOP, _ROW_PAD)
 
         levels_row = wx.BoxSizer(wx.HORIZONTAL)
         levels_row.Add(self._lbl(parent, "Min"), 0, wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, 4)
@@ -308,6 +334,18 @@ class ImageSettingsPopup(wx.Frame):
             except ValueError:
                 pass
         self._on_mask_changed(above, below)
+
+    def _evt_percentile_clip(self) -> None:
+        if self._on_percentile_level_changed is None:
+            return
+        if not self._percentile_cb.GetValue():
+            self._on_percentile_level_changed(None)
+            return
+        try:
+            val = min(49.0, max(0.0, float(self._percentile_ctrl.GetValue())))
+            self._on_percentile_level_changed(val)
+        except ValueError:
+            pass
 
     def _evt_pixel_size(self) -> None:
         if self._on_pixel_size_changed is None:
