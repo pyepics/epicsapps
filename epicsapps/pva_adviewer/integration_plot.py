@@ -121,6 +121,10 @@ class IntegrationPlot(LinePlot):
 
         wx.CallAfter(self._reposition_children)
 
+    def _on_size(self, event: wx.SizeEvent) -> None:
+        super()._on_size(event)
+        self._reposition_children()
+
     def set_poni_info(self, text: str, success: bool) -> None:
         """Update the PONI calibration status text and color."""
         self._poni_text = text

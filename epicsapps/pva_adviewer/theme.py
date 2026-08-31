@@ -3,6 +3,7 @@
 Theme definitions used for the pva adviewer.
 """
 
+import sys
 from typing import Optional
 
 import wx
@@ -12,17 +13,18 @@ from wxutils import ColorTheme, dark_theme, get_theme, is_dark_theme, light_them
 class AppTheme:
     """Manages optional per-app ColorTheme overrides, live dark/light switching, and shared UI constants."""
 
-    # Sizes
+    # Sizes — slightly reduced on Windows to match macOS visual weight
+    _win = sys.platform == "win32"
     icon_size = 20
-    btn_w = icon_size + 8
-    btn_h = icon_size + 8
-    btn_pad = 6
-    unit_btn_w = 44
-    unit_btn_h = 22
+    btn_w = (icon_size + 4) if _win else (icon_size + 8)
+    btn_h = btn_w
+    btn_pad = 5 if _win else 6
+    unit_btn_w = 38 if _win else 44
+    unit_btn_h = 18 if _win else 22
     unit_btn_gap = 4
-    bg_btn_w = 30
-    live_w = 24
-    live_h = 72
+    bg_btn_w = 26 if _win else 30
+    live_w = 20 if _win else 24
+    live_h = 60 if _win else 72
 
     # Unit selector constants
     unit_keys = ["2th_deg", "d_A", "q_A^-1"]
