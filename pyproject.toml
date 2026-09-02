@@ -17,7 +17,7 @@ include = ["epicsapps", "epicsapps.areadetector",
 [project]
 name = "epicsapps"
 dynamic = ["version"]
-requires-python = ">= 3.10"
+requires-python = ">= 3.11"
 description = "A collection of applications using PyEpics"
 readme = "README.md"
 authors = [
@@ -30,7 +30,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -47,9 +46,9 @@ dependencies = [
     'pytz',
     'datetime',
     'python-dateutil',
-    'wxpython>=4.2.1',
+    'wxpython>=4.2.5',
     'lmfit',
-    'pyshortcuts>=1.9.9',
+    'pyshortcuts>=1.9.10',
     'xraydb',
     'tabulate',
     'transformations',
@@ -64,7 +63,7 @@ dependencies = [
     "lz4>=4.4.5",
     "blosc>=1.11.4",
     "wxutils>=2026.3.0",
-    "wxmplot>=2026.2.1",
+    "wxmplot>=2026.2.3",
 ]
 
 [project.scripts]
@@ -73,7 +72,7 @@ epics_adviewer = "epicsapps:run_adviewer"
 epics_pvaviewer = "epicsapps:run_pvaviewer"
 epics_instruments = "epicsapps:run_instruments"
 epics_stripchart = "epicsapps:run_stripchart"
-epics_jupyterlab = "epicsapps:run_larch_jupyterlab"
+epics_jupyterlab = "epicsapps:run_jupyterlab"
 
 [project.urls]
 Homepage = " https://github.com/pyepics/epicsapps"
