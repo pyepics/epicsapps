@@ -43,7 +43,9 @@ class EpicsApp:
         bindir = 'Scripts' if platform == 'win' else 'bin'
         self.bindir = Path(sys.prefix, bindir).absolute()
 
-    def create_shortcut(self):
+    def create_shortcut(self, public=False, folder=None):
+        if folder is not None:
+            self.folder = folder
         eapps  = Path(self.bindir, "epicsapps").absolute().as_posix()
         script = f"{eapps} {self.script}"
         icon = Path(icondir, self.icon).absolute()
@@ -55,6 +57,7 @@ class EpicsApp:
                       description=self.description,
                       icon=icon.as_posix(),
                       terminal=(not self.is_wxapp),
+                      public=public,
                       folder=self.folder)
 
 APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
@@ -65,7 +68,6 @@ APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('PVLogger',         'pvlogviewer', icon='logging'),
         EpicsApp('Jupyter Lab', 'jupyterlab', icon='jupyter',
                   is_wxapp=False),
-
         )
 
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
@@ -110,13 +112,12 @@ def run_pvlogviewer(prompt=False):
 
 def run_jupyterlab(prompt=False):
     "run Jupyter Lab within the EpicsApps-installed Python"
-    app = LarchApps['Jupyter Lab']
-    app.prep_cli()
     launcher = Path(sys.prefix, 'share', 'jupyter',
-                    'labextensions', 'jupyter_app_launcher').as_posix()
+                    'labextensions',
+                    'jupyter_app_launcher').as_posix()
     os.environ['JUPYTER_APP_LAUNCHER_PATH'] = launcher
-
     from jupyterlab import labapp
+    sys.argv = ['']
     labapp.main()
 
 
@@ -147,9 +148,12 @@ notes:
     parser.add_argument('-m', '--makeicons', dest='makeicons',
                         action='store_true', default=False,
                         help='create desktop and start menu icons')
-    parser.add_argument('-p', '--prompt', dest='prompt',
+    parser.add_argument('-p', '--public', dest='public',
                         action='store_true', default=None,
-                        help='prompt for configuration on startup')
+                        help='use Public Desktop instead of Users Desktop')
+    parser.add_argument('--prompt', dest='prompt',
+                        action='store_true', default=None,
+                        help='ask for configuration on startup')
     parser.add_argument('-n', '--no-prompt', dest='no_prompt',
                         action='store_true', default=False,
                         help='suppress prompt, use default configuration')
@@ -166,13 +170,17 @@ notes:
     if args.appname is None and args.makeicons is False:
         needs_help = True
     elif args.makeicons:
+        folder = args.appname
+        if folder is None:
+            folder = 'Epics Apps'
         for app in APPS:
-            app.create_shortcut()
+            app.create_shortcut(public=args.public, folder=folder)
     else:
         if args.filename is None and args.prompt is None:
             args.prompt = not args.no_prompt
         use_mpl_wxagg()
         isapp = args.appname.lower().startswith
+
         kwargs['prompt'] = args.prompt
         if isapp('inst'):
             runner = run_instruments
@@ -188,6 +196,9 @@ notes:
             kwargs['use_cli'] = args.use_cli
         elif isapp('ad'):
             runner = run_adviewer
+        elif isapp('jupyter'):
+            runner = run_jupyterlab
+            kwargs = {}
         elif isapp('pva'):
             runner = run_pvaviewer
             kwargs = {}
