@@ -3,14 +3,12 @@
 Epics Strip Chart application
 """
 import os
-import sys
 import time
 import shutil
 from collections import namedtuple
 
 import numpy as np
 
-from numpy import array, where
 from functools import partial
 from pathlib import Path
 
@@ -22,12 +20,11 @@ import wx.lib.colourselect  as csel
 from epics import get_pv
 from epics.wx import EpicsFunction, DelayedEpicsCallback
 
-from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem, OkCancel, Popup,
-                     FileOpen, SavedParameterDialog, Font, FloatSpin,
-                     FloatCtrl, Choice, YesNo, pack,
-                     Check, LEFT, HLine, Button)
-from wxutils.colors import use_darkdetect
+from wxutils import (GridPanel, SimpleText, TextCtrl, MenuItem, OkCancel,
+                     FileOpen, FloatCtrl, Choice, pack, Check, LEFT, HLine,
+                     Button)
 
+from wxutils.colors import use_darkdetect
 from wxmplot.plotpanel import PlotPanel
 from wxmplot.colors import hexcolor
 
@@ -200,7 +197,7 @@ Matt Newville <newville@cars.uchicago.edu>
         self.create_frame(parent)
         self.config = {'pvs': []}
         if prompt:
-            ret = SelectWorkdir(self)
+            SelectWorkdir(self)
             self.onImportPVs(configfile)
 
         self.timer = wx.Timer(self)
@@ -537,7 +534,6 @@ Matt Newville <newville@cars.uchicago.edu>
             uselog = (1 == self.wids[f'uselog{i}'].GetSelection())
             ymin = get_bound(self.wids[f'ymin{i}'].GetValue())
             ymax = get_bound(self.wids[f'ymax{i}'].GetValue())
-            color = hexcolor(self.wids[f'col{i}'].GetColour())
             if ymin in (None, 'None'):
                 ymin = ''
             if ymax in (None, 'None'):
@@ -557,12 +553,11 @@ Matt Newville <newville@cars.uchicago.edu>
         self.needs_refresh = True
 
     def onDisplayTimeVal(self, event=None, value=None, **kws):
-        new  = min(0.1, abs(value))
         self.needs_refresh = True
 
     def onTimeChoice(self, event=None, **kws):
         new_timelabel = event.GetString()
-        curr = self.time_ctrl.GetValue()
+        _ = self.time_ctrl.GetValue()
         if self.timelabel != new_timelabel:
             denom = num = 1.0
             if self.timelabel == 'hours':
@@ -573,7 +568,6 @@ Matt Newville <newville@cars.uchicago.edu>
                 num = 3600.
             elif new_timelabel == 'minutes':
                 num = 60.0
-            factor = denom/num
             self.timelabel = new_timelabel
             timeval = self.time_ctrl.GetValue()
             self.time_ctrl.SetValue(max(0.1, timeval*denom/num))
@@ -699,7 +693,6 @@ Matt Newville <newville@cars.uchicago.edu>
 
         xmin = -1
         xmax = 0
-        traces = []
         nselected = 0
         for i in range(NPVS):
             pvname =  self.wids[f'pv{i}'].GetStringSelection()
@@ -743,7 +736,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
             tdat = np.array(dat_t)
             ydat = np.array(dat_y)
-            mask = where(tdat > (tmin-10))
+            mask = np.where(tdat > (tmin-10))
             tdat = tdat[mask]/86400.0 # convert to mpldates
             ydat = ydat[mask]
 
