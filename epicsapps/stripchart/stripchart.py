@@ -685,8 +685,12 @@ Matt Newville <newville@cars.uchicago.edu>
             timescale  = 60
         elif self.time_choice.GetSelection() == 2:
             timescale = 3600
+        try:
+            tcval = self.time_ctrl.GetValue()
+        except (TypeError, ValueError):
+            return
 
-        tmin = self.time_ctrl.GetValue() * timescale
+        tmin = tcval * timescale
         tmin = tnow - tmin
 
         ppan = self.plotpanel
