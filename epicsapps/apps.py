@@ -1,13 +1,10 @@
 import os
 import sys
-import numpy
-import time
 from pathlib import Path
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 
 from pyshortcuts import make_shortcut, platform, ico_ext
-from pyshortcuts.utils import get_homedir
 
 from .utils import get_configfolder, HAS_WXPYTHON
 
@@ -22,15 +19,13 @@ def use_mpl_wxagg():
             pass
     return False
 
-icondir = Path(Path(__file__).parent, 'icons').absolute()
-
 class EpicsApp:
     """
     wrapper for Epics Application
     """
     def __init__(self, name, script, icon='epics',
                  folder='Epics Apps', description=None,
-                 is_wxapp=True):
+                 is_wxapp=True, iconpath=None):
         self.name = name
         self.script = script
         self.folder = folder
@@ -39,6 +34,11 @@ class EpicsApp:
         icon_ext = 'ico'
         if platform == 'darwin':
             icon_ext = 'icns'
+
+        if iconpath is None:
+            iconpath = Path(Path(__file__).parent, 'icons')
+        self.iconpath = iconpath
+
         self.icon = f"{icon}.{icon_ext}"
         bindir = 'Scripts' if platform == 'win' else 'bin'
         self.bindir = Path(sys.prefix, bindir).absolute()
@@ -48,19 +48,19 @@ class EpicsApp:
             self.folder = folder
         eapps  = Path(self.bindir, "epicsapps").absolute().as_posix()
         script = f"{eapps} {self.script}"
-        icon = Path(icondir, self.icon).absolute()
+        icon = self.iconpath  /  self.icon
         for ext in ico_ext:
-            ticon = Path(icondir, self.icon).absolute()
+            ticon = self.iconpath / self.icon
             if ticon.exists():
                 icon = ticon
         make_shortcut(script, name=self.name,
                       description=self.description,
-                      icon=icon.as_posix(),
+                      icon=icon.absolute().as_posix(),
                       terminal=(not self.is_wxapp),
                       public=public,
                       folder=self.folder)
 
-APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
+APPS = [EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('Sample Microscope', 'microscope', icon='microscope'),
         EpicsApp('areaDetector Viewer', 'adviewer', icon='areadetector'),
         EpicsApp('areaDetector Viewer PVA', 'pvaviewer', icon='pvaviewer'),
@@ -68,9 +68,26 @@ APPS = (EpicsApp('Instruments', 'instruments', icon='instrument'),
         EpicsApp('PVLogger',         'pvlogviewer', icon='logging'),
         EpicsApp('Jupyter Lab', 'jupyterlab', icon='jupyter',
                   is_wxapp=False),
-        )
+        ]
+
+try:
+    import sitka_spruce
+except ImportError:
+    sitka_spruce = None
+
+if sitka_spruce is not None:
+    iconpath = Path(sitka_spruce.__file__).parent / 'icons'
+    APPS.append(EpicsApp('Sitka Spruce', 'sitkaspruce', icon='sitka',
+                         iconpath=iconpath))
 
 # EpicsApp('Ion Chamber', 'epicsapp ionchamber', icon='ionchamber'))
+def run_sitkaspruce():
+    """Sitka HDF5 Viewer"""
+    try:
+        from sitka_spruce import Sitka_App
+    except ImportError:
+        Sitka_App = None
+    Sitka_App()
 
 def run_instruments(configfile=None, prompt=True):
     """Epics Instruments"""
