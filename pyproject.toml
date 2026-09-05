@@ -59,7 +59,6 @@ dependencies = [
     "h5py>=3.16.0",
     "pyfai>=2026.5.0",
     "hdf5plugin>=7.0.0",
-    "bitshuffle>=0.5.2",
     "lz4>=4.4.5",
     "blosc>=1.11.4",
     "wxutils>=2026.3.0",
@@ -81,6 +80,7 @@ Tracker = "https://github.com/pyepics/epicsapps/issues"
 
 [project.optional-dependencies]
 dev = ["build", "twine"]
+bitshuffle = ["bitshuffle>=0.5.2"]
 doc = ["Sphinx", "sphinx-copybutton", "sphinxcontrib-video", "numpydoc"]
 test = ["pytest", "pytest-cov", "coverage"]
 all = ["epicsapps[dev, doc, test]"]

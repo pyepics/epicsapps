@@ -12,7 +12,11 @@ from dataclasses import dataclass, replace
 from threading import Event, Lock, Thread
 from typing import Protocol
 
-import bitshuffle
+try:
+    import bitshuffle
+except ImportError:
+    bitshuffle = None
+
 import blosc
 import lz4.block
 import numpy as np
@@ -191,7 +195,7 @@ def _decompress_payload(
     if codec_name == "lz4":
         return np.frombuffer(lz4.block.decompress(chunk, uncompressed_size=uncompressed_size), dtype=dtype)
 
-    if codec_name == "bslz4":
+    if codec_name == "bslz4" and bitshuffle is not None:
         n_elem = uncompressed_size // elem_size
         out = bitshuffle.decompress_lz4(np.frombuffer(chunk, dtype=np.uint8), (n_elem,), np.dtype(dtype))
         return out.reshape(-1)
