@@ -8,7 +8,9 @@ import epicsapps
 
 extensions = ['sphinx.ext.autodoc', 'sphinx.ext.mathjax',
               'sphinx.ext.napoleon', 'sphinxcontrib.video',
-              'sphinx_copybutton', 'numpydoc']
+              'sphinx_copybutton', 'numpydoc',
+              "sphinx_design",
+              "nbsphinx"]
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -34,9 +36,11 @@ pygments_style = 'sphinx'
 master_doc = 'index'
 
 html_theme_path = ['sphinx_theme']
-html_theme = 'bizstyle'
 
+html_theme = 'breeze'
+html_theme_options = {"external_links": ["https://github.com/newville/wxmplot"]}
 html_static_path = ['_static']
+
 html_sidebars = {
   'index': ["indexsidebar.html",  "sourcelink.html", "searchbox.html"],
   "**": [ "localtoc.html",  "relations.html", "sourcelink.html", "searchbox.html"]

@@ -1,7 +1,7 @@
 .. _ad_viewer:
 
 
-Area Detector Display
+Area Detector
 ====================================
 
 AreaDetector Display is a GUI Application for viewing images from an Epics

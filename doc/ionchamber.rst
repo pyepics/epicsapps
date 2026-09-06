@@ -9,8 +9,8 @@
 .. _ionchamber:
 
 
-Converting Ion Chamber readings to flux
-===============================================
+Ion Chamber Fluxes
+==========================
 
 The Epicsapps Ion Chamber application is non-GUI application that uses
 several Epics records to calculate the flux absorbed in and

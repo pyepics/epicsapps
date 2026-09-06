@@ -58,6 +58,7 @@ The main applications included in EpicsApps are:
    :maxdepth: 2
 
    installation
+   usage
    stripchart
    ad_display
    instruments

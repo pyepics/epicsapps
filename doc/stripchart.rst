@@ -1,7 +1,7 @@
 .. _stripchart:
 
 
-Strip Chart Display
+Strip Chart
 ====================================
 
 StripChart is a GUI application for viewing live time series of PVs.
