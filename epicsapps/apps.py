@@ -165,12 +165,9 @@ notes:
     parser.add_argument('-m', '--makeicons', dest='makeicons',
                         action='store_true', default=False,
                         help='create desktop and start menu icons')
-    parser.add_argument('-p', '--public', dest='public',
+    parser.add_argument('-p', '--prompt', dest='prompt',
                         action='store_true', default=None,
-                        help='use Public Desktop instead of Users Desktop')
-    parser.add_argument('--prompt', dest='prompt',
-                        action='store_true', default=None,
-                        help='ask for configuration on startup')
+                        help="ask for configuration on startup (or 'public' with '-m')")
     parser.add_argument('-n', '--no-prompt', dest='no_prompt',
                         action='store_true', default=False,
                         help='suppress prompt, use default configuration')
@@ -191,7 +188,7 @@ notes:
         if folder is None:
             folder = 'Epics Apps'
         for app in APPS:
-            app.create_shortcut(public=args.public, folder=folder)
+            app.create_shortcut(public=args.prompt, folder=folder)
     else:
         if args.filename is None and args.prompt is None:
             args.prompt = not args.no_prompt
