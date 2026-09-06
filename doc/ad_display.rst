@@ -1,15 +1,32 @@
-.. _ad_viewer:
-
-
-Area Detector
+Area Detectors
 ====================================
 
-AreaDetector Display is a GUI Application for viewing images from an Epics
-areaDetector. This provides a simple set of controls for viewing the image from
-an areaDetector.  If `epicsapps -m` is run after installation, a folder called
-Epics Apps should be placed on your desktop which has a shortcut labeled
-areaDetecor_Viewer which can be used to launch the application.  From a command
-line terminal, you can also use::
+
+Area Detectors an important part of many laboratories using
+Epics. EpicsApps now has 2 applications to support reading and
+displying of real-time images from Epics Area Detectors.
+
+The first, `AD Viewer` uses the classic CA protocol with PyEpics and
+classis wxPython drawing of the image.  This has been supported for
+many years, and will continue to be supported.  The second, `PVA
+Viewer` uses the PVA protocol and vispy with wxPython for display,
+which promises to be significantly faster on many systems.  This is
+still in development.
+
+
+.. _adviewer:
+
+AD Viewer
+--------------
+
+
+The AD Viewer is a GUI Application for viewing images from an Epics
+areaDetector using the CA protocol with PyEpics. This app provides a
+simple set of controls for viewing the image from an areaDetector.  If
+`epicsapps -m` is run after installation, a folder called Epics Apps
+should be placed on your desktop which has a shortcut labeled
+areaDetecor_Viewer which can be used to launch the application.  From
+a command line terminal, you can also use::
 
     epicsapps adviewer
 
@@ -122,3 +139,18 @@ database, saved positions from one or more instruments can be included in the
 display, for example to move a camera or shutter into saved positions.
 
 ..  LocalWords:  areaDetector
+
+
+
+.. _pvaviewer:
+
+PVA Viewer
+--------------
+
+`PVA Viewer` uses the PVA protocol to read area Detector data,
+supports images that have been compressed by the Epics IOC before
+being sent over the nextwork, and uses vispy with wxPython for
+display.  Together, these can give significantly faster frame rates
+for large arrays on many systems.
+
+This is still in development.

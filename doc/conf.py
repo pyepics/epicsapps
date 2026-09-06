@@ -2,7 +2,7 @@
 #
 # Epics Applications doc
 
-import sys, os
+from datetime import date
 from packaging.version import parse as version_parse
 import epicsapps
 
@@ -15,8 +15,8 @@ extensions = ['sphinx.ext.autodoc', 'sphinx.ext.mathjax',
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
-project = "Epics Applications"
-copyright = "2025, Matthew Newville, The University of Chicago"
+project = "Python Epics Applications"
+copyright = f'{date.today().year}, Matthew Newville, Christofanis Skordas, The University of Chicago'
 
 html_title = "Epics Applications Using PyEpics"
 html_short_title = "EpicsApps"
@@ -31,6 +31,7 @@ source_encoding = 'utf-8'
 
 add_function_parentheses = True
 
+html_logo = "_static/pyepics_logo.png"
 add_module_names = True
 pygments_style = 'sphinx'
 master_doc = 'index'
