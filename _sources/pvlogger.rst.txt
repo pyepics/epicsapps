@@ -262,14 +262,19 @@ Collecting PVLogger Data
 ----------------------------
 
 For data collection, PVLogger will read a YAML-formatted configuration
-file to tell it what PVs to collect, and where to save the data.  A
-typical file might look like this::
+file to tell it what PVs to collect.  Data will be collected in the
+same folder as the YAML file.  A typical file might generate dozens or
+even hundreds of files in the folder with the YAML file.  It is
+strongly recommended that you put the YAML file in its own folder and
+run from the folder.
 
-    datadir: '/server/data/beamlineX/2025/userABC'
+A typical configuration file will look like this::
+
+
     end_datetime: '2025-03-12 09:00:00'
     pvs:
     - S:SRcurrentAI.VAL        | Storage Ring Current | 0.005
-    - 'RF-ACIS:FePermit:Sect1To35IdM.VAL | Shutter Permit | 0 '
+    - RF-ACIS:FePermit:Sect1To35IdM.VAL | Shutter Permit | 0
     - SXID:DSID:GapM.VAL      | ID Gap  (mm)      | 0.001
     - SXID:DSID:TaperGapM.VAL | ID Gap Taper (mm) | 0.001
     - XX:m1.VAL               | <auto>            | 0.001
@@ -283,11 +288,6 @@ typical file might look like this::
     instruments:
     - SampleStage
 
-Here, `datadir` gives the path to the main working directory, say for
-the whole experiment.  A folder named `pvlog` will be created in this
-data directory to hold all the data collected by PVLogger.  In this
-case, a folder named '/server/data/beamlineX/2025/userABC/pvlog` will
-be created and used for data collection.
 
 The `end_datetime` value gives the date and time for data collection
 to stop.
@@ -320,13 +320,12 @@ with fewer intermediate values. For more details, see
 Running PVLogger to collect data
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-With an existing PVLog configuration file, say `my_pvlog.yaml`,
-Logging can be started with::
+With an existing PVLog configuration file, say `my_pvlog.yaml` in a
+subfolder `pvlog`,  logging can be started with::
 
-   epicsapps pvlogger my_pvlog.yaml
+   epicsapps pvlogger pvlog/my_pvlog.yaml
 
-This will start collection in the folders specified in the
-configuration file.
+This will start collection, putting all data into that `pvlog` folder.
 
 
 .. _pvlogger_monitor_delta:
@@ -431,7 +430,6 @@ The PVLog Folder
 
 An important feature of PVLogger is that all of the files are readable
 plaintext files that will be readable in the future.
-
 
 As mentioned above, there are a few files with names like `_PVLOG_xx.yyy`
 in the `pvlog` folder that contain some information about the

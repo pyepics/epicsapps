@@ -2,8 +2,8 @@
 .. _GetEpicsApps.bat:   https://raw.githubusercontent.com/pyepics/epicsapps/master/installers/GetEpicsApps.bat
 
 
-Installation and Getting Started
-====================================
+Installation
+===============
 
 
 Installing Epics Apps
@@ -67,38 +67,6 @@ folder called ``epicsapps`` in you Home Folder on Linux or macOS, and
 will also put folder called ``Epics Apps`` on your desktop with links
 to the GUI Applications.
 
-
-Getting Started
-------------------------
-
-Installing the epicsapps package will install a command-line script `epicsapps`
-that can be used to launch the main epicsapps GUI applications.  This works
-as::
-
-   epicsapps [options] appname  [filename]
-
-
-where `options` can be
-
-* `-h`, `--help`:      show this help message and exit
-* `-m`, `--makeicons`  create desktop and start menu icons
-* `-p`, `--prompt`     prompt for configuration on startup
-* `-n`, `--no-prompt`  suppress prompt, use default configuration
-* `-c`, `--cli`        run as a command-line program.
-
-and `appname` can be one of
-
-* `stripchart`              PV Stripchart
-* `adviewer`     [filename] Area Detector Viewer
-* `instruments`  [filename] Epics Instruments
-* `pvlogger`     [filename] PV Logger data collection
-* `pvlogview`               PV Logger data Viewer
-* `microscope`   [filename] Sample Microscope Viewer
-
-
-and `filename` is an optional configuration YAML file.
-
-
 .. _install_icons:
 
 Creating Desktop Shortcuts
@@ -109,4 +77,13 @@ Running::
     epicsapps -m
 
 will create a folder called "Epics Apps" on your desktop with links to launch
-the main GUI applications.
+the main GUI applications.  If you would like to call that folder a
+different name, you can use::
+
+    epicsapps -m MyAppsFolder
+
+and if you want the folder to be placed in a Public desktop folder,
+available to all users who log into that machine, you can use::
+
+
+    epicsapps -p -m MyAppsFolder

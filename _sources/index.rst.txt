@@ -28,13 +28,17 @@ The main applications included in EpicsApps are:
     ranges for Y values can be changed, and data can be saved to plain
     text files.
 
-  * :ref:`ad_viewer`: A GUI application to view live images and have basic
+  * :ref:`adviewer`: A GUI application to view live images and have basic
     control of data collection for an Epics Area Detector.  The standard
     controls allow starting and stopping acquistion, changing image
     mode, exposure time, and frame rate. More controls can be be
     added using a simple configuration file. The user can change the
     color table, contrast level, and orientation of the image, and
     use a Zoom Box to enhance portions of the image.
+
+  * :ref:`pvaviewer`: (Work-in-Progress!) A GUI application to view
+    live images from Epics Area Detector using the Epics PVA protocal
+    instead of CA.
 
   * :ref:`instruments`: A GUI application to organize PVs, by grouping
     them into user-defined "Instruments".  Each Instrument can have
@@ -58,6 +62,7 @@ The main applications included in EpicsApps are:
    :maxdepth: 2
 
    installation
+   usage
    stripchart
    ad_display
    instruments
