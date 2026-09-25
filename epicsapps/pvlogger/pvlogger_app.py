@@ -48,6 +48,7 @@ from ..utils import get_icon, fit_frame, get_pvdesc, get_pvmdel
 from .pvlogger import (get_instruments, check_pvlog_timestamp, HEARTBEAT_TIME,
                        REQUEST_FILE, STOP_FILE, INSTRUMENTS_FILE)
 DVSTYLE = dv.DV_VERT_RULES|dv.DV_ROW_LINES|dv.DV_MULTIPLE|dv.DV_HORIZ_RULES
+
 FileBrowserHist = filebrowse.FileBrowseButtonWithHistory
 
 PVLOG_FOLDER = 'pvlog'
@@ -581,7 +582,6 @@ Matt Newville <newville@cars.uchicago.edu>
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add((5, 5), 0, LEFT, 3)
         sizer.Add(self.nb, 0, LEFT, 3)
-        # sizer.Add((5, 5), 0, LEFT, 3)
         pack(rpanel, sizer)
         rpanel.SetupScrolling()
 
@@ -619,6 +619,18 @@ Matt Newville <newville@cars.uchicago.edu>
                                       action=self.onMorePVRows)
         wids['btn_add_collect'] = Button(panel, 'Start Logging these PVS', size=(350, -1),
                                          action=self.onAddPVs)
+
+        wids['curr_last_update'] = SimpleText(panel, ' ',
+                                         size=(450, -1), style=LEFT)
+
+        btn_data = Button(panel, 'Browse', size=(125, -1), style=wx.ALIGN_LEFT,
+                          action=self.onSelectDataFolder)
+        btn_check = Button(panel, 'Check PVs', size=(150, -1),
+                          action=self.onCheckPVs)
+        btn_start = Button(panel, 'Start Collection', size=(200, -1),
+                           action=self.onStartCollection)
+        btn_more  = Button(panel, 'Add More PV Rows', size=(200, -1),
+                           action=self.onMorePVRows)
 
         wids['end_date'] =  wx.adv.DatePickerCtrl(panel, size=(150, -1),
                                                   style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
@@ -659,7 +671,23 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['config_file'], dcol=4)
 
         panel.Add((5, 5))
-        panel.Add(slabel(panel, ' End Date && Time: '), dcol=1, newrow=True)
+
+        panel.Add(title, style=LEFT, dcol=5, newrow=True)
+        panel.Add(slabel(panel, ' Working Folder: ', width=150), dcol=1, newrow=True)
+        panel.Add(wids['curr_work_folder'], dcol=3)
+
+        panel.Add(slabel(panel, ' Last Updated: ', width=150), dcol=1, newrow=True)
+        panel.Add(wids['curr_last_update'], dcol=3)
+
+        panel.Add(slabel(panel, ' Config File: ', width=150), dcol=1, newrow=True)
+        panel.Add(wids['config_file'], dcol=3)
+        panel.Add((5, 5))
+        panel.Add(slabel(panel, ' Data Folder: ', width=150), dcol=1, newrow=True)
+        panel.Add(wids['data_folder'], dcol=2)
+        panel.Add(btn_data, dcol=1, newrow=False)
+        panel.Add((5, 5))
+        panel.Add(slabel(panel, ' End Date&Time: ', width=150), dcol=1, newrow=True)
+
         panel.Add(wids['end_date'])
         panel.Add(wids['end_time'])
         panel.Add((5, 5), newrow=True)
@@ -667,21 +695,15 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add(wids['btn_end_now'])
 
         panel.Add((5, 5))
-        # panel.Add(btn_check, dcol=1, newrow=True)
-        # panel.Add(btn_start, dcol=1)
-        # panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
-        panel.Add(slabel(panel, ' PVs to Add to Collection: (WARNING: hit Return/Enter) ', width=450), dcol=5, newrow=True)
+        panel.Add(slabel(panel, ' PVs to Add to Collection: (WARNING: hit Return/Enter) ',
+                         width=450), dcol=5, newrow=True)
         panel.Add(wids['pv_table'], dcol=5, newrow=True)
         panel.Add((5, 5))
         panel.Add(wids['btn_more_rows'], dcol=2, newrow=True)
         panel.Add(wids['btn_add_collect'], dcol=2, newrow=False)
 
-        # panel.Add(slabel(panel, ' Instruments to Log: ', width=300), dcol=3, newrow=True)
-        # panel.Add(wids['inst_table'], dcol=6, newrow=True)
-
-        # panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.pack()
         return panel
 
@@ -724,6 +746,8 @@ Matt Newville <newville@cars.uchicago.edu>
         panel.Add((10, 10))
         panel.Add(slabel(panel, ' PVLog Folder: '), dcol=1, newrow=True)
         panel.Add(wids['view_work_folder'], dcol=6)
+
+
         panel.Add((5, 5))
         panel.Add(HLine(panel, size=(675, 3)), dcol=6, newrow=True)
         panel.Add((5, 5))
@@ -1036,9 +1060,7 @@ were not processed.  Data collection may be stopped.""",
         self.wids['config_file'].SetLabel(path.as_posix())
         self.config_file = path.as_posix()
         cfile = PVLoggerConfig(path)
-        # print("READ CONF ", path, cfile)
         self.run_config = cfile.config
-        # print("READ CONF ",self.run_config)
 
         wdir = Path(self.run_config.get('datair', '.'))
 
