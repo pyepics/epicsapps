@@ -17,7 +17,7 @@ from .configfile import InstrumentConfig, CONFFILE, get_default_configfile
 from .instrument import isInstrumentDB, InstrumentDB
 from .creator import make_newdb
 
-from .utils import GUIColors, ConnectDialog, set_font_with_children, EIN_WILDCARD
+from .utils import ConnectDialog, set_font_with_children, EIN_WILDCARD
 from .instrumentpanel import InstrumentPanel
 
 from .settingsframe import SettingsFrame, InstSelectionFrame

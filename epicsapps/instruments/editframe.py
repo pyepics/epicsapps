@@ -4,9 +4,9 @@ import wx.lib.scrolledpanel as scrolled
 
 import epics
 from epics.wx import EpicsFunction
-from wxutils import (pack, SimpleText, Button)
+from wxutils import (pack, SimpleText, Button, get_color)
 
-from .utils import GUIColors, YesNo, set_font_with_children
+from .utils import YesNo, set_font_with_children
 
 class PVTypeChoice(wx.Choice):
     def __init__(self, parent, choices=None, size=(125, -1), **kws):
@@ -70,8 +70,6 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
         panel = scrolled.ScrolledPanel(self, size=(400, 500),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
 
-        colors = GUIColors()
-
         font = self.GetFont()
         if parent is not None:
             font = parent.GetFont()
@@ -93,7 +91,7 @@ class NewPositionFrame(wx.Frame, FocusEventFrame) :
 
         ir = 0
         sizer.Add(SimpleText(panel, f"New Position for '{instname}'",
-                             font=titlefont,  colour=colors.title),
+                             font=titlefont,  colour=get_color('title')),
                   (ir, 0), (1, 2), LSTY, 2)
 
         ir += 1
@@ -187,7 +185,6 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
         panel = scrolled.ScrolledPanel(self, size=(500, 600),
                                        style=wx.GROW|wx.TAB_TRAVERSAL, name='p1')
 
-        self.colors = GUIColors()
 
         font = self.GetFont()
         if parent is not None:
@@ -243,13 +240,13 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
             if self.admin_only is not None:
                 self.admin_only.SetValue(1==int(inst.admin_only))
             sizer.Add(SimpleText(panel, 'Current PVs', font=titlefont,
-                                 colour=self.colors.title, style=LSTY),
+                                 colour=get_color('title'), style=LSTY),
                       (irow, 0), (1, 1), LSTY, 2)
             sizer.Add(SimpleText(panel, 'Display Type', size=(125, -1),
-                                 colour=self.colors.title, style=CSTY),
+                                 colour=get_color('title'), style=CSTY),
                       (irow, 1), (1, 1), LSTY, 2)
             sizer.Add(SimpleText(panel, 'Remove?', size=(125, -1),
-                                 colour=self.colors.title, style=CSTY),
+                                 colour=get_color('title'), style=CSTY),
                       (irow, 2), (1, 1), RSTY, 2)
 
             instpvs =  db.get_instrument_pvs(instname)
@@ -279,13 +276,13 @@ class EditInstrumentFrame(wx.Frame, FocusEventFrame) :
 
 
         txt =SimpleText(panel, 'New PVs', font=titlefont,
-                        colour=self.colors.title, style=LSTY)
+                        colour=get_color('title'), style=LSTY)
         sizer.Add(txt, (irow, 0), (1, 1), LEFT, 3)
         sizer.Add(SimpleText(panel, 'Display Type', size=(125, -1),
-                             colour=self.colors.title, style=CSTY),
+                             colour=get_color('title'), style=CSTY),
                   (irow, 1), (1, 1), LSTY, 2)
         sizer.Add(SimpleText(panel, 'Remove?', size=(125, -1),
-                             colour=self.colors.title, style=CSTY),
+                             colour=get_color('title'), style=CSTY),
                   (irow, 2), (1, 1), RSTY, 2)
 
         for npv in range(8):
@@ -511,8 +508,8 @@ class ErasePositionsFrame(wx.Frame, FocusEventFrame) :
         brow.Add(btn_none,  0, ALL_EXP|wx.ALIGN_LEFT, 1)
         brow.Add(btn_ok ,   0, ALL_EXP|wx.ALIGN_LEFT, 1)
 
-        sizer.Add(SimpleText(panel, ' Note: Erasing Positions Cannot be Undone!',
-                             colour=wx.Colour(200, 0, 0)), (1, 0), (1, 2),  LEFT_CEN, 2)
+        sizer.Add(SimpleText(panel, ' Note: Erasing Positions Cannot be Undone!'),
+                             (1, 0), (1, 2),  LEFT_CEN, 2)
 
 
         sizer.Add(brow,   (2, 0), (1, 3),  LEFT_CEN, 2)

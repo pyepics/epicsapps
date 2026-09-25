@@ -3,9 +3,9 @@ import time
 import wx
 import wx.lib.scrolledpanel as scrolled
 
-from wxutils import (pack, SimpleText, Button, FloatSpin, Popup)
+from wxutils import (pack, SimpleText, Button, FloatSpin, Popup, get_color)
 
-from .utils import GUIColors, set_font_with_children
+from .utils import  set_font_with_children
 
 class SettingsFrame(wx.Frame) :
     """ GUI Configure Frame"""
@@ -27,11 +27,10 @@ class SettingsFrame(wx.Frame) :
 
         sizer = wx.GridBagSizer(2, 2)
         panel = wx.Panel(self)
-        self.colors = GUIColors()
 
         title = SimpleText(panel, 'Positions Settings:',    font=titlefont,
                            minsize=(130, -1),
-                           colour=self.colors.title, style=tstyle)
+                           colour=get_color('title'), style=tstyle)
 
         self.v_move   = wx.CheckBox(panel, -1, 'Verify Move')
         self.v_erase  = wx.CheckBox(panel, -1, 'Verify Erase ')
@@ -52,7 +51,7 @@ class SettingsFrame(wx.Frame) :
         irow = 3
         title = SimpleText(panel, 'Administrator Settings:',    font=titlefont,
                            minsize=(130, -1),
-                           colour=self.colors.title, style=tstyle)
+                           colour=get_color('title'), style=tstyle)
 
         sizer.Add(title,    (irow, 0), (1, 3), labstyle|wx.GROW|wx.ALL, 5)
 
@@ -94,7 +93,7 @@ class SettingsFrame(wx.Frame) :
 
         title = SimpleText(panel, 'Epics Database Connection:',
                            font=titlefont,
-                           colour=self.colors.title, style=tstyle)
+                           colour=get_color('title'), style=tstyle)
 
         label = SimpleText(panel, 'DB Prefix:')
         self.epics_prefix = wx.TextCtrl(panel, -1, value='', size=(150, -1))
@@ -194,10 +193,9 @@ class InstSelectionFrame(wx.Frame) :
         panel = scrolled.ScrolledPanel(self, size=(475, 350),
                                        style=wx.GROW|wx.TAB_TRAVERSAL)
         # title row
-        self.colors = GUIColors()
         title = SimpleText(panel, 'Show Instruments:',
                            font=titlefont,
-                           colour=self.colors.title, style=tstyle)
+                           colour=get_color('title'), style=tstyle)
         irow = 0
         sizer.Add(title, (irow, 0), (1, 4), labstyle|wx.ALL, 3)
         self.hideframes = {}
