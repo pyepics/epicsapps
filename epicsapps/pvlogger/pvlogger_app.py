@@ -610,10 +610,10 @@ Matt Newville <newville@cars.uchicago.edu>
         wids = self.wids
         panel = GridPanel(self.nb, ncols=6, nrows=10, pad=3, itemstyle=LEFT)
 
-        wids['curr_status'] = SimpleText(panel, ' ', size=(550, -1), style=LEFT)
+        wids['curr_status'] = SimpleText(panel, ' ', size=(300, -1), style=LEFT)
 
         wids['curr_work_folder'] = SimpleText(panel, ' <no working folder> ',
-                                         size=(550, -1), style=LEFT)
+                                         size=(450, -1), style=LEFT)
 
         wids['btn_more_rows'] = Button(panel, 'Add More Rows', size=(300, -1),
                                       action=self.onMorePVRows)
@@ -623,14 +623,9 @@ Matt Newville <newville@cars.uchicago.edu>
         wids['curr_last_update'] = SimpleText(panel, ' ',
                                          size=(450, -1), style=LEFT)
 
-        btn_data = Button(panel, 'Browse', size=(125, -1), style=wx.ALIGN_LEFT,
-                          action=self.onSelectDataFolder)
-        btn_check = Button(panel, 'Check PVs', size=(150, -1),
-                          action=self.onCheckPVs)
-        btn_start = Button(panel, 'Start Collection', size=(200, -1),
-                           action=self.onStartCollection)
-        btn_more  = Button(panel, 'Add More PV Rows', size=(200, -1),
-                           action=self.onMorePVRows)
+        wids['sel_work_folder'] = Button(panel, 'Browse Working Folder', size=(225, -1),
+                                           style=wx.ALIGN_LEFT,
+                                           action=self.onSelectDataFolder)
 
         wids['end_date'] =  wx.adv.DatePickerCtrl(panel, size=(150, -1),
                                                   style=wx.adv.DP_DROPDOWN|wx.adv.DP_SHOWCENTURY)
@@ -664,27 +659,22 @@ Matt Newville <newville@cars.uchicago.edu>
 
         panel.Add((10, 10))
         panel.Add(slabel(panel, ' Status: '), dcol=1, newrow=True)
-        panel.Add(wids['curr_status'], dcol=4)
-        panel.Add(slabel(panel, ' Data Folder: '), dcol=1, newrow=True)
-        panel.Add(wids['curr_work_folder'], dcol=4)
-        panel.Add(slabel(panel, ' Config File: '), dcol=1, newrow=True)
-        panel.Add(wids['config_file'], dcol=4)
+        panel.Add(wids['curr_status'], dcol=2)
+        panel.Add(wids['sel_work_folder'], dcol=1, newrow=False)
 
         panel.Add((5, 5))
 
-        panel.Add(title, style=LEFT, dcol=5, newrow=True)
+        ###
         panel.Add(slabel(panel, ' Working Folder: ', width=150), dcol=1, newrow=True)
         panel.Add(wids['curr_work_folder'], dcol=3)
+
+        panel.Add(slabel(panel, ' Config File: ', width=150), dcol=1, newrow=True)
+        panel.Add(wids['config_file'], dcol=3)
 
         panel.Add(slabel(panel, ' Last Updated: ', width=150), dcol=1, newrow=True)
         panel.Add(wids['curr_last_update'], dcol=3)
 
-        panel.Add(slabel(panel, ' Config File: ', width=150), dcol=1, newrow=True)
-        panel.Add(wids['config_file'], dcol=3)
-        panel.Add((5, 5))
-        panel.Add(slabel(panel, ' Data Folder: ', width=150), dcol=1, newrow=True)
-        panel.Add(wids['data_folder'], dcol=2)
-        panel.Add(btn_data, dcol=1, newrow=False)
+
         panel.Add((5, 5))
         panel.Add(slabel(panel, ' End Date&Time: ', width=150), dcol=1, newrow=True)
 
