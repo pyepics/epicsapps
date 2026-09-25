@@ -6,9 +6,9 @@ import wx
 import epics
 from epics.wx import (EpicsFunction, PVFloatCtrl, PVTextCtrl,
                       PVEnumChoice, MotorPanel)
-from wxutils import pack, Popup, Button, SimpleText
+from wxutils import pack, Popup, Button, SimpleText, get_color
 
-from ..utils import  GUIColors, get_pvdesc, normalize_pvname
+from ..utils import  get_pvdesc, normalize_pvname
 
 from .utils import MOTOR_FIELDS
 
@@ -88,8 +88,6 @@ class MoveToDialog(wx.Dialog):
 
     @EpicsFunction
     def build_dialog(self, parent, thispos):
-        colors = GUIColors()
-
         self.SetFont(parent.GetFont())
         titlefont  = self.GetFont()
         titlefont.PointSize += 2
@@ -111,7 +109,7 @@ class MoveToDialog(wx.Dialog):
                 style = labstyle
             txt =SimpleText(self, titleword, font=titlefont,
                             size=(125, -1),
-                            colour=colors.title, style=style)
+                            colour=get_color('title'), style=style)
             sizer.Add(txt, (0, i), (1, 1), style, 2)
             i = i + 1
 
@@ -135,7 +133,7 @@ class MoveToDialog(wx.Dialog):
                 # may have been removed from instrument definition
                 continue
             label = SimpleText(self, desc, style=tstyle,
-                               colour=colors.pvname)
+                               colour=get_color('pvname'))
             curr  = SimpleText(self, curr_val, style=tstyle)
             if save_val is None:
                 save_label = 'not saved'
@@ -193,7 +191,6 @@ class InstrumentPanel(wx.Panel):
         for pvname in self.db.get_instrument_pvs(instname):
             self.add_pv(pvname)
 
-        self.colors = colors = GUIColors()
         self.parent = parent
         self.SetFont(parent.GetFont())
         titlefont  = self.GetFont()
@@ -214,7 +211,7 @@ class InstrumentPanel(wx.Panel):
         toprow = wx.Panel(self.leftpanel)
         self.inst_title = SimpleText(toprow,  f' {instname} ',
                                      font=titlefont,
-                                     colour=colors.title,
+                                     colour=get_color('title'),
                                      minsize=(175, -1),
                                      style=wx.ALIGN_LEFT)
 
@@ -343,7 +340,7 @@ class InstrumentPanel(wx.Panel):
                 panel = wx.Panel(self.leftpanel)
                 sizer = wx.BoxSizer(wx.HORIZONTAL)
                 label = SimpleText(panel, pvname,
-                                   colour=self.colors.pvname,
+                                   colour=get_color('pvname'),
                                    minsize=(250,-1), style=wx.ALIGN_LEFT)
                 desc = ''
                 if pvname.endswith('.VAL'):
@@ -352,7 +349,7 @@ class InstrumentPanel(wx.Panel):
                     except:
                         pass
                 dlabel = SimpleText(panel, desc,
-                                    colour=self.colors.pvname,
+                                    colour=get_color('pvname'),
                                     minsize=(250,-1), style=wx.ALIGN_LEFT)
 
                 if 'enum' in pvtype:

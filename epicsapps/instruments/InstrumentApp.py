@@ -10,7 +10,7 @@ import wx.lib.agw.flatnotebook as flat_nb
 import wx.lib.mixins.inspection
 import wx.adv
 
-from wxutils import FileSave, FileOpen, Popup, pack, MenuItem
+from wxutils import FileSave, FileOpen, Popup, pack, MenuItem, flatnotebook
 from wxutils.colors import use_darkdetect
 
 from .configfile import InstrumentConfig, CONFFILE, get_default_configfile
@@ -29,9 +29,6 @@ from .pvconnector import EpicsPVList
 from ..utils import (get_icon, debugtimer, PasswordSetDialog, PasswordCheckDialog,
                      hash_password, test_password)
 
-
-FNB_STYLE = flat_nb.FNB_NO_X_BUTTON|flat_nb.FNB_X_ON_TAB|flat_nb.FNB_SMART_TABS
-FNB_STYLE |= flat_nb.FNB_DROPDOWN_TABS_LIST|flat_nb.FNB_NO_NAV_BUTTONS
 
 
 FILE_IN_USE_MSG = """The instrument file  %s
@@ -84,7 +81,6 @@ class InstrumentFrame(wx.Frame):
         self.admin_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onAdminTimer, self.admin_timer)
 
-        self.colors = GUIColors()
         self.create_Statusbar()
         self.create_Menus()
         dt.add('create menu')
@@ -170,15 +166,8 @@ class InstrumentFrame(wx.Frame):
         return db, dbname
 
     def create_Frame(self):
-        self.nb = flat_nb.FlatNotebook(self, wx.ID_ANY,
-                                       agwStyle=FNB_STYLE)
-        self.nb.Bind(flat_nb.EVT_FLATNOTEBOOK_PAGE_CHANGED, self.onNBChanged)
+        self.nb = flatnotebook(self, on_change=self.onNBChanged)
         self.nb.Bind(flat_nb.EVT_FLATNOTEBOOK_PAGE_CLOSING, self.onNBClosing)
-        colors = self.colors
-        self.nb.SetActiveTabColour(colors.nb_active)
-        self.nb.SetTabAreaColour(colors.nb_area)
-        self.nb.SetNonActiveTabTextColour(colors.nb_text)
-        self.nb.SetActiveTabTextColour(colors.nb_activetext)
 
         sizer = wx.BoxSizer(wx.VERTICAL)
         sizer.Add(self.nb, 1, wx.EXPAND)
