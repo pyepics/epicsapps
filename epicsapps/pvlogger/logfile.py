@@ -394,7 +394,7 @@ class PVLogFolder:
             ts = None
             try:
                 last_line = pv.text[-1]
-                if not last_line.startswith('#'):
+                if not last_line.startswith('#') and len(last_line) > 2:
                     words = last_line[-1].split()
                     if len(words) > 0:
                         ts = float(words[0])
