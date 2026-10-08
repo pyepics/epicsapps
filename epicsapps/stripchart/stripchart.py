@@ -410,7 +410,7 @@ Matt Newville <newville@cars.uchicago.edu>
 
         mopt = wx.Menu()
         MenuItem(self, mopt, "Configure Plot\tCtrl+K",
-                 "Configure Plot", pp.configure)
+                 "Configure Plot", self.onPlotConfigure)
         mopt.AppendSeparator()
         MenuItem(self, mopt, "Zoom Out\tCtrl+Z",
                  "Zoom out to full data range", pp.unzoom_all)
@@ -425,6 +425,9 @@ Matt Newville <newville@cars.uchicago.edu>
         mbar.Append(mopt, "Options")
         mbar.Append(mhelp, "&Help")
         self.SetMenuBar(mbar)
+
+    def onPlotConfigure(self, event=None):
+        self.plotpanel.configure()
 
     def onPVshow(self, event=None, row=0):
         if not event.IsChecked():
