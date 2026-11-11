@@ -50,7 +50,7 @@ class IonChamber:
     def __init__(self, prefix='13XRM:IC0'):
         self.ic = IonChamberDevice(prefix=prefix)
 
-        xdb = get_xraydb()
+        xdb = self.xdb = get_xraydb()
         tab_photo = xdb.tables['photoabsorption']
         tab_scatt = xdb.tables['scattering']
         tab_ionp = xdb.tables['ionization_potentials']
@@ -64,8 +64,8 @@ class IonChamber:
         # Compton data: get incident X-ray energy and mean energy
         #        of scattered electron beam
         comp_dat = xdb.session.execute(tab_comp.select()).fetchone()
-        self.compton_xen = js2array(comp_dat.incident)
-        self.compton_een = js2array(comp_dat.electron_mean)
+        self.compton_xen = self.db_unpack(comp_dat.incident)
+        self.compton_een = self.db_unpack(comp_dat.electron_mean)
         self.density = {}
         self.elements = {}
         for gas in ('He', 'N', 'Ar', 'Kr'):
@@ -76,16 +76,22 @@ class IonChamber:
             prow = xdb.session.execute(tab_photo.select().filter(
                 tab_photo.c.element==gas) ).fetchone()
             self.elements[gas] = {
-                'scatt_lne': js2array(srow.log_energy),
-                'scoh_dat': js2array(srow.log_coherent_scatter),
-                'scoh_spl': js2array(srow.log_coherent_scatter_spline),
-                'sincoh_dat': js2array(srow.log_incoherent_scatter),
-                'sincoh_spl': js2array(srow.log_incoherent_scatter_spline),
-                'photo_lne': js2array(prow.log_energy),
-                'photo_dat': js2array(prow.log_photoabsorption),
-                'photo_spl': js2array(prow.log_photoabsorption_spline)
+                'scatt_lne': self.db_unpack(srow.log_energy),
+                'scoh_dat': self.db_unpack(srow.log_coherent_scatter),
+                'scoh_spl': self.db_unpack(srow.log_coherent_scatter_spline),
+                'sincoh_dat': self.db_unpack(srow.log_incoherent_scatter),
+                'sincoh_spl': self.db_unpack(srow.log_incoherent_scatter_spline),
+                'photo_lne': self.db_unpack(prow.log_energy),
+                'photo_dat': self.db_unpack(prow.log_photoabsorption),
+                'photo_spl': self.db_unpack(prow.log_photoabsorption_spline)
             }
         del tab_photo, tab_scatt, tab_ionp, tab_comp, comp_dat, xdb
+
+    def db_unpack(self, val):
+        try:
+            return self.xdb.unpack(val)
+        except ValueError:
+            return js2array(val)
 
     def cross_section(self, elem, energy, kind='photo'):
         """
