@@ -52,6 +52,11 @@ except ImportError:
     ImagePanel_ZMQ = ImagePanel_URL
     ConfPanel_ZMQ = ConfPanel_URL
 
+try:
+    from .optem_zoom import OptemZoomController
+    
+except ImportError:
+    OptemZoomController = None
 
 ALL_EXP  = wx.ALL|wx.GROW
 CEN_ALL  = wx.ALIGN_CENTER_VERTICAL
@@ -170,6 +175,9 @@ class MicroscopeFrame(wx.Frame):
         self.imagelog = None
         self.show_projections = None
         self.proj_plotframe = None
+        self.zoom_ctrl = None
+        self.zoom_thread = None
+        
         self.imgpanel.Start()
 
     def create_frame(self, size=(1500, 750), orientation='landscape'):
@@ -189,7 +197,7 @@ class MicroscopeFrame(wx.Frame):
                     motion_cb=self.onPixelMotion,
                     xhair_cb=self.onShowCrosshair,
                     lamp=self.lamp)
-
+        
         if self.cam_type.startswith('fly2'):
             opts['camera_id'] = int(self.cam_fly2id)
             ImagePanel, ConfPanel = ImagePanel_Fly2, ConfPanel_Fly2
@@ -234,9 +242,13 @@ class MicroscopeFrame(wx.Frame):
                                       config=self.stages,
                                       center_cb=self.onMoveToCenter)
 
+        # print('-> confpanel ', ConfPanel, opts.keys())
+        # print("self Calib ", self.calibrations)
         self.confpanel = ConfPanel(ppanel, image_panel=self.imgpanel,
                                    calibrations=self.calibrations,
-                                   calib_cb=self.onSetCalibration, **opts)
+                                   zoom=self.zoom, zoom_cb=self.onZoom,
+                                   calib_cb=self.onSetCalibration,
+                                   **opts)
 
         zpanel = wx.Panel(ppanel)
 
@@ -252,9 +264,9 @@ class MicroscopeFrame(wx.Frame):
                               size=(150, -1), style=txtstyle)
         zsharp = wx.StaticText(zpanel, label='=',
                                size=(100, -1), style=txtstyle)
-        self.zoomsize = FloatSpin(zpanel, value=150, min_val=5, increment=5,
-                                  action=self.onZoomSize,
-                                size=(80, -1), style=txtstyle)
+        self.zboxsize = FloatSpin(zpanel, value=150, min_val=5, increment=5,
+                                  action=self.onZoomBoxSize,
+                                  size=(80, -1), style=txtstyle)
         self.imgpanel.zoompanel = ZoomPanel(zpanel, imgsize=150,
                                             size=(275, 275),
                                             sharpness_label=zsharp,
@@ -266,7 +278,7 @@ class MicroscopeFrame(wx.Frame):
         zsizer.Add(self.af_button,  (0, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
         zsizer.Add(self.af_message, (1, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
         zsizer.Add(zlab1,         (2, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
-        zsizer.Add(self.zoomsize, (2, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
+        zsizer.Add(self.zboxsize, (2, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
         zsizer.Add(zlab2,         (3, 0), (1, 1), ALL_EXP|LEFT_TOP, 1)
         zsizer.Add(zsharp,        (3, 1), (1, 1), ALL_EXP|LEFT_TOP, 1)
         zsizer.Add(self.imgpanel.zoompanel, (4, 0), (1, 2), ALL_EXP|LEFT_TOP, 1)
@@ -319,6 +331,7 @@ class MicroscopeFrame(wx.Frame):
         self.init_timer = wx.Timer(self)
         self.Bind(wx.EVT_TIMER, self.onInitTimer, self.init_timer)
         self.init_timer.Start(1000)
+        wx.CallAfter(self.onZoom)
 
     def onShowProjections(self, event=None):
         choice = None
@@ -330,7 +343,6 @@ class MicroscopeFrame(wx.Frame):
         if choice is None and self.proj_plotframe is not None:
             self.proj_plotframe.Destroy()
             self.proj_plotframe = None
-            print("Cleared projection plotframe")
         else:
             shown = False
             if self.proj_plotframe is not None:
@@ -376,10 +388,9 @@ class MicroscopeFrame(wx.Frame):
         except:
             self.show_projections = None
 
-
-    def onZoomSize(self, event=None):
+    def onZoomBoxSize(self, event=None):
         cal = min(10, abs(self.cam_calibx))
-        self.imgpanel.zoompanel.imgsize = int(self.zoomsize.GetValue()/cal)
+        self.imgpanel.zoompanel.imgsize = int(self.zboxsize.GetValue()/cal)
 
     def OnPaneChanged(self, evt=None):
         self.Layout()
@@ -436,7 +447,7 @@ class MicroscopeFrame(wx.Frame):
                                       style=wx.SOLID, color=xcol, args=xargs))
 
                 self.imgpanel.draw_objects = dobjs
-                self.onZoomSize()
+                self.onZoomBoxSize()
             self.init_timer.Stop()
 
     def onChangeCamera(self, evt=None):
@@ -609,7 +620,10 @@ class MicroscopeFrame(wx.Frame):
         if overlays is not None:
             self.config['overlays'] = overlays
         overlays = self.config['overlays']
-        imgx, imgy = self.imgpanel.full_size
+        try:
+            imgx, imgy = self.imgpanel.full_size
+        except:
+            return
         calib = self.get_calibration()
         iscale = 0.5/abs(calib[0] * imgx)
 
@@ -644,8 +658,38 @@ class MicroscopeFrame(wx.Frame):
                                                self.calib_current,
                                                callback=self.onSetCalibration)
 
-    def onSetCalibration(self, calibrations, current):
+    def onZoom(self, sel=None):
+        zoom = self.zoom
+        if sel is None:
+            sel = list(self.zoom['levels'].keys())[0]
+        self.calib_current = sel
+        self.get_calibration()
+        self.onSetOverlays()
+        if self.zoom_ctrl is None:
+            if OptemZoomController is not None:
+                # print('create zoom control ', zoom['host'] , zoom['port'])
+                self.zoom_ctrl = OptemZoomController(zoom['host'], port=int(zoom['port']))
 
+        if self.zoom_ctrl is not None:
+            self.zoom_thread = Thread(target=self.zoom_ctrl.set_zoom, args=(float(sel),))
+            self.zoom_thread.start()
+
+        self.zoom_zboxsize = self.zboxsize.GetValue()
+        self.zoom_timeout = time.time() + 30.0
+        self.zoom_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onZoomTimer, self.zoom_timer)
+        self.zoom_timer.Start(700)
+
+    def onZoomTimer(self, event=None, **kws):
+        self.zboxsize.SetValue(self.zoom_zboxsize+1)
+        if time.time() > self.zoom_timeout:
+            zelf.zoom_thread().join()
+
+        if not self.zoom_thread.is_alive():
+            self.zboxsize.SetValue(self.zoom_zboxsize)
+            self.zoom_timer.Stop()
+            
+    def onSetCalibration(self, calibrations, current):
         self.calibrations = calibrations
         self.calib_current = current
 
@@ -704,6 +748,36 @@ class MicroscopeFrame(wx.Frame):
                 self.calib_current = cname
 
         self.get_calibration()
+
+        # zoom
+        self.zoom = None
+        zoom = cnf.get('zoom', None)
+        if zoom is not None:
+            zoom_levels = {}
+            zlevels = cnf.get('zoom_levels', [])
+            if len(zlevels) == 0:
+                zlevels = ['1.50', '0.', '0.5', '0.5']
+            if len(zoom_levels) > 0:
+                self.calibrations = {}
+                self.calib_current = None
+                
+            for level, val, calx, caly in zlevels:
+                if isinstance(level, (float, int)):
+                    level = f'{level:.2f}'
+                zoom_levels[level] = (float(val), float(calx), float(caly))
+                self.calibrations[level] = (float(calx), float(caly))
+                if self.calib_current is None:
+                    self.calib_current = level
+                
+            ztype = zoom.get('type', 'Optem')
+            zhost = zoom.get('host', None)
+            zport = zoom.get('port', '991')
+            self.zoom = {'type': ztype, 'host': zhost, 'port': zport,
+                         'levels': zoom_levels}
+
+        self.get_calibration()
+        
+        # lamp    
         self.lamp = None
         lamp = cnf.get('lamp', None)
         if lamp is not None:
@@ -712,6 +786,8 @@ class MicroscopeFrame(wx.Frame):
             maxval = lamp.get('maxval', 5.0)
             step   = lamp.get('step', 0.25)
             self.lamp = dict(ctrlpv=ctrlpv, minval=minval, maxval=maxval, step=step)
+
+        #
         try:
             pref = self.imgdir.split('_')[0]
         except:
