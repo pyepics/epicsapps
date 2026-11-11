@@ -26,12 +26,13 @@ except ImportError:
 class JpegSaver(object):
     "just save a jpeg"
     def __init__(self, filename='image.jpg', delay=0.5):
-        self.delay = delay 
+        self.delay = delay
+        self.draw_objects = None
         self.run = True
         filename = filename.replace('.jpeg', '.jpg').replace('.JPG', '.jpg')
         if not filename.endswith('.jpg'):
-            filename = filename + '.jpg'        
-        
+            filename = filename + '.jpg'
+
         self.filename = Path(filename).absolute().as_posix()
         print("JPEG Saver ", self.filename)
         self.data = None
@@ -47,18 +48,24 @@ class JpegSaver(object):
             tmp = Path(tmp).resolve().as_posix()
             Image.frombytes('RGB', (nrows, ncols), self.data
                               ).save(tmp, 'JPEG', quality=70)
-            shutil.copy(tmp, self.filename)
+
+            if self.draw_objects is not None:
+                print("adding overlays: ", self.draw_objects)
+                shutil.copy(tmp, self.filename)
+            else:
+                shutil.copy(tmp, self.filename)
+
             time.sleep(self.delay)
-       
+
     def stop(self):
         self.run = False
 
-    
+
 class JpegServer(object):
     def __init__(self, port=17166, delay=0.5):
-        self.delay = delay 
+        self.delay = delay
         self.run = True
-        print("JPEG File Server ", port)
+        self.draw_objects = None
         ctx = zmq.Context()
         self.socket = ctx.socket(zmq.REP)
         self.socket.setsockopt(zmq.SNDTIMEO, 500)
@@ -78,7 +85,7 @@ class JpegServer(object):
                     continue
             except:
                 continue
-            
+
             try:
                 ncols, nrows, nx = self.data.shape
             except:
@@ -89,10 +96,10 @@ class JpegServer(object):
 
             tmp.seek(0)
             bindat = base64.b64encode(tmp.read())
-            print("Publish Image ",  len(bindat), self.delay, time.time())   
-            self.socket.send(b'jpeg:%s' % bindat) 
+            print("Publish Image ",  len(bindat), self.delay, time.time())
+            self.socket.send(b'jpeg:%s' % bindat)
             time.sleep(self.delay)
-       
+
     def stop(self):
         self.run = False
 
@@ -106,6 +113,7 @@ class EpicsArrayServer(object):
         self.delay = delay
         self.prefix = prefix
         self.data = None
+        self.draw_objects = None
         self.last_request = -1
         self.ad_img = Device(prefix, delim='',
                              attrs=self.img_attrs)
@@ -113,7 +121,7 @@ class EpicsArrayServer(object):
         self.last_request = self.ad_img.RequestTStamp
         print("EpicsArray Server ", self.ad_img)
         print(" -> ", self.last_request)
-        
+
     def serve(self):
         while True:
             time.sleep(self.delay)
@@ -325,6 +333,8 @@ class ImagePanel_Base(wx.Panel):
             return
         if self.publisher is not None:
             self.publisher.data = self.data
+            if self.draw_objects is not None:
+                self.publisher.draw_objects = self.draw_objects
 
         if self.full_size is None:
             img = self.GrabWxImage(scale=1.0, rgb=True)
@@ -389,7 +399,7 @@ class ImagePanel_Base(wx.Panel):
             self.publisher = JpegSaver(filename=addr, delay=delay)
         elif type.lower() == 'epicsarray':
             self.publisher = EpicsArrayServer(prefix=addr, delay=delay)
-            
+
         if self.publisher is not None:
             self.pub_thread = Thread(target=self.publisher.serve)
             # self.pub_thread.daemon = True
@@ -549,7 +559,7 @@ class ZoomPanel(wx.Panel):
         data, xcen, ycen = self.data, self.xcen, self.ycen
         if data is None or xcen is None or ycen is None:
             return
-        self.imgsize = max(5, min(2000, self.imgsize))        
+        self.imgsize = max(5, min(2000, self.imgsize))
         h, w, x = data.shape
 
         if ycen < self.imgsize/2.0:
@@ -588,7 +598,7 @@ class ZoomPanel(wx.Panel):
         scale = max(0.10, min(0.98*fw/(ws+0.1), 0.98*fh/(hs+0.1)))
         self.scale = scale
         image = wx.Image(self.imgsize, self.imgsize, rgb.flatten())
-        
+
         image = image.Scale(int(scale*ws), int(scale*hs))
         bitmap = wx.Bitmap(image)
         bw, bh = bitmap.GetSize()
