@@ -687,6 +687,7 @@ class MicroscopeFrame(wx.Frame):
 
         if not self.zoom_thread.is_alive():
             self.zboxsize.SetValue(self.zoom_zboxsize)
+            self.onAutoExposure()
             self.zoom_timer.Stop()
             
     def onSetCalibration(self, calibrations, current):
