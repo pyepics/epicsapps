@@ -497,10 +497,11 @@ LEFT = wx.ALIGN_LEFT|wx.EXPAND
 class ConfPanel_Base(wx.Panel):
     def __init__(self, parent,  calibrations=None, calib_cb=None,
                  center_cb=None, image_panel=None, xhair_cb=None,
-                 lamp=None, size=(325, 250), **kws):
-
+                 lamp=None, zoom=None, zoom_cb=None, size=(325, 250), **kws):
         self.calibrations = calibrations
         self.calib_cb = calib_cb
+        self.zoom  = zoom 
+        self.zoom_cb = zoom_cb
         self.lamp = lamp
 
         super(ConfPanel_Base, self).__init__(parent, -1, size=size)
@@ -521,6 +522,7 @@ class ConfPanel_Base(wx.Panel):
         return wx.StaticText(self, label=lab, size=(size, height), style=LEFT)
 
     def on_selected_pixel(self, x, y, xmax, ymax, cam_calibx=1.0, cam_caliby=1.0):
+        # print("on Selected Pixel ", x, y, cam_calibx, cam_caliby)
         if x > 0 and x < xmax and y > 0 and y < ymax:
             dx = abs(cam_calibx*(x-xmax/2.0))
             dy = abs(cam_caliby*(y-ymax/2.0))
@@ -530,7 +532,18 @@ class ConfPanel_Base(wx.Panel):
         sizer.Add(self.txt("Image Size:"), (row,   0), (1, 1), LEFT)
         sizer.Add(self.img_size,  (row,   1), (1, 2), LEFT)
 
-        if self.calibrations is not None:
+        if  self.zoom is not None:
+            row += 1
+            levels = [a for a in self.zoom['levels'].keys()]
+            # print("Zoom Levels : ", levels)
+            self.calib = Choice(self, choices=levels, default=0,
+                                size=(125, -1), action=self.onZoomLevel)
+            _label = self.txt("Zoom Level:")
+            sizer.Add(_label,      (row, 0), (1, 1), wx.ALIGN_LEFT)
+            sizer.Add(self.calib,  (row, 1), (1, 2), wx.ALIGN_LEFT)
+
+        
+        elif self.calibrations is not None:
             row += 1
             calibs = list(self.calibrations.keys())
             self.calib = Choice(self, choices=calibs, default=0,
@@ -559,6 +572,10 @@ class ConfPanel_Base(wx.Panel):
     # @EpicsFunction
     def onLampVal(self, evt=None):
         self.lamp_pv.put(float(self.lampval.GetValue()))
+
+    def onZoomLevel(self, event=None):
+        if callable(self.zoom_cb):
+            self.zoom_cb(self.calib.GetStringSelection())
 
     def onCalib(self, event=None):
         if callable(self.calib_cb):
