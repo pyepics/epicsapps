@@ -23,6 +23,35 @@ try:
 except ImportError:
     HAS_ZMQ = False
 
+
+def add_overlays(dc, overlays, img_w, img_h, pad_w, pad_h):
+    dc.SetBrush(wx.Brush('Black', wx.BRUSHSTYLE_TRANSPARENT))
+    for obj in overlays:
+        shape = obj.get('shape', None)
+        color = obj.get('color', None)
+        if color is None:
+            color = obj.get('colour', 'Black')
+        color = wx.Colour(*color)
+        width = int(obj.get('width', 1.0))
+        style = obj.get('style', wx.SOLID)
+        args  = obj.get('args', [])
+        kws   = obj.get('kws', {})
+
+        method = getattr(dc, 'Draw%s' % (shape.title()), None)
+        if shape.title() == 'Line':
+            args = [int(pad_w + args[0]*img_w),
+                int(pad_h + args[1]*img_h),
+                int(pad_w + args[2]*img_w),
+                int(pad_h + args[3]*img_h)]
+        elif shape.title() == 'Circle':
+            args = [int(pad_w + args[0]*img_w),
+                    int(pad_h + args[1]*img_h),
+                    int(args[2]*img_w)]
+
+        if method is not None:
+            dc.SetPen(wx.Pen(color, int(width), wx.SOLID))
+            method(*args, **kws)
+    
 class JpegSaver(object):
     "just save a jpeg"
     def __init__(self, filename='image.jpg', delay=0.5):
@@ -46,17 +75,29 @@ class JpegSaver(object):
                 continue
             tmp = self.filename.replace('.jpg', '_tmp.jpg')
             tmp = Path(tmp).resolve().as_posix()
-            Image.frombytes('RGB', (nrows, ncols), self.data
-                              ).save(tmp, 'JPEG', quality=70)
+
+            image = Image.frombytes('RGB', (nrows, ncols), self.data)
+            width, height = image.size
+            image.save(tmp, 'JPEG', quality=70)
 
             if self.draw_objects is not None:
-                print("adding overlays: ", self.draw_objects)
-                shutil.copy(tmp, self.filename)
+                wximage = wx.Image(tmp)
+                dc_bitmap = wx.MemoryDC()
+                dc_bitmap.SelectObject(wx.Bitmap(wximage))
+                dc_output = wx.MemoryDC()
+                out = wx.Bitmap(width, height)
+                dc_output.SelectObject(out)
+                dc_output.Blit(0, 0, width, height, dc_bitmap, 0, 0)
+
+                add_overlays(dc_output, self.draw_objects, width, height, 0, 0)
+                out.ConvertToImage().SaveFile(self.filename)
             else:
                 shutil.copy(tmp, self.filename)
 
             time.sleep(self.delay)
 
+
+            
     def stop(self):
         self.run = False
 
