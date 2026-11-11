@@ -562,7 +562,7 @@ class ConfPanel_Base(wx.Panel):
                                 max_val=self.lamp['maxval'],
                                 increment=self.lamp['step'],
                                 action=self.onLampVal,
-                                size=(85, -1),
+                                size=(125, -1),
                                 style=wx.ALIGN_LEFT|wx.ST_NO_AUTORESIZE|wx.TE_PROCESS_ENTER)
 
             sizer.Add(self.txt('Lamp Intensity:'), (row, 0), (1, 1), wx.ALIGN_LEFT)
