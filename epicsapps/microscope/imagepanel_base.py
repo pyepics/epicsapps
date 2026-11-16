@@ -69,33 +69,29 @@ class JpegSaver(object):
     def serve(self):
         while self.run:
             try:
-                ncols, nrows, nx = self.data.shape
+                width, height, nx = self.data.shape
             except:
-                time.sleep(1)
+                time.sleep(0.25)
                 continue
             tmp = self.filename.replace('.jpg', '_tmp.jpg')
             tmp = Path(tmp).resolve().as_posix()
-            image = Image.frombytes('RGB', (nrows, ncols), self.data)
-            width, height = image.size
-            image.save(tmp, 'JPEG', quality=70)
 
+            wximage = wx.Image(height, width, self.data)
+            dc_bitmap = wx.MemoryDC()
+            dc_bitmap.SelectObject(wx.Bitmap(wximage))
+            dc_output = wx.MemoryDC()
+            out = wx.Bitmap(width, height)
+            dc_output.SelectObject(out)
+            dc_output.Blit(0, 0, width, height, dc_bitmap, 0, 0)
             if self.draw_objects is not None:
-                wximage = wx.Image(nrows, ncols, self.data)
-                # wximage.SetData(image.convert( 'RGB' ).tostring() )
-                dc_bitmap = wx.MemoryDC()
-                dc_bitmap.SelectObject(wx.Bitmap(wximage))
-                dc_output = wx.MemoryDC()
-                out = wx.Bitmap(width, height)
-                dc_output.SelectObject(out)
-                dc_output.Blit(0, 0, width, height, dc_bitmap, 0, 0)
-
                 add_overlays(dc_output, self.draw_objects, width, height, 0, 0)
-                out.ConvertToImage().SaveFile(self.filename)
-                print("wrote ", self.filename)
-            else:
+            out.ConvertToImage().SaveFile(tmp)
+            time.sleep(0.25)
+            try:
                 shutil.copy(tmp, self.filename)
-            time.sleep(self.delay)
-
+            except:
+                pass
+            
     def stop(self):
         self.run = False
 
