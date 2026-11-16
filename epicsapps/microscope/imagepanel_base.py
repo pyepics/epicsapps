@@ -40,9 +40,9 @@ def add_overlays(dc, overlays, img_w, img_h, pad_w, pad_h):
         method = getattr(dc, 'Draw%s' % (shape.title()), None)
         if shape.title() == 'Line':
             args = [int(pad_w + args[0]*img_w),
-                int(pad_h + args[1]*img_h),
-                int(pad_w + args[2]*img_w),
-                int(pad_h + args[3]*img_h)]
+                    int(pad_h + args[1]*img_h),
+                    int(pad_w + args[2]*img_w),
+                    int(pad_h + args[3]*img_h)]
         elif shape.title() == 'Circle':
             args = [int(pad_w + args[0]*img_w),
                     int(pad_h + args[1]*img_h),
@@ -69,22 +69,23 @@ class JpegSaver(object):
     def serve(self):
         while self.run:
             try:
-                width, height, nx = self.data.shape
+                hgt, wid, nx = self.data.shape
             except:
                 time.sleep(0.25)
                 continue
             tmp = self.filename.replace('.jpg', '_tmp.jpg')
             tmp = Path(tmp).resolve().as_posix()
-
-            wximage = wx.Image(height, width, self.data)
+            
+            # print(f'{hgt=},  {wid=}')
+            wximage = wx.Image(wid, hgt, self.data)
             dc_bitmap = wx.MemoryDC()
             dc_bitmap.SelectObject(wx.Bitmap(wximage))
             dc_output = wx.MemoryDC()
-            out = wx.Bitmap(width, height)
+            out = wx.Bitmap(wid, hgt)
             dc_output.SelectObject(out)
-            dc_output.Blit(0, 0, width, height, dc_bitmap, 0, 0)
+            dc_output.Blit(0, 0, wid, hgt, dc_bitmap, 0, 0)
             if self.draw_objects is not None:
-                add_overlays(dc_output, self.draw_objects, width, height, 0, 0)
+                add_overlays(dc_output, self.draw_objects, wid, hgt, 0, 0)
             out.ConvertToImage().SaveFile(tmp)
             time.sleep(0.25)
             try:
