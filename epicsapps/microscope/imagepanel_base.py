@@ -51,7 +51,7 @@ def add_overlays(dc, overlays, img_w, img_h, pad_w, pad_h):
         if method is not None:
             dc.SetPen(wx.Pen(color, int(width), wx.SOLID))
             method(*args, **kws)
-    
+
 class JpegSaver(object):
     "just save a jpeg"
     def __init__(self, filename='image.jpg', delay=0.5):
@@ -75,13 +75,13 @@ class JpegSaver(object):
                 continue
             tmp = self.filename.replace('.jpg', '_tmp.jpg')
             tmp = Path(tmp).resolve().as_posix()
-
             image = Image.frombytes('RGB', (nrows, ncols), self.data)
             width, height = image.size
             image.save(tmp, 'JPEG', quality=70)
 
             if self.draw_objects is not None:
-                wximage = wx.Image(tmp)
+                wximage = wx.Image(nrows, ncols, self.data)
+                # wximage.SetData(image.convert( 'RGB' ).tostring() )
                 dc_bitmap = wx.MemoryDC()
                 dc_bitmap.SelectObject(wx.Bitmap(wximage))
                 dc_output = wx.MemoryDC()
@@ -91,13 +91,11 @@ class JpegSaver(object):
 
                 add_overlays(dc_output, self.draw_objects, width, height, 0, 0)
                 out.ConvertToImage().SaveFile(self.filename)
+                print("wrote ", self.filename)
             else:
                 shutil.copy(tmp, self.filename)
-
             time.sleep(self.delay)
 
-
-            
     def stop(self):
         self.run = False
 
@@ -248,6 +246,8 @@ class ImagePanel_Base(wx.Panel):
         self.count = 0
         self.image = None
         self.draw_objects = None
+        self.bitmap_size = (100, 100)
+        self.panel_size  = (100, 100)
         self.zoompanel = zoompanel
         self.zoommode = 'click'
         self.autosave_thread = None
@@ -500,7 +500,7 @@ class ConfPanel_Base(wx.Panel):
                  lamp=None, zoom=None, zoom_cb=None, size=(325, 250), **kws):
         self.calibrations = calibrations
         self.calib_cb = calib_cb
-        self.zoom  = zoom 
+        self.zoom  = zoom
         self.zoom_cb = zoom_cb
         self.lamp = lamp
 
@@ -522,7 +522,6 @@ class ConfPanel_Base(wx.Panel):
         return wx.StaticText(self, label=lab, size=(size, height), style=LEFT)
 
     def on_selected_pixel(self, x, y, xmax, ymax, cam_calibx=1.0, cam_caliby=1.0):
-        # print("on Selected Pixel ", x, y, cam_calibx, cam_caliby)
         if x > 0 and x < xmax and y > 0 and y < ymax:
             dx = abs(cam_calibx*(x-xmax/2.0))
             dy = abs(cam_caliby*(y-ymax/2.0))
@@ -542,7 +541,7 @@ class ConfPanel_Base(wx.Panel):
             sizer.Add(_label,      (row, 0), (1, 1), wx.ALIGN_LEFT)
             sizer.Add(self.calib,  (row, 1), (1, 2), wx.ALIGN_LEFT)
 
-        
+
         elif self.calibrations is not None:
             row += 1
             calibs = list(self.calibrations.keys())
