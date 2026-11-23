@@ -168,6 +168,16 @@ class MicroscopeFrame(wx.Frame):
         self.calibframe = None
         self.last_pixel = None
         self.xhair_pixel = None
+
+        self.zoom_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onZoomTimer, self.zoom_timer)
+        self.af_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onAFTimer, self.af_timer)
+        self.init_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onInitTimer, self.init_timer)
+        self.composite_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.onCompositeTimer, self.composite_timer)
+        
         self.create_frame(orientation=self.orientation)
         self.xplot = None
         self.yplot = None
@@ -328,8 +338,6 @@ class MicroscopeFrame(wx.Frame):
 
         self.create_menus()
         self.Bind(wx.EVT_CLOSE, self.onClose)
-        self.init_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.onInitTimer, self.init_timer)
         self.init_timer.Start(1000)
         wx.CallAfter(self.onZoom)
 
@@ -667,24 +675,23 @@ class MicroscopeFrame(wx.Frame):
         self.onSetOverlays()
         if self.zoom_ctrl is None:
             if OptemZoomController is not None:
-                # print('create zoom control ', zoom['host'] , zoom['port'])
-                self.zoom_ctrl = OptemZoomController(zoom['host'], port=int(zoom['port']))
+                self.zoom_ctrl = OptemZoomController(zoom['host'],
+                                                     port=int(zoom['port']))
 
         if self.zoom_ctrl is not None:
-            self.zoom_thread = Thread(target=self.zoom_ctrl.set_zoom, args=(float(sel),))
+            self.zoom_thread = Thread(target=self.zoom_ctrl.set_zoom,
+                                      args=(float(sel),))
             self.zoom_thread.start()
 
         self.zoom_zboxsize = self.zboxsize.GetValue()
         self.zoom_timeout = time.time() + 30.0
-        self.zoom_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.onZoomTimer, self.zoom_timer)
         self.zoom_timer.Start(700)
 
     def onZoomTimer(self, event=None, **kws):
         self.zboxsize.SetValue(self.zoom_zboxsize+1)
         if time.time() > self.zoom_timeout:
             zelf.zoom_thread().join()
-
+            
         if not self.zoom_thread.is_alive():
             self.zboxsize.SetValue(self.zoom_zboxsize)
             self.onAutoExposure()
@@ -943,8 +950,6 @@ class MicroscopeFrame(wx.Frame):
         self.af_done = False
         self.af_button.Disable()
         self.af_thread = Thread(target=self.do_autofocus)
-        self.af_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.onAFTimer, self.af_timer)
         self.af_timer.Start(2000)
         self.af_thread.start()
 
@@ -1118,7 +1123,7 @@ class MicroscopeFrame(wx.Frame):
             publisher = getattr(self.imgpanel, 'publisher', None)
             if publisher is not None:
                 publisher.stop()
-            time.sleep(1)
+            time.sleep(1.0)
             pub_thread = getattr(self.imgpanel, 'pub_thread', None)
             if pub_thread is not None:
                 del pub_thread
@@ -1193,8 +1198,6 @@ class MicroscopeFrame(wx.Frame):
         self.composite_size = res.size
         self.composite_cal = res.cal
         self.composite_thread = Thread(target=self.build_composite)
-        self.composite_timer = wx.Timer(self)
-        self.Bind(wx.EVT_TIMER, self.onCompositeTimer, self.composite_timer)
         self.composite_timer.Start(1000)
         self.composite_thread.start()
 
