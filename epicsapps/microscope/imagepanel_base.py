@@ -63,32 +63,27 @@ class JpegSaver(object):
             filename = filename + '.jpg'
 
         self.filename = Path(filename).absolute().as_posix()
-        print("JPEG Saver ", self.filename)
         self.data = None
 
     def serve(self):
         while self.run:
+            time.sleep(0.1)
             try:
                 hgt, wid, nx = self.data.shape
-            except:
+                tmp = self.filename.replace('.jpg', '_tmp.jpg')
+                tmp = Path(tmp).resolve().as_posix()
+                # print(f'{hgt=},  {wid=}')
+                wximage = wx.Image(wid, hgt, self.data)
+                dc_bitmap = wx.MemoryDC()
+                dc_bitmap.SelectObject(wx.Bitmap(wximage))
+                dc_output = wx.MemoryDC()
+                out = wx.Bitmap(wid, hgt)
+                dc_output.SelectObject(out)
+                dc_output.Blit(0, 0, wid, hgt, dc_bitmap, 0, 0)
+                if self.draw_objects is not None:
+                    add_overlays(dc_output, self.draw_objects, wid, hgt, 0, 0)
+                out.ConvertToImage().SaveFile(tmp)
                 time.sleep(0.25)
-                continue
-            tmp = self.filename.replace('.jpg', '_tmp.jpg')
-            tmp = Path(tmp).resolve().as_posix()
-            
-            # print(f'{hgt=},  {wid=}')
-            wximage = wx.Image(wid, hgt, self.data)
-            dc_bitmap = wx.MemoryDC()
-            dc_bitmap.SelectObject(wx.Bitmap(wximage))
-            dc_output = wx.MemoryDC()
-            out = wx.Bitmap(wid, hgt)
-            dc_output.SelectObject(out)
-            dc_output.Blit(0, 0, wid, hgt, dc_bitmap, 0, 0)
-            if self.draw_objects is not None:
-                add_overlays(dc_output, self.draw_objects, wid, hgt, 0, 0)
-            out.ConvertToImage().SaveFile(tmp)
-            time.sleep(0.25)
-            try:
                 shutil.copy(tmp, self.filename)
             except:
                 pass
